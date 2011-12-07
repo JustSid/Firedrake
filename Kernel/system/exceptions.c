@@ -17,6 +17,7 @@
 //
 
 #include "interrupts.h"
+#include "cpu.h"
 #include "panic.h"
 
 const char *__ir_exception_pageFaultTranslateBit(int bit, int set);
@@ -30,10 +31,10 @@ cpu_state_t *__ir_exceptionHandler(cpu_state_t *state)
 		uint32_t error = state->error;
 
 		__asm__ volatile("mov %%cr2, %0" : "=r" (address)); // Get the virtual address of the page
-		panic("Page Fault occured!\nError: %s caused by %s in %s. Virtual address: %p", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), // Panic with the type of the error
+		panic("Page Fault occured!\nError: %s caused by %s in %s. Virtual address: %p. EIP: %x", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), // Panic with the type of the error
 			__ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), // Why it occured
 			__ir_exception_pageFaultTranslateBit(3, error & (1 << 2)), // And in which mode it occured.
-			address);
+			address, state->eip);
 	}
 
 	panic("Unhandled exception %i occured!", state->interrupt);

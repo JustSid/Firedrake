@@ -1,5 +1,5 @@
 //
-//  interrupts.h
+//  process.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,22 +16,38 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _INTERRUPTS_H_
-#define _INTERRUPTS_H_
+#ifndef _PROCESS_H_
+#define _PROCESS_H_
 
 #include <types.h>
-#include "cpu.h"
-#include "tss.h"
+#include <memory/memory.h>
+#include <system/spinlock.h>
 
-typedef cpu_state_t *(*ir_interrupt_handler_t)(cpu_state_t *state);
+#include "thread.h"
 
-void ir_enableInterrupts();
-void ir_disableInterrupts();
+typedef struct process_t
+{
+	vm_context_t *context;
+	spinlock_t 	lock;
 
-void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt);
+	uint32_t pid;
+	uint32_t parent;
 
-struct tss_t *ir_getTSS();
+	bool died; // True if the process can be collected by the scheduler.
 
-bool ir_init(void *ignored);
+	thread_t *mainThread; // The main thread, eg. the first spawned thread
+	thread_t *scheduledThread; // The thread that is currently scheduled
 
-#endif /* _INTERRUPTS_H_ */
+	struct process_t *next;
+} process_t;
+
+#define PROCESS_NULL UINT32_MAX
+
+process_t *process_create(thread_entry_t entry);
+process_t *process_getCurrentProcess(); // Defined in scheduler.c!
+process_t *process_getFirstProcess(); // Defined in scheduler.c, returns a process that can be used to iterate through the process list
+process_t *process_getCollectableProcesses(); // Scheduler.c too
+
+void process_destroy(process_t *process); // Frees all memory used by the process
+
+#endif /* _PROCESS_H_ */

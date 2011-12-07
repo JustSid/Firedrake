@@ -34,16 +34,21 @@
 
 #define VM_SHIFT 12
 #define VM_SIZE (1 << VM_SHIFT)
-#define VM_MASK (~(VM_SIZE - 1))
+
+#define VM_KERNEL_START 0xC0000000 // TODO: Actually implement a upper half kernel...
+
+typedef uint32_t vm_offset_t;
+typedef uint32_t* vm_page_directory_t;
+typedef uint32_t* vm_page_table_t;
 
 typedef struct
 {
-	uint32_t *pageDirectory;
-	uintptr_t directoryStart;
+	vm_page_directory_t directory;
+
+	uintptr_t  directoryStart;
    	spinlock_t lock;
 } vm_context_t;
 
-typedef uint32_t vm_offset_t;
 
 vm_context_t *vm_getKernelContext();
 
@@ -55,6 +60,7 @@ bool vm_mapPageRange(vm_context_t *context, vm_offset_t physAddress, vm_offset_t
 vm_offset_t vm_alloc(vm_context_t *context, uintptr_t pmemory, size_t pages, uint32_t flags);
 void 		vm_free(vm_context_t *context, vm_offset_t virtAddress, size_t pages);
 
+void vm_activateContext(vm_context_t *context);
 bool vm_init(void *ignored);
 
 #endif /* _VMEMORY_H_ */

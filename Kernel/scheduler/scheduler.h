@@ -1,5 +1,5 @@
 //
-//  interrupts.h
+//  scheduler.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,22 +16,13 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _INTERRUPTS_H_
-#define _INTERRUPTS_H_
+#ifndef _SCHEDULER_H_
+#define _SCHEDULER_H_
 
-#include <types.h>
-#include "cpu.h"
-#include "tss.h"
+#include "process.h"
+#include "thread.h"
 
-typedef cpu_state_t *(*ir_interrupt_handler_t)(cpu_state_t *state);
+bool sd_state(); // Returns true if the scheduler finished the crafting of the kernel process.
+bool sd_init(void *ingored);
 
-void ir_enableInterrupts();
-void ir_disableInterrupts();
-
-void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt);
-
-struct tss_t *ir_getTSS();
-
-bool ir_init(void *ignored);
-
-#endif /* _INTERRUPTS_H_ */
+#endif /* _SCHEDULER_H_ */

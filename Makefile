@@ -7,6 +7,10 @@ ALLDIRS = $(KERNEL_DIR)
 all:
 	for i in $(ALLDIRS); do make -C $$i; done
 
+debug: all
+	rm -f ./dump.txt
+	objdump -d ./Kernel/firedrake >> ./dump.txt
+
 kernel:
 	make -c $(KERNEL_DIR);
 

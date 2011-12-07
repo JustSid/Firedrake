@@ -28,6 +28,7 @@
 #include <memory/memory.h>
 #include <memory/pmemory.h>
 #include <memory/vmemory.h>
+#include <scheduler/scheduler.h>
 
 typedef bool (*sys_function_t)(void *data);
 
@@ -70,15 +71,23 @@ void sys_boot(struct multiboot_t *info)
 
 	// Load the modules
 	sys_init("interrupts", ir_init, NULL, true); // REMARK! This doesn't enable interrupts! We must call ir_enableInterrupts() to enable them!
-	ir_enableInterrupts(); // Enable interrupts
-	
 	sys_init("physical memory", pm_init, (void *)info, true);
 	sys_init("virtual memory", vm_init, NULL, true); // After this point, never ever use unmapped memory again!
+	sys_init("scheduler", sd_init, NULL, true);
 
+	// Draw a boundary
+	for(int i=0; i<80; i++)
+		syslog(LOG_INFO, "-");
+
+	syslog(LOG_DEBUG, "\n\n");
+	
 
 	// Prepare everything for the great travel...
 	ir_enableInterrupts(); // Enable interrupts
-	kerneld_main(); // Jump over to the kernel daemon which will do the rest of the work now
 
+	while(!sd_state()) // Wait until the scheduler is ready
+		__asm__ volatile("hlt;");
+
+	kerneld_main(); // Jump over to the kernel daemon which will do the rest of the work now
 	panic("kerneld bugged"); // In the case that we leave kerneld, something really went wrong. PANIC!
 }

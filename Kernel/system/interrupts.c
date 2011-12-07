@@ -33,10 +33,10 @@ static spinlock_t	__ir_lock = SPINLOCK_INITIALIZER_LOCKED;
 
 // MARK: GDT
 #define IR_GDT_FLAG_DATASEG 	0x02
-#define IR_GDT_FLAG_CODESEG	0x0A
-#define IR_GDT_FLAG_TSS    	0x09
+#define IR_GDT_FLAG_CODESEG		0x0A
+#define IR_GDT_FLAG_TSS    		0x09
 
-#define IR_GDT_FLAG_SEGMENT	0x10
+#define IR_GDT_FLAG_SEGMENT		0x10
 #define IR_GDT_FLAG_RING0   	0x00
 #define IR_GDT_FLAG_RING3   	0x60
 #define IR_GDT_FLAG_PRESENT 	0x80
@@ -44,10 +44,15 @@ static spinlock_t	__ir_lock = SPINLOCK_INITIALIZER_LOCKED;
 #define IR_GDT_FLAG_4K      	0x800
 #define IR_GDT_FLAG_32_BIT  	0x400
 
-#define IR_GDT_ENTRIES 		6
+#define IR_GDT_ENTRIES 			6
 
 static uint64_t __ir_gdt[IR_GDT_ENTRIES];
-static uint32_t __ir_gdt_tss[32] = {0, 0, 0x10};
+static struct tss_t __ir_gdt_tss;
+
+struct tss_t *ir_getTSS()
+{
+	return &__ir_gdt_tss;
+}
 
 static inline void ir_gdt_setEntry(int16_t index, uint32_t base, uint32_t limit, int32_t flags)
 {
@@ -79,7 +84,12 @@ void ir_gdt_init()
 	ir_gdt_setEntry(3, 0, 0xFFFFF, IR_GDT_FLAG_SEGMENT | IR_GDT_FLAG_32_BIT | IR_GDT_FLAG_CODESEG | IR_GDT_FLAG_4K | IR_GDT_FLAG_PRESENT | IR_GDT_FLAG_RING3);
 	ir_gdt_setEntry(4, 0, 0xFFFFF, IR_GDT_FLAG_SEGMENT | IR_GDT_FLAG_32_BIT | IR_GDT_FLAG_DATASEG | IR_GDT_FLAG_4K | IR_GDT_FLAG_PRESENT | IR_GDT_FLAG_RING3);
 
-	ir_gdt_setEntry(5, (uint32_t)__ir_gdt_tss, sizeof(__ir_gdt_tss), IR_GDT_FLAG_TSS | IR_GDT_FLAG_PRESENT | IR_GDT_FLAG_RING3);
+	ir_gdt_setEntry(5, (uint32_t)&__ir_gdt_tss, sizeof(struct tss_t), IR_GDT_FLAG_TSS | IR_GDT_FLAG_PRESENT | IR_GDT_FLAG_RING3);
+
+	// Setup the TSS
+	__ir_gdt_tss.back_link 	= 0x0;
+	__ir_gdt_tss.esp0		= 0x0;
+	__ir_gdt_tss.ss0		= 0x10;
 
 	// Reload the GDT
 	__asm__ volatile("lgdt	%0" : : "m" (gdtp));
@@ -123,12 +133,12 @@ extern void ir_idt_stub_33(void);
 extern void ir_idt_stub_48(void);
 
 
-#define IR_IDT_FLAG_INTERRUPT_GATE 	0xE
+#define IR_IDT_FLAG_INTERRUPT_GATE 		0xE
 #define IR_IDT_FLAG_PRESENT 			0x80
 #define IR_IDT_FLAG_RING0 				0x00
 #define IR_IDT_FLAG_RING3				0x60
 
-#define IR_IDT_ENTRIES 			256
+#define IR_IDT_ENTRIES 					256
 static long long unsigned int __ir_idt[IR_IDT_ENTRIES];
 
 static inline void ir_idt_setEntry(uint32_t index, void (*fn)(), uint32_t selector, int flags)
@@ -250,7 +260,7 @@ cpu_state_t *ir_handleInterrupt(cpu_state_t *state)
 		cpu_state_t *result = handler(state);
 
 		if(result)
-		return result;
+			return result;
 	}
 
 	panic("Unhandled interrupt %i occured!", state->interrupt);

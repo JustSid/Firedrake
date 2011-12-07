@@ -1,5 +1,5 @@
 //
-//  interrupts.h
+//  thread.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,22 +16,45 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _INTERRUPTS_H_
-#define _INTERRUPTS_H_
+#ifndef _THREAD_H_
+#define _THREAD_H_
 
 #include <types.h>
-#include "cpu.h"
-#include "tss.h"
+#include <system/cpu.h>
 
-typedef cpu_state_t *(*ir_interrupt_handler_t)(cpu_state_t *state);
+typedef void (*thread_entry_t)();
+struct process_t;
 
-void ir_enableInterrupts();
-void ir_disableInterrupts();
+typedef struct thread_t
+{
+	cpu_state_t *state;
 
-void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt);
+	uint32_t id;
 
-struct tss_t *ir_getTSS();
+	uint8_t *stack;
+	uint8_t *kernelStack;
+	uint8_t *kernelStackTop;
+	thread_entry_t entry;
 
-bool ir_init(void *ignored);
+	uint8_t maxTicks;
+	uint8_t usedTicks;
+	uint8_t wantedTicks;
 
-#endif /* _INTERRUPTS_H_ */
+	bool died;
+
+	struct process_t 	*process;
+	struct thread_t 	*next;
+} thread_t;
+
+#define THREAD_NULL UINT32_MAX
+
+thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entry_t entry);
+thread_t *thread_getCurrentThread(); // Defined in scheduler.c!
+thread_t *thread_getCollectableThreads(); // Defined in scheduler.c
+
+void thread_destroy(struct thread_t *thread); // Frees the memory of the thread.
+// Be careful to not destroy the running thread, no sanity check is performed!
+
+void thread_setPriority(thread_t *thread, uint32_t priority);
+
+#endif /* _THREAD_H_ */

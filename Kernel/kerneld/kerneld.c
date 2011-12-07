@@ -18,21 +18,45 @@
 
 #include <memory/memory.h>
 #include <system/syslog.h>
+#include <system/panic.h>
+#include <scheduler/scheduler.h>
 #include <libc/string.h>
+
+void test()
+{
+	syslog(LOG_INFO, "Hello World\n");
+}
 
 void kerneld_main()
 {
-	// Quick and dirty memory tests...
-	char *test1 = (char *)kalloc(512);
-	char *test2 = (char *)kalloc(512);
+	process_t *self = process_getCurrentProcess();
 
-	strlcpy(test1, "Hello World", 512);
-	strlcpy(test2, "dlroW olleH", 512);
-
-	syslog(LOG_DEBUG, "%s\n", test1);
-	syslog(LOG_DEBUG, "%s\n", test2);
-
+	thread_create(self, 1024, test);
+	process_create(test);
 
 	while(1)
+	{
+		// Collect dead processes
+		process_t *process = process_getCollectableProcesses();
+		while(process)
+		{
+			process_t *temp = process;
+			process = process->next;
+
+			syslog(LOG_DEBUG, "Process %i exited.\n", temp->pid);
+			process_destroy(temp);
+		}
+
+		// Collect dead threads
+		thread_t *thread = thread_getCollectableThreads();
+		while(thread)
+		{
+			thread_t *temp = thread;
+			thread = thread->next;
+
+			thread_destroy(temp);
+		}
+
 		__asm__ volatile("hlt;");
+	}
 }

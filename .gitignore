@@ -1,1 +1,3 @@
 Bootable/Firedrake.iso
+*.o
+*.so

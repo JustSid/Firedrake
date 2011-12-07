@@ -25,10 +25,10 @@ void spinlock_init(spinlock_t *spinlock)
 
 void spinlock_lock(spinlock_t *spinlock)
 {
-	__asm__ volatile("movb $1, %%cl;"
-					 		"tryLock: xorb %%al, %%al;"
-					 		"lock cmpxchgb %%cl, (%0);"
-					 		"jnz tryLock;" : : "D" (&spinlock->locked) : "eax", "ecx");
+	/*__asm__ volatile("movb $1, %%cl;"
+					 	"tryLock: xorb %%al, %%al;"
+					 	"lock cmpxchgb %%cl, (%0);"
+					 	"jnz tryLock;" : : "D" (&spinlock->locked) : "eax", "ecx");*/
 }
 
 void spinlock_unlock(spinlock_t *spinlock)

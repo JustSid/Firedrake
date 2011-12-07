@@ -73,33 +73,33 @@ ir_idt_stub 47 // secondary IDE/ATAPI/ATA
 ir_idt_stub 48 // Syscall
 
 ir_interruptHandler:
- push %ebp
- push %edi
- push %esi
- push %edx
- push %ecx
- push %ebx
- push %eax
+	push %ebp
+	push %edi
+	push %esi
+	push %edx
+	push %ecx
+	push %ebx
+	push %eax
 
- mov $0x10, %ax
- mov %ax, %ds
- mov %ax, %es
+	mov $0x10, %ax
+	mov %ax, %ds
+	mov %ax, %es
 
- push %esp
- call ir_handleInterrupt
- mov %eax, %esp
+	push %esp
+	call ir_handleInterrupt
+	mov %eax, %esp
 
- mov $0x23, %ax
- mov %ax, %ds
- mov %ax, %es
+	mov $0x23, %ax
+	mov %ax, %ds
+	mov %ax, %es
 
- pop %eax
- pop %ebx
- pop %ecx
- pop %edx
- pop %esi
- pop %edi
- pop %ebp
+	pop %eax
+	pop %ebx
+	pop %ecx
+	pop %edx
+	pop %esi
+	pop %edi
+	pop %ebp
 
- add $8, %esp
- iret
+	add $8, %esp
+	iret

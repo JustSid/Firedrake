@@ -1,5 +1,5 @@
 //
-//  interrupts.h
+//  cpu.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,22 +16,29 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _INTERRUPTS_H_
-#define _INTERRUPTS_H_
+#ifndef _CPU_H_
+#define _CPU_H_
 
 #include <types.h>
-#include "cpu.h"
-#include "tss.h"
 
-typedef cpu_state_t *(*ir_interrupt_handler_t)(cpu_state_t *state);
+typedef struct 
+{	
+    uint32_t eax;
+    uint32_t ebx;
+    uint32_t ecx;
+    uint32_t edx;
+    uint32_t esi;
+    uint32_t edi;
+    uint32_t ebp;
+    
+    uint32_t interrupt;
+    uint32_t error;
+    
+    uint32_t eip;
+    uint32_t cs;
+    uint32_t eflags;
+    uint32_t esp;
+    uint32_t ss;
+} cpu_state_t; 
 
-void ir_enableInterrupts();
-void ir_disableInterrupts();
-
-void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt);
-
-struct tss_t *ir_getTSS();
-
-bool ir_init(void *ignored);
-
-#endif /* _INTERRUPTS_H_ */
+#endif /* _CPU_H_ */

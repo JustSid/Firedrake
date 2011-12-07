@@ -24,7 +24,7 @@
 static spinlock_t _vd_spinlock = SPINLOCK_INITIALIZER_LOCKED; // We start with a locked lock, so that every function call must wait until the video system is ready
 static uint8_t *_vd_address = (uint8_t *)0xB8000;
 static uint32_t _vd_width  = 80;
-static uint32_t _vd_height = 20;
+static uint32_t _vd_height = 25;
 static uint32_t _vd_cursorX = 0;
 static uint32_t _vd_cursorY = 0;
 
@@ -62,11 +62,11 @@ static inline void __vd_setCursor_noLock(uint32_t x, uint32_t y)
 	_vd_cursorX = x;
 	_vd_cursorY = y;
 	
-	outb(0x3D4, 0x0F);
-   outb(0x3D5, (uint8_t)(pos & 0xFF));
+	/*outb(0x3D4, 0x0F);
+   	outb(0x3D5, (uint8_t)(pos & 0xFF));
 	
-   outb(0x3D4, 0x0E);
-   outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
+   	outb(0x3D4, 0x0E);
+   	outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));*/
 	
 	__vd_setColor_noLock(x, y, true, vd_color_lightGray);
 }

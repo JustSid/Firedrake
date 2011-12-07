@@ -20,6 +20,8 @@
 #include "syslog.h"
 #include "video.h"
 
+#define SYSLOG_BUFFER_SIZE 512
+
 static syslog_level_t __syslog_level = LOG_WARNING;
 static vd_color_t __sylog_color_table[] = {
 	vd_color_red,			// LOG_ALERT
@@ -35,12 +37,12 @@ void syslog(syslog_level_t level, const char *format, ...)
 	if(level > __syslog_level)
 		return;
 	
-	char buffer[1024];
+	char buffer[SYSLOG_BUFFER_SIZE];
 
 	va_list arguments;
 	va_start(arguments, format);
 	
-	vsnprintf(buffer, 1024, format, arguments);
+	vsnprintf(buffer, SYSLOG_BUFFER_SIZE, format, arguments);
 
 	va_end(arguments);
 
