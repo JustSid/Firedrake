@@ -27,22 +27,22 @@
 
 typedef enum
 {
-	vd_color_black				= 0x0,
-	vd_color_blue				= 0x1,
-	vd_color_green				= 0x2,
-	vd_color_cyan				= 0x3,
-	vd_color_red				= 0x4,
-	vd_color_magenta			= 0x5,
-	vd_color_brown				= 0x6,
+	vd_color_black			= 0x0,
+	vd_color_blue			= 0x1,
+	vd_color_green			= 0x2,
+	vd_color_cyan			= 0x3,
+	vd_color_red			= 0x4,
+	vd_color_magenta		= 0x5,
+	vd_color_brown			= 0x6,
 	vd_color_lightGray		= 0x7,
-	vd_color_darkGray			= 0x8,
+	vd_color_darkGray		= 0x8,
 	vd_color_lightBlue		= 0x9,
 	vd_color_lightGreen		= 0xA,
 	vd_color_lightCyan		= 0xB,
-	vd_color_lightRed			= 0xC,
+	vd_color_lightRed		= 0xC,
 	vd_color_lightMagenta	= 0xD,
 	vd_color_yellow			= 0xE,
-	vd_color_white				= 0xF
+	vd_color_white			= 0xF
 } vd_color_t;
 
 void vd_clear();

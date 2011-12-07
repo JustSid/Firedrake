@@ -1,5 +1,5 @@
 //
-//  thread.h
+//  syscall.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,45 +16,30 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _THREAD_H_
-#define _THREAD_H_
+#ifndef _SYSCALL_H_
+#define _SYSCALL_H_
 
 #include <types.h>
-#include <system/cpu.h>
+#include "cpu.h"
 
-typedef void (*thread_entry_t)();
-struct process_t;
-
-typedef struct thread_t
+typedef enum
 {
-	cpu_state_t *state;
+	syscall_print,
+	syscall_printColor,
 
-	uint32_t id;
+	__syscall_max // NOT an actuall syscall but just used as boundary information!
+} syscall_t;
 
-	uint8_t *stack;
-	uint8_t *kernelStack;
-	uint8_t *kernelStackTop;
-	thread_entry_t entry;
 
-	uint8_t maxTicks;
-	uint8_t usedTicks;
-	uint8_t wantedTicks;
+typedef uint32_t (*syscall_callback_t)(cpu_state_t *state, cpu_state_t **returnState);
 
-	bool died;
 
-	struct process_t 	*process;
-	struct thread_t 	*next;
-} thread_t;
+uint32_t syscall0(syscall_t type);
+uint32_t syscall1(syscall_t type, uint32_t arg1);
+uint32_t syscall2(syscall_t type, uint32_t arg1, uint32_t arg2);
+uint32_t syscall3(syscall_t type, uint32_t arg1, uint32_t arg2, uint32_t arg3);
 
-#define THREAD_NULL UINT32_MAX
+void sc_mapSyscall(syscall_t syscall, syscall_callback_t callback);
+bool sc_init(void *ingored);
 
-thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entry_t entry);
-thread_t *thread_getCurrentThread(); // Defined in scheduler.c!
-thread_t *thread_getCollectableThreads(); // Defined in scheduler.c
-
-void thread_destroy(struct thread_t *thread); // Frees the memory of the thread.
-// Be careful to not destroy the running thread, no sanity check is performed!
-
-void thread_setPriority(thread_t *thread, float priority);
-
-#endif /* _THREAD_H_ */
+#endif

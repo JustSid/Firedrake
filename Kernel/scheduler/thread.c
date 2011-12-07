@@ -163,6 +163,10 @@ void thread_destroy(struct thread_t *thread)
 	kfree(thread);
 }
 
-void thread_setPriority(thread_t *thread, uint32_t priority)
+void thread_setPriority(thread_t *thread, float priority)
 {
+	uint8_t result = (((float)thread->maxTicks) * priority);
+	result = MIN(thread->maxTicks, MAX(1, result));
+	
+	thread->wantedTicks = result;
 }

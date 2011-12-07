@@ -182,8 +182,6 @@ cpu_state_t *_sd_schedule(cpu_state_t *state)
 		process->scheduledThread = thread->next ? thread->next : process->mainThread;
 
 		process = process->next ? process->next : _process_firstProcess;
-
-		//syslog(LOG_DEBUG, "Switching to %i:%i\n", process->pid, process->scheduledThread->id);
 	}
 	
 	// Update the state

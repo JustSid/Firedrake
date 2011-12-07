@@ -26,9 +26,8 @@
 
 #include <system/interrupts.h>
 #include <memory/memory.h>
-#include <memory/pmemory.h>
-#include <memory/vmemory.h>
 #include <scheduler/scheduler.h>
+#include <system/syscall.h>
 
 typedef bool (*sys_function_t)(void *data);
 
@@ -74,6 +73,7 @@ void sys_boot(struct multiboot_t *info)
 	sys_init("physical memory", pm_init, (void *)info, true);
 	sys_init("virtual memory", vm_init, NULL, true); // After this point, never ever use unmapped memory again!
 	sys_init("scheduler", sd_init, NULL, true);
+	sys_init("syscall", sc_init, NULL, true);
 
 	// Draw a boundary
 	for(int i=0; i<80; i++)

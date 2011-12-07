@@ -25,11 +25,11 @@
 static syslog_level_t __syslog_level = LOG_WARNING;
 static vd_color_t __sylog_color_table[] = {
 	vd_color_red,			// LOG_ALERT
-	vd_color_lightRed, 	// LOG_CRITICAL
+	vd_color_lightRed, 		// LOG_CRITICAL
 	vd_color_yellow, 		// LOG_ERROR
 	vd_color_brown, 		// LOG_WARNING
 	vd_color_lightGray, 	// LOG_INFO
-	vd_color_lightBlue 	// LOG_DEBUG
+	vd_color_lightBlue 		// LOG_DEBUG
 };
 
 void syslog(syslog_level_t level, const char *format, ...)

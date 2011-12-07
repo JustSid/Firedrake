@@ -19,19 +19,24 @@
 #include <memory/memory.h>
 #include <system/syslog.h>
 #include <system/panic.h>
+#include <system/syscall.h>
 #include <scheduler/scheduler.h>
 #include <libc/string.h>
 
 void test()
 {
-	syslog(LOG_INFO, "Hello World\n");
+	char *string = "Hello World\n";
+	syscall1(syscall_print, (uint32_t)string);
 }
+
 
 void kerneld_main()
 {
 	process_t *self = process_getCurrentProcess();
 
-	thread_create(self, 1024, test);
+	thread_setPriority(thread_getCurrentThread(), 0.2f);
+
+	// Dummy process
 	process_create(test);
 
 	while(1)
@@ -43,7 +48,6 @@ void kerneld_main()
 			process_t *temp = process;
 			process = process->next;
 
-			syslog(LOG_DEBUG, "Process %i exited.\n", temp->pid);
 			process_destroy(temp);
 		}
 
@@ -57,6 +61,7 @@ void kerneld_main()
 			thread_destroy(temp);
 		}
 
-		__asm__ volatile("hlt;");
+
+		__asm__ volatile("hlt;"); // Idle for the heck of it!
 	}
 }
