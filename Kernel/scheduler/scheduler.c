@@ -17,7 +17,6 @@
 //
 
 #include <system/assert.h>
-#include <system/syslog.h>
 #include <system/panic.h>
 #include <system/port.h>
 #include <system/interrupts.h>

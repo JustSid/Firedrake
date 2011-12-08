@@ -19,7 +19,6 @@
 #include <system/assert.h>
 #include <system/syslog.h>
 #include <system/helper.h>
-#include <system/spinlock.h>
 #include <libc/string.h>
 #include "pmemory.h"
 
@@ -28,8 +27,7 @@
 extern uintptr_t kernelBegin; // Marks the beginning of the kernel (set by the linker)
 extern uintptr_t kernelEnd;	// Marks the end of the kernel (also set by the linker)
 
-static uint32_t 	__pm_heap[PM_HEAPSIZE];
-static spinlock_t __pm_lock = SPINLOCK_INITIALIZER;
+static uint32_t __pm_heap[PM_HEAPSIZE];
 
 
 // MARK: Barebone allocator
@@ -47,8 +45,6 @@ static inline void pm_markFree(uintptr_t page)
 
 uintptr_t pm_alloc(size_t pages)
 {
-	spinlock_lock(&__pm_lock); // We must work atomic here!
-
 	for(int i=0; i<PM_HEAPSIZE; i++)
 	{
 		if(__pm_heap[i])
@@ -90,8 +86,7 @@ uintptr_t pm_alloc(size_t pages)
 							pm_markUsed(cpage);
 							cpage += 0x1000;
 						}
-
-						spinlock_unlock(&__pm_lock);
+						
 						return page;
 					}
 				}
@@ -101,7 +96,6 @@ uintptr_t pm_alloc(size_t pages)
 	
 
 	// Reaching this point means that we didn't found enough free pages. Lets log a debug message and return NULL
-	spinlock_unlock(&__pm_lock);
 	syslog(LOG_WARNING, "Failed to allocatd %i pages...\n", pages);
 
 	return 0x0;
@@ -109,15 +103,11 @@ uintptr_t pm_alloc(size_t pages)
 
 void pm_free(uintptr_t page, size_t pages)
 {
-	spinlock_lock(&__pm_lock); // We must work atomic here!
-
 	for(size_t i=0; i<pages; i++)
 	{
 		pm_markFree(page);
 		page += 0x1000;
 	}
-
-	spinlock_unlock(&__pm_lock);
 }
 
 // MARK: Init
@@ -176,8 +166,6 @@ bool pm_init(void *data)
 	// Print some pretty debug info and unlock the spinlock afterwards
 	suffix = sys_unitForSize(memoryTotal, &memoryTotal); // Calculate the largest integer quantity of the memory
 	syslog(LOG_DEBUG, "%i %s RAM", memoryTotal, suffix); // And print how much RAM is available.
-
-	spinlock_unlock(&__pm_lock);
 
 	return true;
 }

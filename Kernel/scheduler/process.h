@@ -21,14 +21,12 @@
 
 #include <types.h>
 #include <memory/memory.h>
-#include <system/spinlock.h>
 
 #include "thread.h"
 
 typedef struct process_t
 {
 	vm_context_t *context;
-	spinlock_t 	lock;
 
 	uint32_t pid;
 	uint32_t parent;

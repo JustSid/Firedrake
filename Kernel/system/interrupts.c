@@ -17,7 +17,6 @@
 //
 
 #include "interrupts.h"
-#include "spinlock.h"
 #include "port.h"
 #include "syslog.h"
 #include "assert.h"
@@ -27,9 +26,7 @@
 #define IR_MAX_INTERRUPTS 49 // The number of interrupts we know to handle
 
 static ir_interrupt_handler_t __ir_interruptHandler[IR_MAX_INTERRUPTS];
-
-static bool			__ir_interruptsEnabled = false;
-static spinlock_t	__ir_lock = SPINLOCK_INITIALIZER_LOCKED;
+static bool __ir_interruptsEnabled = false;
 
 // MARK: GDT
 #define IR_GDT_FLAG_DATASEG 	0x02
@@ -217,8 +214,6 @@ void ir_pic_init()
 // MARK: Interrupt processing
 void ir_enableInterrupts()
 {	
-	spinlock_lock(&__ir_lock);
-
 	if(!__ir_interruptsEnabled)
 	{
 		__ir_interruptsEnabled = true;
@@ -226,14 +221,10 @@ void ir_enableInterrupts()
 		__asm__ volatile("sti");
 		outb(0x70, inb(0x70) & 0x7F);
 	}
-
-	spinlock_unlock(&__ir_lock);
 }
 
 void ir_disableInterrupts()
 {
-	spinlock_lock(&__ir_lock);
-
 	if(__ir_interruptsEnabled)
 	{
 		__ir_interruptsEnabled = false;
@@ -241,8 +232,6 @@ void ir_disableInterrupts()
 		__asm__ volatile("cli");
 		outb(0x70, inb(0x70) | 0x80);
 	}
-
-	spinlock_unlock(&__ir_lock);
 }
 
 // MARK: Interrupt handler handling
@@ -297,8 +286,6 @@ bool ir_init(void *ignored)
 	ir_pic_init();
 	ir_gdt_init(); // Setup the GDT
 	ir_idt_init(); // Setup the IDT
-
-	spinlock_unlock(&__ir_lock);
 
 	return true;
 }

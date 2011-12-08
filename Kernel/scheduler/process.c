@@ -19,7 +19,6 @@
 #include <memory/memory.h>
 #include "process.h"
 
-static spinlock_t _process_lock = SPINLOCK_INITIALIZER;
 extern void _process_setFirstProcess(process_t *process); // Scheduler.c
 
 uint32_t _process_getUniqueID()
@@ -56,7 +55,6 @@ process_t *process_create(thread_entry_t entry)
 	if(process)
 	{
 		process_t *parent = process_getCurrentProcess();
-		process->lock.locked 	= 0;
 		process->context 		= vm_getKernelContext();
 
 		process->pid 	= PROCESS_NULL;
@@ -70,8 +68,6 @@ process_t *process_create(thread_entry_t entry)
 		thread_create(process, 4096, entry);
 		
 		// Attach the process to the process chain
-		spinlock_lock(&_process_lock);
-
 		process->pid = _process_getUniqueID();
 		if(parent)
 		{
@@ -80,8 +76,6 @@ process_t *process_create(thread_entry_t entry)
 		}
 		else
 			_process_setFirstProcess(process);
-
-		spinlock_unlock(&_process_lock);
 	}
 
 	return process;

@@ -20,7 +20,6 @@
 #define _VMEMORY_H_
 
 #include <types.h>
-#include <system/spinlock.h>
 
 #define VM_PAGETABLEFLAG_PRESENT    0x1
 #define VM_PAGETABLEFLAG_WRITEABLE  0x2
@@ -46,7 +45,6 @@ typedef struct
 	vm_page_directory_t directory;
 
 	uintptr_t  directoryStart;
-   	spinlock_t lock;
 } vm_context_t;
 
 

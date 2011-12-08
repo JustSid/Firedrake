@@ -131,7 +131,6 @@ vm_context_t *vm_getKernelContext()
 
 uintptr_t vm_getPhysicalAddress(vm_context_t *context, vm_offset_t vaddress)
 {	
-	// TODO: Locking?
     uint32_t index = vaddress / VM_SIZE;
 
     vm_page_directory_t directory = context->directory;
@@ -144,21 +143,13 @@ uintptr_t vm_getPhysicalAddress(vm_context_t *context, vm_offset_t vaddress)
 
 bool vm_mapPage(vm_context_t *context, vm_offset_t paddress, vm_offset_t vaddress, uint32_t flags)
 {
-	spinlock_lock(&context->lock);
-
 	bool result = __vm_mapPage(context, paddress, vaddress, flags);
-
-	spinlock_unlock(&context->lock);
 	return result;
 }
 
 bool vm_mapPageRange(vm_context_t *context, vm_offset_t paddress, vm_offset_t vaddress, size_t pages, uint32_t flags)
 {
-	spinlock_lock(&context->lock);
-
 	bool result = __vm_mapPageRange(context, paddress, vaddress, pages, flags);
-	
-	spinlock_unlock(&context->lock);
 	return result;
 }
 
@@ -166,27 +157,20 @@ bool vm_mapPageRange(vm_context_t *context, vm_offset_t paddress, vm_offset_t va
 
 vm_offset_t vm_alloc(vm_context_t *context, uintptr_t paddress, size_t pages, uint32_t flags)
 {
-	spinlock_lock(&context->lock);
-
 	vm_offset_t vaddress = __vm_getFreePages(context, pages);
 	if(vaddress)
 		__vm_mapPageRange(context, (vm_offset_t)paddress, vaddress, pages, flags);
 
-	spinlock_unlock(&context->lock);
 	return vaddress;
 }
 
 void vm_free(vm_context_t *context, vm_offset_t vaddress, size_t pages)
 {
-	spinlock_lock(&context->lock);
-
 	for(size_t page=0; page<pages; page++)
 	{
 		__vm_mapPage(context, (vm_offset_t)0x0, vaddress, 0);
 		vaddress += VM_SIZE;
 	}
-	
-	spinlock_unlock(&context->lock);
 }
 
 
@@ -199,9 +183,8 @@ void vm_activateContext(vm_context_t *context)
 // MARK: Initialization
 void vm_createKernelContext()
 {
-	// Prepare the pointer and spinlock
+	// Prepare the directory
     __vm_kernelContext = &__vm_kernelContext_s;
-	__vm_kernelContext->lock.locked = 0;
 	__vm_kernelContext->directory  = (vm_page_directory_t)pm_alloc(1);
    	__vm_kernelContext->directoryStart = pm_alloc(VM_DIRECTORY_LENGTH);
 
@@ -243,6 +226,7 @@ bool vm_init(void *unused)
 	__asm__ volatile("mov %0, %%cr0" : : "r" (cr0 | (1 << 31)));
 
 	// "Move" the kernel
-
+	// TODO: Move the kernel!
+	
 	return true;
 }

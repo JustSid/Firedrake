@@ -33,7 +33,6 @@ typedef enum
 
 typedef uint32_t (*syscall_callback_t)(cpu_state_t *state, cpu_state_t **returnState);
 
-
 uint32_t syscall0(syscall_t type);
 uint32_t syscall1(syscall_t type, uint32_t arg1);
 uint32_t syscall2(syscall_t type, uint32_t arg1, uint32_t arg2);

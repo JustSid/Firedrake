@@ -32,8 +32,6 @@ void test()
 
 void kerneld_main()
 {
-	process_t *self = process_getCurrentProcess();
-
 	thread_setPriority(thread_getCurrentThread(), 0.2f);
 
 	// Dummy process

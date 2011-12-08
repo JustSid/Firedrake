@@ -133,8 +133,6 @@ thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entr
 
 
 		// Attach the thread to the process;
-		spinlock_lock(&process->lock);
-
 		thread->id = _thread_getUniqueID(process);
 		if(process->mainThread)
 		{
@@ -149,8 +147,6 @@ thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entr
 			process->mainThread 		= thread;
 			process->scheduledThread 	= thread;
 		}
-
-		spinlock_unlock(&process->lock);
 	}
 
 	return thread;
