@@ -43,62 +43,86 @@ static inline void pm_markFree(uintptr_t page)
 	__pm_heap[index / 32] |= (1 << (index % 32));
 }
 
-uintptr_t pm_alloc(size_t pages)
+
+uintptr_t pm_findFreePages(uintptr_t lowerLimit, size_t pages)
 {
-	for(int i=0; i<PM_HEAPSIZE; i++)
+    size_t found = 0; // The number of found pages
+    uintptr_t page = 0; // Address of the first found page
+
+    for(uint32_t i = lowerLimit / PM_PAGE_SIZE / 32; i<PM_HEAPSIZE; i++)
+    {
+        if(__pm_heap[i] == 0)
+        {
+            found = 0;
+            continue;
+        }
+
+
+        if(__pm_heap[i] == 0xFFFFFFFF)
+        {
+            if(found == 0)
+                page = i * 32 * PM_PAGE_SIZE;
+ 
+            found += 32;
+        }
+        else
+        {
+            for(uint32_t j=0; j<32; j++)
+            {
+                if(__pm_heap[i] & (1 << j))
+                {
+                    if(found == 0)
+                        page = (i * 32 + j) * PM_PAGE_SIZE;
+
+                    found++;
+
+                    if(found > pages)
+                        return page;
+                }
+                else
+                    found = 0;
+            }
+        }
+
+        if(found > pages)
+            return page;
+    }
+
+    return 0x0;
+}
+
+
+// MARK --
+uintptr_t pm_allocLimit(uintptr_t lowerLimit, size_t pages)
+{
+	uintptr_t page = pm_findFreePages(lowerLimit, pages);
+	if(page)
 	{
-		if(__pm_heap[i])
+		uintptr_t temp = page;
+		for(size_t i=0; i<pages; i++)
 		{
-			for(int j=0; j<32; j++)
-			{
-				// Check if the given page is empty, if so, we check if the following pages are empty too.
-				if(__pm_heap[i] & (1 << j)) 
-				{
-					bool isEmpty = true; // Assume that enough pages are empty
-					uintptr_t page = ((i * 32 + j) * 0x1000); // The physical address to that page
-
-					// Check if enough pages are actually free
-					for(size_t k=0; k<pages; k++)
-					{
-						if(__pm_heap[i] & (1 << j)) 
-						{
-							j++;
-							if(j >= 32)
-							{
-								j = 0;
-								i++;
-							}
-						}
-						else
-						{
-							// Looks like there was a non-free page inbetween...
-							isEmpty = false;
-							break;
-						}
-					}
-
-					if(isEmpty)
-					{
-						// We found enough free pages, lets mark them as used!
-						uintptr_t cpage = page;
-						for(size_t k=0; k<pages; k++)
-						{
-							pm_markUsed(cpage);
-							cpage += 0x1000;
-						}
-						
-						return page;
-					}
-				}
-			}
+			pm_markUsed(temp);
+			temp += PM_PAGE_SIZE;
 		}
 	}
-	
 
-	// Reaching this point means that we didn't found enough free pages. Lets log a debug message and return NULL
-	syslog(LOG_WARNING, "Failed to allocatd %i pages...\n", pages);
+	return page;
+}
 
-	return 0x0;
+uintptr_t pm_alloc(size_t pages)
+{
+	uintptr_t page = pm_findFreePages(0x0, pages);
+	if(page)
+	{
+		uintptr_t temp = page;
+		for(size_t i=0; i<pages; i++)
+		{
+			pm_markUsed(temp);
+			temp += PM_PAGE_SIZE;
+		}
+	}
+
+	return page;
 }
 
 void pm_free(uintptr_t page, size_t pages)
@@ -106,7 +130,7 @@ void pm_free(uintptr_t page, size_t pages)
 	for(size_t i=0; i<pages; i++)
 	{
 		pm_markFree(page);
-		page += 0x1000;
+		page += PM_PAGE_SIZE;
 	}
 }
 
@@ -141,8 +165,8 @@ bool pm_init(void *data)
 			{
 				pm_markFree(address);
 				
-				address		+= 0x1000;
-				memoryTotal += 0x1000;
+				address		+= PM_PAGE_SIZE;
+				memoryTotal += PM_PAGE_SIZE;
 			}
 		}
 		
@@ -157,11 +181,11 @@ bool pm_init(void *data)
 	while(address < _kernelEnd) 
 	{
 		pm_markUsed(address);
-		address += 0x1000;
+		address += PM_PAGE_SIZE;
 	}
 
 	pm_markUsed(0x0); // Last but not least, lets mark NULL as used to avoid allocating it.
-
+	
 
 	// Print some pretty debug info and unlock the spinlock afterwards
 	suffix = sys_unitForSize(memoryTotal, &memoryTotal); // Calculate the largest integer quantity of the memory

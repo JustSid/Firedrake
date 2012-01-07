@@ -24,8 +24,9 @@
 
 typedef enum
 {
-	syscall_print,
-	syscall_printColor,
+	syscall_print, // syscall 1
+	syscall_printColor, // syscall 2
+	syscall_sleep, // Syscall 1
 
 	__syscall_max // NOT an actuall syscall but just used as boundary information!
 } syscall_t;

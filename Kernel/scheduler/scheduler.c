@@ -189,7 +189,7 @@ cpu_state_t *_sd_schedule(cpu_state_t *state)
 	_sd_state = true;
 
 	// Prepare the TSS
-	_sd_tss->cr3  = (uint32_t)process->context;
+	_sd_tss->cr3  = (uint32_t)process->pdirectory;
 	_sd_tss->esp0 = (uint32_t)process->scheduledThread->kernelStackTop;
 
 	outb(0x20, 0x20); // EOI

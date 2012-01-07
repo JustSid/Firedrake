@@ -1,5 +1,5 @@
 //
-//  assert.h
+//  state.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,11 +16,23 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _ASSERT_H_
-#define _ASSERT_H_
+#ifndef _STATE_H_
+#define _STATE_H_
 
-#include "panic.h"
-#define assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\'failed.", __func__, __LINE__, #e) : (void)0
+#include <types.h>
 
-#endif /* _ASSERT_H_ */
+typedef struct
+{
+	// The time since boot
+	double time;
 
+	// Time interrupt settings
+	int16_t pitReload; // Reload value of the PIT
+	double  pitTime; // Time between every PIT interrupt
+} state_t;
+
+extern state_t st_state;
+
+bool st_init(void *ignored);
+
+#endif /* _STATE_H_ */

@@ -23,30 +23,8 @@ extern void _process_setFirstProcess(process_t *process); // Scheduler.c
 
 uint32_t _process_getUniqueID()
 {
-	uint32_t uid = 0;
-	
-	bool found;
-	do {
-		found = true;
-		process_t *process = process_getFirstProcess();
-		
-		while(process)
-		{
-			if(process->pid == uid)
-			{
-				found = false;
-				break;
-			}
-			
-			process = process->next;
-		}
-		
-		if(!found)
-			uid ++;
-		
-	} while(!found);
-	
-	return uid;
+	static uint32_t uid = 0;
+	return uid ++;
 }
 
 process_t *process_create(thread_entry_t entry)
@@ -54,9 +32,10 @@ process_t *process_create(thread_entry_t entry)
 	process_t *process = (process_t *)kalloc(sizeof(process_t));
 	if(process)
 	{
-		process_t *parent = process_getCurrentProcess();
-		process->context 		= vm_getKernelContext();
-
+		process_t *parent 	 = process_getCurrentProcess();
+		//process->pdirectory	 = vm_createDirectory();
+		process->pdirectory = vm_getKernelDirectory();
+		
 		process->pid 	= PROCESS_NULL;
 		process->died 	= false;
 		process->parent = parent ? parent->pid : PROCESS_NULL;

@@ -22,11 +22,12 @@
 #include <system/syscall.h>
 #include <scheduler/scheduler.h>
 #include <libc/string.h>
+#include <system/state.h>
+#include <libc/stdio.h>
 
 void test()
 {
-	char *string = "Hello World\n";
-	syscall1(syscall_print, (uint32_t)string);
+	syscall1(syscall_print, (int32_t)"Hello World!");
 }
 
 

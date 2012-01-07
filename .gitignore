@@ -1,3 +1,4 @@
 Bootable/Firedrake.iso
 *.o
 *.so
+Kernel/firedrake

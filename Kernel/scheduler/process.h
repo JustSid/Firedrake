@@ -26,7 +26,7 @@
 
 typedef struct process_t
 {
-	vm_context_t *context;
+	vm_page_directory_t pdirectory;
 
 	uint32_t pid;
 	uint32_t parent;

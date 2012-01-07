@@ -24,8 +24,8 @@
 #include "vmemory.h"
 
 // Some more high-level allocation system
-void *kalloc(size_t bytes);
-void *krealloc(void *ptr, size_t bytes);
+void *kalloc(size_t bytes); // Kernel
+void *ualloc(size_t bytes); // Userland
 void kfree(void *ptr);
 
 #endif /* _MEMORY_H_ */

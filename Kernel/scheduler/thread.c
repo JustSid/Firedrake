@@ -78,7 +78,7 @@ thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entr
 	thread_t *thread = (thread_t *)kalloc(sizeof(thread_t));
 	if(thread)
 	{
-		uint8_t *userStack = kalloc(stackSize);
+		uint8_t *userStack = kalloc(stackSize); //(uint8_t *)pm_alloc(2);
 		uint8_t *kernelStack = kalloc(THREAD_MIN_STACK);
 
 		if(!userStack || !kernelStack)
@@ -94,6 +94,7 @@ thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entr
 		}
 
 		thread->id 			= THREAD_NULL;
+		//thread->stack 		= (uint8_t *)vm_mapPage(process->pdirectory, (vm_offset_t)userStack, 0xfffff000, VM_FLAGS_USERLAND);
 		thread->stack 		= userStack;
 		thread->kernelStack = kernelStack;
 		thread->kernelStackTop = (uint8_t *)(thread->kernelStack + THREAD_MIN_STACK);

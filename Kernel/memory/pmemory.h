@@ -22,8 +22,12 @@
 #include <bootstrap/multiboot.h>
 #include <types.h>
 
+#define PM_PAGE_SIZE 0x1000
+
 // Barebone allocation system
 uintptr_t pm_alloc(size_t pages);
+uintptr_t pm_allocLimit(uintptr_t lowerLimit, size_t pages);
+
 void pm_free(uintptr_t page, size_t pages);
 
 bool pm_init(void *data); // Data must be of type struct multiboot_t *!

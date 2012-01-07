@@ -28,41 +28,35 @@ struct pm_kernel_allocation
 	size_t bytes;	
 };
 
-void *kalloc(size_t bytes)
+void *kallocator(size_t bytes, uint32_t flags)
 {
 	size_t neededBytes = bytes + sizeof(struct pm_kernel_allocation);
 	size_t neededPages = MAX(1, (neededBytes / VM_SIZE) + 1);
 
 	uintptr_t ppage  = pm_alloc(neededPages);
-	vm_offset_t vpage = vm_alloc(vm_getKernelContext(), ppage, neededPages, VM_FLAGS_KERNEL);
+	if(!ppage)
+		return NULL;
+	
+	vm_offset_t vpage = vm_alloc(vm_getKernelDirectory(), ppage, neededPages, flags);
+	if(!vpage)
+		return NULL;
 
 	struct pm_kernel_allocation *allocation = (struct pm_kernel_allocation *)vpage;
-
 	allocation->pages = neededPages;
 	allocation->bytes = neededBytes;
 
 	return (void *)(vpage + sizeof(struct pm_kernel_allocation));
 }
 
-void *krealloc(void *ptr, size_t bytes)
+
+void *kalloc(size_t bytes)
 {
-	size_t neededBytes = bytes + sizeof(struct pm_kernel_allocation);
-	size_t neededPages = MAX(1, (neededBytes / VM_SIZE) + 1);
+	return kallocator(bytes, VM_FLAGS_KERNEL);
+}
 
-	uintptr_t page = ((uintptr_t)ptr) - sizeof(struct pm_kernel_allocation);
-	struct pm_kernel_allocation *allocation = (struct pm_kernel_allocation *)page;
-
-	if(neededPages <= allocation->pages)
-		return ptr;
-
-	// Okay, we need to allocate more...
-	void *newPtr = kalloc(bytes);
-	size_t copyBytes = MIN(neededBytes, allocation->bytes) - sizeof(struct pm_kernel_allocation);
-
-	memcpy(newPtr, ptr, copyBytes);
-	kfree(ptr);
-
-	return newPtr;
+void *ualloc(size_t bytes)
+{
+	return kallocator(bytes, VM_FLAGS_USERLAND);
 }
 
 void kfree(void *ptr)
@@ -70,11 +64,11 @@ void kfree(void *ptr)
 	vm_offset_t vpage = (vm_offset_t)ptr;
 	vpage -= sizeof(struct pm_kernel_allocation);
 
-	uintptr_t ppage = vm_getPhysicalAddress(vm_getKernelContext(), vpage);
+	uintptr_t ppage = vm_getPhysicalAddress(vm_getKernelDirectory(), vpage);
 
 	struct pm_kernel_allocation *allocation = (struct pm_kernel_allocation *)vpage;
 	size_t pages = allocation->pages;
 
 	pm_free(ppage, pages);
-	vm_free(vm_getKernelContext(), vpage, pages);
+	vm_free(vm_getKernelDirectory(), vpage, pages);
 }

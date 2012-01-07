@@ -22,6 +22,7 @@
 #include "assert.h"
 #include "panic.h"
 #include "string.h"
+#include "state.h"
 
 #define IR_MAX_INTERRUPTS 49 // The number of interrupts we know to handle
 
@@ -243,6 +244,13 @@ void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt)
 
 cpu_state_t *ir_handleInterrupt(cpu_state_t *state)
 {
+	if(state->interrupt == 0x20)
+	{
+		// Update the time
+		st_state.time += st_state.pitTime;
+	}
+
+
 	ir_interrupt_handler_t handler = __ir_interruptHandler[state->interrupt];
 	if(handler)
 	{
@@ -276,16 +284,21 @@ bool ir_init(void *ignored)
 	for(int i=0x0; i<0x2F; i++)
 	{
 		if(i >= 0x0 && i < 0x12)
-		ir_setInterruptHandler(__ir_exceptionHandler, i);
+			ir_setInterruptHandler(__ir_exceptionHandler, i);
 
 		if(i >= 0x20 && i < 0x2F)
-		ir_setInterruptHandler(__ir_defaultHandler, i);
+			ir_setInterruptHandler(__ir_defaultHandler, i);
 	}
 
 
 	ir_pic_init();
 	ir_gdt_init(); // Setup the GDT
 	ir_idt_init(); // Setup the IDT
+
+
+	// Setup the PIT
+	// TODO: Maybe there is a better place to do this?
+	outw(0x40, st_state.pitReload);
 
 	return true;
 }
