@@ -27,16 +27,17 @@
 extern uintptr_t kernelBegin; // Marks the beginning of the kernel (set by the linker)
 extern uintptr_t kernelEnd;	// Marks the end of the kernel (also set by the linker)
 
+// Bitmap of the heap.
 static uint32_t __pm_heap[PM_HEAPSIZE];
 
-
-// MARK: Barebone allocator
+// Marks the given page as used in the heap bitmap
 static inline void pm_markUsed(uintptr_t page)
 {
 	uint32_t index = page / 4096;
 	__pm_heap[index / 32] &= ~(1 << (index % 32));
 }
 
+// Marks the given page as unused in the heap bitmap
 static inline void pm_markFree(uintptr_t page)
 {
 	uint32_t index = page / 4096;
@@ -93,6 +94,7 @@ uintptr_t pm_findFreePages(uintptr_t lowerLimit, size_t pages)
 
 
 // MARK --
+// Returns a physical page range not lower than lowerLimit
 uintptr_t pm_allocLimit(uintptr_t lowerLimit, size_t pages)
 {
 	uintptr_t page = pm_findFreePages(lowerLimit, pages);
@@ -109,6 +111,7 @@ uintptr_t pm_allocLimit(uintptr_t lowerLimit, size_t pages)
 	return page;
 }
 
+// Returns a physical page range of n pages
 uintptr_t pm_alloc(size_t pages)
 {
 	uintptr_t page = pm_findFreePages(0x0, pages);

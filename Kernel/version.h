@@ -25,11 +25,11 @@
 #define _VERSION_H_
 
 const char *versionBeast	 = "Fafnir";
-const char *versionAppendix = "_test";
+const char *versionAppendix = "_public";
 
 #define VersionMajor 0
 #define VersionMinor 1
-#define VersionPatch 2
+#define VersionPatch 0
 
 #define VersionCreate(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
 #define VersionCurrent VersionCreate(VersionMajor, VersionMinor, VersionPatch)

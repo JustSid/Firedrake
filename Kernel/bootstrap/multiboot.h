@@ -36,7 +36,7 @@ struct multiboot_t
     uint32_t    syms[4];
 	
     uint32_t    mmap_length;
-    void			*mmap_addr;
+    void		*mmap_addr;
 } __attribute__((packed));
 
 struct multiboot_mmap_t

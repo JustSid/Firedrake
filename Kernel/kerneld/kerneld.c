@@ -38,6 +38,8 @@ void kerneld_main()
 	// Dummy process
 	process_create(test);
 
+	// Enter the default run loop of the kernel daemon
+	// Note that the kernel daemon runs in ring 0, so it can do things like 'hlt'
 	while(1)
 	{
 		// Collect dead processes

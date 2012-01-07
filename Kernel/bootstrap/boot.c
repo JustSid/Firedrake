@@ -33,6 +33,7 @@
 
 typedef bool (*sys_function_t)(void *data);
 
+// Simple macro to initialize a system module. Its only purpose is to print a common message and abort the boot if the module is marked essential.
 void sys_init(char *name, sys_function_t function, void *data, bool essential)
 {
 	syslog(LOG_DEBUG, "Initializing %s... {", name);
@@ -65,6 +66,7 @@ void sys_boot(struct multiboot_t *info)
 #endif
 	
 	syslog(LOG_INFO, "Firedrake v%i.%i.%i:%i%s (%s)\n", VersionMajor, VersionMinor, VersionPatch, VersionCurrent, versionAppendix, versionBeast);
+	syslog(LOG_INFO, "Kernel compiled on %s %s\n", __DATE__, __TIME__);
 	syslog(LOG_INFO, "Here be dragons!\n\n");
 
 	// Color the dragon!
@@ -76,7 +78,7 @@ void sys_boot(struct multiboot_t *info)
 	sys_init("physical memory", pm_init, (void *)info, true);
 	sys_init("virtual memory", vm_init, NULL, true); // After this point, never ever use unmapped memory again!
 	sys_init("scheduler", sd_init, NULL, true);
-	sys_init("syscall", sc_init, NULL, true);
+	sys_init("syscalls", sc_init, NULL, true);
 
 	// Draw a boundary
 	for(int i=0; i<80; i++)
