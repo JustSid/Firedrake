@@ -31,7 +31,7 @@ struct pm_kernel_allocation
 void *kallocator(size_t bytes, uint32_t flags)
 {
 	size_t neededBytes = bytes + sizeof(struct pm_kernel_allocation);
-	size_t neededPages = MAX(1, (neededBytes / VM_SIZE) + 1);
+	size_t neededPages = (int32_t)ceil((double)neededBytes / (double)VM_SIZE);
 
 	uintptr_t ppage  = pm_alloc(neededPages);
 	if(!ppage)
