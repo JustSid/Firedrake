@@ -26,11 +26,20 @@ typedef enum
 {
 	syscall_print, // syscall 1
 	syscall_printColor, // syscall 2
-	syscall_sleep, // Syscall 1
+	syscall_sleep, // Syscall 0
+	syscall_processCreate, // syscall 1 (function)
+	syscall_threadAttach, // syscall 2 (function, priority)
+	syscall_threadJoin, // syscall 1 (thread ID)
 
 	__syscall_max // NOT an actuall syscall but just used as boundary information!
 } syscall_t;
-
+	
+#define sys_print(string) syscall1(syscall_print, (uint32_t)string)
+#define sys_printColor(string, color) syscall2(syscall_printColor, (uint32_t)string, (uint32_t)color)
+#define sys_sleep() syscall0(syscall_sleep)
+#define sys_processCreate(entry) syscall1(syscall_processCreate, (uint32_t)entry)
+#define sys_threadAttach(entry, priority) syscall2(syscall_threadAttach, (uint32_t)entry, 0);
+#define sys_threadJoin(id) syscall1(syscall_threadJoin, id)
 
 typedef uint32_t (*syscall_callback_t)(cpu_state_t *state, cpu_state_t **returnState);
 

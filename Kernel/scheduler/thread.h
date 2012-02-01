@@ -24,6 +24,7 @@
 
 typedef void (*thread_entry_t)();
 struct process_t;
+struct thread_block_s;
 
 typedef struct thread_t
 {
@@ -41,20 +42,44 @@ typedef struct thread_t
 	uint8_t wantedTicks;
 
 	bool died;
+	uint32_t blocked;
+
+	struct thread_block_s *blocks;
 
 	struct process_t 	*process;
 	struct thread_t 	*next;
 } thread_t;
+
+typedef enum
+{
+	thread_predicateOnExit
+} thread_predicate_t;
+
+typedef struct thread_block_s
+{
+	thread_predicate_t predicate;
+	thread_t *thread;
+	
+	struct thread_block_s *next;
+} thread_block_t;
+
 
 #define THREAD_NULL UINT32_MAX
 
 thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entry_t entry);
 thread_t *thread_getCurrentThread(); // Defined in scheduler.c!
 thread_t *thread_getCollectableThreads(); // Defined in scheduler.c
+thread_t *thread_getWithID(uint32_t id);
+
+void thread_join(uint32_t id); // Don't forget to force a reschedule
+// If this is called using the appropriate syscall, the rescheduling is done automatically
+
+void thread_predicateBecameTrue(struct thread_t *thread, thread_predicate_t predicate);
+void thread_attachPredicate(struct thread_t *thread, struct thread_t *blockThread, thread_predicate_t predicate);
 
 void thread_destroy(struct thread_t *thread); // Frees the memory of the thread.
 // Be careful to not destroy the running thread, no sanity check is performed!
 
-void thread_setPriority(thread_t *thread, float priority);
+void thread_setPriority(thread_t *thread, int priority);
 
 #endif /* _THREAD_H_ */

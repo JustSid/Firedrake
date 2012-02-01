@@ -293,18 +293,10 @@ vm_offset_t vm_alloc(vm_page_directory_t pdirectory, uintptr_t paddress, size_t 
 {
 	vm_offset_t vaddress = 0x0;
 	
-	if(pdirectory == __vm_kernelDirectory)
-	{
-		vaddress = __vm_findFreeKernelPages(pages);
-		if(vaddress)
-			__vm_mapPageRange(pdirectory, (vm_offset_t)paddress, vaddress, pages, flags);
-	}
-	else
-	{
-		vaddress = __vm_findFreePages(pdirectory, pages);
-		if(vaddress)
-			__vm_mapPageRange(pdirectory, (vm_offset_t)paddress, vaddress, pages, flags);
-	}
+	vaddress = (pdirectory == __vm_kernelDirectory) ? __vm_findFreeKernelPages(pages) : __vm_findFreePages(pdirectory, pages);
+	
+	if(vaddress)
+		__vm_mapPageRange(pdirectory, (vm_offset_t)paddress, vaddress, pages, flags);
 
 	return vaddress;
 }

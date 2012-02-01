@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <system/syscall.h>
 #include "stdio.h"
 #include "string.h"
 #include "stdlib.h"
@@ -150,4 +151,19 @@ int sprintf(char *dst, const char *format, ...)
 	va_end(param);
 	
 	return written;
+}
+
+
+
+void sys_printf(const char *format, ...)
+{
+	va_list param;
+	va_start(param, format);
+	
+	char buffer[1024];
+	vsnprintf(buffer, 1024, format, param);
+	sys_printf(buffer);
+	
+	va_end(param);
+	
 }

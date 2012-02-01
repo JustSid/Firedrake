@@ -27,4 +27,7 @@ int vsprintf(char *buffer, const char *format, va_list arg);
 int snprintf(char *dst, size_t size, const char *format, ...);
 int sprintf(char *dst, const char *format, ...);
 
+
+void sys_printf(const char *format, ...);
+
 #endif /* _STDIO_H_ */

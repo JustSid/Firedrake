@@ -21,8 +21,9 @@
 #include <system/port.h>
 #include <system/interrupts.h>
 #include <system/tss.h>
+#include <system/syslog.h>
+#include <system/syscall.h>
 #include <libc/string.h>
-
 #include "scheduler.h"
 
 static process_t *_process_firstProcess = NULL;
@@ -109,11 +110,15 @@ static inline thread_t *_sd_scheduleableThreadForProcess(process_t *process)
 	return thread;
 }
 
+// If state is NULL, its assumed that we needed to reschedule and an EOI is send! Its also send wenn the state->interrupt equals 0x20!
+// So pass something else than NULL if you don't want an EOI!
 cpu_state_t *_sd_schedule(cpu_state_t *state)
 {
 	if(_sd_schedulerLocked)
 	{
-		outb(0x20, 0x20);
+		if(!state || state->interrupt == 0x20)
+			outb(0x20, 0x20);
+		
 		return state;
 	}
 
@@ -159,12 +164,9 @@ cpu_state_t *_sd_schedule(cpu_state_t *state)
 
 			previous = previous->next;
 		}
-
-		thread_t *next;
+				
 		previous->next = thread->next;
-
-		next = thread->next ? thread->next : process->mainThread;
-		process->scheduledThread = next;
+		process->scheduledThread = thread->next ? thread->next : process->mainThread;
 
 		thread->next = _sd_deadThread;
 		_sd_deadThread = thread;
@@ -175,26 +177,82 @@ cpu_state_t *_sd_schedule(cpu_state_t *state)
 
 	// Schedule
 	thread->usedTicks ++;
-	if(thread->usedTicks >= thread->wantedTicks)
-	{
-		thread->usedTicks = 0;
-		process->scheduledThread = thread->next ? thread->next : process->mainThread;
-
-		process = process->next ? process->next : _process_firstProcess;
-	}
+	do {
+		if(thread->blocked > 0 || thread->usedTicks >= thread->wantedTicks)
+		{
+			thread->usedTicks = 0;
+			
+			process->scheduledThread = thread->next ? thread->next : process->mainThread;
+			process = process->next ? process->next : _process_firstProcess;
+			
+			thread = process->scheduledThread;
+		}
+		
+		// This assumes that at least one thread never blocks. The kerneld does the job since its the only process we can control completely
+	} while(thread->blocked > 0);
 	
 	// Update the state
 	_process_currentProcess = process;
-	thread = process->scheduledThread;
 	_sd_state = true;
 
 	// Prepare the TSS
 	_sd_tss->cr3  = (uint32_t)process->pdirectory;
 	_sd_tss->esp0 = (uint32_t)process->scheduledThread->kernelStackTop;
 
-	outb(0x20, 0x20); // EOI
+	if(!state || state->interrupt == 0x20)
+		outb(0x20, 0x20);
+	
 	return thread->state;
 }
+
+
+uint32_t sd_processSleep_syscall(cpu_state_t *state, cpu_state_t **returnState)
+{
+	_process_currentProcess->scheduledThread->usedTicks = 100;
+	*returnState = _sd_schedule(state);
+	
+	return 0;
+}
+
+uint32_t sd_processCreate_syscall(cpu_state_t *state, cpu_state_t **returnState)
+{
+	thread_entry_t entry = *(thread_entry_t *)(state->esp);
+	process_t *process = process_create(entry);
+	if(process)
+		return process->pid;
+	
+	return PROCESS_NULL;
+}
+
+uint32_t sd_threadAttach_syscall(cpu_state_t *state, cpu_state_t **returnState)
+{
+	thread_entry_t entry = *(thread_entry_t *)(state->esp);
+	int priority = *((int *)(state->esp + sizeof(thread_entry_t)));
+	
+	thread_t *thread = thread_create(_process_currentProcess, 4096, entry);
+	if(thread)
+	{
+		thread_setPriority(thread, priority);
+		return thread->id;
+	}
+	
+	return THREAD_NULL;
+}
+
+uint32_t sd_threadJoin_syscall(cpu_state_t *state, cpu_state_t **returnState)
+{
+	uint32_t id = *(uint32_t *)(state->esp);
+	thread_t *thread = thread_getWithID(id);
+	if(thread)
+	{
+		thread_join(id);
+		*returnState = _sd_schedule(state); // thread_join simply blocks the thread, we need to force a reschedule to actively remove the scheduled thread here...
+		return 0;
+	}
+	
+	return 1;
+}
+
 
 // MARK: Init
 extern void kerneld_main();
@@ -205,6 +263,11 @@ bool sd_init(void *ingored)
 	_sd_tss = ir_getTSS();
 
 	ir_setInterruptHandler(_sd_schedule, 0x20);
+	
+	sc_mapSyscall(syscall_sleep, sd_processSleep_syscall);
+	sc_mapSyscall(syscall_processCreate, sd_processCreate_syscall);
+	sc_mapSyscall(syscall_threadAttach, sd_threadAttach_syscall);
+	sc_mapSyscall(syscall_threadJoin, sd_threadJoin_syscall);
 
 	return (process != NULL);
 }

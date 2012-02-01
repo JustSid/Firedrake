@@ -21,8 +21,9 @@
 
 #include <types.h>
 #include <memory/memory.h>
-
 #include "thread.h"
+
+struct ipc_object_s;
 
 typedef struct process_t
 {
@@ -36,6 +37,7 @@ typedef struct process_t
 	thread_t *mainThread; // The main thread, eg. the first spawned thread
 	thread_t *scheduledThread; // The thread that is currently scheduled
 
+	struct process_t *pprocess;
 	struct process_t *next;
 } process_t;
 
@@ -45,6 +47,7 @@ process_t *process_create(thread_entry_t entry);
 process_t *process_getCurrentProcess(); // Defined in scheduler.c!
 process_t *process_getFirstProcess(); // Defined in scheduler.c, returns a process that can be used to iterate through the process list
 process_t *process_getCollectableProcesses(); // Scheduler.c too
+process_t *process_getParent();
 
 void process_destroy(process_t *process); // Frees all memory used by the process
 

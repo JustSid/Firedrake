@@ -14,7 +14,7 @@ debug: all
 kernel:
 	make -c $(KERNEL_DIR);
 
-install:
+install: all
 	./Bootable/CreateImage.sh
 
 clean:

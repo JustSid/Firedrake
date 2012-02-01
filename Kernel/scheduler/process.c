@@ -36,9 +36,10 @@ process_t *process_create(thread_entry_t entry)
 		//process->pdirectory	 = vm_createDirectory();
 		process->pdirectory = vm_getKernelDirectory();
 		
-		process->pid 	= PROCESS_NULL;
-		process->died 	= false;
-		process->parent = parent ? parent->pid : PROCESS_NULL;
+		process->pid 	 	= PROCESS_NULL;
+		process->died 	 	= false;
+		process->parent  	= parent ? parent->pid : PROCESS_NULL;
+		process->pprocess	= parent;
 
 		process->mainThread = NULL; // Avoid that thread_create reads a false main thread and tries to attach the new thread to the non existent thread
 		process->next 		= NULL;
@@ -63,14 +64,21 @@ process_t *process_create(thread_entry_t entry)
 void process_destroy(process_t *process)
 {
 	thread_t *thread = process->mainThread;
+	thread_t *temp;
 	while(thread)
 	{
 		// Delete all threads...
-		thread_t *next = thread->next;
-		thread_destroy(thread);
-
-		thread = next;
+		temp = thread;
+		thread = thread->next;
+		
+		thread_destroy(temp);
 	}
 
 	kfree(process);
+}
+
+process_t *process_getParent()
+{
+	process_t *process = process_getCurrentProcess();
+	return process->pprocess;
 }

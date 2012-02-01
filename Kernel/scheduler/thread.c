@@ -18,9 +18,10 @@
 
 #include <libc/math.h>
 #include <libc/string.h>
+#include <system/assert.h>
 #include <system/panic.h>
-#include <memory/memory.h>
 #include <system/syslog.h>
+#include <memory/memory.h>
 
 #include "thread.h"
 #include "process.h"
@@ -107,6 +108,8 @@ thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entr
 		thread->wantedTicks	= THREAD_WANTED_TICKS;
 		thread->usedTicks	= 0;
 
+		thread->blocked = 0;
+		thread->blocks  = NULL;
 		thread->process = process;
 		thread->next 	= NULL;
 
@@ -132,7 +135,6 @@ thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entr
 		thread->state = (cpu_state_t *)(thread->kernelStackTop - sizeof(cpu_state_t));
 		memcpy(thread->state, &state, sizeof(cpu_state_t));
 
-
 		// Attach the thread to the process;
 		thread->id = _thread_getUniqueID(process);
 		if(process->mainThread)
@@ -155,15 +157,90 @@ thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entr
 
 void thread_destroy(struct thread_t *thread)
 {
+	thread_predicateBecameTrue(thread, thread_predicateOnExit);
+	
 	kfree(thread->stack);
 	kfree(thread->kernelStack);
 	kfree(thread);
 }
 
-void thread_setPriority(thread_t *thread, float priority)
+void thread_setPriority(thread_t *thread, int priorityy)
 {
-	uint8_t result = (((float)thread->maxTicks) * priority);
-	result = MIN(thread->maxTicks, MAX(1, result));
-	
+	int result = MIN(thread->maxTicks, MAX(1, priorityy));
 	thread->wantedTicks = result;
+}
+
+thread_t *thread_getWithID(uint32_t id)
+{
+	process_t *process = process_getCurrentProcess();
+	if(process)
+	{
+		thread_t *thread = process->mainThread;
+		while(thread)
+		{
+			if(thread->id == id)
+				return thread;
+				
+			thread = thread->next;
+		}
+	}
+	
+	return NULL;
+}
+
+void thread_predicateBecameTrue(struct thread_t *thread, thread_predicate_t predicate)
+{
+	thread_block_t *block = thread->blocks;
+	thread_block_t *previous = NULL;
+	while(block)
+	{
+		if(block->predicate == predicate)
+		{
+			thread_block_t *temp = block;
+			block->thread->blocked --;
+			
+			if(!previous)
+			{
+				thread->blocks = block->next;
+				block = block->next;
+			}
+			else
+			{
+				previous->next = block->next;
+				block = block->next;
+			}
+			
+			kfree(temp);
+			continue;
+		}
+		
+		previous = block;
+		block = block->next;
+	}
+}
+
+void thread_attachPredicate(struct thread_t *thread, struct thread_t *blockThread, thread_predicate_t predicate)
+{
+	assert(thread);
+	assert(blockThread);
+	
+	thread_block_t *block = kalloc(sizeof(thread_block_t));
+	if(block)
+	{
+		block->predicate 	= predicate;
+		block->thread 		= blockThread;
+		block->next			= thread->blocks;
+		
+		thread->blocks = block;
+		blockThread->blocked ++;
+	}
+}
+
+void thread_join(uint32_t id)
+{
+	thread_t *thread  = thread_getWithID(id);
+	thread_t *cthread = thread_getCurrentThread();
+	
+	if(thread)
+		thread_attachPredicate(thread, cthread, thread_predicateOnExit);
 }

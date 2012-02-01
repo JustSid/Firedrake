@@ -20,24 +20,36 @@
 #include <system/syslog.h>
 #include <system/panic.h>
 #include <system/syscall.h>
+#include <system/state.h>
+#include <system/video.h>
 #include <scheduler/scheduler.h>
 #include <libc/string.h>
-#include <system/state.h>
 #include <libc/stdio.h>
+
+void thread()
+{
+	sys_printColor("Secondary thread!\n", vd_color_red);
+}
 
 void test()
 {
-	syscall1(syscall_print, (int32_t)"Hello World!");
+	sys_print("Hello World\n");
+	
+	uint32_t id = sys_threadAttach(thread, 4);
+	sys_threadJoin(id); // Join the tread, ie make sure
+	
+	sys_print("Thread exited\n");
 }
 
 
 void kerneld_main()
 {
-	thread_setPriority(thread_getCurrentThread(), 0.2f);
+	thread_setPriority(thread_getCurrentThread(), 2);
 
 	// Dummy process
 	process_create(test);
-
+	
+	
 	// Enter the default run loop of the kernel daemon
 	// Note that the kernel daemon runs in ring 0, so it can do things like 'hlt'
 	while(1)
@@ -54,11 +66,12 @@ void kerneld_main()
 
 		// Collect dead threads
 		thread_t *thread = thread_getCollectableThreads();
+		thread_t *temp;
 		while(thread)
 		{
-			thread_t *temp = thread;
+			temp = thread;
 			thread = thread->next;
-
+			
 			thread_destroy(temp);
 		}
 
