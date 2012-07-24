@@ -22,10 +22,16 @@
 #include <types.h>
 #include "pmemory.h"
 #include "vmemory.h"
+#include "heap.h"
 
 // Some more high-level allocation system
 void *kalloc(size_t bytes); // Kernel
 void *ualloc(size_t bytes); // Userland
 void kfree(void *ptr);
+
+#define round4kDown(x)	((x) & ~(VM_PAGE_SIZE - 1)) // Rounds down to the previous 4k aligned value
+#define round4kUp(x)	round4kDown((x) + VM_PAGE_SIZE - 1) // Rounds up to the next 4k aligned value
+
+#define pageCount(x)	((((x) % VM_PAGE_SIZE) == 0) ? (x) / VM_PAGE_SIZE : ((x) / VM_PAGE_SIZE) + 1)
 
 #endif /* _MEMORY_H_ */

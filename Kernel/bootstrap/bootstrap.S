@@ -16,6 +16,8 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <asm.h>
+
 .section multiboot
 .align 4
     .int 0x1BADB002 // GRUBs magic number     
@@ -24,18 +26,16 @@
 	
  
 .section .text
-.extern sys_boot
 
-.global _start
-_start:
-    mov $stack, %esp
+ENTRY(_start)
+    movl $stack, %esp
  
-    push %ebx
+    pushl %ebx
     call sys_boot
  
 	jmp .
 
 
 .section .bss
-.space 131072 // 128kB Stack
+.space 131072
 stack:

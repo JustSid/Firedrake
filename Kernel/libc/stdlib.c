@@ -21,7 +21,7 @@
 
 int atoi(const char *string)
 {
-	while(*string == ' ')
+	while(isspace(*string))
 		string ++; // Skip any leading whitespace
 
 
@@ -32,22 +32,15 @@ int atoi(const char *string)
 	if(negative || positive)
 		string ++; // Skip the '-' or '+' sign
 
-	while(*string != '\0')
+	while(*string != '\0' && isdigit(*string))
 	{
-		char character = *string;
+		int value = *string - '0';
+		int intermediate = (result * 10) + value;
 
-		if(isdigit(character))
-		{
-			int value = character - '0';
-			int intermediate = (result * 10) + value;
+		if(intermediate < result)
+			break; // Overflow!
 
-			if(intermediate < result)
-				break; // Overflow!
-
-			result = intermediate;
-		}
-		else
-			break;
+		result = intermediate;
 
 		string ++;
 	}	
@@ -58,7 +51,7 @@ int atoi(const char *string)
 
 double atof(const char *string)
 {
-	while(*string == ' ')
+	while(isspace(*string))
 		string ++; // Skip any leading whitespace
 
 	double result = 0.0;
@@ -67,7 +60,6 @@ double atof(const char *string)
 
 	int  exponent = 0;
 	char character;
-
 
 	if(negative || positive)
 		string ++; // Skip the '-' or '+' sign
@@ -78,8 +70,10 @@ double atof(const char *string)
 		result = (result * 10.0) + value;
    	}
 
-   if(character == '.')
-   {
+	if(character == '.')
+	{
+   		string ++;
+
    		while((character = *string++) != '\0' && isdigit(character)) 
 		{
 			double value = (double)character - '0';
@@ -87,13 +81,13 @@ double atof(const char *string)
 
 			exponent --;
 	   }
-   }
+	}
 
-   if(character == 'e' || character == 'E')
-   {
-   		// TODO: Could be made faster by using either an inlined atoi version or just reimplementing what we need from atoi!
-   		exponent += atoi(string);
-   }
+	if(character == 'e' || character == 'E')
+	{
+		// TODO: Could be made faster by using either an inlined atoi version or just reimplementing what we need from atoi!
+		exponent += atoi(string);
+	}
 
    	// Process the exponent
    	while(exponent > 0)
@@ -107,7 +101,7 @@ double atof(const char *string)
    		exponent ++;
    	}
 
-   return negative ? -result : result;
+	return negative ? -result : result;
 }
 
 
@@ -120,12 +114,12 @@ int _itostr(int i, int base, char *buffer)
 	}
 	
 
-	int  length = 0;
+	int length = 0;
 	bool negative = (i < 0);
 	
-	char			_buffer[STDLIBBUFFERLENGTH];
-	char			*temp = _buffer + (STDLIBBUFFERLENGTH - 1);
-	const char	*digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // TODO: What about lowercase letters?
+	char _buffer[STDLIBBUFFERLENGTH];
+	char *temp = _buffer + (STDLIBBUFFERLENGTH - 1);
+	const char *digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // TODO: What about lowercase letters?
 	
 	if(negative)
 		i = -i;
@@ -158,10 +152,10 @@ int _uitostr(unsigned int i, int base, char *buffer)
 	}
 	
 
-	int  length = 0;
-	char			_buffer[STDLIBBUFFERLENGTH];
-	char			*temp = _buffer + (STDLIBBUFFERLENGTH - 1);
-	const char	*digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // TODO: What about lowercase letters?
+	int length = 0;
+	char _buffer[STDLIBBUFFERLENGTH];
+	char *temp = _buffer + (STDLIBBUFFERLENGTH - 1);
+	const char *digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // TODO: What about lowercase letters?
 
 	while(i > 0)
 	{

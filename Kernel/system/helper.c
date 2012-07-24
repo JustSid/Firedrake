@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libc/string.h>
 #include "helper.h"
 
 #define SYS_UNITTABLE_MAX 6
@@ -46,4 +47,37 @@ const char *sys_unitForSize(size_t size, size_t *result)
 		*result = size;
 	
 	return sys_unitTable[index];
+}
+
+
+const char *sys_fileWithoutPath(const char *path)
+{
+	const char *ptr = (path + strlen(path)) - 1;
+	while(ptr != path)
+	{
+		if(*ptr == '/')
+			return ptr + 1;
+
+		ptr --;
+	}
+
+	return path;
+}
+
+
+
+
+struct multiboot_module_s *sys_multibootModuleWithName(const char *name)
+{
+	struct multiboot_module_s *modules = (struct multiboot_module_s *)bootinfo->mods_addr;
+
+	for(int i=0; i<bootinfo->mods_count; i++)
+	{
+		struct multiboot_module_s *module = &modules[i];
+
+		if(strcmp(module->name, name) == 0)
+			return module;
+	}
+
+	return NULL;
 }

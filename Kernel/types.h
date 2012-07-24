@@ -41,38 +41,41 @@
 typedef __builtin_va_list	va_list;
 
 #define va_start(v, l)	__builtin_va_start(v,l)
-#define va_end(v)			__builtin_va_end(v)
-#define va_arg(v, l)		__builtin_va_arg(v,l)
+#define va_end(v)		__builtin_va_end(v)
+#define va_arg(v, l)	__builtin_va_arg(v,l)
 #define va_copy(d, s)	__builtin_va_copy(d,s)
 
 // Mark: Fixed size integers
 typedef signed char 	int8_t;
 typedef short 			int16_t;
 typedef int 			int32_t;
-typedef long long 	int64_t;
+typedef long long 		int64_t;
 
-typedef unsigned char 			uint8_t;
-typedef unsigned short 			uint16_t;
-typedef unsigned int 			uint32_t;
+typedef unsigned char 		uint8_t;
+typedef unsigned short 		uint16_t;
+typedef unsigned int 		uint32_t;
 typedef unsigned long long 	uint64_t;
 
-typedef uint32_t 			size_t;
-typedef long 				intptr_t;
+#ifndef	_SIZE_T
+#define	_SIZE_T
+typedef uint32_t 		size_t;
+#endif
+typedef long 			intptr_t;
 typedef unsigned long 	uintptr_t;
 
 // MARK: Fixed size integer constraints
-#define INT8_C(v)   	(v)
-#define INT16_C(v)   (v)
-#define INT32_C(v)   (v)
-#define INT64_C(v)   (v ## LL)
+#define INT8_C(v)   (v)
+#define INT16_C(v)  (v)
+#define INT32_C(v)  (v)
+#define INT64_C(v)  (v ## LL)
 
-#define UINT8_C(v)   (v ## U)
+#define UINT8_C(v)   	(v ## U)
 #define UINT16_C(v) 	(v ## U)
-#define UINT32_C(v)	(v ## U)
-#define UINT64_C(v)	(v ## ULL)
+#define UINT32_C(v)		(v ## U)
+#define UINT64_C(v)		(v ## ULL)
 
-#define INTMAX_C(v)  (v ## LL)
-#define UINTMAX_C(v) (v ## ULL)
+#define INTMAX_C(v)  	(v ## LL)
+#define UINTMAX_C(v) 	(v ## ULL)
 
 
 #define INT8_MAX       INT8_C(127)

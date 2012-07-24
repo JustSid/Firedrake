@@ -16,10 +16,14 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <system/syscall.h>
+#include <system/syslog.h>
 #include "stdio.h"
 #include "string.h"
 #include "stdlib.h"
+
+#define kVsnprintfFlagRightAlign (1 << 0) // '-'
+#define kVsnprintfFlagForceSign  (1 << 1) // '+'
+#define kVsnprintfZeroPad		 (1 << 2) // '0'
 
 int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 {
@@ -31,7 +35,51 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 		if(format[index] == '%')
 		{
 			index ++;
+
+			// Fetch flags
+			long flags = 0;
+			while(1)
+			{
+				if(format[index] == '0')
+				{
+					if(flags != 0)
+						break;
+
+
+					flags |= kVsnprintfZeroPad;
+					index ++;
+					continue;
+				}
+
+				if(format[index] == '-')
+				{
+					flags |= kVsnprintfFlagRightAlign;
+					index ++;
+					continue;
+				}
+
+				if(format[index] == '+')
+				{
+					flags |= kVsnprintfFlagForceSign;
+					index ++;
+					continue;
+				}
+
+				break;
+			}
+
+
+			// Get the width, if supplied
+			long width = 0;
+			while(isdigit(format[index]))
+			{
+				int value = format[index] - '0';
+				width = (width * 10) + value;
+
+				index ++;
+			}
 			
+
 			switch(format[index])
 			{
 				case 'c':
@@ -61,7 +109,7 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 				case 'x':
 				case 'u':
 				{
-					int base = (format[index] == 'i' || format[index] == 'd') ? 10 : 16;
+					int  base = (format[index] == 'i' || format[index] == 'd') ? 10 : 16;
 					bool pointer = (format[index] == 'p');
 					bool isUint = (format[index] == 'p' || format[index] == 'u' || format[index] == 'x');
 					
@@ -78,8 +126,22 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 						long value = va_arg(arg, long);
 						_itostr(value, base, string);
 					}
+
+
+					size_t length = strlen(prefix) + strlen(string);
+					width -= length;
+
+					// Left pad
+					if(!(flags & kVsnprintfFlagRightAlign))
+					{
+						while(width > 0 && written < size)
+						{
+							buffer[written ++] = (flags & kVsnprintfZeroPad) ? '0' : ' ';
+							width --;
+						}
+					}
 					
-					
+					// Print the actual string
 					for(int i=0; i<2; i++)
 					{
 						char *printStr = (i == 0) ? prefix : string;
@@ -88,6 +150,17 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 							buffer[written ++] = *printStr++;
 						}
 					}
+
+					// Right pad
+					if((flags & kVsnprintfFlagRightAlign))
+					{
+						while(width > 0 && written < size)
+						{
+							buffer[written ++] = ' ';
+							width --;
+						}
+					}
+					
 					
 					break;
 				}
@@ -151,19 +224,4 @@ int sprintf(char *dst, const char *format, ...)
 	va_end(param);
 	
 	return written;
-}
-
-
-
-void sys_printf(const char *format, ...)
-{
-	va_list param;
-	va_start(param, format);
-	
-	char buffer[1024];
-	vsnprintf(buffer, 1024, format, param);
-	sys_printf(buffer);
-	
-	va_end(param);
-	
 }

@@ -20,41 +20,48 @@
 #define _VMEMORY_H_
 
 #include <types.h>
+#include <bootstrap/multiboot.h>
 
 #define VM_PAGETABLEFLAG_PRESENT    0x1
 #define VM_PAGETABLEFLAG_WRITEABLE  0x2
 #define VM_PAGETABLEFLAG_USERSPACE  0x4
 
-#define VM_FLAGS_KERNEL		VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE | VM_PAGETABLEFLAG_USERSPACE
+#define VM_FLAGS_KERNEL		VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE
 #define VM_FLAGS_USERLAND	VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE | VM_PAGETABLEFLAG_USERSPACE
+#define VM_FLAGS_USERLAND_R	VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_USERSPACE
 
 #define VM_DIRECTORY_LENGTH 1024
 #define VM_PAGETABLE_LENGTH 1024
 
 #define VM_SHIFT 12
-#define VM_SIZE (1 << VM_SHIFT)
+#define VM_PAGE_SIZE (1 << VM_SHIFT)
 
 #define VM_KERNEL_PAGE_TABLES	0x3FC00000
-#define VM_KERNEL_START 		0xC0000000 // TODO: Actually implement a upper half kernel...
-#define VM_USER_START			0x40000000
+#define VM_KERNEL_DIRECTORY_ADDRESS 0x1000
 
-typedef uint32_t vm_offset_t;
+typedef uint32_t vm_address_t;
 typedef uint32_t* vm_page_directory_t;
 typedef uint32_t* vm_page_table_t;
 
+static inline void invlpg(uintptr_t addr)
+{
+	__asm__ volatile("invlpg (%0)" :: "r" (addr) : "memory");
+}
+
 vm_page_directory_t vm_getKernelDirectory();
-vm_page_directory_t vm_getCurrentDirectory();
 vm_page_directory_t vm_createDirectory();
 
-uintptr_t vm_getPhysicalAddress(vm_page_directory_t context, vm_offset_t virtAddress);
+uintptr_t vm_resolveVirtualAddress(vm_page_directory_t context, vm_address_t virtAddress);
 
-bool vm_mapPage(vm_page_directory_t context, vm_offset_t physAddress, vm_offset_t virtAddress, uint32_t flags);
-bool vm_mapPageRange(vm_page_directory_t context, vm_offset_t physAddress, vm_offset_t virtAddress, size_t pages, uint32_t flags);
+bool vm_mapPage(vm_page_directory_t context, uintptr_t physAddress, vm_address_t virtAddress, uint32_t flags);
+bool vm_mapPageRange(vm_page_directory_t context, uintptr_t physAddress, vm_address_t virtAddress, size_t pages, uint32_t flags);
 
-vm_offset_t vm_alloc(vm_page_directory_t context, uintptr_t pmemory, size_t pages, uint32_t flags);
-void vm_free(vm_page_directory_t context, vm_offset_t virtAddress, size_t pages);
+vm_address_t vm_alloc(vm_page_directory_t context, uintptr_t pmemory, size_t pages, uint32_t flags);
+vm_address_t vm_allocLimit(vm_page_directory_t pdirectory, uintptr_t paddress, vm_address_t limit, size_t pages, uint32_t flags);
+vm_address_t vm_allocTwoSidedLimit(vm_page_directory_t pdirectory, uintptr_t paddress, vm_address_t limit, size_t pages, uint32_t flags);
 
-void vm_activateContext(vm_page_directory_t context);
-bool vm_init(void *ignored);
+void vm_free(vm_page_directory_t context, vm_address_t virtAddress, size_t pages);
+
+bool vm_init(void *info);
 
 #endif /* _VMEMORY_H_ */

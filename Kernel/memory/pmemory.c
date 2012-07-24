@@ -19,8 +19,13 @@
 #include <system/assert.h>
 #include <system/syslog.h>
 #include <system/helper.h>
+#include <system/panic.h>
+#include <system/kernel.h>
+#include <interrupts/trampoline.h>
 #include <libc/string.h>
+#include <libc/math.h>
 #include "pmemory.h"
+#include "memory.h"
 
 #define PM_HEAPSIZE 32768
 
@@ -33,14 +38,14 @@ static uint32_t __pm_heap[PM_HEAPSIZE];
 // Marks the given page as used in the heap bitmap
 static inline void pm_markUsed(uintptr_t page)
 {
-	uint32_t index = page / 4096;
+	uint32_t index = page / PM_PAGE_SIZE;
 	__pm_heap[index / 32] &= ~(1 << (index % 32));
 }
 
 // Marks the given page as unused in the heap bitmap
 static inline void pm_markFree(uintptr_t page)
 {
-	uint32_t index = page / 4096;
+	uint32_t index = page / PM_PAGE_SIZE;
 	__pm_heap[index / 32] |= (1 << (index % 32));
 }
 
@@ -62,7 +67,7 @@ uintptr_t pm_findFreePages(uintptr_t lowerLimit, size_t pages)
         if(__pm_heap[i] == 0xFFFFFFFF)
         {
             if(found == 0)
-                page = i * 32 * PM_PAGE_SIZE;
+                page = i * PM_PAGE_SIZE * 32;
  
             found += 32;
         }
@@ -75,9 +80,7 @@ uintptr_t pm_findFreePages(uintptr_t lowerLimit, size_t pages)
                     if(found == 0)
                         page = (i * 32 + j) * PM_PAGE_SIZE;
 
-                    found++;
-
-                    if(found > pages)
+                    if((++ found) >= pages)
                         return page;
                 }
                 else
@@ -85,7 +88,7 @@ uintptr_t pm_findFreePages(uintptr_t lowerLimit, size_t pages)
             }
         }
 
-        if(found > pages)
+        if(found >= pages)
             return page;
     }
 
@@ -124,6 +127,10 @@ uintptr_t pm_alloc(size_t pages)
 			temp += PM_PAGE_SIZE;
 		}
 	}
+	else
+	{
+		panic("Out of memory!");
+	}
 
 	return page;
 }
@@ -138,14 +145,57 @@ void pm_free(uintptr_t page, size_t pages)
 }
 
 // MARK: Init
+void pm_markMultibootModule(struct multiboot_module_s *module)
+{
+	// Mark the module data as used
+    uintptr_t start = round4kDown((uintptr_t)module->start);
+    uintptr_t end = round4kUp((uintptr_t)module->end);
+
+    size_t size = end - start;
+    size_t pages = ((size % PM_PAGE_SIZE) == 0) ? size / PM_PAGE_SIZE : (size / PM_PAGE_SIZE) + 1;
+
+    for(size_t i=0; i<pages; i++)
+    {
+    	pm_markUsed(start);
+    	start += 0x1000;
+    }
+
+
+    // Mark the name of the module
+    uintptr_t name = round4kDown((uintptr_t)module->name);
+
+    size = strlen((const char *)name);
+    pages = ((size % PM_PAGE_SIZE) == 0) ? size / PM_PAGE_SIZE : (size / PM_PAGE_SIZE) + 1;
+
+    for(size_t i=0; i<pages; i++)
+    {
+    	pm_markUsed(name);
+    	name += 0x1000;
+    }
+}
+
+void pm_markMultiboot(struct multiboot_s *info)
+{
+    struct multiboot_module_s *modules = (struct multiboot_module_s *)info->mods_addr;
+
+    uintptr_t infostart = round4kDown((uintptr_t)info);
+    pm_markUsed(infostart); // TODO: We might run into alignment issues here if the info sits partially on two pages because we only mark the lower page in this case
+
+    for(uint32_t i=0; i<info->mods_count; i++)
+    {
+        struct multiboot_module_s *module = &modules[i];
+        pm_markMultibootModule(module);
+    }
+}
+
 bool pm_init(void *data)
 {
 	assert(data);
 
 	// Grab the information about the physical memory provided by GRUB.
-	struct multiboot_t *info = (struct multiboot_t *)data;
-	struct multiboot_mmap_t *mmap = info->mmap_addr;
-	struct multiboot_mmap_t *mmapEnd = (void *)((uintptr_t)info->mmap_addr + info->mmap_length);
+	struct multiboot_s *info = (struct multiboot_s *)data;
+	struct multiboot_mmap_s *mmap = info->mmap_addr;
+	struct multiboot_mmap_s *mmapEnd = (void *)((uintptr_t)info->mmap_addr + info->mmap_length);
 	
 	size_t memoryTotal = 0; // The total amount of free memory in bytes.
 	const char *suffix; // The data suffix. Eg. b, kB, Mb etc...
@@ -187,8 +237,25 @@ bool pm_init(void *data)
 		address += PM_PAGE_SIZE;
 	}
 
+	
+	pm_markMultiboot(info); // Oh and, we should probably mark the multiboot stuff as used? Yeah...
 	pm_markUsed(0x0); // Last but not least, lets mark NULL as used to avoid allocating it.
 	
+	// Try reserving space for the kernel directory
+	uintptr_t directory = pm_allocLimit(VM_KERNEL_DIRECTORY_ADDRESS, 1);
+	if(directory != VM_KERNEL_DIRECTORY_ADDRESS)
+	{
+		dbg("No kernel page directory space! But found space at %p", directory);
+		return false;
+	}
+
+	// Try reserving space for the trampolines
+	uintptr_t trampolines = pm_allocLimit(IR_TRAMPOLINE_PHYSICAL, IR_TRAMPOLINE_PAGES);
+	if(trampolines != IR_TRAMPOLINE_PHYSICAL)
+	{
+		dbg("No trampoline space! But found space at %p", trampolines);
+		return false;
+	}
 
 	// Print some pretty debug info and unlock the spinlock afterwards
 	suffix = sys_unitForSize(memoryTotal, &memoryTotal); // Calculate the largest integer quantity of the memory

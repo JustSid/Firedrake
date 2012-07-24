@@ -1,6 +1,6 @@
 //
-//  state.h
-//  Firedrake
+//  print.c
+//  libtest
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,23 +16,10 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _STATE_H_
-#define _STATE_H_
+#include "print.h"
+#include "syscall.h"
 
-#include <types.h>
-
-typedef struct
+void puts(const char *string)
 {
-	// The time since boot
-	double time;
-
-	// Time interrupt settings
-	int16_t pitReload; // Reload value of the PIT
-	double  pitTime; // Time between every PIT interrupt
-} state_t;
-
-extern state_t st_state;
-
-bool st_init(void *ignored);
-
-#endif /* _STATE_H_ */
+	syscall(SYS_PRINT, string);
+}

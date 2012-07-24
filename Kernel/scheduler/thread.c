@@ -21,28 +21,14 @@
 #include <system/assert.h>
 #include <system/panic.h>
 #include <system/syslog.h>
+#include <interrupts/trampoline.h>
 #include <memory/memory.h>
 
 #include "thread.h"
 #include "process.h"
 
-#define THREAD_MIN_STACK 4096
 #define THREAD_MAX_TICKS 10
 #define THREAD_WANTED_TICKS 4
-
-void _thread_entryStub()
-{
-	thread_t *thread = thread_getCurrentThread();
-	if(thread)
-	{
-		thread->entry();
-		thread->died = true;
-
-		while(1){}
-	}
-
-	panic("Inside _thread_entryStub() without a scheduled thread!");
-}
 
 uint32_t _thread_getUniqueID(process_t *process)
 {
@@ -72,34 +58,30 @@ uint32_t _thread_getUniqueID(process_t *process)
 	return uid;
 }
 
-thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entry_t entry)
+thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t stackSize, uint32_t args, ...)
 {
-	stackSize = MAX(stackSize, THREAD_MIN_STACK);
-
-	thread_t *thread = (thread_t *)kalloc(sizeof(thread_t));
+	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
 	if(thread)
 	{
-		uint8_t *userStack = kalloc(stackSize); //(uint8_t *)pm_alloc(2);
-		uint8_t *kernelStack = kalloc(THREAD_MIN_STACK);
+		size_t stackPages = 1; //MAX(1, stackSize / 4096);
+
+		uint8_t *userStack 	 = (uint8_t *)pm_alloc(1);
+		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
 
 		if(!userStack || !kernelStack)
 		{
 			if(userStack)
-				kfree(userStack);
+				pm_free((uintptr_t)userStack, 1);
 			
 			if(kernelStack)
-				kfree(kernelStack);
+				pm_free((uintptr_t)kernelStack, 1);
 			
-			kfree(thread);
+			hfree(NULL, thread);
 			return NULL;
 		}
 
+		// Setup general stuff
 		thread->id 			= THREAD_NULL;
-		//thread->stack 		= (uint8_t *)vm_mapPage(process->pdirectory, (vm_offset_t)userStack, 0xfffff000, VM_FLAGS_USERLAND);
-		thread->stack 		= userStack;
-		thread->kernelStack = kernelStack;
-		thread->kernelStackTop = (uint8_t *)(thread->kernelStack + THREAD_MIN_STACK);
-
 		thread->entry 		= entry;
 		thread->died 		= false;
 
@@ -113,29 +95,74 @@ thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entr
 		thread->process = process;
 		thread->next 	= NULL;
 
-		// Craft the initial CPU state
-		cpu_state_t state;
-		state.eax = 0;
-		state.ebx = 0;
-		state.ecx = 0;
-		state.edx = 0;
-		state.esi = 0;
-		state.edi = 0;
-		state.ebp = 0;
-		
-		state.eip = (uint32_t)_thread_entryStub;
-		state.esp = (uint32_t)userStack + stackSize;
-		
-		state.cs = 0x18 | 0x03;
-		state.ss = 0x20 | 0x03;
-		
-		state.eflags  = 0x200;
+		// Create user and kernel stack
+		thread->userStack   = userStack;
+		thread->kernelStack = kernelStack;
 
-		// Attach the CPU state to the kernel stack
-		thread->state = (cpu_state_t *)(thread->kernelStackTop - sizeof(cpu_state_t));
-		memcpy(thread->state, &state, sizeof(cpu_state_t));
+		// Map the user stack
+		thread->userStackSize = stackPages;
+		thread->userStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)thread->userStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_USERLAND);
+
+		uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
+		memset(ustack, 0, 1 * 4096);
+
+		// Push the arguments for the thread on its stack
+		if(args > 0)
+		{
+			va_list vlist;
+			va_start(vlist, args);
+			
+			uint32_t *vstack = ustack + 1023;
+
+			for(uint32_t i=0; i<args; i++)
+			{
+				uint32_t val = va_arg(vlist, uint32_t);
+				*(--vstack) = val;
+			}
+
+			va_end(vlist);
+		}
+
+		vm_free(vm_getKernelDirectory(), (vm_address_t)ustack, 1);
+
+		// Forge initial kernel stackframe
+		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
+
+		uint32_t *tstack = (uint32_t *)thread->kernelStackVirt;
+		uint32_t *stack = tstack + 1024;
+
+		*(--stack) = (process->ring0) ? 0x10 : 0x23; // ss
+		*(--stack) = (uint32_t)(thread->userStackVirt + (4092 - (args * sizeof(uint32_t)))); // esp
+		*(--stack) = (process->ring0) ? 0x200 : 0x0202; // eflags
+		*(--stack) = 0x1B; // cs
+		*(--stack) = (uint32_t)entry; // eip
+
+		// Interrupt number and error code
+		*(--stack) = 0x0;
+		*(--stack) = 0x0;
+
+		// General purpose register
+		*(--stack) = 0x0;
+		*(--stack) = 0x0;
+		*(--stack) = 0x0;
+		*(--stack) = 0x0;
+		*(--stack) = 0x0;
+		*(--stack) = 0x0;
+		*(--stack) = 0x0;
+		*(--stack) = 0x0;
+
+		// Segment registers
+		*(--stack) = (process->ring0) ? 0x10 : 0x23;
+		*(--stack) = (process->ring0) ? 0x10 : 0x23;
+		*(--stack) = (process->ring0) ? 0x18 : 0x23;
+		*(--stack) = (process->ring0) ? 0x18 : 0x23;
+
+		// Unmap the stack and update the threads esp
+		thread->esp = ((uint32_t)(thread->kernelStackVirt + VM_PAGE_SIZE)) - sizeof(cpu_state_t);
 
 		// Attach the thread to the process;
+		spinlock_lock(&process->threadLock); // Acquire the process' thread lock so we don't end up doing bad things
+
 		thread->id = _thread_getUniqueID(process);
 		if(process->mainThread)
 		{
@@ -150,18 +177,21 @@ thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entr
 			process->mainThread 		= thread;
 			process->scheduledThread 	= thread;
 		}
+
+		spinlock_unlock(&process->threadLock);
 	}
 
 	return thread;
 }
 
-void thread_destroy(struct thread_t *thread)
+void thread_destroy(struct thread_s *thread)
 {
 	thread_predicateBecameTrue(thread, thread_predicateOnExit);
 	
-	kfree(thread->stack);
-	kfree(thread->kernelStack);
-	kfree(thread);
+	pm_free((uintptr_t)thread->userStack, 1);
+	pm_free((uintptr_t)thread->kernelStack, 1);
+
+	hfree(NULL, thread);
 }
 
 void thread_setPriority(thread_t *thread, int priorityy)
@@ -188,7 +218,8 @@ thread_t *thread_getWithID(uint32_t id)
 	return NULL;
 }
 
-void thread_predicateBecameTrue(struct thread_t *thread, thread_predicate_t predicate)
+
+void thread_predicateBecameTrue(struct thread_s *thread, thread_predicate_t predicate)
 {
 	thread_block_t *block = thread->blocks;
 	thread_block_t *previous = NULL;
@@ -210,7 +241,7 @@ void thread_predicateBecameTrue(struct thread_t *thread, thread_predicate_t pred
 				block = block->next;
 			}
 			
-			kfree(temp);
+			hfree(NULL, temp);
 			continue;
 		}
 		
@@ -219,12 +250,12 @@ void thread_predicateBecameTrue(struct thread_t *thread, thread_predicate_t pred
 	}
 }
 
-void thread_attachPredicate(struct thread_t *thread, struct thread_t *blockThread, thread_predicate_t predicate)
+void thread_attachPredicate(struct thread_s *thread, struct thread_s *blockThread, thread_predicate_t predicate)
 {
 	assert(thread);
 	assert(blockThread);
 	
-	thread_block_t *block = kalloc(sizeof(thread_block_t));
+	thread_block_t *block = halloc(NULL, sizeof(thread_block_t));
 	if(block)
 	{
 		block->predicate 	= predicate;

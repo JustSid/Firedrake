@@ -1,5 +1,5 @@
 //
-//  state.c
+//  list.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,16 +16,37 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "state.h"
+#ifndef _LIST_H_
+#define _LIST_H_
 
-state_t st_state;
+#include <types.h>
 
-bool st_init(void *ignored)
+typedef struct list_base_s
 {
-	st_state.time = 0.0;
+	void *list;
 
-	st_state.pitReload = 60;
-	st_state.pitTime = 0.0035199995;
+	struct list_base_s *next;
+	struct list_base_s *prev;
+} list_base_t;
 
-	return true;
-}
+typedef struct
+{
+	uint32_t count;
+	size_t entrySize;
+
+	list_base_t *first;
+	list_base_t *last;
+} list_t;
+
+list_t *list_create(size_t size);
+void list_destroy(list_t *list);
+
+void *list_addBack(list_t *list);
+void *list_addFront(list_t *list);
+
+void list_remove(list_t *list, void *entry);
+
+list_base_t *list_first(list_t *list);
+list_base_t *list_last(list_t *list);
+
+#endif /* _LIST_H_ */

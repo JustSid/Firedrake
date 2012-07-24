@@ -47,6 +47,19 @@ void *memcpy(void *dst, const void *src, size_t size)
 	return dst;
 }
 
+char *strcpy(char *dst, const char *src)
+{
+	while(*src != '\0')
+	{
+		*dst = *src;
+
+		dst ++;
+		src ++;
+	}
+
+	return dst;
+}
+
 size_t strlcpy(char *dst, const char *src, size_t size)
 {
 	const char *s = src;
@@ -85,3 +98,98 @@ size_t strlen(const char *string)
 	return s - string;
 }
 
+int strcmp(const char *str1, const char *str2)
+{
+	if(!str1)
+		return -1;
+
+	if(!str2)
+		return 1;
+
+	while(1)
+	{
+		if(*str1 == *str2)
+		{
+			if(*str1 == '\0')
+				break;
+
+			str1 ++;
+			str2 ++;
+
+			continue;
+		}
+
+		return *str2 - *str1;
+	}
+
+	return 0;
+}
+
+int strncmp(const char *str1, const char *str2, size_t size)
+{
+	if(!str1)
+		return -1;
+
+	if(!str2)
+		return 1;
+
+	for(size_t i=0; i<size; i++)
+	{
+		if(*str1 == *str2)
+		{
+			if(*str1 == '\0')
+				break;
+
+			str1 ++;
+			str2 ++;
+
+			continue;
+		}
+
+		return *str2 - *str1;
+	}
+
+	return 0;
+}
+
+char *strstr(char *str1, const char *str2)
+{
+	size_t index = 0;
+	size_t length = strlen(str2);
+	char *start = NULL;
+	
+	for(; *str1 != '\0'; str1++)
+	{
+		if(*str1 == str2[index])
+		{
+			if(index == 0)
+				start = str1;
+			
+			index ++;
+			if(index == length)
+				return start;
+		}
+		else
+		{
+			index = 0;
+		}
+	}
+	
+	return NULL;
+}
+
+char *strpbrk(char *str1, const char *str2)
+{
+	size_t length = strlen(str2);
+	
+	for(; *str1 != '\0'; str1++)
+	{
+		for(size_t i=0; i<length; i++)
+		{
+			if(*str1 == str2[i])
+				return str1;
+		}
+	}
+	
+	return NULL;
+}

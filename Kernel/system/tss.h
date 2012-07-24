@@ -19,7 +19,9 @@
 #ifndef _TSS_H_
 #define _TSS_H_
 
-struct tss_t 
+#include <types.h>
+
+struct tss_s 
 {
 	uint32_t	back_link;	/* segment number of previous task, if nested */
 	uint32_t	esp0;		/* initial stack pointer ... */
@@ -47,8 +49,7 @@ struct tss_t
 	uint32_t	gs;
 	uint32_t	ldt;		/* local descriptor table segment */
 	uint16_t	trace_trap;	/* trap on switch to this task */
-	uint16_t	io_bit_map_offset;
-					/* offset to start of IO permission bit map */
+	uint16_t	io_bit_map_offset; /* offset to start of IO permission bit map */
 };
 
 #endif /* _TSS_H_ */

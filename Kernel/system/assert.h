@@ -16,11 +16,17 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+/**
+ * Overview:
+ * Defines simple assertion macros
+ **/
 #ifndef _ASSERT_H_
 #define _ASSERT_H_
 
 #include "panic.h"
-#define assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\'failed.", __func__, __LINE__, #e) : (void)0
+
+// Assertion macro that results in a panic
+#define assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed.", __func__, __LINE__, #e) : (void)0
 
 #endif /* _ASSERT_H_ */
 

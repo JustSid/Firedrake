@@ -16,42 +16,39 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <config.h>
 #include <memory/memory.h>
 #include <system/syslog.h>
 #include <system/panic.h>
-#include <system/syscall.h>
-#include <system/state.h>
-#include <system/video.h>
 #include <scheduler/scheduler.h>
 #include <libc/string.h>
 #include <libc/stdio.h>
+#include <tests/unittests.h>
 
-void thread()
-{
-	sys_printColor("Secondary thread!\n", vd_color_red);
-}
-
-void test()
-{
-	sys_print("Hello World\n");
-	
-	uint32_t id = sys_threadAttach(thread, 4);
-	sys_threadJoin(id); // Join the tread, ie make sure
-	
-	sys_print("Thread exited\n");
-}
-
-
+void kerneld_main() __attribute__((noinline));
 void kerneld_main()
 {
-	thread_setPriority(thread_getCurrentThread(), 2);
+	__asm__ volatile("int $0x20"); // Force a reschedule right here, just to make sure that everything is properly initalized at the schedulers end
 
-	// Dummy process
-	process_create(test);
-	
-	
+#ifdef CONF_RUNKUNIT
+	// Run unit tests
+	runUnitTests();
+
+#ifdef CONF_KUNITEXIT
+	info("Ran all unit tests, idling now\n");
+
+	while(1)
+		__asm__ volatile("cli; hlt;"); // Stop everything right here and now
+#endif /* CONF_KUNITEXIT */
+#endif /* CONF_RUNKUNIT */
+
+	// Test process
+	process_createWithFile("hellostatic.bin");
+
+
 	// Enter the default run loop of the kernel daemon
-	// Note that the kernel daemon runs in ring 0, so it can do things like 'hlt'
+	// Note: that the kernel daemon runs in ring 0, so it can do things like 'hlt'
+	// Note: its also running in the kernels address space, so it can see everything the kernel sees.
 	while(1)
 	{
 		// Collect dead processes
@@ -74,7 +71,6 @@ void kerneld_main()
 			
 			thread_destroy(temp);
 		}
-
 
 		__asm__ volatile("hlt;"); // Idle for the heck of it!
 	}

@@ -20,7 +20,13 @@
 #define _HELPER_H_
 
 #include <types.h>
+#include <bootstrap/multiboot.h>
+
+#define set_CSRegister(cs) __asm__ volatile("ljmp %0, $_fakeLabel \n\t _fakeLabel: \n\t" :: "i"(cs))
 
 const char *sys_unitForSize(size_t size, size_t *result);
+const char *sys_fileWithoutPath(const char *path);
+
+struct multiboot_module_s *sys_multibootModuleWithName(const char *name);
 
 #endif /* _HELPER_H_ */

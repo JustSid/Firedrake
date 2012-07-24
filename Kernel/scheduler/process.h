@@ -20,12 +20,22 @@
 #define _PROCESS_H_
 
 #include <types.h>
+#include <container/list.h>
+#include <system/lock.h>
 #include <memory/memory.h>
+#include <dylink/dylink.h>
 #include "thread.h"
 
-struct ipc_object_s;
+typedef struct
+{
+	list_base_t base;
 
-typedef struct process_t
+	vm_address_t vaddress;
+	uintptr_t paddress;
+
+} mmap_description_t;
+
+typedef struct process_s
 {
 	vm_page_directory_t pdirectory;
 
@@ -33,17 +43,26 @@ typedef struct process_t
 	uint32_t parent;
 
 	bool died; // True if the process can be collected by the scheduler.
+	bool ring0;
 
-	thread_t *mainThread; // The main thread, eg. the first spawned thread
+	spinlock_t threadLock; // Must be obtained before changing something on the threads
+	thread_t *mainThread; // The main thread, ie. the first spawned thread
 	thread_t *scheduledThread; // The thread that is currently scheduled
 
-	struct process_t *pprocess;
-	struct process_t *next;
+	dy_exectuable_t *image;
+
+	list_t *mappings; // used for mmap() 
+	spinlock_t mmapLock; // Must be obtained before doing something with the mmapings list
+
+	struct process_s *pprocess; // Parent
+	struct process_s *next;
 } process_t;
 
 #define PROCESS_NULL UINT32_MAX
 
-process_t *process_create(thread_entry_t entry);
+process_t *process_createWithFile(const char *name);
+process_t *process_createKernel();
+
 process_t *process_getCurrentProcess(); // Defined in scheduler.c!
 process_t *process_getFirstProcess(); // Defined in scheduler.c, returns a process that can be used to iterate through the process list
 process_t *process_getCollectableProcesses(); // Scheduler.c too

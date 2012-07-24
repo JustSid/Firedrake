@@ -1,6 +1,6 @@
 //
-//  math.c
-//  Firedrake
+//  syscall.h
+//  libcrt
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,4 +16,9 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "math.h"
+#ifndef _SYSCALL_H_
+#define _SYSCALL_H_
+
+unsigned int syscall(int type, ...);
+
+#endif

@@ -16,9 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+/**
+ * Overview:
+ * Defines a simple interface for logging
+ **/
 #ifndef _SYSLOG_H_
 #define _SYSLOG_H_
 
+/**
+ * Logging levels where LOG_ALERT is the highest and LOG_DEBUG the lowest
+ **/
 typedef enum 
 {
 	LOG_ALERT = 0,
@@ -29,8 +36,20 @@ typedef enum
 	LOG_DEBUG	
 } syslog_level_t;
 
-
-void syslog(syslog_level_t level, const char *format, ...);
+/**
+ * Sets the logging level, messages with a lower level won't be shown.
+ * @default LOG_WARNING
+ **/
 void setLogLevel(syslog_level_t level);
+
+/**
+ * Logs a message, format string is printf() like
+ **/
+void syslog(syslog_level_t level, const char *format, ...);
+
+#define dbg(...) syslog(LOG_DEBUG, __VA_ARGS__) // Macro for LOG_DEBUG
+#define err(...) syslog(LOG_ERROR, __VA_ARGS__) // Macro for LOG_ERROR
+#define warn(...) syslog(LOG_WARNING, __VA_ARGS__) // Macro for LOG_WARNING
+#define info(...) syslog(LOG_INFO, __VA_ARGS__) // Macro for LOG_INFO
 
 #endif /* _SYSLOG_H_ */

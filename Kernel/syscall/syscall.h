@@ -20,35 +20,27 @@
 #define _SYSCALL_H_
 
 #include <types.h>
-#include "cpu.h"
+#include <system/cpu.h>
 
-typedef enum
-{
-	syscall_print, // syscall 1
-	syscall_printColor, // syscall 2
-	syscall_sleep, // Syscall 0
-	syscall_processCreate, // syscall 1 (function)
-	syscall_threadAttach, // syscall 2 (function, priority)
-	syscall_threadJoin, // syscall 1 (thread ID)
+#include "errno.h"
 
-	__syscall_max // NOT an actuall syscall but just used as boundary information!
-} syscall_t;
-	
-#define sys_print(string) syscall1(syscall_print, (uint32_t)string)
-#define sys_printColor(string, color) syscall2(syscall_printColor, (uint32_t)string, (uint32_t)color)
-#define sys_sleep() syscall0(syscall_sleep)
-#define sys_processCreate(entry) syscall1(syscall_processCreate, (uint32_t)entry)
-#define sys_threadAttach(entry, priority) syscall2(syscall_threadAttach, (uint32_t)entry, 0);
-#define sys_threadJoin(id) syscall1(syscall_threadJoin, id)
+#define _SYS_MAXCALLS 		128 // Increase if needed
 
-typedef uint32_t (*syscall_callback_t)(cpu_state_t *state, cpu_state_t **returnState);
+#define SYS_PRINT 			0 // syscall1(char *message)
+#define SYS_PRINTCOLOR 		1 // syscall2(int color, char *message)
+#define SYS_EXIT 			2 // syscall0()
+#define SYS_SLEEP			3 // syscall0()
+#define SYS_THREADATTACH	4 // syscall4(void *function, void *arg1, unsigned int stacksize, void *arg2), returns thread id, stacksize must be a multiple of 4k
+#define SYS_THREADEXIT		5 // syscall0()
+#define SYS_THREADJOIN		6 // syscall1(unsigned int tid)
+#define SYS_PROCESSCREATE	7 // syscall1(char *name), returns pid
+#define SYS_PROCESSKILL		8 // syscall1(unsgined int pid)
+#define SYS_MMAP			9 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, uint32_t offset)
+#define SYS_UNMAP			10 // (void*, size_t) // Doesn't exist yet!
 
-uint32_t syscall0(syscall_t type);
-uint32_t syscall1(syscall_t type, uint32_t arg1);
-uint32_t syscall2(syscall_t type, uint32_t arg1, uint32_t arg2);
-uint32_t syscall3(syscall_t type, uint32_t arg1, uint32_t arg2, uint32_t arg3);
+typedef uint32_t (*syscall_callback_t)(uint32_t *esp, uint32_t *uesp, int *errno);
 
-void sc_mapSyscall(syscall_t syscall, syscall_callback_t callback);
+void sc_setSyscallHandler(uint32_t syscall, syscall_callback_t callback);
 bool sc_init(void *ingored);
 
 #endif

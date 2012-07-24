@@ -30,20 +30,20 @@ struct pm_kernel_allocation
 
 void *kallocator(size_t bytes, uint32_t flags)
 {
-	size_t neededBytes = bytes + sizeof(struct pm_kernel_allocation);
-	size_t neededPages = (int32_t)ceil((double)neededBytes / (double)VM_SIZE);
+	size_t nbytes = bytes + sizeof(struct pm_kernel_allocation);
+	size_t npages = pageCount(nbytes);
 
-	uintptr_t ppage  = pm_alloc(neededPages);
+	uintptr_t ppage  = pm_alloc(npages);
 	if(!ppage)
 		return NULL;
 	
-	vm_offset_t vpage = vm_alloc(vm_getKernelDirectory(), ppage, neededPages, flags);
+	vm_address_t vpage = vm_alloc(vm_getKernelDirectory(), ppage, npages, flags);
 	if(!vpage)
 		return NULL;
 
 	struct pm_kernel_allocation *allocation = (struct pm_kernel_allocation *)vpage;
-	allocation->pages = neededPages;
-	allocation->bytes = neededBytes;
+	allocation->pages = npages;
+	allocation->bytes = nbytes;
 
 	return (void *)(vpage + sizeof(struct pm_kernel_allocation));
 }
@@ -61,10 +61,10 @@ void *ualloc(size_t bytes)
 
 void kfree(void *ptr)
 {
-	vm_offset_t vpage = (vm_offset_t)ptr;
+	vm_address_t vpage = (vm_address_t)ptr;
 	vpage -= sizeof(struct pm_kernel_allocation);
 
-	uintptr_t ppage = vm_getPhysicalAddress(vm_getKernelDirectory(), vpage);
+	uintptr_t ppage = vm_resolveVirtualAddress(vm_getKernelDirectory(), vpage);
 
 	struct pm_kernel_allocation *allocation = (struct pm_kernel_allocation *)vpage;
 	size_t pages = allocation->pages;

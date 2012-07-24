@@ -30,6 +30,6 @@ uintptr_t pm_allocLimit(uintptr_t lowerLimit, size_t pages);
 
 void pm_free(uintptr_t page, size_t pages);
 
-bool pm_init(void *data); // Data must be of type struct multiboot_t *!
+bool pm_init(void *data); // Data must be of type struct multiboot_s *!
 
 #endif /* _PMEMORY_H_ */

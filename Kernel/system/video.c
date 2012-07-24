@@ -16,9 +16,9 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libc/string.h>
 #include "video.h"
 #include "port.h"
-#include "string.h"
 
 static uint8_t *_vd_address = (uint8_t *)0xB8000;
 static uint32_t _vd_width  = 80;

@@ -19,10 +19,15 @@
 #ifndef _SCHEDULER_H_
 #define _SCHEDULER_H_
 
+#include <types.h>
+#include <system/lock.h>
 #include "process.h"
 #include "thread.h"
 
-bool sd_state(); // Returns true if the scheduler finished the crafting of the kernel process.
+extern spinlock_t _sd_lock;
+
+uint32_t _sd_schedule(uint32_t esp);
+
 bool sd_init(void *ingored);
 
 #endif /* _SCHEDULER_H_ */

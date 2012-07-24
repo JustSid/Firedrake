@@ -1,0 +1,4 @@
+CC  = clang
+CPP = clang
+LD  = ld
+AR	= ar

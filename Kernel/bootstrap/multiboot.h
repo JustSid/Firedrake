@@ -21,7 +21,7 @@
 
 #include <types.h>
 
-struct multiboot_t 
+struct multiboot_s
 {
     uint32_t    flags;
     uint32_t    mem_lower;
@@ -39,7 +39,7 @@ struct multiboot_t
     void		*mmap_addr;
 } __attribute__((packed));
 
-struct multiboot_mmap_t
+struct multiboot_mmap_s
 {
     uint32_t    entry_size;
     uint64_t    base;
@@ -47,12 +47,14 @@ struct multiboot_mmap_t
     uint32_t    type;
 } __attribute__((packed));
 
-struct multiboot_module_t
+struct multiboot_module_s
 {
 	void		*start;
 	void		*end;
 	void		*name;
 	uint32_t	reserved;
 } __attribute__((packed));
+
+extern struct multiboot_s *bootinfo;
 
 #endif

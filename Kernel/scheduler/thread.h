@@ -22,32 +22,36 @@
 #include <types.h>
 #include <system/cpu.h>
 
-typedef void (*thread_entry_t)();
-struct process_t;
+struct process_s;
 struct thread_block_s;
 
-typedef struct thread_t
+typedef void (*thread_entry_t)();
+
+typedef struct thread_s
 {
-	cpu_state_t *state;
-
 	uint32_t id;
-
-	uint8_t *stack;
-	uint8_t *kernelStack;
-	uint8_t *kernelStackTop;
 	thread_entry_t entry;
 
 	uint8_t maxTicks;
 	uint8_t usedTicks;
 	uint8_t wantedTicks;
+	uint8_t died;
 
-	bool died;
+	// Thread stacks
+	size_t userStackSize;
+	uint8_t *userStack;
+	uint8_t *userStackVirt;
+
+	uint8_t *kernelStack;
+	uint8_t *kernelStackVirt;
+	uint32_t esp;
+
+	// Blocking
+	struct thread_block_s *blocks;
 	uint32_t blocked;
 
-	struct thread_block_s *blocks;
-
-	struct process_t 	*process;
-	struct thread_t 	*next;
+	struct process_s 	*process;
+	struct thread_s 	*next;
 } thread_t;
 
 typedef enum
@@ -65,8 +69,9 @@ typedef struct thread_block_s
 
 
 #define THREAD_NULL UINT32_MAX
+#define THREAD_STACK_LIMIT 0xBFFFFFFD
 
-thread_t *thread_create(struct process_t *process, size_t stackSize, thread_entry_t entry);
+thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t stackSize, uint32_t args, ...);
 thread_t *thread_getCurrentThread(); // Defined in scheduler.c!
 thread_t *thread_getCollectableThreads(); // Defined in scheduler.c
 thread_t *thread_getWithID(uint32_t id);
@@ -74,10 +79,10 @@ thread_t *thread_getWithID(uint32_t id);
 void thread_join(uint32_t id); // Don't forget to force a reschedule
 // If this is called using the appropriate syscall, the rescheduling is done automatically
 
-void thread_predicateBecameTrue(struct thread_t *thread, thread_predicate_t predicate);
-void thread_attachPredicate(struct thread_t *thread, struct thread_t *blockThread, thread_predicate_t predicate);
+void thread_predicateBecameTrue(struct thread_s *thread, thread_predicate_t predicate);
+void thread_attachPredicate(struct thread_s *thread, struct thread_s *blockThread, thread_predicate_t predicate);
 
-void thread_destroy(struct thread_t *thread); // Frees the memory of the thread.
+void thread_destroy(struct thread_s *thread); // Frees the memory of the thread.
 // Be careful to not destroy the running thread, no sanity check is performed!
 
 void thread_setPriority(thread_t *thread, int priority);

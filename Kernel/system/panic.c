@@ -17,13 +17,18 @@
 //
 
 #include <libc/stdio.h>
+#include <libc/string.h>
+#include <interrupts/interrupts.h>
+#include <scheduler/scheduler.h>
 #include "panic.h"
+#include "kernel.h"
 #include "syslog.h"
+
+bool panic_triedPrintingStacktrace = false;
 
 void panic(const char *format, ...)
 {
-	if(!format)
-		panic("No reason given."); // Inception!
+	ir_disableInterrupts();
 
 	va_list args;	
 	va_start(args, format);
@@ -33,12 +38,22 @@ void panic(const char *format, ...)
 	
 	va_end(args);
 
-	
+
 	syslog(LOG_ALERT, "\nKernel Panic!");
 	syslog(LOG_INFO, "\nReason: ");
-	syslog(LOG_ERROR, "\"%s\"", buffer);
-	syslog(LOG_INFO, "\n\nCPU halted!");
+	syslog(LOG_ERROR, "\"%s\"\n\n", buffer);
 	
+
+	if(!panic_triedPrintingStacktrace)
+	{
+		panic_triedPrintingStacktrace = true; // We try to pull of this trick only one time!
+
+		dbg("Kernel backtrace:\n");
+		kern_printBacktrace(20);
+	}
+	
+	syslog(LOG_ALERT, "\nCPU halted!");
+
 	while(1) 
 		__asm__ volatile("cli; hlt"); // And this dear kids is how Mr. Kernel died, alone and without any friends.
 }

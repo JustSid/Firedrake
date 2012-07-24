@@ -1,6 +1,6 @@
 //
-//  interrupts.h
-//  Firedrake
+//  syscall.h
+//  libtest
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,22 +16,23 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _INTERRUPTS_H_
-#define _INTERRUPTS_H_
+#ifndef _SYSCALL_H_
+#define _SYSCALL_H_
 
-#include <types.h>
-#include "cpu.h"
-#include "tss.h"
+typedef unsigned int uint32_t;
 
-typedef cpu_state_t *(*ir_interrupt_handler_t)(cpu_state_t *state);
+#define SYS_PRINT 			0
+#define SYS_PRINTCOLOR 		1
+#define SYS_EXIT 			2
+#define SYS_SLEEP			3
+#define SYS_THREADATTACH	4
+#define SYS_THREADEXIT		5
+#define SYS_THREADJOIN		6
+#define SYS_PROCESSCREATE	7
+#define SYS_PROCESSKILL		8
+#define SYS_MMAP			9
+#define SYS_UNMAP			10
 
-void ir_enableInterrupts();
-void ir_disableInterrupts();
+uint32_t syscall(int type, ...);
 
-void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt);
-
-struct tss_t *ir_getTSS();
-
-bool ir_init(void *ignored);
-
-#endif /* _INTERRUPTS_H_ */
+#endif

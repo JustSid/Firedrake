@@ -1,21 +1,21 @@
-CSRCS = $(shell find $(CURDIR) -type f -name '*.c')
-SSRCS = $(shell find $(CURDIR) -type f -name '*.S')
+include ../Makefile.rules
 
-OBJS = $(addsuffix .o, $(basename $(CSRCS)))
-OBJS += $(addsuffix .so, $(basename $(SSRCS)))
+SRCS = $(shell find $(CURDIR) -type f \( -name "*.c" -o -name "*.S" \))
+OBJS = $(addsuffix .o, $(basename $(SRCS)))
 
-ASFLAGS  = -m32 -c -o
-CFLAGS 	= -m32 -Wall -fno-stack-protector -std=c99 -nostdlib -fno-builtin -fno-exceptions -fno-leading-underscore -pedantic-errors -I. -c -o
-LDFLAGS  = -TMakefile.ld -o
+
+ASFLAGS  = -m32 -I.
+CFLAGS 	 = -m32 -Wall -fno-stack-protector -fno-omit-frame-pointer -std=c99 -nostdlib -fno-builtin -O2 -pedantic-errors -I.
+LDFLAGS  = -T Makefile.ld
 
 firedrake: $(OBJS)
-	$(LD) $(LDFLAGS) $@ $^
+	$(LD) $(LDFLAGS) -o $@ $^
 
 %.o: %.c
-	$(CC) $(CFLAGS) $@ $^
+	$(CC) $(CFLAGS) -c -o $@ $^
 
-%.so: %.S
-	$(CC) $(ASFLAGS) $@ $^
+%.o: %.S
+	$(CC) $(ASFLAGS) -c -o $@ $^
 
 clean:
 	rm $(OBJS)

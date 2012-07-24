@@ -19,11 +19,12 @@
 #include <system/assert.h>
 #include <system/panic.h>
 #include <system/port.h>
-#include <system/interrupts.h>
 #include <system/tss.h>
 #include <system/syslog.h>
-#include <system/syscall.h>
+#include <interrupts/interrupts.h>
+#include <interrupts/trampoline.h>
 #include <libc/string.h>
+#include <syscall/syscall.h>
 #include "scheduler.h"
 
 static process_t *_process_firstProcess = NULL;
@@ -31,10 +32,7 @@ static process_t *_process_currentProcess = NULL;
 static process_t *_sd_deadProcess = NULL;
 static thread_t  *_sd_deadThread  = NULL;
 
-static bool _sd_schedulerLocked = false;
-static bool _sd_state = false;
-
-static struct tss_t *_sd_tss = NULL; // Same as the one used by the interrupt handler, this is just a cached value...
+spinlock_t _sd_lock = SPINLOCK_INIT;
 
 process_t *process_getCurrentProcess()
 {
@@ -48,32 +46,29 @@ process_t *process_getFirstProcess()
 
 process_t *process_getCollectableProcesses()
 {
-	_sd_schedulerLocked = true;
+	spinlock_lock(&_sd_lock);
 
 	process_t *process 	= _sd_deadProcess;
 	_sd_deadProcess 	= NULL;
 
-	_sd_schedulerLocked = false;
+	spinlock_unlock(&_sd_lock);
 	return process;
 }
 
 thread_t *thread_getCollectableThreads()
 {
-	_sd_schedulerLocked = true;
+	spinlock_lock(&_sd_lock);
 
 	thread_t *thread 	= _sd_deadThread;
 	_sd_deadThread		= NULL;
 
-	_sd_schedulerLocked = false;
+	spinlock_unlock(&_sd_lock);
 	return thread;
 }
 
 thread_t *thread_getCurrentThread()
 {
-	if(_process_currentProcess)
-		return _process_currentProcess->scheduledThread;
-	
-	return NULL;
+	return _process_currentProcess->scheduledThread;
 }
 
 void _process_setFirstProcess(process_t *process)
@@ -82,192 +77,131 @@ void _process_setFirstProcess(process_t *process)
 	_process_currentProcess = process;
 }
 
-bool sd_state()
+// MARK: Scheduler helper
+static inline process_t *_sd_processPreviousProcess(process_t *process)
 {
-	return _sd_state;
+	process_t *previous = _process_firstProcess;
+	while(previous)
+	{
+		if(previous->next == process)
+			return previous;
+
+		previous = previous->next;
+	}
+
+	return NULL;
+}
+
+static inline thread_t *_sd_threadPreviousThread(thread_t *thread)
+{
+	process_t *process = thread->process;
+	thread_t  *previous = process->mainThread;
+
+	while(previous)
+	{
+		if(previous->next == thread)
+			return previous;
+
+		previous = previous->next;
+	}
+
+	return NULL;
 }
 
 
-// MARK: Scheduling
-static inline thread_t *_sd_scheduleableThreadForProcess(process_t *process)
+// MARK: Scheduler
+uint32_t _sd_schedule(uint32_t esp)
 {
-	thread_t *mthread = process->scheduledThread;
-	thread_t *thread = mthread;
+	process_t *process = _process_currentProcess;
+	thread_t  *thread  = process->scheduledThread;
 
-	while(thread)
+	if(esp)
 	{
-		if(thread->usedTicks == 0)
-		{
-			return thread;
-		}
+		// We only try to obtain the lock here because if we would wait on it, the currently process couldn't work anymore because the scheduler would never return to it
+		// so if the can't obtain the lock, we don't deadlock ourself and simply return
+		bool result = spinlock_tryLock(&_sd_lock);
+		if(!result)
+			return esp;
 
-		thread = thread->next ? thread->next : process->mainThread;
-
-		if(thread == mthread)
-			return NULL;
+		thread->esp = esp;
 	}
 
-	return thread;
-}
-
-// If state is NULL, its assumed that we needed to reschedule and an EOI is send! Its also send wenn the state->interrupt equals 0x20!
-// So pass something else than NULL if you don't want an EOI!
-cpu_state_t *_sd_schedule(cpu_state_t *state)
-{
-	if(_sd_schedulerLocked)
+	// Check if the process or thread died
+	if(process->died || thread->died)
 	{
-		if(!state || state->interrupt == 0x20)
-			outb(0x20, 0x20);
-		
-		return state;
-	}
-
-	assert(_process_currentProcess);
-
-	process_t 	*process = _process_currentProcess;
-	thread_t 	*thread  = process->scheduledThread;
-
-	if(state)
-		memcpy(thread->state, state, sizeof(cpu_state_t));
-
-
-	if(thread->died)
-	{
-		if(thread == process->mainThread)
+		if(process->died || thread == process->mainThread)
 		{
-			_process_currentProcess = process->next ? process->next : _process_firstProcess;
-
-			process_t *previous = _process_firstProcess;
-			while(previous)
-			{
-				if(previous->next == process)
-					break;
-
-				previous = previous->next;
-			}
-
+			process_t *previous = _sd_processPreviousProcess(process);
 			previous->next = process->next;
 
-			// Insert the process into the collectable list
 			process->next = _sd_deadProcess;
 			_sd_deadProcess = process;
 
-			return _sd_schedule(NULL);
+			process = previous->next ? previous->next : _process_firstProcess;
+			thread  = process->scheduledThread;
 		}
-
-
-		thread_t *previous = process->mainThread;
-		while(previous)
+		else
+		if(thread->died)
 		{
-			if(previous->next == thread)
-				break;
+			thread_t *previous = _sd_threadPreviousThread(thread);
+			previous->next = thread->next;
 
-			previous = previous->next;
+			thread->next = _sd_deadThread;
+			_sd_deadThread = thread;
+
+
+			thread = previous->next ? previous->next : process->mainThread;
+			process->scheduledThread = thread;
 		}
-				
-		previous->next = thread->next;
-		process->scheduledThread = thread->next ? thread->next : process->mainThread;
-
-		thread->next = _sd_deadThread;
-		_sd_deadThread = thread;
-
-		return _sd_schedule(NULL);
 	}
 
 
-	// Schedule
+	// Update the thread
 	thread->usedTicks ++;
-	do {
-		if(thread->blocked > 0 || thread->usedTicks >= thread->wantedTicks)
+
+	while(thread->usedTicks >= thread->wantedTicks || thread->blocked > 0)
+	{
+		thread->usedTicks = 0;
+
+		// Update the scheduled thread
+		thread = thread->next ? thread->next : process->mainThread;
+		process->scheduledThread = thread;
+
+		// Schedule a new process
+		process = process->next ? process->next : _process_firstProcess;
+		thread = process->scheduledThread;
+
+		if(process->died || thread->died) // Remotely killed process
 		{
-			thread->usedTicks = 0;
-			
-			process->scheduledThread = thread->next ? thread->next : process->mainThread;
-			process = process->next ? process->next : _process_firstProcess;
-			
-			thread = process->scheduledThread;
+			_process_currentProcess = process;
+			return _sd_schedule(0x0);
 		}
-		
-		// This assumes that at least one thread never blocks. The kerneld does the job since its the only process we can control completely
-	} while(thread->blocked > 0);
-	
-	// Update the state
+	}
+
+
 	_process_currentProcess = process;
-	_sd_state = true;
+	ir_trampoline_map->pagedir = process->pdirectory;
+	ir_trampoline_map->tss.esp0 = thread->esp;
 
-	// Prepare the TSS
-	_sd_tss->cr3  = (uint32_t)process->pdirectory;
-	_sd_tss->esp0 = (uint32_t)process->scheduledThread->kernelStackTop;
-
-	if(!state || state->interrupt == 0x20)
-		outb(0x20, 0x20);
-	
-	return thread->state;
+	spinlock_unlock(&_sd_lock);
+	return thread->esp;
 }
 
-
-uint32_t sd_processSleep_syscall(cpu_state_t *state, cpu_state_t **returnState)
-{
-	_process_currentProcess->scheduledThread->usedTicks = 100;
-	*returnState = _sd_schedule(state);
-	
-	return 0;
-}
-
-uint32_t sd_processCreate_syscall(cpu_state_t *state, cpu_state_t **returnState)
-{
-	thread_entry_t entry = *(thread_entry_t *)(state->esp);
-	process_t *process = process_create(entry);
-	if(process)
-		return process->pid;
-	
-	return PROCESS_NULL;
-}
-
-uint32_t sd_threadAttach_syscall(cpu_state_t *state, cpu_state_t **returnState)
-{
-	thread_entry_t entry = *(thread_entry_t *)(state->esp);
-	int priority = *((int *)(state->esp + sizeof(thread_entry_t)));
-	
-	thread_t *thread = thread_create(_process_currentProcess, 4096, entry);
-	if(thread)
-	{
-		thread_setPriority(thread, priority);
-		return thread->id;
-	}
-	
-	return THREAD_NULL;
-}
-
-uint32_t sd_threadJoin_syscall(cpu_state_t *state, cpu_state_t **returnState)
-{
-	uint32_t id = *(uint32_t *)(state->esp);
-	thread_t *thread = thread_getWithID(id);
-	if(thread)
-	{
-		thread_join(id);
-		*returnState = _sd_schedule(state); // thread_join simply blocks the thread, we need to force a reschedule to actively remove the scheduled thread here...
-		return 0;
-	}
-	
-	return 1;
-}
 
 
 // MARK: Init
-extern void kerneld_main();
-
 bool sd_init(void *ingored)
 {
-	process_t *process = process_create(kerneld_main);
-	_sd_tss = ir_getTSS();
+	process_t *process = process_createKernel();
+	thread_t *thread = process->mainThread;
 
+	// Prepare everything for the kernel task
+	ir_trampoline_map->pagedir  = process->pdirectory;
+	ir_trampoline_map->tss.esp0 = thread->esp;
+
+	// Setup the interrupt handler and enable interrupts now that we have a stack for the interrupt handler
 	ir_setInterruptHandler(_sd_schedule, 0x20);
-	
-	sc_mapSyscall(syscall_sleep, sd_processSleep_syscall);
-	sc_mapSyscall(syscall_processCreate, sd_processCreate_syscall);
-	sc_mapSyscall(syscall_threadAttach, sd_threadAttach_syscall);
-	sc_mapSyscall(syscall_threadJoin, sd_threadJoin_syscall);
+	ir_enableInterrupts();
 
 	return (process != NULL);
 }

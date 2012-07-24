@@ -16,14 +16,69 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <system/cpu.h>
+#include <system/panic.h>
+#include <system/syslog.h>
+#include <system/kernel.h>
 #include "interrupts.h"
-#include "cpu.h"
-#include "panic.h"
 
 const char *__ir_exception_pageFaultTranslateBit(int bit, int set);
 
-cpu_state_t *__ir_exceptionHandler(cpu_state_t *state)
-{	
+uint32_t __ir_handleException(uint32_t esp)
+{
+	cpu_state_t *state = (cpu_state_t *)esp;
+
+	if(state->interrupt == 1)
+	{
+		// Debug exception
+		uint32_t dr6;
+		__asm__ volatile("mov %%dr6, %0" : "=r" (dr6));
+
+		for(int i=0; i<3; i++)
+		{
+			bool didBreak = (dr6 & (1 << i));
+			if(didBreak)
+			{
+				uintptr_t address = 0x0;
+				switch(i)
+				{
+					case 0:
+						__asm__ volatile("mov %%dr0, %0" : "=r" (address));
+						break;
+
+					case 1:
+						__asm__ volatile("mov %%dr1, %0" : "=r" (address));
+						break;
+
+					case 2:
+						__asm__ volatile("mov %%dr2, %0" : "=r" (address));
+						break;
+
+					case 3:
+						__asm__ volatile("mov %%dr3, %0" : "=r" (address));
+						break;
+
+					default:
+						break;
+				}
+
+				warn("Watchpoint #%i triggered. Address: %p\n", i, address);
+				kern_printBacktrace(20);
+			}
+		}
+
+
+		// We have to clear DR6 ourself
+		__asm__ volatile("mov %0, %%dr6" : : "r" (0x0));
+
+		return esp;
+	}
+	else
+	if(state->interrupt == 13)
+	{
+		panic("General protection fault. Error code: %p", state->error);
+	}
+	else
 	if(state->interrupt == 14)
 	{
 		// Page Fault
@@ -31,14 +86,14 @@ cpu_state_t *__ir_exceptionHandler(cpu_state_t *state)
 		uint32_t error = state->error;
 
 		__asm__ volatile("mov %%cr2, %0" : "=r" (address)); // Get the virtual address of the page
-		panic("Page Fault occured!\nError: %s caused by %s in %s. Virtual address: %p. EIP: %x", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), // Panic with the type of the error
+		panic("Page Fault exception; %s while %s in %s.\nVirtual address: %p. EIP: %p", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), // Panic with the type of the error
 			__ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), // Why it occured
 			__ir_exception_pageFaultTranslateBit(3, error & (1 << 2)), // And in which mode it occured.
 			address, state->eip);
 	}
 
 	panic("Unhandled exception %i occured!", state->interrupt);
-	return state; // We won't reach this point...
+	return esp; // We won't reach this point...
 }
 
 const char *__ir_exception_pageFaultTranslateBit(int bit, int set)
@@ -46,15 +101,15 @@ const char *__ir_exception_pageFaultTranslateBit(int bit, int set)
 	switch(bit)
 	{
 		case 1:
-			return set ? "Protection violation" : "Non present page";
+			return set ? "Protection violation" : "Non-present page";
 			break;
 
 		case 2:
-			return set ? "write access" : "read access";
+			return set ? "writing" : "reading";
 			break;
 
 		case 3:
-			return set ? "user Mode" : "supervisor Mode";
+			return set ? "ring 3" : "ring 0";
 			break;
 
 		default:

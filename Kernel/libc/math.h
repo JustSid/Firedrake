@@ -33,33 +33,4 @@ static inline int abs(int i)
 	return (i < 0) ? -i : i;
 }
 
-static inline float fabs(float f)
-{
-	return (f < 0.0f) ? -f : f;
-}
-
-static inline double dabs(double d)
-{
-	return (d < 0.0) ? -d : d;
-}
-
-
-#define CEILING64_POS(n) ((n-(int64_t)(n)) > 0 ? (int64_t)(n + 1) : (int64_t)(n))
-#define CEILING64_NEG(n) ((n-(int64_t)(n)) < 0 ? (int64_t)(n - 1) : (int64_t)(n))
-#define CEILING64(n) (((n) > 0) ? CEILING64_POS(n) : CEILING64_NEG(n))
-
-#define CEILING32_POS(n) ((n-(int32_t)(n)) > 0 ? (int32_t)(n + 1) : (int32_t)(n))
-#define CEILING32_NEG(n) ((n-(int32_t)(n)) < 0 ? (int32_t)(n - 1) : (int32_t)(n))
-#define CEILING32(n) (((n) > 0) ? CEILING32_POS(n) : CEILING32_NEG(n))
-
-static inline double ceil(double v)
-{
-	return CEILING64(v);
-}
-
-static inline float ceilf(float v)
-{
-	return CEILING32(v);
-}
-
 #endif /* _MATH_H_ */

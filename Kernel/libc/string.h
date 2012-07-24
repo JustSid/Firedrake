@@ -26,11 +26,19 @@
 #include <types.h>
 
 #define isdigit(c) (c >= '0' && c <= '9')
+#define isspace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r')
 
 void *memset(void *dst, int c, size_t size);
 void *memcpy(void *dst, const void *src, size_t size);
 
+char *strcpy(char *dst, const char *src);
 size_t strlcpy(char *dst, const char *src, size_t size); // Similar to strncpy, but appends the NULL byte always!
 size_t strlen(const char *string);
+
+int strcmp(const char *str1, const char *str2);
+int strncmp(const char *str1, const char *str2, size_t size);
+
+char *strstr(char *str1, const char *str2);
+char *strpbrk(char *str1, const char *str2);
 
 #endif /* _STRING_H_ */

@@ -17,7 +17,11 @@
 //
 
 #include <memory/memory.h>
+#include <system/syslog.h>
+#include <libc/string.h>
+#include <interrupts/trampoline.h>
 #include "process.h"
+#include "scheduler.h"
 
 extern void _process_setFirstProcess(process_t *process); // Scheduler.c
 
@@ -27,28 +31,30 @@ uint32_t _process_getUniqueID()
 	return uid ++;
 }
 
-process_t *process_create(thread_entry_t entry)
+process_t *process_createVoid()
 {
-	process_t *process = (process_t *)kalloc(sizeof(process_t));
+	process_t *process = (process_t *)halloc(NULL, sizeof(process_t));
 	if(process)
 	{
-		process_t *parent 	 = process_getCurrentProcess();
-		//process->pdirectory	 = vm_createDirectory();
-		process->pdirectory = vm_getKernelDirectory();
-		
-		process->pid 	 	= PROCESS_NULL;
-		process->died 	 	= false;
-		process->parent  	= parent ? parent->pid : PROCESS_NULL;
-		process->pprocess	= parent;
+		process_t *parent = process_getCurrentProcess();
 
-		process->mainThread = NULL; // Avoid that thread_create reads a false main thread and tries to attach the new thread to the non existent thread
-		process->next 		= NULL;
+		process->pid   = _process_getUniqueID();
+		process->died  = false;
+		process->ring0 = false;
 
-		// Attach a thread
-		thread_create(process, 4096, entry);
-		
-		// Attach the process to the process chain
-		process->pid = _process_getUniqueID();
+		process->parent 	= parent ? parent->pid : PROCESS_NULL;
+		process->pprocess 	= parent;
+
+		process->image      = NULL;
+		process->pdirectory = NULL;
+
+		process->mmapLock 	= SPINLOCK_INIT;
+		process->mappings   = list_create(sizeof(mmap_description_t));
+
+		process->threadLock = SPINLOCK_INIT;
+		process->mainThread = NULL;
+		process->next       = NULL;
+
 		if(parent)
 		{
 			process->next = parent->next;
@@ -60,6 +66,46 @@ process_t *process_create(thread_entry_t entry)
 
 	return process;
 }
+
+
+
+process_t *process_createWithFile(const char *name)
+{
+	spinlock_lock(&_sd_lock);
+
+	process_t *process = process_createVoid();
+	if(process)
+	{
+		process->pdirectory = vm_createDirectory();
+		process->image 		= dy_executableCreateWithFile(process->pdirectory, name);
+		process->mappings 	= list_create(sizeof(mmap_description_t));
+
+		thread_create(process, (thread_entry_t)process->image->entry, 4 * 4096, 0);
+	}
+
+	spinlock_unlock(&_sd_lock);
+	return process;
+}
+
+process_t *process_createKernel()
+{
+	spinlock_lock(&_sd_lock);
+
+	process_t *process = process_createVoid();
+	if(process)
+	{		
+		process->pdirectory = vm_getKernelDirectory();
+		process->ring0      = true;
+
+		thread_create(process, NULL, 1 * 4096, 0);
+	}
+
+	spinlock_unlock(&_sd_lock);
+	return process;
+}
+
+
+
 
 void process_destroy(process_t *process)
 {
@@ -74,7 +120,10 @@ void process_destroy(process_t *process)
 		thread_destroy(temp);
 	}
 
-	kfree(process);
+	if(process->image)
+		dy_executableDestroy(process->image);
+
+	hfree(NULL, process);
 }
 
 process_t *process_getParent()

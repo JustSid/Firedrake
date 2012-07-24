@@ -1,23 +1,36 @@
-CC  = clang
-LD  = llvm-link
-
 KERNEL_DIR = Kernel
-ALLDIRS = $(KERNEL_DIR)
+LIBS_DIR   = Libraries
+PROGS_DIR  = Programs
+
+ALLDIRS = $(KERNEL_DIR) $(LIBS_DIR) $(PROGS_DIR)
 
 all:
 	for i in $(ALLDIRS); do make -C $$i; done
 
-debug: all
-	rm -f ./dump.txt
-	objdump -d ./Kernel/firedrake >> ./dump.txt
-
-kernel:
-	make -c $(KERNEL_DIR);
-
 install: all
 	./Bootable/CreateImage.sh
+
+kernel:
+	make -C $(KERNEL_DIR);
+
+libraries:
+	make all -C $(LIBS_DIR);
+
+programs:
+	make all -C $(PROGS_DIR)
 
 clean:
 	for i in $(ALLDIRS); do make clean -C $$i; done
 
+help:
+	@echo "List of valid targets:"
+	@echo "	-all (default configuration, compiles everything)"
+	@echo "	-install (like all, but also creates a mountable iso with Firedrake)"
+	@echo "	-kernel (builds the kernel)"
+	@echo "	-libraries (builds all libraries)"
+	@echo " -programs (builds all programs)"
+
 .PHONY: clean
+.PHONY: libraries
+.PHONY: programs
+.PHONY: help
