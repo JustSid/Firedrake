@@ -21,6 +21,7 @@
 #include <system/helper.h>
 #include <system/panic.h>
 #include <system/kernel.h>
+#include <system/lock.h>
 #include <interrupts/trampoline.h>
 #include <libc/string.h>
 #include <libc/math.h>
@@ -34,23 +35,25 @@ extern uintptr_t kernelEnd;	// Marks the end of the kernel (also set by the link
 
 // Bitmap of the heap.
 static uint32_t __pm_heap[PM_HEAPSIZE];
+static spinlock_t __pm_spinlock = SPINLOCK_INIT;
+
 
 // Marks the given page as used in the heap bitmap
-static inline void pm_markUsed(uintptr_t page)
+static inline void __pm_markUsed(uintptr_t page)
 {
 	uint32_t index = page / PM_PAGE_SIZE;
 	__pm_heap[index / 32] &= ~(1 << (index % 32));
 }
 
 // Marks the given page as unused in the heap bitmap
-static inline void pm_markFree(uintptr_t page)
+static inline void __pm_markFree(uintptr_t page)
 {
 	uint32_t index = page / PM_PAGE_SIZE;
 	__pm_heap[index / 32] |= (1 << (index % 32));
 }
 
 
-uintptr_t pm_findFreePages(uintptr_t lowerLimit, size_t pages)
+static inline uintptr_t __pm_findFreePages(uintptr_t lowerLimit, size_t pages)
 {
     size_t found = 0; // The number of found pages
     uintptr_t page = 0; // Address of the first found page
@@ -100,63 +103,69 @@ uintptr_t pm_findFreePages(uintptr_t lowerLimit, size_t pages)
 // Returns a physical page range not lower than lowerLimit
 uintptr_t pm_allocLimit(uintptr_t lowerLimit, size_t pages)
 {
-	uintptr_t page = pm_findFreePages(lowerLimit, pages);
+	spinlock_lock(&__pm_spinlock);
+
+	uintptr_t page = __pm_findFreePages(lowerLimit, pages);
 	if(page)
 	{
 		uintptr_t temp = page;
 		for(size_t i=0; i<pages; i++)
 		{
-			pm_markUsed(temp);
+			__pm_markUsed(temp);
 			temp += PM_PAGE_SIZE;
 		}
 	}
 
+	spinlock_unlock(&__pm_spinlock);
 	return page;
 }
 
 // Returns a physical page range of n pages
 uintptr_t pm_alloc(size_t pages)
 {
-	uintptr_t page = pm_findFreePages(0x0, pages);
+	spinlock_lock(&__pm_spinlock);
+
+	uintptr_t page = __pm_findFreePages(0x0, pages);
 	if(page)
 	{
 		uintptr_t temp = page;
 		for(size_t i=0; i<pages; i++)
 		{
-			pm_markUsed(temp);
+			__pm_markUsed(temp);
 			temp += PM_PAGE_SIZE;
 		}
 	}
-	else
-	{
-		panic("Out of memory!");
-	}
 
+	spinlock_unlock(&__pm_spinlock);
 	return page;
 }
 
 void pm_free(uintptr_t page, size_t pages)
 {
+	spinlock_lock(&__pm_spinlock);
+
 	for(size_t i=0; i<pages; i++)
 	{
-		pm_markFree(page);
+		__pm_markFree(page);
 		page += PM_PAGE_SIZE;
 	}
+
+	spinlock_unlock(&__pm_spinlock);
 }
 
 // MARK: Init
 void pm_markMultibootModule(struct multiboot_module_s *module)
 {
 	// Mark the module data as used
-    uintptr_t start = round4kDown((uintptr_t)module->start);
-    uintptr_t end = round4kUp((uintptr_t)module->end);
+	uintptr_t start = round4kDown((uintptr_t)module->start);
+	uintptr_t end   = round4kUp((uintptr_t)module->end);
 
-    size_t size = end - start;
-    size_t pages = ((size % PM_PAGE_SIZE) == 0) ? size / PM_PAGE_SIZE : (size / PM_PAGE_SIZE) + 1;
+	size_t size  = end - start;
+	size_t pages = ((size % PM_PAGE_SIZE) == 0) ? size / PM_PAGE_SIZE : (size / PM_PAGE_SIZE) + 1;
 
     for(size_t i=0; i<pages; i++)
     {
-    	pm_markUsed(start);
+    	__pm_markUsed(start);
     	start += 0x1000;
     }
 
@@ -169,7 +178,7 @@ void pm_markMultibootModule(struct multiboot_module_s *module)
 
     for(size_t i=0; i<pages; i++)
     {
-    	pm_markUsed(name);
+    	__pm_markUsed(name);
     	name += 0x1000;
     }
 }
@@ -179,7 +188,7 @@ void pm_markMultiboot(struct multiboot_s *info)
     struct multiboot_module_s *modules = (struct multiboot_module_s *)info->mods_addr;
 
     uintptr_t infostart = round4kDown((uintptr_t)info);
-    pm_markUsed(infostart); // TODO: We might run into alignment issues here if the info sits partially on two pages because we only mark the lower page in this case
+    __pm_markUsed(infostart); // TODO: We might run into alignment issues here if the info sits partially on two pages because we only mark the lower page in this case
 
     for(uint32_t i=0; i<info->mods_count; i++)
     {
@@ -216,7 +225,7 @@ bool pm_init(void *data)
 			// Mark the range as free
 			while(address < addressEnd) 
 			{
-				pm_markFree(address);
+				__pm_markFree(address);
 				
 				address		+= PM_PAGE_SIZE;
 				memoryTotal += PM_PAGE_SIZE;
@@ -233,13 +242,13 @@ bool pm_init(void *data)
 	uintptr_t address = _kernelBegin;
 	while(address < _kernelEnd) 
 	{
-		pm_markUsed(address);
+		__pm_markUsed(address);
 		address += PM_PAGE_SIZE;
 	}
 
 	
 	pm_markMultiboot(info); // Oh and, we should probably mark the multiboot stuff as used? Yeah...
-	pm_markUsed(0x0); // Last but not least, lets mark NULL as used to avoid allocating it.
+	__pm_markUsed(0x0); // Last but not least, lets mark NULL as used to avoid allocating it.
 	
 	// Try reserving space for the kernel directory
 	uintptr_t directory = pm_allocLimit(VM_KERNEL_DIRECTORY_ADDRESS, 1);

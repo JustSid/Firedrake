@@ -33,6 +33,8 @@ typedef struct
 	vm_address_t vaddress;
 	uintptr_t paddress;
 
+	size_t length;
+	int protection;
 } mmap_description_t;
 
 typedef struct process_s

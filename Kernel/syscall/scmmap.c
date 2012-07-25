@@ -40,6 +40,7 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 
+	// Get the passed arguments from the stack
 	uintptr_t address = *((uintptr_t *)(uesp + 0));
 	size_t length     = *((size_t *)(uesp + 1));
 	int protection    = *((int *)(uesp + 2));
@@ -116,7 +117,7 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 		if(!memory)
 		{
 			*errno = ENOMEM;
-			
+
 			vm_free(process->pdirectory, vmemory, pages);
 			pm_free(pmemory, pages);
 
@@ -126,9 +127,11 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 		memset(memory, 0, pages * VM_PAGE_SIZE);
 		vm_free(vm_getKernelDirectory(), (vm_address_t)memory, pages);
 
-		// Add the description
-		description->vaddress = vmemory;
-		description->paddress = pmemory;
+		// Update the description
+		description->vaddress   = vmemory;
+		description->paddress   = pmemory;
+		description->length     = length;
+		description->protection = protection;
 
 		return vmemory;
 	}
@@ -140,9 +143,97 @@ mmapFailed:
 	return MAP_FAILED;
 }
 
+// munmap() signature
+// int munmap(void *address, size_t length)
+uint32_t _sc_munmap(uint32_t *esp, uint32_t *uesp, int *errno)
+{
+	process_t *process = process_getCurrentProcess();
+
+	// fetch the arguments from the stack
+	uintptr_t address = *((uintptr_t *)(uesp + 0));
+	size_t length = *((size_t *)(uesp + 1));
+
+	if((address % 4096) != 0 || length == 0)
+	{
+		*errno = EINVAL;
+		return -1;
+	}
+
+	spinlock_lock(&process->mmapLock);
+
+	// Search for the mmap entry that fits the address and length
+	list_base_t *entry = list_first(process->mappings); 
+	while(entry)
+	{
+		mmap_description_t *description = (mmap_description_t *)entry;
+
+		if(description->vaddress >= address && address <= description->vaddress + description->length)
+		{
+			if(description->vaddress == address && description->length == length)
+			{
+				size_t pages = pageCount(length);
+
+				vm_free(process->pdirectory, description->vaddress, pages);
+				pm_free(description->paddress, pages);
+			}
+			else
+			{
+				if((length % 4096) != 0)
+					length = round4kUp(length);
+
+				size_t pages = pageCount(length);
+				uintptr_t pmemory = vm_resolveVirtualAddress(process->pdirectory, address);
+
+				if(description->vaddress == address)
+				{
+					mmap_description_t *next = list_addBack(process->mappings);
+					next->paddress   = description->paddress + length;
+					next->vaddress   = description->vaddress + length;
+					next->length     = description->length - length;
+					next->protection = description->protection;
+				}
+				else if(description->vaddress + description->length == address + length)
+				{
+					mmap_description_t *prev = list_addBack(process->mappings);
+					prev->paddress   = description->paddress;
+					prev->vaddress   = description->vaddress;
+					prev->length     = description->length - length;
+					prev->protection = description->protection;
+				}
+				else
+				{
+					mmap_description_t *prev = list_addBack(process->mappings);
+					prev->paddress   = description->paddress;
+					prev->vaddress   = description->vaddress;
+					prev->length     = address - description->vaddress;
+					prev->protection = description->protection;
+
+					mmap_description_t *next = list_addBack(process->mappings);
+					next->paddress   = description->paddress + length;
+					next->vaddress   = description->vaddress + length;
+					next->length     = (description->vaddress + description->length) - (address + length);
+					next->protection = description->protection;
+				}
+
+				vm_free(process->pdirectory, address, pages);
+				pm_free(pmemory, pages);
+			}
+
+			list_remove(process->mappings, entry);
+			spinlock_unlock(&process->mmapLock);
+			return 0;
+		}
+
+		entry = entry->next;
+	}
+
+	spinlock_unlock(&process->mmapLock);
+	return 0;
+}
 
 
 void _sc_mmapInit()
 {
 	sc_setSyscallHandler(SYS_MMAP, _sc_mmap);
+	sc_setSyscallHandler(SYS_UNMAP, _sc_munmap);
 }

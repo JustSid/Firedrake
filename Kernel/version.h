@@ -29,7 +29,7 @@ const char *versionAppendix = "";
 
 #define VersionMajor 0
 #define VersionMinor 2
-#define VersionPatch 0
+#define VersionPatch 1
 
 #define VersionCreate(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
 #define VersionCurrent VersionCreate(VersionMajor, VersionMinor, VersionPatch)

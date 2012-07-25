@@ -25,6 +25,7 @@
 #define _HEAP_H_
 
 #include <types.h>
+#include <system/lock.h>
 #include "vmemory.h"
 
 #define kHeapChangesThreshold 5
@@ -46,9 +47,10 @@ typedef struct
 	size_t size;
 	size_t pages;
 
-	uint8_t changes;
+	uint8_t changes; 
 	vm_page_directory_t directory;
 
+	spinlock_t lock;
 	struct _heap_allocation_s *firstAllocation;
 } heap_t;
 
@@ -61,7 +63,6 @@ void heap_destroy(heap_t *heap);
 size_t heap_allocationUsableSize(struct _heap_allocation_s *allocation);
 
 void *halloc(heap_t *heap, size_t size);
-void *hrealloc(heap_t *heap, void *ptr, size_t size);
 void hfree(heap_t *heap, void *ptr);
 
 bool heap_init(void *unused);

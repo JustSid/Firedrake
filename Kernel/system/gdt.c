@@ -21,6 +21,9 @@
 #include "helper.h"
 #include "cpu.h"
 
+// This is a trick to set he CS register when compiling with LLVM/Clang
+#define GDT_SET_CS_REGISTER(cs) __asm__ volatile("ljmp %0, $_fakeLabel \n\t _fakeLabel: \n\t" :: "i"(cs))
+
 void gdt_setEntry(uint64_t *gdt, int16_t index, uint32_t base, uint32_t limit, int32_t flags) __attribute__ ((noinline));
 void gdt_setEntry(uint64_t *gdt, int16_t index, uint32_t base, uint32_t limit, int32_t flags)
 {
@@ -63,7 +66,7 @@ void gdt_init(uint64_t *gdt, struct tss_s *tss)
 
 	// Reload the GDT
 	__asm__ volatile("lgdt	%0" : : "m" (gdtp));
-	set_CSRegister(0x8);
+	GDT_SET_CS_REGISTER(0x8);
 
 	// Reload the segment register
 	__asm__ volatile("mov	$0x10,   %ax;");

@@ -43,12 +43,13 @@ heap_t *heap_create(size_t bytes, vm_page_directory_t directory, vm_address_t st
 
 
 	heap_t *heap = (heap_t *)vpage;
-	heap->size = bytes;
-	heap->pages = npages;
+	heap->size      = bytes;
+	heap->pages     = npages;
+	heap->changes   = 0;
 	heap->directory = directory;
-	heap->changes = 0;
-	heap->firstAllocation = (struct _heap_allocation_s *)(heap + 1);
+	heap->lock      = SPINLOCK_INIT;
 
+	heap->firstAllocation = (struct _heap_allocation_s *)(heap + 1);
 	heap->firstAllocation->size = bytes;
 	heap->firstAllocation->type = kHeapAllocationTypeFree;
 	heap->firstAllocation->ptr  = (uintptr_t)(heap->firstAllocation + 1);
@@ -85,7 +86,7 @@ size_t heap_allocationUsableSize(struct _heap_allocation_s *allocation)
 	return allocation->size - sizeof(struct _heap_allocation_s);
 }
 
-bool heap_mergeAllocation(struct _heap_allocation_s *allocation)
+static inline bool heap_mergeAllocation(struct _heap_allocation_s *allocation)
 {
 	if(allocation->next && allocation->next->type == kHeapAllocationTypeFree)
 	{
@@ -100,7 +101,7 @@ bool heap_mergeAllocation(struct _heap_allocation_s *allocation)
 	return false;
 }
 
-void heap_divideAllocation(struct _heap_allocation_s *allocation, size_t bytes)
+static inline void heap_divideAllocation(struct _heap_allocation_s *allocation, size_t bytes)
 {
 	struct _heap_allocation_s *next = (struct _heap_allocation_s *)(allocation->ptr + bytes);
 	size_t psize = allocation->size;
@@ -115,7 +116,7 @@ void heap_divideAllocation(struct _heap_allocation_s *allocation, size_t bytes)
 	allocation->next = next;
 }
 
-struct _heap_allocation_s *heap_allocationWithPtr(heap_t *heap, void *ptr)
+static inline struct _heap_allocation_s *heap_allocationWithPtr(heap_t *heap, void *ptr)
 {
 	if(!ptr)
 		return NULL;
@@ -142,13 +143,13 @@ void heap_defrag(heap_t *heap)
 
 
 
-
 void *halloc(heap_t *heap, size_t size)
 {
 	if(!heap)
 		heap = _mm_kernelHeap;
 
 	size = size + sizeof(struct _heap_allocation_s) + 64;
+	spinlock_lock(&heap->lock);
 
 	struct _heap_allocation_s *allocation = heap->firstAllocation;
 	while(allocation)
@@ -161,48 +162,14 @@ void *halloc(heap_t *heap, size_t size)
 			allocation->type = kHeapAllocationTypeUsed;
 			heap->changes ++;
 
+			spinlock_unlock(&heap->lock);
 			return (void *)allocation->ptr;
 		}
 
 		allocation = allocation->next;
 	}
 
-	return NULL;
-}
-
-void *hrealloc(heap_t *heap, void *ptr, size_t size)
-{
-	if(!heap)
-		heap = _mm_kernelHeap;
-
-	struct _heap_allocation_s *allocation = heap_allocationWithPtr(heap, ptr);
-	if(allocation)
-	{
-		size_t psize = heap_allocationUsableSize(allocation);
-
-		if(psize >= size + 128)
-		{
-			heap_divideAllocation(allocation, size + 64);
-			return ptr;
-		}
-
-		if(psize >= size)
-			return ptr;
-
-		void *nptr = halloc(heap, size);
-		if(nptr)
-		{
-			size_t psize = heap_allocationUsableSize(allocation);
-			memcpy(ptr, nptr, psize);
-
-			allocation->type = kHeapAllocationTypeFree;
-			heap->changes ++;
-		}
-
-		return nptr;
-	}
-
-	dbg("hrealloc() with not existing ptr called!\n");
+	spinlock_unlock(&heap->lock);
 	return NULL;
 }
 
@@ -210,6 +177,8 @@ void hfree(heap_t *heap, void *ptr)
 {
 	if(!heap)
 		heap = _mm_kernelHeap;
+
+	spinlock_unlock(&heap->lock);
 
 	struct _heap_allocation_s *allocation = heap_allocationWithPtr(heap, ptr);
 	if(allocation)
@@ -220,10 +189,12 @@ void hfree(heap_t *heap, void *ptr)
 		if(heap->changes > kHeapChangesThreshold)
 			heap_defrag(heap);
 
+		spinlock_unlock(&heap->lock);
 		return;
 	}
 
 	dbg("hfree(%p), unknown pointer!\n", ptr);
+	spinlock_unlock(&heap->lock);
 }
 
 

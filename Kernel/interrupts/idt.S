@@ -118,7 +118,7 @@ ENTRY(idt_entry_handler)
 	popl %ds
 	popa
 
-	add $8, %esp // Remove the error code and interrupt number from the stack
+	addl $8, %esp // Remove the error code and interrupt number from the stack
 	iret
 
 .global idt_sectionEnd

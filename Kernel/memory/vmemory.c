@@ -17,11 +17,12 @@
 //
 
 #include <config.h>
+#include <interrupts/trampoline.h>
 #include <system/syslog.h>
 #include <system/assert.h>
 #include <system/panic.h>
-#include <interrupts/trampoline.h>
 #include <system/kernel.h>
+#include <system/lock.h>
 #include <libc/string.h>
 #include <libc/math.h>
 #include "vmemory.h"
@@ -33,6 +34,17 @@ extern uintptr_t kernelEnd;	// Marks the end of the kernel (also set by the link
 
 static vm_page_directory_t __vm_kernelDirectory;
 static bool __vm_usePhysicalKernelPages;
+
+static spinlock_t __vm_spinlock = SPINLOCK_INIT;
+
+vm_address_t __vm_alloc_noLock(vm_page_directory_t context, uintptr_t pmemory, size_t pages, uint32_t flags);
+
+#ifndef CONF_VM_NOINLINE
+static inline bool __vm_mapPage(vm_page_directory_t pdirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags);
+#else
+bool __vm_mapPage(vm_page_directory_t pdirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags) __attribute__((noinline));
+#endif
+
 
 // MARK: Inlined functions
 // REMARK: These functions assume that pdirectory is mapped!
@@ -59,7 +71,7 @@ vm_address_t __vm_findFreePagesWithLimit(vm_page_directory_t pdirectory, size_t 
         {
             uintptr_t ptable = (uintptr_t)(pdirectory[i] & ~0xFFF);
 
-            vm_page_table_t table1 = (vm_page_table_t)vm_alloc(__vm_kernelDirectory, ptable, 1, VM_FLAGS_KERNEL);
+            vm_page_table_t table1 = (vm_page_table_t)__vm_alloc_noLock(__vm_kernelDirectory, ptable, 1, VM_FLAGS_KERNEL);
             vm_page_table_t table2 = (uint32_t *)(VM_KERNEL_PAGE_TABLES + (i << VM_SHIFT));
 
             for(uint32_t j=(i == startDirectoryIndex ? startTableIndex : 0); j<VM_PAGETABLE_LENGTH; j++)
@@ -80,7 +92,7 @@ vm_address_t __vm_findFreePagesWithLimit(vm_page_directory_t pdirectory, size_t 
                 }
             }
 
-            vm_free(__vm_kernelDirectory, (vm_address_t)table1, 1);
+            __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)table1, 0);
         }
         else
         {
@@ -136,7 +148,7 @@ vm_address_t __vm_findFreePages(vm_page_directory_t pdirectory, size_t pages, vm
         if(pdirectory[i] & VM_PAGETABLEFLAG_PRESENT)
         {
         	vm_page_table_t ptable = (vm_page_table_t)(pdirectory[i] & ~0xFFF);
-            vm_page_table_t table = (vm_page_table_t)vm_alloc(__vm_kernelDirectory, (uintptr_t)ptable, 1, VM_FLAGS_KERNEL);
+            vm_page_table_t table = (vm_page_table_t)__vm_alloc_noLock(__vm_kernelDirectory, (uintptr_t)ptable, 1, VM_FLAGS_KERNEL);
 
         	for(uint32_t j=(i == startDirectoryIndex ? startTableIndex : 0); j<VM_PAGETABLE_LENGTH; j++)
             {
@@ -155,7 +167,7 @@ vm_address_t __vm_findFreePages(vm_page_directory_t pdirectory, size_t pages, vm
                 }
             }
 
-            vm_free(__vm_kernelDirectory, (vm_address_t)table, 1);
+            __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)table, 0);
         }
         else
         {
@@ -328,7 +340,7 @@ bool __vm_mapPage(vm_page_directory_t pdirectory, uintptr_t paddress, vm_address
     pageTable[index % VM_PAGETABLE_LENGTH] = ((uint32_t)paddress) | flags;
 
     if(pdirectory != __vm_kernelDirectory)
-        vm_mapPage(__vm_kernelDirectory, 0, (vm_address_t)kernelPage, 0); // Unmap the temporary page table from the kernel
+        __vm_mapPage(__vm_kernelDirectory, 0, (vm_address_t)kernelPage, 0); // Unmap the temporary page table from the kernel
     
     invlpg((uintptr_t)vaddress);
     return true;
@@ -371,7 +383,7 @@ uint32_t __vm_getPagetableEntry(vm_page_directory_t pdirectory, vm_address_t vad
         return result;
 
     physPageTable = (uintptr_t)(pdirectory[index / VM_PAGETABLE_LENGTH] & ~0xFFF);
-    pageTable = (vm_page_table_t)vm_alloc(__vm_kernelDirectory, physPageTable, 1, VM_FLAGS_KERNEL);
+    pageTable = (vm_page_table_t)__vm_alloc_noLock(__vm_kernelDirectory, physPageTable, 1, VM_FLAGS_KERNEL);
 
     if(pageTable[index % VM_PAGETABLE_LENGTH] & VM_PAGETABLEFLAG_PRESENT)
     {
@@ -379,12 +391,12 @@ uint32_t __vm_getPagetableEntry(vm_page_directory_t pdirectory, vm_address_t vad
         result = entry;
     }
 
-    vm_free(__vm_kernelDirectory, (vm_address_t)pageTable, 1);
+    __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pageTable, 0);
     return result;
 }
 
 // MARK: Public functions
-
+// Might lock the virtual memory lock!
 vm_page_directory_t vm_getKernelDirectory()
 {
     return __vm_kernelDirectory;
@@ -399,11 +411,10 @@ vm_page_directory_t vm_createDirectory()
     directory[0xFF] = (uint32_t)physPageDir | VM_FLAGS_KERNEL;
 
     // Map the trampoline area
-    __vm_mapPageRange(directory, IR_TRAMPOLINE_PHYSICAL, IR_TRAMPOLINE_BEGIN, IR_TRAMPOLINE_PAGES, VM_FLAGS_USERLAND);
+    __vm_mapPageRange(directory, IR_TRAMPOLINE_PHYSICAL, IR_TRAMPOLINE_BEGIN, IR_TRAMPOLINE_PAGES, VM_FLAGS_KERNEL);
 
     // Unmap the directory
-    __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)directory, 0);
-
+    vm_free(__vm_kernelDirectory, (vm_address_t)directory, 1);
     return (vm_page_directory_t)physPageDir;
 }
 
@@ -417,7 +428,7 @@ uintptr_t vm_resolveVirtualAddress(vm_page_directory_t pdirectory, vm_address_t 
         isKernelDirectory = false;
     }
 
-
+    spinlock_lock(&__vm_spinlock);
     uint32_t entry = __vm_getPagetableEntry(pdirectory, vaddress);
 
     if(!(entry & VM_PAGETABLEFLAG_PRESENT))
@@ -425,6 +436,7 @@ uintptr_t vm_resolveVirtualAddress(vm_page_directory_t pdirectory, vm_address_t 
         if(!isKernelDirectory)
             __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pdirectory, 0);
 
+        spinlock_unlock(&__vm_spinlock);
         return 0x0;
     }
 
@@ -432,6 +444,7 @@ uintptr_t vm_resolveVirtualAddress(vm_page_directory_t pdirectory, vm_address_t 
     if(!isKernelDirectory)
         __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pdirectory, 0);
 
+    spinlock_unlock(&__vm_spinlock);
     return (uintptr_t)((entry & ~0xFFF) | ((uint32_t)vaddress & 0xFFF));
 }
 
@@ -448,12 +461,13 @@ bool vm_mapPage(vm_page_directory_t pdirectory, uintptr_t paddress, vm_address_t
         isKernelDirectory = false;
     }
 
-
+    spinlock_lock(&__vm_spinlock);
 	result = __vm_mapPage(pdirectory, paddress, vaddress, flags);
 
     if(!isKernelDirectory)
         __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pdirectory, 0);
 
+    spinlock_unlock(&__vm_spinlock);
 	return result;
 }
 
@@ -468,12 +482,13 @@ bool vm_mapPageRange(vm_page_directory_t pdirectory, uintptr_t paddress, vm_addr
         isKernelDirectory = false;
     }
 
-
+    spinlock_lock(&__vm_spinlock);
 	result = __vm_mapPageRange(pdirectory, paddress, vaddress, pages, flags);
 
     if(!isKernelDirectory)
         __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pdirectory, 0);
 
+    spinlock_unlock(&__vm_spinlock);
 	return result;
 }
 
@@ -485,15 +500,18 @@ vm_address_t vm_allocTwoSidedLimit(vm_page_directory_t pdirectory, uintptr_t pad
         return vm_allocLimit(pdirectory, paddress, limit, pages, flags);
     }
 
+
     pdirectory = (vm_page_directory_t)vm_alloc(__vm_kernelDirectory, (uintptr_t)pdirectory, 1, VM_FLAGS_KERNEL);
+    spinlock_lock(&__vm_spinlock);
 
     vm_address_t vaddress = __vm_findFreePagesWithLimit(pdirectory, pages, limit);
 
     __vm_mapPageRange(__vm_kernelDirectory, paddress, vaddress, pages, flags);
     __vm_mapPageRange(pdirectory, paddress, vaddress, pages, flags);
 
-    vm_free(__vm_kernelDirectory, (vm_address_t)pdirectory, 1);
+    __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pdirectory, 0);
 
+    spinlock_unlock(&__vm_spinlock);
     return vaddress;
 }
 
@@ -508,6 +526,7 @@ vm_address_t vm_allocLimit(vm_page_directory_t pdirectory, uintptr_t paddress, v
         isKernelDirectory = false;
     }
 
+    spinlock_lock(&__vm_spinlock);
     vaddress = (isKernelDirectory) ? __vm_findFreeKernelPages(pages, limit) : __vm_findFreePages(pdirectory, pages, limit);
 
     if(vaddress)
@@ -516,6 +535,7 @@ vm_address_t vm_allocLimit(vm_page_directory_t pdirectory, uintptr_t paddress, v
     if(!isKernelDirectory)
         __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pdirectory, 0);
 
+    spinlock_unlock(&__vm_spinlock);
     return vaddress;
 }
 
@@ -530,6 +550,7 @@ vm_address_t vm_alloc(vm_page_directory_t pdirectory, uintptr_t paddress, size_t
         isKernelDirectory = false;
     }
 
+    spinlock_lock(&__vm_spinlock);
 	vaddress = (isKernelDirectory) ? __vm_findFreeKernelPages(pages, 0x0) : __vm_findFreePages(pdirectory, pages, 0x0);
 
 	if(vaddress)
@@ -538,7 +559,30 @@ vm_address_t vm_alloc(vm_page_directory_t pdirectory, uintptr_t paddress, size_t
     if(!isKernelDirectory)
         __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pdirectory, 0);
 
+    spinlock_unlock(&__vm_spinlock);
 	return vaddress;
+}
+
+vm_address_t __vm_alloc_noLock(vm_page_directory_t pdirectory, uintptr_t paddress, size_t pages, uint32_t flags)
+{
+    vm_address_t vaddress = 0x0;
+    bool isKernelDirectory = true;
+
+    if(pdirectory != __vm_kernelDirectory)
+    {
+        pdirectory = (vm_page_directory_t)__vm_alloc_noLock(__vm_kernelDirectory, (uintptr_t)pdirectory, 1, VM_FLAGS_KERNEL);
+        isKernelDirectory = false;
+    }
+
+    vaddress = (isKernelDirectory) ? __vm_findFreeKernelPages(pages, 0x0) : __vm_findFreePages(pdirectory, pages, 0x0);
+
+    if(vaddress)
+        __vm_mapPageRange(pdirectory, (vm_address_t)paddress, vaddress, pages, flags);
+
+    if(!isKernelDirectory)
+        __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pdirectory, 0);
+
+    return vaddress;
 }
 
 void vm_free(vm_page_directory_t pdirectory, vm_address_t vaddress, size_t pages)
@@ -551,6 +595,7 @@ void vm_free(vm_page_directory_t pdirectory, vm_address_t vaddress, size_t pages
         isKernelDirectory = false;
     }
 
+    spinlock_lock(&__vm_spinlock);
 	for(size_t page=0; page<pages; page++)
 	{
 		__vm_mapPage(pdirectory, (vm_address_t)0x0, vaddress, 0);
@@ -559,6 +604,8 @@ void vm_free(vm_page_directory_t pdirectory, vm_address_t vaddress, size_t pages
 
     if(!isKernelDirectory)
         __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pdirectory, 0);
+
+    spinlock_unlock(&__vm_spinlock);
 }
 
 
