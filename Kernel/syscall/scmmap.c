@@ -29,7 +29,6 @@
 
 #define MAP_SHARED    0x0001 // Not supported yet
 #define MAP_PRIVATE   0x0002
-
 #define MAP_ANONYMOUS 	0x0004 // Must be specified because of lack of file descriptors
 #define MAP_FAILED		-1
 
@@ -54,6 +53,8 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 	if(!description)
 	{
 		spinlock_unlock(&process->mmapLock);
+
+		*errno = ENOMEM;
 		return MAP_FAILED;
 	}
 
@@ -65,6 +66,8 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 		// Check if address and length are on an 4k aligned
 		if((address % 4096) != 0 || (length % 4096) != 0)
 		{
+			spinlock_unlock(&process->mmapLock);
+
 			*errno = EINVAL;
 			return MAP_FAILED;
 		}
@@ -138,6 +141,7 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 
 
 mmapFailed:
+
 	list_remove(process->mappings, description);
 	spinlock_unlock(&process->mmapLock);
 	return MAP_FAILED;

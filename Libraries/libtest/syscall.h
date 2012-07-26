@@ -19,7 +19,7 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 
-typedef unsigned int uint32_t;
+#include "stdint.h"
 
 #define SYS_PRINT 			0
 #define SYS_PRINTCOLOR 		1

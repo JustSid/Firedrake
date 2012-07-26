@@ -1,6 +1,6 @@
 //
-//  main.c
-//  helloworld
+//  mmap.c
+//  libtest
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,38 +16,17 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libtest/print.h>
-#include <libtest/thread.h>
-#include <libtest/mmap.h>
+#include "mmap.h"
+#include "syscall.h"
 
-void cheapstrcp(char *dst, const char *src)
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, uint32_t offset)
 {
-	while(*src != '\0')
-	{
-		*dst = *src;
-
-		dst ++;
-		src ++;
-	}
+	uint32_t result = syscall(SYS_MMAP, addr, length, prot, flags, fd, offset);
+	return (void *)result;
 }
 
-void threadEntry(void *arg)
+int munmap(void *address, size_t length)
 {
-	puts("Thread 1\n");
-}
-
-int main()
-{
-	puts("Main thread: Entry\n");
-
-	uint32_t tid = thread_create((void *)threadEntry, NULL);
-	thread_join(tid);
-
-	void *region = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-	cheapstrcp((char *)region, "Hello world!\n");
-
-	puts((const char *)region);
-	puts("Main thread: Exit\n");
-
-	return 0;
+	uint32_t result = syscall(SYS_UNMAP, address, length);
+	return (int)result;
 }

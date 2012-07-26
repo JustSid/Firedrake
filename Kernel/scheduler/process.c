@@ -123,6 +123,21 @@ void process_destroy(process_t *process)
 	if(process->image)
 		dy_executableDestroy(process->image);
 
+	// Remove all mappings
+	list_base_t *entry = list_first(process->mappings);
+	while(entry)
+	{
+		mmap_description_t *description = (mmap_description_t *)entry;
+
+		size_t pages = pageCount(description->length);
+
+		vm_free(process->pdirectory, description->vaddress, pages);
+		pm_free(description->paddress, pages);
+
+		entry = entry->next;
+	}
+
+	list_destroy(process->mappings);
 	hfree(NULL, process);
 }
 

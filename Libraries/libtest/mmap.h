@@ -1,6 +1,6 @@
 //
-//  main.c
-//  helloworld
+//  mmap.h
+//  libtest
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,38 +16,23 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libtest/print.h>
-#include <libtest/thread.h>
-#include <libtest/mmap.h>
+#ifndef _MMAP_H_
+#define _MMAP_H_
 
-void cheapstrcp(char *dst, const char *src)
-{
-	while(*src != '\0')
-	{
-		*dst = *src;
+#include "stdint.h"
 
-		dst ++;
-		src ++;
-	}
-}
+#define MAP_FAILED ((void *)-1)
 
-void threadEntry(void *arg)
-{
-	puts("Thread 1\n");
-}
+#define PROT_NONE   0x00
+#define PROT_READ   0x01
+#define PROT_WRITE  0x02
+#define PROT_EXEC	0x04
 
-int main()
-{
-	puts("Main thread: Entry\n");
+#define MAP_SHARED    	0x0001
+#define MAP_PRIVATE   	0x0002
+#define MAP_ANONYMOUS 	0x0004
 
-	uint32_t tid = thread_create((void *)threadEntry, NULL);
-	thread_join(tid);
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, uint32_t offset);
+int munmap(void *address, size_t length);
 
-	void *region = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-	cheapstrcp((char *)region, "Hello world!\n");
-
-	puts((const char *)region);
-	puts("Main thread: Exit\n");
-
-	return 0;
-}
+#endif /* _MMAP_H_ */

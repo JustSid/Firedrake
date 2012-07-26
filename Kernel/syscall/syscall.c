@@ -90,6 +90,7 @@ void sc_setSyscallHandler(uint32_t syscall, syscall_callback_t callback)
 
 
 void _sc_processInit();
+void _sc_mmapInit();
 
 bool sc_init(void *ingored)
 {
@@ -99,6 +100,7 @@ bool sc_init(void *ingored)
 	sc_setSyscallHandler(SYS_PRINTCOLOR, _sc_print);
 
 	_sc_processInit();
+	_sc_mmapInit();
 
 	return true;
 }
