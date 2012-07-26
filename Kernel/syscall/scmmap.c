@@ -136,6 +136,7 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 		description->length     = length;
 		description->protection = protection;
 
+		spinlock_unlock(&process->mmapLock);
 		return vmemory;
 	}
 
@@ -144,6 +145,7 @@ mmapFailed:
 
 	list_remove(process->mappings, description);
 	spinlock_unlock(&process->mmapLock);
+
 	return MAP_FAILED;
 }
 

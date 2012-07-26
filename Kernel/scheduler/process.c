@@ -104,6 +104,11 @@ process_t *process_createKernel()
 	return process;
 }
 
+process_t *process_getParent()
+{
+	process_t *process = process_getCurrentProcess();
+	return process->pprocess;
+}
 
 
 
@@ -139,10 +144,4 @@ void process_destroy(process_t *process)
 
 	list_destroy(process->mappings);
 	hfree(NULL, process);
-}
-
-process_t *process_getParent()
-{
-	process_t *process = process_getCurrentProcess();
-	return process->pprocess;
 }

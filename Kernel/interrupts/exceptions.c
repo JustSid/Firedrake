@@ -20,6 +20,7 @@
 #include <system/panic.h>
 #include <system/syslog.h>
 #include <system/kernel.h>
+#include <scheduler/scheduler.h>
 #include "interrupts.h"
 
 const char *__ir_exception_pageFaultTranslateBit(int bit, int set);
@@ -85,11 +86,24 @@ uint32_t __ir_handleException(uint32_t esp)
 		uint32_t address;
 		uint32_t error = state->error;
 
-		__asm__ volatile("mov %%cr2, %0" : "=r" (address)); // Get the virtual address of the page
-		panic("Page Fault exception; %s while %s in %s.\nVirtual address: %p. EIP: %p", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), // Panic with the type of the error
-			__ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), // Why it occured
-			__ir_exception_pageFaultTranslateBit(3, error & (1 << 2)), // And in which mode it occured.
-			address, state->eip);
+		__asm__ volatile("mov %%cr2, %0" : "=r" (address)); // Get the virtual address of the address
+
+		process_t *process = process_getCurrentProcess();
+		if(process->pid == 0)
+		{
+			panic("Page Fault exception; %s while %s in %s.\nVirtual address: %p. EIP: %p", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), // Panic with the type of the error
+				__ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), // Why it occured
+				__ir_exception_pageFaultTranslateBit(3, error & (1 << 2)), // And in which mode it occured.
+				address, state->eip);
+		}
+		else
+		{
+			thread_t *thread = process->scheduledThread;
+			process->died = true;
+
+			dbg("%s while %s (to/from) address %p, caused by %i:%i. Killing.\n", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), __ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), address, process->pid, thread->id);
+			return _sd_schedule(esp);
+		}
 	}
 
 	panic("Unhandled exception %i occured!", state->interrupt);
