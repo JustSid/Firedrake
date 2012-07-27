@@ -18,6 +18,7 @@
 
 #include <scheduler/scheduler.h>
 #include <system/syslog.h>
+#include <system/panic.h>
 #include "syscall.h"
 
 uint32_t _sc_exit(uint32_t *esp, uint32_t *uesp, int *errno)
@@ -113,6 +114,27 @@ uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *errno)
 
 
 
+uint32_t _sc_fork(uint32_t *esp, uint32_t *uesp, int *errno)
+{
+	process_t *process = process_getCurrentProcess();
+	process->scheduledThread->esp = *esp; // Update the kernel stack for the thread because its needed when the thread is copied
+
+	process_t *child = process_fork(process);
+
+	if(child)
+	{
+		cpu_state_t *state = (cpu_state_t *)child->scheduledThread->esp;
+		state->eax = 0; // Return 0 to the child
+
+		return child->pid;
+	}
+
+	*errno = EAGAIN; // This is just a guess as its currently impossible to get an actual error from process_fork()
+	return -1;
+}
+
+
+
 void _sc_processInit()
 {
 	sc_setSyscallHandler(SYS_EXIT, _sc_exit);
@@ -122,4 +144,5 @@ void _sc_processInit()
 	sc_setSyscallHandler(SYS_THREADJOIN, _sc_threadJoin);
 	sc_setSyscallHandler(SYS_PROCESSCREATE, _sc_processCreate);
 	sc_setSyscallHandler(SYS_PROCESSKILL, _sc_processKill);
+	sc_setSyscallHandler(SYS_FORK, _sc_fork);
 }

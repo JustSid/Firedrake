@@ -31,29 +31,26 @@ void cheapstrcpy(char *dst, const char *src)
 	}
 }
 
-void threadEntry(void *arg)
-{
-	puts("Thread 1\n");
-}
-
 int main()
 {
-	puts("Main thread: Entry\n");
+	void *blob = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	cheapstrcpy((char *)blob, "Hello world\n");
 
-	uint32_t tid = thread_create((void *)threadEntry, NULL);
-	thread_join(tid);
+	uint32_t pid = fork();
+	if(pid == 0)
+	{
+		puts("Child process!\n");
 
-	void *region = mmap(NULL, 4096 * 2, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
-	uintptr_t address = (uintptr_t)region;
+		cheapstrcpy((char *)blob, "Hello child process\n");
+		puts((const char *)blob);
+	}
+	else
+	{
+		sleep(); // Todo: How about waitpid()?
 
-	munmap((void *)(address + 4096), 4096);
-	munmap(region, 4096);
-
-	// Segfault, here we go...
-	cheapstrcpy((char *)region, "Hello world!\n");
-	puts((const char *)region);
-
-	puts("Main thread: Exit\n");
+		puts("Parent process!\n");
+		puts((const char *)blob);
+	}
 
 	return 0;
 }

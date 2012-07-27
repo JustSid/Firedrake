@@ -110,6 +110,7 @@ static inline thread_t *_sd_threadPreviousThread(thread_t *thread)
 
 
 // MARK: Scheduler
+
 uint32_t _sd_schedule(uint32_t esp)
 {
 	process_t *process = _process_currentProcess;

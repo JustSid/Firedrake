@@ -25,8 +25,10 @@ list_t *list_create(size_t size)
 	list_t *list = halloc(NULL, sizeof(list_t));
 	if(list)
 	{
-		list->count = 0;
+		list->count     = 0;
 		list->entrySize = size;
+		list->lock      = SPINLOCK_INIT;
+
 		list->first = list->last = NULL;
 	}
 
@@ -45,6 +47,16 @@ void list_destroy(list_t *list)
 	hfree(NULL, list);
 }
 
+
+void list_lock(list_t *list)
+{
+	spinlock_lock(&list->lock);
+}
+
+void list_unlock(list_t *list)
+{
+	spinlock_unlock(&list->lock);
+}
 
 
 void *list_addBack(list_t *list)

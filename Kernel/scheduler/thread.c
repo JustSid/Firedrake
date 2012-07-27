@@ -184,6 +184,93 @@ thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t 
 	return thread;
 }
 
+thread_t *thread_copy(struct process_s *process, thread_t *source)
+{
+	thread_t *thread = halloc(NULL,	sizeof(thread_t));
+	if(thread)
+	{
+		uint8_t *userStack 	 = (uint8_t *)pm_alloc(1);
+		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
+
+		if(!userStack || !kernelStack)
+		{
+			if(userStack)
+				pm_free((uintptr_t)userStack, 1);
+			
+			if(kernelStack)
+				pm_free((uintptr_t)kernelStack, 1);
+			
+			hfree(NULL, thread);
+			return NULL;
+		}
+
+		// Setup the general stuff
+		thread->id 			= THREAD_NULL;
+		thread->entry 		= source->entry;
+		thread->died 		= false;
+
+		// Priority and scheduling stuff
+		thread->maxTicks	= source->maxTicks;
+		thread->wantedTicks	= source->wantedTicks;
+		thread->usedTicks	= 0;
+
+		thread->blocked = 0;
+		thread->blocks  = NULL;
+		thread->process = process;
+		thread->next 	= NULL;
+
+		// Stack handling
+		thread->userStack   = userStack;
+		thread->kernelStack = kernelStack;
+
+		// User stack
+		thread->userStackVirt = source->userStackVirt;
+		thread->userStackSize = source->userStackSize;
+
+		vm_mapPageRange(process->pdirectory, (uintptr_t)userStack, (vm_address_t)thread->userStackVirt, 1, VM_FLAGS_USERLAND);
+
+		void *ustackSource = (void *)vm_alloc(vm_getKernelDirectory(), vm_resolveVirtualAddress(source->process->pdirectory, (vm_address_t)source->userStackVirt), 1, VM_FLAGS_KERNEL);
+		void *ustackTarget = (void *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
+
+		memcpy(ustackTarget, ustackSource, VM_PAGE_SIZE);
+
+		vm_free(vm_getKernelDirectory(), (vm_address_t)ustackSource, 1);
+		vm_free(vm_getKernelDirectory(), (vm_address_t)ustackTarget, 1);
+
+		// Kernel stack
+		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
+
+		memcpy(thread->kernelStackVirt, source->kernelStackVirt, VM_PAGE_SIZE);
+
+		size_t offset = ((uintptr_t)thread->kernelStackVirt) - ((uintptr_t)source->kernelStackVirt);
+		thread->esp = source->esp + offset;
+
+		// Attach the thread to the process;
+		spinlock_lock(&process->threadLock); // Acquire the process' thread lock so we don't end up doing bad things
+
+		thread->id = _thread_getUniqueID(process);
+		if(process->mainThread)
+		{
+			thread_t *mthread = process->mainThread;
+
+			// Attach the new thread next to the main thread
+			thread->next  = mthread->next;
+			mthread->next = thread;
+		}
+		else
+		{
+			process->mainThread 		= thread;
+			process->scheduledThread 	= thread;
+		}
+
+		spinlock_unlock(&process->threadLock);
+	}
+
+	return thread;
+}
+
+
+
 void thread_destroy(struct thread_s *thread)
 {
 	thread_predicateBecameTrue(thread, thread_predicateOnExit);

@@ -25,4 +25,6 @@ uint32_t thread_create(void *entry, void *arg);
 void thread_join(uint32_t id);
 void sleep();
 
+uint32_t fork();
+
 #endif /* _THREAD_H_ */

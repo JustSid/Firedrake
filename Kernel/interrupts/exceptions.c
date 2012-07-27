@@ -77,7 +77,19 @@ uint32_t __ir_handleException(uint32_t esp)
 	else
 	if(state->interrupt == 13)
 	{
-		panic("General protection fault. Error code: %p", state->error);
+		process_t *process = process_getCurrentProcess();
+		if(process->pid == 0)
+		{
+			panic("General protection fault. Error code: %p", state->error);
+		}
+		else
+		{
+			thread_t *thread = process->scheduledThread;
+			process->died = true;
+
+			dbg("General protection fault in %i:%i\n", process->pid, thread->id);
+			return _sd_schedule(esp);
+		}
 	}
 	else
 	if(state->interrupt == 14)
@@ -86,7 +98,7 @@ uint32_t __ir_handleException(uint32_t esp)
 		uint32_t address;
 		uint32_t error = state->error;
 
-		__asm__ volatile("mov %%cr2, %0" : "=r" (address)); // Get the virtual address of the address
+		__asm__ volatile("mov %%cr2, %0" : "=r" (address)); // Get the virtual address of the page
 
 		process_t *process = process_getCurrentProcess();
 		if(process->pid == 0)

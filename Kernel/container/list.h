@@ -20,6 +20,7 @@
 #define _LIST_H_
 
 #include <types.h>
+#include <system/lock.h>
 
 typedef struct list_base_s
 {
@@ -34,12 +35,17 @@ typedef struct
 	uint32_t count;
 	size_t entrySize;
 
+	spinlock_t lock;
+
 	list_base_t *first;
 	list_base_t *last;
 } list_t;
 
 list_t *list_create(size_t size);
 void list_destroy(list_t *list);
+
+void list_lock(list_t *list);
+void list_unlock(list_t *list);
 
 void *list_addBack(list_t *list);
 void *list_addFront(list_t *list);

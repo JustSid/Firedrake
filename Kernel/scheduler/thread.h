@@ -72,6 +72,7 @@ typedef struct thread_block_s
 #define THREAD_STACK_LIMIT 0xBFFFFFFD
 
 thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t stackSize, uint32_t args, ...);
+thread_t *thread_copy(struct process_s *target, thread_t *source); // Creates a copy of the source thread for the target process
 thread_t *thread_getCurrentThread(); // Defined in scheduler.c!
 thread_t *thread_getCollectableThreads(); // Defined in scheduler.c
 thread_t *thread_getWithID(uint32_t id);

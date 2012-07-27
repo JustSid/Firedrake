@@ -37,6 +37,7 @@
 #define SYS_PROCESSKILL		8 // syscall1(unsgined int pid)
 #define SYS_MMAP			9 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, uint32_t offset)
 #define SYS_UNMAP			10 // (void*, size_t) // Doesn't exist yet!
+#define SYS_FORK			11 // uint32_t fork(void)
 
 typedef uint32_t (*syscall_callback_t)(uint32_t *esp, uint32_t *uesp, int *errno);
 

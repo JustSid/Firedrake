@@ -18,6 +18,8 @@
 
 #include <memory/memory.h>
 #include <system/syslog.h>
+#include <system/assert.h>
+#include <syscall/scmmap.h>
 #include <libc/string.h>
 #include <interrupts/trampoline.h>
 #include "process.h"
@@ -31,7 +33,9 @@ uint32_t _process_getUniqueID()
 	return uid ++;
 }
 
-process_t *process_createVoid()
+// If insert = true, the scheduler must be locked until the thread list is populated!
+// otherwise the scheduler doesn't need to be locked
+process_t *process_createVoid(bool insert)
 {
 	process_t *process = (process_t *)halloc(NULL, sizeof(process_t));
 	if(process)
@@ -45,23 +49,25 @@ process_t *process_createVoid()
 		process->parent 	= parent ? parent->pid : PROCESS_NULL;
 		process->pprocess 	= parent;
 
-		process->image      = NULL;
-		process->pdirectory = NULL;
+		process->image       = NULL;
+		process->pdirectory  = NULL;
 
-		process->mmapLock 	= SPINLOCK_INIT;
-		process->mappings   = list_create(sizeof(mmap_description_t));
+		process->mappings = list_create(sizeof(mmap_description_t));
 
 		process->threadLock = SPINLOCK_INIT;
 		process->mainThread = NULL;
 		process->next       = NULL;
 
-		if(parent)
+		if(insert)
 		{
-			process->next = parent->next;
-			parent->next  = process;
+			if(parent)
+			{
+				process->next = parent->next;
+				parent->next  = process;
+			}
+			else
+				_process_setFirstProcess(process);
 		}
-		else
-			_process_setFirstProcess(process);
 	}
 
 	return process;
@@ -73,12 +79,11 @@ process_t *process_createWithFile(const char *name)
 {
 	spinlock_lock(&_sd_lock);
 
-	process_t *process = process_createVoid();
+	process_t *process = process_createVoid(true);
 	if(process)
 	{
 		process->pdirectory = vm_createDirectory();
 		process->image 		= dy_executableCreateWithFile(process->pdirectory, name);
-		process->mappings 	= list_create(sizeof(mmap_description_t));
 
 		thread_create(process, (thread_entry_t)process->image->entry, 4 * 4096, 0);
 	}
@@ -87,11 +92,39 @@ process_t *process_createWithFile(const char *name)
 	return process;
 }
 
+process_t *process_fork(process_t *parent)
+{
+	assert(parent);
+
+	process_t *child = process_createVoid(false);
+	if(child)
+	{
+		child->pdirectory = vm_createDirectory();
+		child->image      = dy_exectuableCopy(child->pdirectory, parent->image);
+
+		thread_copy(child, parent->scheduledThread);
+
+		// Copy the memory mappings right here
+		// Todo: Implement copy-on-write someday because thats going to be a performance bottleneck once processes actually start to copy things around...
+		mmap_copyMappings(child, parent);
+
+		// Add the child into the process list
+		spinlock_lock(&_sd_lock);
+
+		child->next  = parent->next;
+		parent->next = child;
+
+		spinlock_unlock(&_sd_lock);
+	}
+
+	return child;
+}
+
 process_t *process_createKernel()
 {
 	spinlock_lock(&_sd_lock);
 
-	process_t *process = process_createVoid();
+	process_t *process = process_createVoid(true);
 	if(process)
 	{		
 		process->pdirectory = vm_getKernelDirectory();
@@ -126,7 +159,7 @@ void process_destroy(process_t *process)
 	}
 
 	if(process->image)
-		dy_executableDestroy(process->image);
+		dy_executableRelease(process->image);
 
 	// Remove all mappings
 	list_base_t *entry = list_first(process->mappings);

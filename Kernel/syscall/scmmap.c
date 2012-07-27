@@ -16,21 +16,61 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <scheduler/scheduler.h>
 #include <system/syslog.h>
-#include <memory/memory.h>
 #include <libc/string.h>
+
+#include "scmmap.h"
 #include "syscall.h"
 
-#define PROT_NONE   0x00
-#define PROT_READ   0x01
-#define PROT_WRITE  0x02
-#define PROT_EXEC	0x04
+uint32_t mmap_vmflagsForProtectionFlags(int protection)
+{
+	uint32_t vmflags = VM_PAGETABLEFLAG_PRESENT;
 
-#define MAP_SHARED    0x0001 // Not supported yet
-#define MAP_PRIVATE   0x0002
-#define MAP_ANONYMOUS 	0x0004 // Must be specified because of lack of file descriptors
-#define MAP_FAILED		-1
+	if(!(protection & PROT_NONE))
+		vmflags |= VM_FLAGS_USERLAND;
+
+	if(!(protection & PROT_READ) && (protection & PROT_WRITE))
+		vmflags |= VM_PAGETABLEFLAG_WRITEABLE;
+
+	return vmflags;
+}
+
+bool mmap_copyMappings(process_t *target, process_t *source)
+{
+	list_lock(target->mappings);
+	list_lock(source->mappings);
+
+	list_base_t *entry = list_first(source->mappings);
+	while(entry)
+	{
+		mmap_description_t *srcDescription = (mmap_description_t *)entry;
+		mmap_description_t *dstDescription = list_addBack(target->mappings);
+
+		size_t pages = pageCount(srcDescription->length);
+		dstDescription->paddress   = pm_alloc(pages);
+		dstDescription->vaddress   = srcDescription->vaddress;
+		dstDescription->protection = srcDescription->protection;
+		dstDescription->length     = srcDescription->length;
+
+		vm_mapPageRange(target->pdirectory, dstDescription->paddress, dstDescription->vaddress, pages, mmap_vmflagsForProtectionFlags(dstDescription->protection));
+
+		// Copy the mappings content
+		void *srcmem = (void *)vm_alloc(vm_getKernelDirectory(), srcDescription->paddress, pages, VM_FLAGS_KERNEL);
+		void *dstmem = (void *)vm_alloc(vm_getKernelDirectory(), dstDescription->paddress, pages, VM_FLAGS_KERNEL);
+
+		memcpy(dstmem, srcmem, srcDescription->length);
+
+		vm_free(vm_getKernelDirectory(), (vm_address_t)srcmem, pages);
+		vm_free(vm_getKernelDirectory(), (vm_address_t)dstmem, pages);
+
+		entry = entry->next;
+	}
+
+	list_unlock(source->mappings);
+	list_unlock(target->mappings);
+
+	return true;
+}
 
 // mmap() signature:
 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, uint32_t offset)
@@ -47,12 +87,12 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 	int filed         = *((int *)(uesp + 4));
 	uint32_t offset   = *((int *)(uesp + 5));
 
-	spinlock_lock(&process->mmapLock);
+	list_lock(process->mappings);
 	mmap_description_t *description = list_addBack(process->mappings);
 
 	if(!description)
 	{
-		spinlock_unlock(&process->mmapLock);
+		list_unlock(process->mappings);
 
 		*errno = ENOMEM;
 		return MAP_FAILED;
@@ -66,21 +106,14 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 		// Check if address and length are on an 4k aligned
 		if((address % 4096) != 0 || (length % 4096) != 0)
 		{
-			spinlock_unlock(&process->mmapLock);
+			list_unlock(process->mappings);
 
 			*errno = EINVAL;
 			return MAP_FAILED;
 		}
 
 		// Get the right virtual memory flags for the requested protection bits
-		uint32_t vmflags = VM_PAGETABLEFLAG_PRESENT;
-
-		if(!(protection & PROT_NONE))
-			vmflags |= VM_FLAGS_USERLAND;
-
-		if(!(protection & PROT_READ) && (protection & PROT_WRITE))
-			vmflags |= VM_PAGETABLEFLAG_WRITEABLE;
-
+		uint32_t vmflags = mmap_vmflagsForProtectionFlags(protection);
 
 		size_t pages      = pageCount(length);
 		uintptr_t pmemory = pm_alloc(pages);
@@ -136,7 +169,7 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 		description->length     = length;
 		description->protection = protection;
 
-		spinlock_unlock(&process->mmapLock);
+		list_unlock(process->mappings);
 		return vmemory;
 	}
 
@@ -144,7 +177,7 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 mmapFailed:
 
 	list_remove(process->mappings, description);
-	spinlock_unlock(&process->mmapLock);
+	list_unlock(process->mappings);
 
 	return MAP_FAILED;
 }
@@ -165,7 +198,7 @@ uint32_t _sc_munmap(uint32_t *esp, uint32_t *uesp, int *errno)
 		return -1;
 	}
 
-	spinlock_lock(&process->mmapLock);
+	list_lock(process->mappings);
 
 	// Search for the mmap entry that fits the address and length
 	list_base_t *entry = list_first(process->mappings); 
@@ -226,14 +259,14 @@ uint32_t _sc_munmap(uint32_t *esp, uint32_t *uesp, int *errno)
 			}
 
 			list_remove(process->mappings, entry);
-			spinlock_unlock(&process->mmapLock);
+			list_unlock(process->mappings);
 			return 0;
 		}
 
 		entry = entry->next;
 	}
 
-	spinlock_unlock(&process->mmapLock);
+	list_unlock(process->mappings);
 	return 0;
 }
 

@@ -70,29 +70,53 @@ vm_address_t __vm_findFreePagesWithLimit(vm_page_directory_t pdirectory, size_t 
         if((pdirectory[i] & VM_PAGETABLEFLAG_PRESENT) || (__vm_kernelDirectory[i] & VM_PAGETABLEFLAG_PRESENT))
         {
             uintptr_t ptable = (uintptr_t)(pdirectory[i] & ~0xFFF);
-
-            vm_page_table_t table1 = (vm_page_table_t)__vm_alloc_noLock(__vm_kernelDirectory, ptable, 1, VM_FLAGS_KERNEL);
-            vm_page_table_t table2 = (uint32_t *)(VM_KERNEL_PAGE_TABLES + (i << VM_SHIFT));
-
-            for(uint32_t j=(i == startDirectoryIndex ? startTableIndex : 0); j<VM_PAGETABLE_LENGTH; j++)
+            if(ptable)
             {
-                if(!(table1[j] & VM_PAGETABLEFLAG_PRESENT) && !(table2[j] & VM_PAGETABLEFLAG_PRESENT))
+                vm_page_table_t table1 = (vm_page_table_t)__vm_alloc_noLock(__vm_kernelDirectory, ptable, 1, VM_FLAGS_KERNEL);
+                vm_page_table_t table2 = (uint32_t *)(VM_KERNEL_PAGE_TABLES + (i << VM_SHIFT));
+
+                for(uint32_t j=(i == startDirectoryIndex ? startTableIndex : 0); j<VM_PAGETABLE_LENGTH; j++)
                 {
-                    if(freePages == 0)
-                        tableIndex = j;
+                    if(!(table1[j] & VM_PAGETABLEFLAG_PRESENT) && !(table2[j] & VM_PAGETABLEFLAG_PRESENT))
+                    {
+                        if(freePages == 0)
+                            tableIndex = j;
 
-                    freePages ++;
+                        freePages ++;
 
-                    if(freePages >= pages)
-                        break;
+                        if(freePages >= pages)
+                            break;
+                    }
+                    else
+                    {
+                        freePages = 0;
+                    }
                 }
-                else
+
+                __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)table1, 0);
+            }
+            else
+            {
+                 vm_page_table_t table = (uint32_t *)(VM_KERNEL_PAGE_TABLES + (i << VM_SHIFT));
+
+                for(uint32_t j=(i == startDirectoryIndex ? startTableIndex : 0); j<VM_PAGETABLE_LENGTH; j++)
                 {
-                    freePages = 0;
+                    if(!(table[j] & VM_PAGETABLEFLAG_PRESENT))
+                    {
+                        if(freePages == 0)
+                            tableIndex = j;
+
+                        freePages ++;
+
+                        if(freePages >= pages)
+                            break;
+                    }
+                    else
+                    {
+                        freePages = 0;
+                    }
                 }
             }
-
-            __vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)table1, 0);
         }
         else
         {
@@ -503,6 +527,7 @@ vm_address_t vm_allocTwoSidedLimit(vm_page_directory_t pdirectory, uintptr_t pad
 
     pdirectory = (vm_page_directory_t)vm_alloc(__vm_kernelDirectory, (uintptr_t)pdirectory, 1, VM_FLAGS_KERNEL);
     spinlock_lock(&__vm_spinlock);
+
 
     vm_address_t vaddress = __vm_findFreePagesWithLimit(pdirectory, pages, limit);
 

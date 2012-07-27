@@ -71,6 +71,9 @@ uint32_t _sc_execute(uint32_t esp)
 	syscall_callback_t callback = _sc_syscalls[state->eax];
 	int errno = 0;
 
+	if(callback == NULL)
+		panic("Syscall %i not implemented but invoked!", state->eax);
+
 	uint32_t result = callback(&esp, uesp, &errno);
 	state->eax = result;
 	state->ecx = (errno != 0) ? errno : state->ecx;

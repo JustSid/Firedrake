@@ -38,7 +38,8 @@ dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 			return NULL;
 		}
 
-		executable->entry  = header->e_entry;
+		executable->useCount   = 1;
+		executable->entry      = header->e_entry;
 		executable->pdirectory = pdirectory;
 
 		elf_program_header_t *programHeader = (elf_program_header_t *)(begin + header->e_phoff);
@@ -84,7 +85,7 @@ dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 		}
 
 		vm_free(vm_getKernelDirectory(), (vm_address_t)target, pages);
-		vm_mapPageRange(pdirectory, (uintptr_t)memory, minAddress, pages, VM_FLAGS_USERLAND);
+		vm_mapPageRange(pdirectory, (uintptr_t)memory, minAddress, pages, VM_FLAGS_USERLAND_R);
 
 		executable->pimage = (uintptr_t)memory;
 		executable->vimage = (vm_address_t)minAddress;
@@ -108,13 +109,46 @@ dy_exectuable_t *dy_executableCreateWithFile(vm_page_directory_t pdirectory, con
 	return NULL;
 }
 
-void dy_executableDestroy(dy_exectuable_t *executable)
+dy_exectuable_t *dy_exectuableCopy(vm_page_directory_t pdirectory, dy_exectuable_t *source)
 {
-	if(executable->pimage)
-		pm_free(executable->pimage, executable->imagePages);
+	if(!source)
+		return NULL;
 
-	if(executable->vimage)
-		vm_free(executable->pdirectory, executable->vimage, executable->imagePages);
+	dy_exectuable_t *executable = halloc(NULL, sizeof(dy_exectuable_t));
+	if(executable)
+	{
+		source->useCount ++;
 
-	hfree(NULL, executable);
+		executable->pdirectory = pdirectory;
+		executable->useCount   = 1;
+		executable->entry      = source->entry;
+
+		executable->source = source;
+		executable->pimage = source->pimage;
+		executable->vimage = source->vimage;
+		executable->imagePages = source->imagePages;
+
+		vm_mapPageRange(pdirectory, executable->pimage, executable->vimage, executable->imagePages, VM_FLAGS_USERLAND_R);
+	}
+
+	return executable;
+}
+
+void dy_executableRelease(dy_exectuable_t *executable)
+{
+	executable->useCount --;
+
+	if(executable->useCount == 0)
+	{
+		if(executable->source)
+			dy_executableRelease(executable->source);
+
+		if(executable->pimage)
+			pm_free(executable->pimage, executable->imagePages);
+
+		if(executable->vimage)
+			vm_free(executable->pdirectory, executable->vimage, executable->imagePages);
+
+		hfree(NULL, executable);
+	}
 }

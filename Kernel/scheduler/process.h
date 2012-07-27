@@ -22,20 +22,10 @@
 #include <types.h>
 #include <container/list.h>
 #include <system/lock.h>
+#include <system/kernel.h>
 #include <memory/memory.h>
 #include <dylink/dylink.h>
 #include "thread.h"
-
-typedef struct
-{
-	list_base_t base;
-
-	vm_address_t vaddress;
-	uintptr_t paddress;
-
-	size_t length;
-	int protection;
-} mmap_description_t;
 
 typedef struct process_s
 {
@@ -54,7 +44,6 @@ typedef struct process_s
 	dy_exectuable_t *image;
 
 	list_t *mappings; // used for mmap() 
-	spinlock_t mmapLock; // Must be obtained before doing something with the mmapings list
 
 	struct process_s *pprocess; // Parent
 	struct process_s *next;
@@ -64,6 +53,7 @@ typedef struct process_s
 
 process_t *process_createWithFile(const char *name);
 process_t *process_createKernel();
+process_t *process_fork(process_t *parent);
 
 process_t *process_getCurrentProcess(); // Defined in scheduler.c!
 process_t *process_getFirstProcess(); // Defined in scheduler.c, returns a process that can be used to iterate through the process list

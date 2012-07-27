@@ -22,19 +22,23 @@
 #include <types.h>
 #include <memory/memory.h>
 
-typedef struct
+typedef struct dy_exectuable_s
 {
 	vm_address_t entry;
 	vm_page_directory_t pdirectory;
+	struct dy_exectuable_s *source;
 
 	uintptr_t    	pimage;
 	vm_address_t 	vimage;
 	size_t 			imagePages;
+
+	uint32_t useCount;
 } dy_exectuable_t;
 
 dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory,  uint8_t *elfstart, size_t elfsize);
 dy_exectuable_t *dy_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file);
+dy_exectuable_t *dy_exectuableCopy(vm_page_directory_t pdirectory, dy_exectuable_t *source);
 
-void dy_executableDestroy(dy_exectuable_t *executable);
+void dy_executableRelease(dy_exectuable_t *executable);
 
 #endif /* _DYEXECTUABLE_H_ */

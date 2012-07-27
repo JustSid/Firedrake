@@ -44,3 +44,9 @@ void sleep()
 {
 	syscall(SYS_SLEEP);
 }
+
+
+uint32_t fork()
+{
+	return syscall(SYS_FORK);
+}

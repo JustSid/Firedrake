@@ -1,6 +1,6 @@
 //
-//  syscall.h
-//  libtest
+//  scmmap.h
+//  Firedrake
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,24 +16,36 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYSCALL_H_
-#define _SYSCALL_H_
+#ifndef _SCMMAP_H_
+#define _SCMMAP_H_
 
-#include "stdint.h"
+#include <types.h>
+#include <container/list.h>
+#include <memory/memory.h>
+#include <scheduler/scheduler.h>
 
-#define SYS_PRINT 			0
-#define SYS_PRINTCOLOR 		1
-#define SYS_EXIT 			2
-#define SYS_SLEEP			3
-#define SYS_THREADATTACH	4
-#define SYS_THREADEXIT		5
-#define SYS_THREADJOIN		6
-#define SYS_PROCESSCREATE	7
-#define SYS_PROCESSKILL		8
-#define SYS_MMAP			9
-#define SYS_UNMAP			10
-#define SYS_FORK			11
+#define PROT_NONE   0x00
+#define PROT_READ   0x01
+#define PROT_WRITE  0x02
+#define PROT_EXEC	0x04
 
-uint32_t syscall(int type, ...);
+#define MAP_SHARED    0x0001 // Not supported yet
+#define MAP_PRIVATE   0x0002
+#define MAP_ANONYMOUS 	0x0004 // Must be specified because of lack of file descriptors
+#define MAP_FAILED		-1
+
+typedef struct
+{
+	list_base_t base;
+
+	vm_address_t vaddress;
+	uintptr_t paddress;
+
+	size_t length;
+	int protection;
+} mmap_description_t;
+
+uint32_t mmap_vmflagsForProtectionFlags(int protection);
+bool mmap_copyMappings(process_t *target, process_t *source);
 
 #endif
