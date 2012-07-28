@@ -133,8 +133,8 @@ thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t 
 
 		*(--stack) = (process->ring0) ? 0x10 : 0x23; // ss
 		*(--stack) = (uint32_t)(thread->userStackVirt + (4092 - (args * sizeof(uint32_t)))); // esp
-		*(--stack) = (process->ring0) ? 0x200 : 0x0202; // eflags
-		*(--stack) = 0x1B; // cs
+		*(--stack) = 0x0200; // eflags
+		*(--stack) = (process->ring0) ? 0x8 : 0x1B; // cs
 		*(--stack) = (uint32_t)entry; // eip
 
 		// Interrupt number and error code

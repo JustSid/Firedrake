@@ -100,7 +100,8 @@ process_t *process_fork(process_t *parent)
 	if(child)
 	{
 		child->pdirectory = vm_createDirectory();
-		child->image      = dy_exectuableCopy(child->pdirectory, parent->image);
+		child->image = dy_exectuableCopy(child->pdirectory, parent->image);
+		child->ring0 = parent->ring0;
 
 		thread_copy(child, parent->scheduledThread);
 
