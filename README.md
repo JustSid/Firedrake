@@ -21,7 +21,7 @@ You probably have the most succes with compiling Firedrake if you are running so
   * grub-rescue-pc (only needed if you want to create mountable ISOs)
   * xorriso (only needed if you want to create mountable ISOs)
 
-If you want to create mountable ISO fils, you also need to mark the `/Bootable/CreateImage.sh` as executable via `chmod +x ./Bootable/CreateImage.sh`.
+If you want to create mountable ISO fils, you also need to mark the `/boot/CreateImage.sh` as executable via `chmod +x ./boot/CreateImage.sh`.
 
 ### Make
 To make a complete build of Firedrake, you only need to run `make`, which will compile the kernel as well as all default libraries and programs. If you want to create a bootable ISO file, you need to run the `make install` target. 
