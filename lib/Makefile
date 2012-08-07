@@ -1,4 +1,4 @@
-ALLDIRS = libcrt libtest
+ALLDIRS = libcrt libtest libkernel
 
 all:
 	for i in $(ALLDIRS); do make -C $$i; done

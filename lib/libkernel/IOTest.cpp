@@ -1,6 +1,6 @@
 //
-//  trampoline.h
-//  Firedrake
+//  IOTest.cpp
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,46 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TRAMPOLINE_H_
-#define _TRAMPOLINE_H_
+#include "IOTest.h"
+#include "IOLog.h"
 
-#ifndef __kasm__
-
-#include <types.h>
-#include <memory/memory.h>
-#include <system/tss.h>
-#include <system/gdt.h>
-#include "interrupts.h"
-
-#endif /* __kasm__ */
-
-#define IR_TRAMPOLINE_PHYSICAL	0x200000
-#define IR_TRAMPOLINE_BEGIN 	0xFFAFF000
-#define IR_TRAMPOLINE_PAGES 	2
-
-#define IR_TRAMPOLINE_PAGEDIR (IR_TRAMPOLINE_BEGIN + 0x1000)
-
-#ifndef __kasm__
-
-typedef struct
+void IOTestLog()
 {
-	// Page 1
-	uint8_t base[VM_PAGE_SIZE]; // place where the interrupt handlers live
+	IOLog("IOLog test...");
+}
 
-	// Page 2
-	vm_page_directory_t pagedir;
-
-	uint64_t gdt[GDT_ENTRIES];
-	uint64_t idt[IDT_ENTRIES];
-	struct tss_s tss;
-} ir_trampoline_map_t;
-
-uintptr_t ir_trampolineResolveFrame(vm_address_t frame);
-
-bool ir_trampoline_init(void *unused);
-
-
-extern ir_trampoline_map_t *ir_trampoline_map;
-
-#endif /* __kasm__ */
-#endif /* _TRAMPOLINE_H_ */
+int IOTestAddition(int a, int b)
+{
+	IOTestLog();
+	return a + b;
+}

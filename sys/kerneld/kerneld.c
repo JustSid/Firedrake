@@ -24,6 +24,24 @@
 #include <libc/string.h>
 #include <libc/stdio.h>
 #include <tests/unittests.h>
+#include <ioglue/iostore.h>
+
+typedef int (*function_ptr_t)(int a, int b);
+
+void testThread()
+{
+	io_library_t *library = io_storeLibraryWithName("libkernel.so");
+	function_ptr_t IOTestAddition = (function_ptr_t)io_storeLookupSymbolInLibrary(library, "IOTestAddition");
+
+	if(IOTestAddition)
+	{
+		info("Result: %i + %i = %i\n", 128, 256, IOTestAddition(128, 256));
+	}
+
+	while(1) {}
+}
+
+
 
 void kerneld_main() __attribute__((noinline));
 void kerneld_main()
@@ -43,8 +61,11 @@ void kerneld_main()
 #endif /* CONF_RUNKUNIT */
 
 	// Test process
-	process_createWithFile("hellostatic.bin");
+	//process_createWithFile("hellostatic.bin");
 
+	// Test thread
+	process_t *self = process_getCurrentProcess();
+	thread_create(self, testThread, 4096, 0);
 
 	// Enter the default run loop of the kernel daemon
 	// Note: that the kernel daemon runs in ring 0, so it can do things like 'hlt'

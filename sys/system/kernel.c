@@ -16,11 +16,12 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <dylink/elf.h>
 #include <libc/backtrace.h>
 #include <libc/stdio.h>
+#include <libc/string.h>
 #include <interrupts/interrupts.h>
 #include <interrupts/trampoline.h>
+#include "elf.h"
 #include "assert.h"
 #include "kernel.h"
 #include "helper.h"

@@ -67,6 +67,7 @@ extern void idt_interrupt_0x2D();
 extern void idt_interrupt_0x2E();
 extern void idt_interrupt_0x2F();
 extern void idt_interrupt_0x30();
+extern void idt_interrupt_0x80();
 
 void ir_disableInterrupts();
 void ir_enableInterrupts();

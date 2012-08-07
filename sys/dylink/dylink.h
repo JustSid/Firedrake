@@ -19,7 +19,6 @@
 #ifndef _DYLINK_H_
 #define _DYLINK_H_
 
-#include "elf.h"
 #include "dyexecutable.h"
 
 #endif /* _DYLINK_H_ */

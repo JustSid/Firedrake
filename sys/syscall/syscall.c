@@ -25,6 +25,7 @@
 #include "syscall.h"
 
 static syscall_callback_t _sc_syscalls[_SYS_MAXCALLS];
+static syscall_callback_t _sc_syscalls_inKernel[_SYS_MAXCALLS];
 
 // Mark: Implementation
 uint32_t _sc_print(uint32_t *esp, uint32_t *uesp, int *errno)
@@ -49,6 +50,7 @@ uint32_t _sc_print(uint32_t *esp, uint32_t *uesp, int *errno)
 	vm_free(vm_getKernelDirectory(), virtual, 2);
 	return 0;
 }
+
 
 /**
  * Syscall main entry point
@@ -83,12 +85,17 @@ uint32_t _sc_execute(uint32_t esp)
 	return esp;
 }
 
-
-
 void sc_setSyscallHandler(uint32_t syscall, syscall_callback_t callback)
 {
 	assert(syscall >= 0 && syscall < _SYS_MAXCALLS);
 	_sc_syscalls[syscall] = callback;
+}
+
+
+void sc_setSyscallInKernelHandler(uint32_t syscall, syscall_callback_t callback)
+{
+	assert(syscall >= 0 && syscall < _SYS_MAXCALLS);
+	_sc_syscalls_inKernel[syscall] = callback;
 }
 
 
@@ -98,6 +105,7 @@ void _sc_mmapInit();
 bool sc_init(void *ingored)
 {
 	ir_setInterruptHandler(_sc_execute, 0x30);
+	ir_setInterruptHandler(_sc_execute, 0x80);
 
 	sc_setSyscallHandler(SYS_PRINT, _sc_print);
 	sc_setSyscallHandler(SYS_PRINTCOLOR, _sc_print);

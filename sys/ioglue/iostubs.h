@@ -1,5 +1,5 @@
 //
-//  trampoline.h
+//  iostubs.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,46 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TRAMPOLINE_H_
-#define _TRAMPOLINE_H_
+#ifndef _IOSTUBS_H_
+#define _IOSTUBS_H_
 
-#ifndef __kasm__
+#include <system/elf.h>
+#include "iolink.h"
 
-#include <types.h>
-#include <memory/memory.h>
-#include <system/tss.h>
-#include <system/gdt.h>
-#include "interrupts.h"
+io_library_t *io_kernelLibraryStub();
+elf_sym_t *io_findKernelSymbol(const char *name);
 
-#endif /* __kasm__ */
+bool io_initStubs();
 
-#define IR_TRAMPOLINE_PHYSICAL	0x200000
-#define IR_TRAMPOLINE_BEGIN 	0xFFAFF000
-#define IR_TRAMPOLINE_PAGES 	2
-
-#define IR_TRAMPOLINE_PAGEDIR (IR_TRAMPOLINE_BEGIN + 0x1000)
-
-#ifndef __kasm__
-
-typedef struct
-{
-	// Page 1
-	uint8_t base[VM_PAGE_SIZE]; // place where the interrupt handlers live
-
-	// Page 2
-	vm_page_directory_t pagedir;
-
-	uint64_t gdt[GDT_ENTRIES];
-	uint64_t idt[IDT_ENTRIES];
-	struct tss_s tss;
-} ir_trampoline_map_t;
-
-uintptr_t ir_trampolineResolveFrame(vm_address_t frame);
-
-bool ir_trampoline_init(void *unused);
-
-
-extern ir_trampoline_map_t *ir_trampoline_map;
-
-#endif /* __kasm__ */
-#endif /* _TRAMPOLINE_H_ */
+#endif /* _IOSTUBS_H_ */

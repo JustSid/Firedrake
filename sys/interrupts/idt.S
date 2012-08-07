@@ -87,6 +87,7 @@ INTERRUPT(0x2D)
 INTERRUPT(0x2E)
 INTERRUPT(0x2F)
 INTERRUPT(0x30)
+INTERRUPT(0x80)
 
 ENTRY(idt_entry_handler)
 	pusha
@@ -95,23 +96,40 @@ ENTRY(idt_entry_handler)
 	pushl %fs
 	pushl %gs
 
+	// Load the kernels segment register
 	movl $0x10, %eax
 	movl %eax, %ds
 	movl %eax, %es
 
 	cld
+
+	// Load the kernel register, if needed
+	// Because we trash the TLB when we load the new page directory, we first check if it isn't already loaded and skip ahead if so
 	movl $0x1000, %ecx
+	movl %cr3, %eax
+	cmpl %eax, %ecx
+
+	jz idt_entry_handler_call_handler
+
 	movl %ecx, %cr3
 
+idt_entry_handler_call_handler:
 	pushl %esp
 	call ir_handleInterrupt
-
 	addl $4, %esp
-	movl %eax, %esp // switch stack
 
+	// Switch to the new stack which is returned by ir_handleInterrupt in the eax register
+	movl %eax, %esp 
+
+	// Switch to a new page directory if needed
+	// Note that at this point the active page directory is always the kernel ones, so we can compare it with an scalar type
 	movl (IR_TRAMPOLINE_PAGEDIR), %ecx
+	cmpl $0x1000, %ecx
+	jz idt_entry_handler_outro
+
 	movl %ecx, %cr3
 
+idt_entry_handler_outro:
 	popl %gs
 	popl %fs
 	popl %es

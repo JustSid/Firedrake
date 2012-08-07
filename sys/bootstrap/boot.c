@@ -20,6 +20,7 @@
 
 #include <version.h>
 #include <types.h>
+#include <config.h>
 #include <system/syslog.h>
 #include <system/panic.h>
 #include <system/video.h>
@@ -30,10 +31,10 @@
 #include <syscall/syscall.h>
 #include <memory/memory.h>
 #include <scheduler/scheduler.h>
+#include <ioglue/iostore.h>
 
 struct multiboot_s *bootinfo = NULL;
 typedef bool (*sys_function_t)(void *);
-
 
 // Simple macro to initialize a system module. Its only purpose is to print a common message and abort the boot if the module is marked essential.
 void sys_init(char *name, sys_function_t function, void *data, bool essential)
@@ -60,7 +61,7 @@ void sys_boot(struct multiboot_s *info)
 	bootinfo = info;
 	_vd_init();
 	
-#ifndef NDEBUG
+#ifndef CONF_RELEASE
 	setLogLevel(LOG_DEBUG);
 #else
 	setLogLevel(LOG_INFO);
@@ -80,8 +81,8 @@ void sys_boot(struct multiboot_s *info)
 	sys_init("interrupts", ir_init, NULL, true); // Requires memory
 	sys_init("scheduler", sd_init, NULL, true); // Requires interrupts!
 	sys_init("syscalls", sc_init, NULL, true); // Requires interrupts!
+	sys_init("ioglue", io_init, NULL, true);
 
-	// Get rid of the content
 	dbg("\n\n");
 
 	kerneld_main(); // Jump over to the kernel daemon which will do the rest of the work now

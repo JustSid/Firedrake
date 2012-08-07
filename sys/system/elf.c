@@ -1,5 +1,5 @@
 //
-//  trampoline.h
+//  elf.c
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,46 +16,31 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TRAMPOLINE_H_
-#define _TRAMPOLINE_H_
+#include "elf.h"
 
-#ifndef __kasm__
-
-#include <types.h>
-#include <memory/memory.h>
-#include <system/tss.h>
-#include <system/gdt.h>
-#include "interrupts.h"
-
-#endif /* __kasm__ */
-
-#define IR_TRAMPOLINE_PHYSICAL	0x200000
-#define IR_TRAMPOLINE_BEGIN 	0xFFAFF000
-#define IR_TRAMPOLINE_PAGES 	2
-
-#define IR_TRAMPOLINE_PAGEDIR (IR_TRAMPOLINE_BEGIN + 0x1000)
-
-#ifndef __kasm__
-
-typedef struct
+// This hashing function is defined by the system V ABI
+// Don't even think about changing it!
+uint32_t elf_hash(const char *name)
 {
-	// Page 1
-	uint8_t base[VM_PAGE_SIZE]; // place where the interrupt handlers live
+	uint8_t *buffer = (uint8_t *)name;
+	uint32_t h = 0;
+	uint32_t g;
 
-	// Page 2
-	vm_page_directory_t pagedir;
+	while(*buffer != '\0')
+	{
+		uint32_t c = *buffer;
+		h = (h << 4) + c;
 
-	uint64_t gdt[GDT_ENTRIES];
-	uint64_t idt[IDT_ENTRIES];
-	struct tss_s tss;
-} ir_trampoline_map_t;
+		if((g = h & 0xf0000000) != 0) 
+		{
+			h ^= g;
+			h ^= g >> 24;
+		}
 
-uintptr_t ir_trampolineResolveFrame(vm_address_t frame);
+		buffer ++;
+	}
 
-bool ir_trampoline_init(void *unused);
+	return h;
+}
 
 
-extern ir_trampoline_map_t *ir_trampoline_map;
-
-#endif /* __kasm__ */
-#endif /* _TRAMPOLINE_H_ */

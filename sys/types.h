@@ -63,6 +63,10 @@ typedef uint32_t 		size_t;
 typedef long 			intptr_t;
 typedef unsigned long 	uintptr_t;
 
+// MARK: Non libc types
+typedef int32_t pid_t;
+typedef size_t  offset_t;
+
 // MARK: Fixed size integer constraints
 #define INT8_C(v)   (v)
 #define INT16_C(v)  (v)
@@ -92,9 +96,5 @@ typedef unsigned long 	uintptr_t;
 #define UINT16_MAX     UINT16_C(65535)
 #define UINT32_MAX     UINT32_C(4294967295)
 #define UINT64_MAX     UINT64_C(18446744073709551615)
-
-// MARK: Kernel related types
-
-typedef int32_t pid_t;
 
 #endif /* _TYPES_H_ */

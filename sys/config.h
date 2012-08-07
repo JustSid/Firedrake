@@ -19,6 +19,8 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
+//#define CONF_RELEASE
+
 //#define CONF_RUNKUNIT // runs kunit unit tests
 #define CONF_KUNITFAILSONLY // displays only the failed test cases. Needs CONF_RUNKUNIT
 #define CONF_KUNITEXIT // doesn't run anything after kunit ran. Needs CONF_RUNKUNIT

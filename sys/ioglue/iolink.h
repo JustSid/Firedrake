@@ -1,5 +1,5 @@
 //
-//  trampoline.h
+//  iolink.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,46 +16,56 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TRAMPOLINE_H_
-#define _TRAMPOLINE_H_
-
-#ifndef __kasm__
+#ifndef _IOLINK_H_
+#define _IOLINK_H_
 
 #include <types.h>
+#include <system/elf.h>
 #include <memory/memory.h>
-#include <system/tss.h>
-#include <system/gdt.h>
-#include "interrupts.h"
-
-#endif /* __kasm__ */
-
-#define IR_TRAMPOLINE_PHYSICAL	0x200000
-#define IR_TRAMPOLINE_BEGIN 	0xFFAFF000
-#define IR_TRAMPOLINE_PAGES 	2
-
-#define IR_TRAMPOLINE_PAGEDIR (IR_TRAMPOLINE_BEGIN + 0x1000)
-
-#ifndef __kasm__
+#include <container/list.h>
 
 typedef struct
 {
-	// Page 1
-	uint8_t base[VM_PAGE_SIZE]; // place where the interrupt handlers live
+	list_base_t base;
+	char *path;
 
-	// Page 2
-	vm_page_directory_t pagedir;
+	// Dynamic section content
+	void *dynamic;
 
-	uint64_t gdt[GDT_ENTRIES];
-	uint64_t idt[IDT_ENTRIES];
-	struct tss_s tss;
-} ir_trampoline_map_t;
+	const char *strtab;
+	size_t 		strtabSize;
+	elf_sym_t  *symtab;
 
-uintptr_t ir_trampolineResolveFrame(vm_address_t frame);
+	elf_rel_t  *rel, *pltRel;
+	elf_rel_t  *rellimit, *pltRellimit;
+	elf_rela_t *rela;
+	elf_rela_t *relalimit;
 
-bool ir_trampoline_init(void *unused);
+	uint32_t *hashtab;
+	uint32_t *buckets;
+	uint32_t *chains;
+	uint32_t nbuckets;
+	uint32_t nchains;
+
+	// Binary content and info
+	offset_t relocBase;
+
+	uintptr_t 		pmemory;
+	vm_address_t 	vmemory;
+	size_t pages;
+
+	// Misc
+	uint32_t refCount;
+} io_library_t;
 
 
-extern ir_trampoline_map_t *ir_trampoline_map;
+io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t length);
+io_library_t *io_libraryCreateWithFile(const char *file);
 
-#endif /* __kasm__ */
-#endif /* _TRAMPOLINE_H_ */
+void io_libraryRelease(io_library_t *library);
+bool io_libraryRelocateNonPLT(io_library_t *library);
+bool io_libraryRelocatePLT(io_library_t *library);
+
+elf_sym_t *io_libraryLookupSymbol(io_library_t *library, const char *name, uint32_t hash);
+
+#endif /* _IOLINK_H_ */

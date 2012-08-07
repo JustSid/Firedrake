@@ -1,5 +1,5 @@
-Bootable/Firedrake.iso
-Kernel/firedrake
+boot/Firedrake.iso
+sys/firedrake
 *.o
 *.bin
 *.so

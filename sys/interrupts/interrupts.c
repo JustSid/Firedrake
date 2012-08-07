@@ -65,6 +65,7 @@ void ir_idt_init(uint64_t *idt, uint32_t offset)
 
 	// Syscall
 	ir_idt_setEntry(idt, 0x30, ((uint32_t)idt_interrupt_0x30) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING3 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x80) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING3 | IDT_FLAG_PRESENT);
 
 	// Reload the IDT
 	struct 

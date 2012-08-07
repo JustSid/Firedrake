@@ -18,10 +18,10 @@
 
 #include <libc/string.h>
 #include <bootstrap/multiboot.h>
+#include <system/elf.h>
 #include <system/helper.h>
 #include <system/syslog.h>
 
-#include "elf.h"
 #include "dyexecutable.h"
 
 dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *begin, size_t size)
@@ -59,7 +59,7 @@ dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 					minAddress = program->p_paddr;
 
 				if(program->p_paddr + program->p_memsz > maxAddress)
-					maxAddress = program->p_paddr + program->p_memsz ;
+					maxAddress = program->p_paddr + program->p_memsz;
 			}
 		}
 

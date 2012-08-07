@@ -1,5 +1,5 @@
 //
-//  trampoline.h
+//  iostore.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,46 +16,30 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TRAMPOLINE_H_
-#define _TRAMPOLINE_H_
-
-#ifndef __kasm__
+#ifndef _IOSTORE_H_
+#define _IOSTORE_H_
 
 #include <types.h>
-#include <memory/memory.h>
-#include <system/tss.h>
-#include <system/gdt.h>
-#include "interrupts.h"
-
-#endif /* __kasm__ */
-
-#define IR_TRAMPOLINE_PHYSICAL	0x200000
-#define IR_TRAMPOLINE_BEGIN 	0xFFAFF000
-#define IR_TRAMPOLINE_PAGES 	2
-
-#define IR_TRAMPOLINE_PAGEDIR (IR_TRAMPOLINE_BEGIN + 0x1000)
-
-#ifndef __kasm__
+#include <system/lock.h>
+#include <container/list.h>
+#include <memory/vmemory.h>
+#include "iolink.h"
 
 typedef struct
 {
-	// Page 1
-	uint8_t base[VM_PAGE_SIZE]; // place where the interrupt handlers live
+	spinlock_t lock;
+	list_t *libraries;
+} io_store_t;
 
-	// Page 2
-	vm_page_directory_t pagedir;
+elf_sym_t *io_storeFindSymbol(io_library_t *library, uint32_t symbol, io_library_t **outLib);
+//elf_sym_t *io_storeFindSymbolPLT(io_library_t *library, uint32_t symbol, io_library_t **outLib);
 
-	uint64_t gdt[GDT_ENTRIES];
-	uint64_t idt[IDT_ENTRIES];
-	struct tss_s tss;
-} ir_trampoline_map_t;
+void *io_storeLookupSymbol(const char *name);
+void *io_storeLookupSymbolInLibrary(io_library_t *library, const char *name);
 
-uintptr_t ir_trampolineResolveFrame(vm_address_t frame);
+io_library_t *io_storeLibraryWithName(const char *name);
+io_store_t *io_storeGetStore();
 
-bool ir_trampoline_init(void *unused);
+bool io_init(void *unused);
 
-
-extern ir_trampoline_map_t *ir_trampoline_map;
-
-#endif /* __kasm__ */
-#endif /* _TRAMPOLINE_H_ */
+#endif /* _IOSTORE_H_ */

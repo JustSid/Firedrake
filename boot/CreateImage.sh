@@ -3,7 +3,7 @@ BASEDIR="$(cd -P "$(dirname "$0")" && pwd)"
 
 ## Arrays
 programs=(hellostatic)
-libraries=()
+libraries=(libkernel)
 
 ## Misc
 grubpath="$BASEDIR/image/boot/grub/grub.cfg"
