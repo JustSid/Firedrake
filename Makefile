@@ -1,6 +1,6 @@
-KERNEL_DIR = Kernel
-LIBS_DIR   = Libraries
-PROGS_DIR  = Programs
+KERNEL_DIR = sys
+LIBS_DIR   = lib
+PROGS_DIR  = bin
 
 ALLDIRS = $(KERNEL_DIR) $(LIBS_DIR) $(PROGS_DIR)
 
@@ -8,7 +8,7 @@ all:
 	for i in $(ALLDIRS); do make -C $$i; done
 
 install: all
-	./Bootable/CreateImage.sh
+	./boot/CreateImage.sh
 
 kernel:
 	make -C $(KERNEL_DIR);

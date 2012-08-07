@@ -35,9 +35,9 @@ If you are using Sublime Text 2 you can get correct code completion by grabbing 
 
 	"sublimeclang_options":
 	[
-	   "-I${folder:${project_path:Firedrake.sublime-project}}/Kernel/.",
-	   "-I${folder:${project_path:Firedrake.sublime-project}}/Libraries/.",
-	   "-I${folder:${project_path:Firedrake.sublime-project}}/Programs/.",
+	   "-I${folder:${project_path:Firedrake.sublime-project}}/sys/.",
+	   "-I${folder:${project_path:Firedrake.sublime-project}}/lib/.",
+	   "-I${folder:${project_path:Firedrake.sublime-project}}/bin/.",
 	   "-std=c99",
 	   "-nostdlib",
 	   "-fno-builtin"

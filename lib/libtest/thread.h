@@ -1,6 +1,6 @@
 //
-//  main.c
-//  helloworld
+//  thread.h
+//  libtest
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,41 +16,18 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libtest/print.h>
-#include <libtest/thread.h>
-#include <libtest/mmap.h>
+#ifndef _THREAD_H_
+#define _THREAD_H_
 
-void cheapstrcpy(char *dst, const char *src)
-{
-	while(*src != '\0')
-	{
-		*dst = *src;
+#include "stdint.h"
+#include "syscall.h"
 
-		dst ++;
-		src ++;
-	}
-}
+typedef int32_t pid_t;
 
-int main()
-{
-	void *blob = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	cheapstrcpy((char *)blob, "Hello world\n");
+uint32_t thread_create(void *entry, void *arg);
+void thread_join(uint32_t id);
+void sleep();
 
-	uint32_t pid = fork();
-	if(pid == 0)
-	{
-		puts("Child process!\n");
+pid_t fork();
 
-		cheapstrcpy((char *)blob, "Hello child process\n");
-		puts((const char *)blob);
-	}
-	else
-	{
-		sleep(); // Todo: How about waitpid()?
-
-		puts("Parent process!\n");
-		puts((const char *)blob);
-	}
-
-	return 0;
-}
+#endif /* _THREAD_H_ */

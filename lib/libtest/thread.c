@@ -1,5 +1,5 @@
 //
-//  thread.h
+//  thread.c
 //  libtest
 //
 //  Created by Sidney Just
@@ -16,15 +16,37 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _THREAD_H_
-#define _THREAD_H_
+#include "thread.h"
 
-#include "syscall.h"
+typedef void (*__thread_entry_point_t)(void *);
 
-uint32_t thread_create(void *entry, void *arg);
-void thread_join(uint32_t id);
-void sleep();
+void __thread_entry(void *tentry, void *arg) __attribute__((noinline)); 
+void __thread_entry(void *tentry, void *arg)
+{
+	__thread_entry_point_t entry = (__thread_entry_point_t)tentry;
+	entry(arg);
 
-uint32_t fork();
+	syscall(SYS_THREADEXIT);
+}
 
-#endif /* _THREAD_H_ */
+uint32_t thread_create(void *entry, void *arg)
+{
+	uint32_t result = syscall(SYS_THREADATTACH, __thread_entry, 4096, entry, arg);
+	return result;
+}
+
+void thread_join(uint32_t id)
+{
+	syscall(SYS_THREADJOIN, id);
+}
+
+void sleep()
+{
+	syscall(SYS_SLEEP);
+}
+
+
+pid_t fork()
+{
+	return (pid_t)syscall(SYS_FORK);
+}

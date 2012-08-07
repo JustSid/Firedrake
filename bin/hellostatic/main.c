@@ -1,6 +1,6 @@
 //
-//  thread.c
-//  libtest
+//  main.c
+//  helloworld
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,37 +16,41 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "thread.h"
+#include <libtest/print.h>
+#include <libtest/thread.h>
+#include <libtest/mmap.h>
 
-typedef void (*__thread_entry_point_t)(void *);
-
-void __thread_entry(void *tentry, void *arg) __attribute__((noinline)); 
-void __thread_entry(void *tentry, void *arg)
+void cheapstrcpy(char *dst, const char *src)
 {
-	__thread_entry_point_t entry = (__thread_entry_point_t)tentry;
-	entry(arg);
+	while(*src != '\0')
+	{
+		*dst = *src;
 
-	syscall(SYS_THREADEXIT);
+		dst ++;
+		src ++;
+	}
 }
 
-uint32_t thread_create(void *entry, void *arg)
+int main()
 {
-	uint32_t result = syscall(SYS_THREADATTACH, __thread_entry, 4096, entry, arg);
-	return result;
-}
+	void *blob = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	cheapstrcpy((char *)blob, "Hello world\n");
 
-void thread_join(uint32_t id)
-{
-	syscall(SYS_THREADJOIN, id);
-}
+	pid_t pid = fork();
+	if(pid == 0)
+	{
+		puts("Child process!\n");
 
-void sleep()
-{
-	syscall(SYS_SLEEP);
-}
+		cheapstrcpy((char *)blob, "Hello child process\n");
+		puts((const char *)blob);
+	}
+	else
+	{
+		sleep(); // Todo: How about waitpid()?
 
+		puts("Parent process!\n");
+		puts((const char *)blob);
+	}
 
-uint32_t fork()
-{
-	return syscall(SYS_FORK);
+	return 0;
 }

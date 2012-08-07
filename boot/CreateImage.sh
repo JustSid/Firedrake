@@ -21,18 +21,18 @@ echo -e -n "GRUB_DEFAULT=0\nGRUB_TIMEOUT=1\n\nmenuentry \"Firedrake\" {\n\tmulti
 ## Copy programs
 for i in ${programs[@]}; do
 	echo -e -n "\tmodule /modules/${i}.bin ${i}.bin\n" >> $grubpath
-	cp "$BASEDIR/../Programs/${i}/${i}.bin" "$BASEDIR/image/modules/${i}.bin"
+	cp "$BASEDIR/../bin/${i}/${i}.bin" "$BASEDIR/image/modules/${i}.bin"
 done
 
 ## Copy libraries
 for i in ${libraries[@]}; do
 	echo -e -n "\tmodule /modules/${i}.so ${i}.so\n" >> $grubpath
-	cp "$BASEDIR/../Libraries/${i}/${i}.so" "$BASEDIR/image/modules/${i}.so"
+	cp "$BASEDIR/../lib/${i}/${i}.so" "$BASEDIR/image/modules/${i}.so"
 done
 
 ## Finish the grub.cfg and copy the kernel
 echo -e -n "}" >> $grubpath
-cp "$BASEDIR/../Kernel/firedrake" "$BASEDIR/image/boot/firedrake"
+cp "$BASEDIR/../sys/firedrake" "$BASEDIR/image/boot/firedrake"
 
 ## Create the image
 grub-mkrescue --modules="ext2 fshelp boot pc" --output="$BASEDIR/Firedrake.iso" "$BASEDIR/image"

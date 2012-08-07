@@ -88,7 +88,7 @@ uint32_t _sc_processCreate(uint32_t *esp, uint32_t *uesp, int *errno)
 	process_t *process = process_createWithFile(name);
 
 	vm_free(vm_getKernelDirectory(), virtual, 2); // Unmap the name
-	return process ? process->pid : PROCESS_NULL;
+	return process ? (uint32_t)process->pid : PROCESS_NULL;
 }
 
 uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *errno)

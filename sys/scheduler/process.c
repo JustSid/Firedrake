@@ -27,9 +27,9 @@
 
 extern void _process_setFirstProcess(process_t *process); // Scheduler.c
 
-uint32_t _process_getUniqueID()
+pid_t _process_getUniqueID()
 {
-	static uint32_t uid = 0;
+	static pid_t uid = 0;
 	return uid ++;
 }
 

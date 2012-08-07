@@ -31,8 +31,8 @@ typedef struct process_s
 {
 	vm_page_directory_t pdirectory;
 
-	uint32_t pid;
-	uint32_t parent;
+	pid_t pid;
+	pid_t parent;
 
 	bool died; // True if the process can be collected by the scheduler.
 	bool ring0;

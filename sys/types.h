@@ -45,7 +45,7 @@ typedef __builtin_va_list	va_list;
 #define va_arg(v, l)	__builtin_va_arg(v,l)
 #define va_copy(d, s)	__builtin_va_copy(d,s)
 
-// Mark: Fixed size integers
+// MARK: Fixed size integers
 typedef signed char 	int8_t;
 typedef short 			int16_t;
 typedef int 			int32_t;
@@ -92,5 +92,9 @@ typedef unsigned long 	uintptr_t;
 #define UINT16_MAX     UINT16_C(65535)
 #define UINT32_MAX     UINT32_C(4294967295)
 #define UINT64_MAX     UINT64_C(18446744073709551615)
+
+// MARK: Kernel related types
+
+typedef int32_t pid_t;
 
 #endif /* _TYPES_H_ */
