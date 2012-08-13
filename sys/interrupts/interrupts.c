@@ -28,12 +28,12 @@
 // IDT Related stuff
 static ir_interrupt_handler_t __ir_interruptHandler[IDT_ENTRIES];
 
-void ir_idt_setEntry(uint64_t *idt, uint32_t index, uint32_t handler, uint32_t selector, int32_t flags)
+void ir_idt_setEntry(uint64_t *idt, uint32_t index, uint32_t handler, uint32_t selector, uint32_t flags)
 {
-	idt[index] = handler & INT64_C(0xFFFF);
-	idt[index] |= (selector & INT64_C(0xFFFF)) << 16;
-	idt[index] |= (flags & INT64_C(0xFF)) << 40;
-	idt[index] |= ((handler>> 16) & INT64_C(0xFFFF)) << 48;
+	idt[index] = handler & UINT64_C(0xFFFF);
+	idt[index] |= (selector & UINT64_C(0xFFFF)) << 16;
+	idt[index] |= (flags & UINT64_C(0xFF)) << 40;
+	idt[index] |= ((handler>> 16) & UINT64_C(0xFFFF)) << 48;
 }
 
 void ir_idt_init(uint64_t *idt, uint32_t offset)
@@ -128,7 +128,6 @@ uint32_t ir_handleInterrupt(uint32_t esp)
 	if(!handler)
 	{
 		panic("Unhandled interrupt %i!", state->interrupt);
-		return 0x0;
 	}
 
 	esp = handler(esp);

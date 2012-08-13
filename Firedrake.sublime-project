@@ -1,0 +1,47 @@
+{
+	"folders":
+	[
+		{
+			"name": "Firedrake",
+			"path": "/",
+			"file_exclude_patterns": ["*.sublime-workspace", "*.gitignore"],
+			"folder_exclude_patterns": ["bin", "lib"]
+		}
+	],
+	"settings":
+	{
+		"sublimeclang_enabled": true,
+		"sublimeclang_options":
+		[
+			"-I${folder:${project_path:Firedrake.sublime-project}}/sys/.",
+			"-Wall",
+			"-Wextra",
+			"-Wno-unused-paramater",
+			"-std=c99",
+			"-nostdlib",
+			"-fno-builtin",
+			"-pedantic-errors"
+		]
+	},
+	"build_systems":
+    [
+        {
+            "name": "Build Firedrake",
+            "working_dir": "${project_path}",
+			"cmd": ["exec ./remotebuild.sh"],
+			"shell": true,
+
+			"variants":
+			[
+				{
+					"name": "Run",
+					"cmd": ["qemu -d cpu_reset ${project_path}/boot/Firedrake.iso"]
+				},
+				{
+					"name": "Instrument",
+					"cmd": ["qemu -d int,cpu_reset -no-reboot -no-shutdown ${project_path}/boot/Firedrake.iso"]
+				}
+			]
+		}
+	]
+}

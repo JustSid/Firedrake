@@ -56,6 +56,7 @@ void sys_init(char *name, sys_function_t function, void *data, bool essential)
 extern void _vd_init(); // Declared in system/video.c
 extern void kerneld_main(); // Declared in kerneld/kerneld.c
 
+void sys_boot(struct multiboot_s *info) __attribute__ ((noreturn));
 void sys_boot(struct multiboot_s *info)
 {	
 	bootinfo = info;

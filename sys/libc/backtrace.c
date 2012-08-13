@@ -60,10 +60,10 @@ void kernel_stack_backtrace(vm_address_t *buffer, uint32_t max, uint32_t *nb, ui
 int backtrace(void **buffer, int size)
 {
 	uint32_t frames;
-	kernel_stack_backtrace((vm_address_t *)buffer, size, &frames, 1);
+	kernel_stack_backtrace((vm_address_t *)buffer, (uint32_t)size, &frames, 1);
 
 	while(frames >= 1 && buffer[frames-1] == NULL) 
 		frames --;
 
-	return frames;
+	return (int)frames;
 }

@@ -28,6 +28,7 @@
 
 typedef int (*function_ptr_t)(int a, int b);
 
+void testThread() __attribute__ ((noreturn));
 void testThread()
 {
 	io_library_t *library = io_storeLibraryWithName("libkernel.so");
@@ -43,7 +44,7 @@ void testThread()
 
 
 
-void kerneld_main() __attribute__((noinline));
+void kerneld_main() __attribute__((noinline, noreturn));
 void kerneld_main()
 {
 	__asm__ volatile("int $0x20"); // Force a reschedule right here, just to make sure that everything is properly initalized at the schedulers end

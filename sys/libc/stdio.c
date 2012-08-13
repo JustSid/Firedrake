@@ -84,7 +84,7 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 			{
 				case 'c':
 				{
-					char character = va_arg(arg, int);
+					char character = (char)va_arg(arg, int);
 					buffer[written ++] = (char)character;
 					break;
 				}
@@ -107,6 +107,7 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 				case 'd':
 				case 'p':
 				case 'x':
+				case 'X':
 				case 'u':
 				{
 					int  base = (format[index] == 'i' || format[index] == 'd') ? 10 : 16;
@@ -119,12 +120,12 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					if(isUint)
 					{
 						unsigned long value = va_arg(arg, unsigned long);
-						_uitostr(value, base, string);
+						_uitostr(value, base, string, (format[index] == 'x'));
 					}
 					else 
 					{
 						long value = va_arg(arg, long);
-						_itostr(value, base, string);
+						_itostr(value, base, string, (format[index] == 'x'));
 					}
 
 

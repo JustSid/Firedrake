@@ -93,7 +93,7 @@ uint32_t _sc_processCreate(uint32_t *esp, uint32_t *uesp, int *errno)
 
 uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *errno)
 {
-	uint32_t pid = *(uint32_t *)(uesp);
+	pid_t pid = *(pid_t *)(uesp);
 	process_t *process = process_getFirstProcess();
 
 	while(process)

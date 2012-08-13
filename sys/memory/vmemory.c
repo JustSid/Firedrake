@@ -287,10 +287,7 @@ vm_address_t __vm_findFreeKernelPages(size_t pages, vm_address_t limit)
 	}
 	
  	if(freePages == 0)
-    {
     	panic("Could not find enough free kernel pages. Requested %i pages.\n", pages);
-        return 0x0;
-    }
 	
 	return (vm_address_t)((directoryIndex << 22) + (tableIndex << VM_SHIFT));
 }
@@ -303,15 +300,11 @@ bool __vm_mapPage(vm_page_directory_t pdirectory, uintptr_t paddress, vm_address
 #endif
 {
 	if((((uint32_t)vaddress | (uint32_t)paddress) & 0xFFF))
-    {
         panic("__vm_mapPage(), %p or %p (virt, phys) isn't 4k aligned!", vaddress, paddress);
-        return false;
-    }
 
     if(vaddress == 0x0 || (paddress == 0x0 && flags != 0))
-    {
         panic("Trying to map phys %p to virt %p! (%s)", paddress, vaddress, (pdirectory == __vm_kernelDirectory) ? "kernel directory" : "other directory");
-    }
+    
 
     uint32_t index = vaddress / VM_PAGE_SIZE;
     vm_page_table_t pageTable;

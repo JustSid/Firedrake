@@ -71,7 +71,7 @@ struct multiboot_module_s *sys_multibootModuleWithName(const char *name)
 {
 	struct multiboot_module_s *modules = (struct multiboot_module_s *)bootinfo->mods_addr;
 
-	for(int i=0; i<bootinfo->mods_count; i++)
+	for(uint32_t i=0; i<bootinfo->mods_count; i++)
 	{
 		struct multiboot_module_s *module = &modules[i];
 

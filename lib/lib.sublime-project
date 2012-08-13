@@ -1,0 +1,27 @@
+{
+	"folders":
+	[
+		{
+			"path": "/",
+			"file_exclude_patterns": ["*.sublime-workspace", "*.bin"]
+		}
+	],
+	"settings":
+	{
+		"sublimeclang_enabled": true,
+		"sublimeclang_options":
+		[
+			"-I${folder:${project_path:lib.sublime-project}}/.",
+			"-Wall",
+			"-Wextra",
+			"-pedantic",
+			"-std=c99",
+			"-std=c++0x",
+			"-nostdlib",
+			"-nostdinc",
+			"-fno-builtin",
+			"-fno-rtti",
+			"-fno-exceptions"
+		]
+	}
+}
