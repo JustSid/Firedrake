@@ -68,6 +68,9 @@ void *list_addBack(list_t *list)
 		base->next = NULL;
 		base->prev = list->last;
 
+		if(list->last)
+			list->last->next = base;
+
 		list->last = base;
 		list->count ++;
 
@@ -86,6 +89,9 @@ void *list_addFront(list_t *list)
 		base->list = list;
 		base->next = list->first;
 		base->prev = NULL;
+
+		if(list->first)
+			list->first->prev = base;
 
 		list->first = base;
 		list->count ++;
