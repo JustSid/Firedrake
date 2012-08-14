@@ -66,6 +66,9 @@ void io_libraryRelease(io_library_t *library);
 bool io_libraryRelocateNonPLT(io_library_t *library);
 bool io_libraryRelocatePLT(io_library_t *library);
 
+vm_address_t io_libraryResolveAddress(io_library_t *library, vm_address_t address);
+
+elf_sym_t *io_librarySymbolWithAddress(io_library_t *library, vm_address_t address);
 elf_sym_t *io_libraryLookupSymbol(io_library_t *library, const char *name, uint32_t hash);
 
 #endif /* _IOLINK_H_ */

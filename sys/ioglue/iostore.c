@@ -139,6 +139,25 @@ io_library_t *io_storeLibraryWithName(const char *name)
 	return NULL;
 }
 
+io_library_t *io_storeLibraryWithAddress(vm_address_t address)
+{
+	list_base_t *entry = list_first(__io_store->libraries);
+	while(entry)
+	{
+		io_library_t *library = (io_library_t *)entry;
+		vm_address_t vlimit = library->vmemory + (library->pages * VM_PAGE_SIZE);
+
+		if(address >= library->vmemory && address <= vlimit)
+			return library;
+
+		entry = entry->next;
+	}
+
+	return NULL;
+}
+
+
+
 io_store_t *io_storeGetStore()
 {
 	return __io_store;

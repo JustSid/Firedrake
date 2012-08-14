@@ -110,6 +110,58 @@ bool io_libraryRelocatePLT(io_library_t *library)
 	return true;
 }
 
+
+vm_address_t io_libraryResolveAddress(io_library_t *library, vm_address_t address)
+{
+	elf_sym_t *closest = NULL;
+	vm_address_t address_noReloc = address - library->relocBase;
+
+	for(uint32_t i=0; i<library->nbuckets; i++)
+	{
+		uint32_t symnum = library->buckets[i];
+		while(symnum != 0)
+		{
+			elf_sym_t *symbol = library->symtab + symnum;
+
+			if(symbol->st_value <= address_noReloc)
+			{
+				if(!closest || (closest && closest->st_value > symbol->st_value))
+					closest = symbol;
+			}
+
+			symnum = library->chains[symnum];
+		}
+	}
+
+	if(!closest)
+		return 0x0;
+
+	return closest->st_value + library->relocBase;
+}
+
+elf_sym_t *io_librarySymbolWithAddress(io_library_t *library, vm_address_t address)
+{
+	vm_address_t address_noReloc = address - library->relocBase;
+
+	for(uint32_t i=0; i<library->nbuckets; i++)
+	{
+		uint32_t symnum = library->buckets[i];
+		while(symnum != 0)
+		{
+			elf_sym_t *symbol = library->symtab + symnum;
+			if(symbol->st_value == address_noReloc)
+			{
+				return symbol;
+			}
+
+			symnum = library->chains[symnum];
+		}
+	}
+
+	return NULL;
+}
+
+
 void io_libraryDigestDynamic(io_library_t *library)
 {
 	elf_dyn_t *dyn;

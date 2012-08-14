@@ -37,6 +37,7 @@ elf_sym_t *io_storeFindSymbol(io_library_t *library, uint32_t symbol, io_library
 void *io_storeLookupSymbol(const char *name);
 void *io_storeLookupSymbolInLibrary(io_library_t *library, const char *name);
 
+io_library_t *io_storeLibraryWithAddress(vm_address_t address);
 io_library_t *io_storeLibraryWithName(const char *name);
 io_store_t *io_storeGetStore();
 
