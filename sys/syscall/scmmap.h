@@ -34,15 +34,22 @@
 #define MAP_ANONYMOUS 	0x0004 // Must be specified because of lack of file descriptors
 #define MAP_FAILED		-1
 
-typedef struct
+typedef struct mmap_description_s
 {
-	list_base_t base;
+	process_t *process; // Process of the mapping
 
 	vm_address_t vaddress;
 	uintptr_t paddress;
 
-	size_t length;
-	int protection;
+	size_t length; // In bytes
+	int protection; // mmap flags, not vmemory flags!
+
+	// Used when the mmap is fragmented
+	struct mmap_description_s *next;
+	struct mmap_description_s *prev;
+
+	struct mmap_description_s *listNext;
+	struct mmap_description_s *listPrev;
 } mmap_description_t;
 
 uint32_t mmap_vmflagsForProtectionFlags(int protection);

@@ -20,22 +20,26 @@
 
 .section multiboot
 .align 4
-    .int 0x1BADB002 // GRUBs magic number     
-    .int 0x0           
-    .int (-0x1BADB002)
+	.int 0x1BADB002 // GRUBs magic number     
+	.int 0x0           
+	.int (-0x1BADB002)
 	
  
 .section .text
 
 ENTRY(_start)
-    movl $stack, %esp
+	movl $stack_top, %esp
  
-    pushl %ebx
-    call sys_boot
+	pushl %ebx
+	call sys_boot
  
 	jmp .
 
 
+.global stack_bottom
+.global stack_top
+
 .section .bss
+stack_bottom:
 .space 131072
-stack:
+stack_top:

@@ -51,6 +51,6 @@ void vd_scrollLines(uint32_t lines);
 void vd_setCursor(uint32_t x, uint32_t y);
 void vd_setColor(uint32_t x, uint32_t y, bool foreground, vd_color_t color, size_t size);
 
-void vd_printString(char *string, vd_color_t color);
+void vd_printString(const char *string, vd_color_t color);
 
 #endif /* _VIDEO_H_ */

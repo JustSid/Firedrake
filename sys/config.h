@@ -21,12 +21,13 @@
 
 //#define CONF_RELEASE
 
-//#define CONF_RUNKUNIT // runs kunit unit tests
-#define CONF_KUNITFAILSONLY // displays only the failed test cases. Needs CONF_RUNKUNIT
-#define CONF_KUNITEXIT // doesn't run anything after kunit ran. Needs CONF_RUNKUNIT
+#ifndef CONF_RELEASE
+	//#define CONF_RUNKUNIT // runs kunit unit tests
+	#define CONF_KUNITFAILSONLY // displays only the failed test cases. Needs CONF_RUNKUNIT
+	#define CONF_KUNITEXIT // doesn't run anything after kunit ran. Needs CONF_RUNKUNIT
 
-// REMARK: disabling the inlining gives only a hint to the compiler to disable it!
-// REMARK: functions are inlined for a reason, disabling it WILL have a performance impact!
-//#define CONF_VM_NOINLINE // forces virtual memory functions not to be inlined, should be defined when debugging of virtual memory bugs for cleaner stacktraces
-
+	// REMARK: disabling the inlining gives only a hint to the compiler to disable it!
+	// REMARK: functions are inlined for a reason, disabling it WILL have a performance impact!
+	#define CONF_VM_NOINLINE // forces virtual memory functions not to be inlined, should be defined when debugging of virtual memory bugs for cleaner stacktraces
+#endif /* CONF_RELEASE */
 #endif /* _CONFIG_H_ */

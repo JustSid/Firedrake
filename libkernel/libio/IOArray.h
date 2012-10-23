@@ -1,6 +1,6 @@
 //
-//  dyexecutable.h
-//  Firedrake
+//  IOArray.h
+//  libio
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,29 +16,43 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _DYEXECTUABLE_H_
-#define _DYEXECTUABLE_H_
+#ifndef _IOARRAY_H_
+#define _IOARRAY_H_
 
-#include <types.h>
-#include <memory/memory.h>
+#include "IOObject.h"
+#include "IOCollection.h"
 
-typedef struct dy_exectuable_s
+class IOArray : public IOCollection
 {
-	vm_address_t entry;
-	vm_page_directory_t pdirectory;
-	struct dy_exectuable_s *source;
+public:
+	static IOArray *withCapacity(uint32_t capacity);
 
-	uintptr_t    	pimage;
-	vm_address_t 	vimage;
-	size_t 			imagePages;
+	void addObject(IOObject *object);
+	void removeObject(IOObject *object);
+	void removeObject(uint32_t index);
 
-	uint32_t useCount;
-} dy_exectuable_t;
+	uint32_t indexOfObject(IOObject *object);
+	bool containsObject(IOObject *object);
 
-dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory,  uint8_t *elfstart, size_t elfsize);
-dy_exectuable_t *dy_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file);
-dy_exectuable_t *dy_exectuableCopy(vm_page_directory_t pdirectory, dy_exectuable_t *source);
+	IOObject *objectAtIndex(uint32_t index);
 
-void dy_executableRelease(dy_exectuable_t *executable);
+	void setChangeSize(uint32_t changeSize);
+	uint32_t changeSize();
 
-#endif /* _DYEXECTUABLE_H_ */
+	virtual uint32_t count();
+	virtual uint32_t capacity();
+
+private:
+	virtual bool init();
+	virtual bool initWithCapacity(uint32_t capacity);
+
+	virtual void free();
+
+	IOObject **_objects;
+	uint32_t _count, _capacity;
+	uint32_t _changeSize;
+
+	IODeclareClass(IOArray)
+};
+
+#endif /* _IOARRAY_H_ */

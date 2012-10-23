@@ -28,7 +28,7 @@ static syscall_callback_t _sc_syscalls[_SYS_MAXCALLS];
 static syscall_callback_t _sc_syscalls_inKernel[_SYS_MAXCALLS];
 
 // Mark: Implementation
-uint32_t _sc_print(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_print(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
 {
 	cpu_state_t *state = (cpu_state_t *)esp;
 	process_t *process = process_getCurrentProcess();
@@ -59,6 +59,13 @@ uint32_t _sc_print(uint32_t *esp, uint32_t *uesp, int *errno)
 uint32_t _sc_execute(uint32_t esp)
 {
 	cpu_state_t *state = (cpu_state_t *)esp;
+	syscall_callback_t callback = _sc_syscalls[state->eax];
+
+	if(callback == NULL)
+	{
+		dbg("Syscall %i not implemented but invoked!\n", state->eax);
+		return esp;
+	}
 
 	// Map the userstack
 	thread_t *thread = thread_getCurrentThread();
@@ -69,14 +76,10 @@ uint32_t _sc_execute(uint32_t esp)
 	uesp ++; // Return address of the syscall callee
 	uesp ++; // Syscall number, same as in eax
 
-	// Grab the syscall handler and call it
-	syscall_callback_t callback = _sc_syscalls[state->eax];
+	// Call the syscall handler
 	int errno = 0;
-
-	if(callback == NULL)
-		panic("Syscall %i not implemented but invoked!", state->eax);
-
 	uint32_t result = callback(&esp, uesp, &errno);
+
 	state->eax = result;
 	state->ecx = (errno != 0) ? errno : state->ecx;
 	
@@ -102,7 +105,7 @@ void sc_setSyscallInKernelHandler(uint32_t syscall, syscall_callback_t callback)
 void _sc_processInit();
 void _sc_mmapInit();
 
-bool sc_init(void *ingored)
+bool sc_init(void *UNUSED(ingored))
 {
 	ir_setInterruptHandler(_sc_execute, 0x30);
 	ir_setInterruptHandler(_sc_execute, 0x80);

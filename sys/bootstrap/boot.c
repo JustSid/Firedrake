@@ -21,6 +21,7 @@
 #include <version.h>
 #include <types.h>
 #include <config.h>
+#include <kerneld/syslogd.h>
 #include <system/syslog.h>
 #include <system/panic.h>
 #include <system/video.h>
@@ -30,8 +31,10 @@
 #include <interrupts/trampoline.h>
 #include <syscall/syscall.h>
 #include <memory/memory.h>
+#include <kerneld/watchdogd.h>
 #include <scheduler/scheduler.h>
 #include <ioglue/iostore.h>
+#include <system/time.h>
 
 struct multiboot_s *bootinfo = NULL;
 typedef bool (*sys_function_t)(void *);
@@ -49,12 +52,13 @@ void sys_init(char *name, sys_function_t function, void *data, bool essential)
 		syslog(LOG_DEBUG, "} failed\n");
 
 		if(essential)
-			panic("Failed to initialize essential module \"%s\"!", name);
+			panic("Failed to initialize essential module '%s'!", name);
 	}
 }
 
 extern void _vd_init(); // Declared in system/video.c
 extern void kerneld_main(); // Declared in kerneld/kerneld.c
+extern void time_waitForBootTime(); // Declared in system/time.c
 
 void sys_boot(struct multiboot_s *info) __attribute__ ((noreturn));
 void sys_boot(struct multiboot_s *info)
@@ -63,9 +67,9 @@ void sys_boot(struct multiboot_s *info)
 	_vd_init();
 	
 #ifndef CONF_RELEASE
-	setLogLevel(LOG_DEBUG);
+	syslogd_setLogLevel(LOG_DEBUG);
 #else
-	setLogLevel(LOG_INFO);
+	syslogd_setLogLevel(LOG_INFO);
 #endif
 	
 	syslog(LOG_INFO, "Firedrake v%i.%i.%i:%i%s (%s)\n", VersionMajor, VersionMinor, VersionPatch, VersionCurrent, versionAppendix, versionBeast);
@@ -80,11 +84,20 @@ void sys_boot(struct multiboot_s *info)
 	sys_init("virtual memory", vm_init, (void *)info, true); // After this point, never ever use unmapped memory again! Note that this also maps the multiboot info and the modules, but not the memory information!
 	sys_init("heap allocator", heap_init, NULL, true);
 	sys_init("interrupts", ir_init, NULL, true); // Requires memory
+	sys_init("watchdog", watchdogd_init, NULL, true); // Requires memory
+	sys_init("time keeping", time_init, NULL, true); // Requires that interrupts are disabled, including NMI. So must be done before the scheduler kicks in and enables them
 	sys_init("scheduler", sd_init, NULL, true); // Requires interrupts!
 	sys_init("syscalls", sc_init, NULL, true); // Requires interrupts!
 	sys_init("ioglue", io_init, NULL, true);
 
-	dbg("\n\n");
+	dbg("\n");
+	time_waitForBootTime(); // Wait until we have time ready
+
+#ifndef CONF_RELEASE
+	info("--------------------------------------------------------------------------------\n\n");
+#else
+	vd_clear();
+#endif
 
 	kerneld_main(); // Jump over to the kernel daemon which will do the rest of the work now
 	panic("kerneld bugged"); // In the case that we leave kerneld, something went really wrong. PANIC!

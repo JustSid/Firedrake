@@ -37,6 +37,9 @@ typedef struct thread_s
 	uint8_t wantedTicks;
 	uint8_t died;
 
+	bool hasBeenRunning;
+	bool wasNice; // True if the thread gave back it's resources
+
 	// Thread stacks
 	size_t userStackSize;
 	uint8_t *userStack;

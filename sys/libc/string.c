@@ -49,15 +49,20 @@ void *memcpy(void *dst, const void *src, size_t size)
 
 char *strcpy(char *dst, const char *src)
 {
-	while(*src != '\0')
+	char *d = dst;
+
+	while(1)
 	{
 		*dst = *src;
+
+		if(*src == '\0')
+			break;
 
 		dst ++;
 		src ++;
 	}
 
-	return dst;
+	return d;
 }
 
 size_t strlcpy(char *dst, const char *src, size_t size)
@@ -80,7 +85,7 @@ size_t strlcpy(char *dst, const char *src, size_t size)
 	if(n == 0) 
 	{
 		if(size)
-			*d = '\0'; // Add the missing NULL termination
+			*d = '\0'; // Add the missing NUL termination
 
 		while(*s++ != '\0')
 		{} // Traverse to the end of s

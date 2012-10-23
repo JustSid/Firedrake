@@ -25,36 +25,91 @@
 
 static heap_t *_mm_kernelHeap = NULL;
 
-heap_t *heap_create(size_t bytes, vm_page_directory_t directory, vm_address_t start, uint32_t flags)
+bool heap_createSubheap(heap_t *heap, struct heap_subheap_s *subheap)
 {
-	size_t nbytes = bytes + sizeof(heap_t);
-	size_t npages = pageCount(nbytes);
+	uintptr_t pmemory = pm_alloc(heap->pages);
+	if(!pmemory)
+		return false;
 
-	uintptr_t ppage  = pm_alloc(npages);
-	if(!ppage)
+	vm_address_t vmemory = vm_alloc(heap->directory, pmemory, heap->pages, VM_FLAGS_KERNEL);
+	if(!vmemory)
+	{
+		pm_free(pmemory, heap->pages);
+		return false;
+	}
+
+	subheap->changes = 0;
+	subheap->initialized = true;
+
+	subheap->pmemory = pmemory;
+	subheap->vmemory = vmemory;
+
+	subheap->pages = heap->pages;
+	subheap->size  = (subheap->pages * VM_PAGE_SIZE);
+
+	subheap->freeSize    = (subheap->pages * VM_PAGE_SIZE);
+	subheap->allocations = 1;
+
+	subheap->firstAllocation = (struct heap_allocation_s *)vmemory;
+	subheap->firstAllocation->size = subheap->freeSize;
+	subheap->firstAllocation->type = kHeapAllocationTypeFree;
+	subheap->firstAllocation->ptr  = vmemory + sizeof(struct heap_allocation_s);
+
+	subheap->firstAllocation->next    = NULL;
+	subheap->firstAllocation->subheap = subheap;
+
+	return true;
+}
+
+void heap_destroySubheap(heap_t *heap, struct heap_subheap_s *subheap)
+{
+	if(!subheap->initialized)
+		return;
+
+	subheap->firstAllocation = NULL;
+	subheap->initialized = false;
+
+	pm_free(subheap->pmemory, subheap->pages);
+	vm_free(heap->directory, subheap->vmemory, subheap->pages);
+}
+
+
+
+heap_t *heap_create(size_t bytes, vm_page_directory_t directory, uint32_t flags)
+{
+	uintptr_t pmemory = pm_alloc(1);
+	if(!pmemory)
 		return NULL;
 	
-	vm_address_t vpage = vm_alloc(directory, ppage, npages, flags);
-	if(!vpage)
+	vm_address_t vmemory = vm_alloc(directory, pmemory, 1, VM_FLAGS_KERNEL);
+	if(!vmemory)
 	{
-		pm_free(ppage, npages);
+		pm_free(pmemory, 1);
 		return NULL;
 	}
 
+	heap_t *heap = (heap_t *)vmemory;
+	memset(heap, 0, VM_PAGE_SIZE);
 
-	heap_t *heap = (heap_t *)vpage;
-	heap->size      = bytes;
-	heap->pages     = npages;
-	heap->changes   = 0;
+	heap->flags 	= flags;
 	heap->directory = directory;
 	heap->lock      = SPINLOCK_INIT;
 
-	heap->firstAllocation = (struct _heap_allocation_s *)(heap + 1);
-	heap->firstAllocation->size = bytes;
-	heap->firstAllocation->type = kHeapAllocationTypeFree;
-	heap->firstAllocation->ptr  = (uintptr_t)(heap->firstAllocation + 1);
-	heap->firstAllocation->next = NULL;
+	heap->pages    = pageCount(bytes);
+	heap->size     = heap->pages * VM_PAGE_SIZE;
+	heap->maxHeaps = (VM_PAGE_SIZE - sizeof(heap_t)) / sizeof(struct heap_subheap_s);
+	heap->subheaps = (struct heap_subheap_s *)(vmemory + sizeof(heap_t));
 
+	// Get the first subheap ready
+	bool result = heap_createSubheap(heap, &heap->subheaps[0]);
+	if(!result)
+	{
+		pm_free(pmemory, 1);
+		vm_free(directory, vmemory, 1);
+
+		return NULL;
+	}
+	
 	return heap;
 }
 
@@ -67,30 +122,28 @@ void heap_destroy(heap_t *heap)
 {
 	assert(heap);
 
-	size_t pages = heap->pages;
+	for(size_t i=0; i<heap->maxHeaps; i++)
+	{
+		heap_destroySubheap(heap, &heap->subheaps[i]);
+	}
 
-	vm_address_t vpage = (vm_address_t)heap;
+	vm_address_t vmemory = (vm_address_t)heap;
 	vm_page_directory_t directory = heap->directory;
 
+	uintptr_t pmemory = vm_resolveVirtualAddress(directory, vmemory);
 
-	uintptr_t ppage = vm_resolveVirtualAddress(directory, vpage);
-
-	pm_free(ppage, pages);
-	vm_free(directory, vpage, pages);
+	pm_free(pmemory, 1);
+	vm_free(directory, vmemory, 1);
 }
 
 
 
-size_t heap_allocationUsableSize(struct _heap_allocation_s *allocation)
-{
-	return allocation->size - sizeof(struct _heap_allocation_s);
-}
-
-static inline bool heap_mergeAllocation(struct _heap_allocation_s *allocation)
+// Helper functions to divied and merge the heap
+static inline bool heap_mergeAllocation(struct heap_allocation_s *allocation)
 {
 	if(allocation->next && allocation->next->type == kHeapAllocationTypeFree)
 	{
-		struct _heap_allocation_s *next = allocation->next;
+		struct heap_allocation_s *next = allocation->next;
 
 		allocation->size = allocation->size + next->size;
 		allocation->next = next->next;
@@ -101,33 +154,63 @@ static inline bool heap_mergeAllocation(struct _heap_allocation_s *allocation)
 	return false;
 }
 
-static inline void heap_divideAllocation(struct _heap_allocation_s *allocation, size_t bytes)
+static inline void heap_divideAllocation(struct heap_allocation_s *allocation, size_t bytes)
 {
-	struct _heap_allocation_s *next = (struct _heap_allocation_s *)(allocation->ptr + bytes);
+	struct heap_allocation_s *next = (struct heap_allocation_s *)(allocation->ptr + bytes);
 	size_t psize = allocation->size;
 
-	allocation->size = bytes + sizeof(struct _heap_allocation_s);
+	allocation->size = bytes + sizeof(struct heap_allocation_s);
 
 	next->size = psize - allocation->size;
-	next->ptr = (uintptr_t)(next + 1);
+	next->ptr  = (uintptr_t)(next + 1);
 	next->type = kHeapAllocationTypeFree;
-
 	next->next = allocation->next;
+	next->subheap = allocation->subheap;
+
 	allocation->next = next;
 }
 
-static inline struct _heap_allocation_s *heap_allocationWithPtr(heap_t *heap, void *ptr)
+static inline struct heap_allocation_s *heap_allocationWithPtr(heap_t *heap, void *ptr)
 {
 	if(!ptr)
 		return NULL;
 
-	uintptr_t tptr = (uintptr_t)ptr;
-	return (struct _heap_allocation_s *)(tptr - sizeof(struct _heap_allocation_s));
+	if(heap->flags & kHeapFlagUntrusted)
+	{
+		uintptr_t address = (uintptr_t)ptr;
+
+		for(size_t i=0; i<heap->maxHeaps; i++)
+		{
+			struct heap_subheap_s *subheap = &heap->subheaps[i];
+			if(address >= subheap->vmemory && address < subheap->vmemory + subheap->size)
+			{
+				struct heap_allocation_s *allocation = subheap->firstAllocation;
+				while(allocation)
+				{
+					if(allocation->ptr == address)
+						return allocation;
+
+					allocation = allocation->next;
+				}
+
+				break;
+			}
+		}
+	}
+	else
+	{
+		uintptr_t tptr = (uintptr_t)ptr;
+		return (struct heap_allocation_s *)(tptr - sizeof(struct heap_allocation_s));
+	}
+
+	return NULL;
 }
 
-void heap_defrag(heap_t *heap)
+
+
+void heap_defragSubheap(struct heap_subheap_s *subheap)
 {
-	struct _heap_allocation_s *allocation = heap->firstAllocation;
+	struct heap_allocation_s *allocation = subheap->firstAllocation;
 	while(allocation)
 	{
 		if(allocation->type == kHeapAllocationTypeFree)
@@ -138,35 +221,109 @@ void heap_defrag(heap_t *heap)
 
 		allocation = allocation->next;
 	}
+
+	subheap->changes = 0;
+}
+
+void heap_defrag(heap_t *heap)
+{
+	for(size_t i=0; i<heap->maxHeaps; i++)
+	{
+		struct heap_subheap_s *subheap = &heap->subheaps[i];
+		if(subheap->initialized)
+		{
+			heap_defragSubheap(subheap);
+		}
+	}
 }
 
 
+struct heap_allocation_s *heap_allocateInSubheap(struct heap_subheap_s *subheap, size_t size)
+{
+	struct heap_allocation_s *allocation = subheap->firstAllocation;
+	while(allocation)
+	{
+		if(allocation->type == kHeapAllocationTypeFree && allocation->size >= size)
+		{
+			if(allocation->size >= size + 128)
+				heap_divideAllocation(allocation, size);
 
+			allocation->type = kHeapAllocationTypeUsed;
+			subheap->changes ++;
+			subheap->freeSize -= allocation->size;
+
+			return allocation;
+		}
+
+		allocation = allocation->next;
+	}
+
+	return NULL;
+}
 
 void *halloc(heap_t *heap, size_t size)
 {
 	if(!heap)
 		heap = _mm_kernelHeap;
 
-	size = size + sizeof(struct _heap_allocation_s) + 64;
 	spinlock_lock(&heap->lock);
 
-	struct _heap_allocation_s *allocation = heap->firstAllocation;
-	while(allocation)
+	size = size + sizeof(struct heap_allocation_s);
+
+	size_t padding = 4 - (size % 4);
+	size_t asize = size + padding;
+
+	if(asize >= heap->size)
 	{
-		if(allocation->type == kHeapAllocationTypeFree && allocation->size >= size)
+		spinlock_unlock(&heap->lock);
+		return NULL;
+	}
+
+	// Look for a large enough subheap, and if none is found, create a new one
+	struct heap_subheap_s *emptyHeap = NULL;
+
+	for(size_t i=0; i<heap->maxHeaps; i++)
+	{
+		struct heap_subheap_s *subheap = &heap->subheaps[i];
+		if(!subheap->initialized)
 		{
-			if(allocation->size > size + 32)
-				heap_divideAllocation(allocation, size);
+			if(!emptyHeap)
+				emptyHeap = subheap;
 
-			allocation->type = kHeapAllocationTypeUsed;
-			heap->changes ++;
-
-			spinlock_unlock(&heap->lock);
-			return (void *)allocation->ptr;
+			continue;
 		}
 
-		allocation = allocation->next;
+		if(subheap->initialized && subheap->freeSize >= asize)
+		{
+			struct heap_allocation_s *allocation = heap_allocateInSubheap(subheap, asize);
+			assert(allocation);
+
+			spinlock_unlock(&heap->lock);
+
+			void *ptr = (void *)allocation->ptr;
+			if(heap->flags & kHeapFlagSecure)
+				memset(ptr, 0, size);
+
+			return ptr;
+		}
+	}
+
+	if(emptyHeap != NULL)
+	{
+		bool result = heap_createSubheap(heap, emptyHeap);
+		if(result)
+		{
+			struct heap_allocation_s *allocation = heap_allocateInSubheap(emptyHeap, asize);
+			assert(allocation);
+
+			spinlock_unlock(&heap->lock);
+
+			void *ptr = (void *)allocation->ptr;
+			if(heap->flags & kHeapFlagSecure)
+				memset(ptr, 0, size);
+
+			return ptr;
+		}
 	}
 
 	spinlock_unlock(&heap->lock);
@@ -178,16 +335,20 @@ void hfree(heap_t *heap, void *ptr)
 	if(!heap)
 		heap = _mm_kernelHeap;
 
-	spinlock_unlock(&heap->lock);
+	spinlock_lock(&heap->lock);
 
-	struct _heap_allocation_s *allocation = heap_allocationWithPtr(heap, ptr);
+	struct heap_allocation_s *allocation = heap_allocationWithPtr(heap, ptr);
 	if(allocation)
 	{
-		allocation->type = kHeapAllocationTypeFree;
-		heap->changes ++;
+		struct heap_subheap_s *subheap = allocation->subheap;
 
-		if(heap->changes > kHeapChangesThreshold)
-			heap_defrag(heap);
+		allocation->type = kHeapAllocationTypeFree;
+
+		subheap->freeSize += allocation->size;
+		subheap->changes ++;
+
+		if(subheap->changes > kHeapChangesThreshold)
+			heap_defragSubheap(subheap);
 
 		spinlock_unlock(&heap->lock);
 		return;
@@ -200,10 +361,10 @@ void hfree(heap_t *heap, void *ptr)
 
 
 
-bool heap_init(void *unused)
+bool heap_init(void *UNUSED(unused))
 {
 	size_t oneMb = 1024 * 1024;
-	_mm_kernelHeap = heap_create(oneMb * 5, vm_getKernelDirectory(), 0, VM_FLAGS_KERNEL);
+	_mm_kernelHeap = heap_create(oneMb * 5, vm_getKernelDirectory(), 0);
 
 	return (_mm_kernelHeap != NULL);
 }

@@ -1,3 +1,4 @@
-CFLAGS	 = -m32 -Wall -Wextra -pedantic -std=c99 -O2 -fpic -fno-stack-protector -fno-builtin -nostdinc -nostdlib -I../.
-CPPFLAGS = -m32 -Wall -Wextra -pedantic -std=c++0x -O2 -fpic -fno-stack-protector -fno-rtti -fno-exceptions -nostdinc -nostdlib -I../.
+ASFLAGS  = -m32 -I. -I../.
+CFLAGS	 = -m32 -Wall -Wextra -pedantic -std=c99 -O2 -fpic -fno-stack-protector -fno-builtin -nostdinc -nostdlib -I. -I../.
+CPPFLAGS = -m32 -Wall -Wextra -pedantic -std=c++0x -O2 -fpic -fno-stack-protector -fno-rtti -fno-exceptions -nostdinc -nostdlib -I. -I../.
 LDFLAGS  = -shared

@@ -29,6 +29,9 @@ typedef struct
 	uint32_t run, failed;
 	bool destroyAfterRun;
 
+	timestamp_t started;
+	timestamp_t finished;
+
 	kunit_test_t *firstTest;
 	kunit_test_t *lastTest;
 	kunit_test_t *currentTest;

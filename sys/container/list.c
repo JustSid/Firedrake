@@ -17,18 +17,26 @@
 //
 
 #include <memory/memory.h>
+#include <libc/string.h>
 #include "list.h"
 
+#define list_accessNext(list, entry) *((void **)&((char *)entry)[list->offsetNext])
+#define list_accessPrev(list, entry) *((void **)&((char *)entry)[list->offsetPrev])
 
-list_t *list_create(size_t size)
+list_t *list_create(size_t size, size_t offsetNext, size_t offsetPrev)
 {
 	list_t *list = halloc(NULL, sizeof(list_t));
 	if(list)
 	{
 		list->count     = 0;
 		list->entrySize = size;
-		list->lock      = SPINLOCK_INIT;
 
+		list->lock      	= SPINLOCK_INIT;
+		list->internalLock  = SPINLOCK_INIT;
+		list->fillEntry = NULL;
+
+		list->offsetNext = offsetNext;
+		list->offsetPrev = offsetPrev;
 		list->first = list->last = NULL;
 	}
 
@@ -37,11 +45,13 @@ list_t *list_create(size_t size)
 
 void list_destroy(list_t *list)
 {
-	list_base_t *base = list->first;
-	while(base)
+	void *entry = list->first;
+	while(entry)
 	{
-		hfree(NULL, base);
-		base = base->next;
+		void *temp = entry;
+		entry = list_accessNext(list, entry);
+
+		hfree(NULL, temp);
 	}
 
 	hfree(NULL, list);
@@ -61,77 +71,116 @@ void list_unlock(list_t *list)
 
 void *list_addBack(list_t *list)
 {
-	list_base_t *base = halloc(NULL, list->entrySize);
-	if(base)
+	spinlock_lock(&list->internalLock);
+
+	void *entry = halloc(NULL, list->entrySize);
+	if(entry)
 	{
-		base->list = list;
-		base->next = NULL;
-		base->prev = list->last;
+		memset(entry, 0, list->entrySize);
+
+		if(list->fillEntry)
+		{
+			bool result = list->fillEntry(entry);
+			if(!result)
+			{
+				hfree(NULL, entry);
+
+				spinlock_unlock(&list->internalLock);
+				return NULL;
+			}
+		}
+
+		list_accessNext(list, entry) = NULL;
+		list_accessPrev(list, entry) = list->last;
 
 		if(list->last)
-			list->last->next = base;
+			list_accessNext(list, list->last) = entry;
 
-		list->last = base;
+		list->last = entry;
 		list->count ++;
 
 		if(list->first == NULL)
-			list->first = base;
+			list->first = entry;
 	}
 
-	return base;
+	spinlock_unlock(&list->internalLock);
+	return entry;
 }
 
 void *list_addFront(list_t *list)
 {
-	list_base_t *base = halloc(NULL, list->entrySize);
-	if(base)
+	spinlock_lock(&list->internalLock);
+
+	void *entry = halloc(NULL, list->entrySize);
+	if(entry)
 	{
-		base->list = list;
-		base->next = list->first;
-		base->prev = NULL;
+		memset(entry, 0, list->entrySize);
+		
+		if(list->fillEntry)
+		{
+			bool result = list->fillEntry(entry);
+			if(!result)
+			{
+				hfree(NULL, entry);
+
+				spinlock_unlock(&list->internalLock);
+				return NULL;
+			}
+		}
+
+		list_accessNext(list, entry) = list->first;
+		list_accessPrev(list, entry) = NULL;
 
 		if(list->first)
-			list->first->prev = base;
+			list_accessPrev(list, list->first) = entry;
 
-		list->first = base;
+		list->first = entry;
 		list->count ++;
 
 		if(list->last == NULL)
-			list->last = base;
+			list->last = entry;
 	}
 
-	return base;
+	spinlock_unlock(&list->internalLock);
+	return entry;
 }
 
-void list_remove(list_t *list, void *tentry)
+void list_remove(list_t *list, void *entry)
 {
-	list_base_t *entry = tentry;
-	if(entry->list == list)
-	{
-		if(entry->prev)
-			entry->prev->next = entry->next;
+	spinlock_lock(&list->internalLock);
+	
+	void *next = list_accessNext(list, entry);
+	void *prev = list_accessPrev(list, entry);
 
-		if(entry->next)
-			entry->next->prev = entry->prev;
+	if(prev)
+		list_accessNext(list, prev) = next;
 
-		if(list->first == entry)
-			list->first = entry->next;
+	if(next)
+		list_accessPrev(list, next) = prev;
 
-		if(list->last == entry)
-			list->last = entry->prev;
+	if(list->first == entry)
+		list->first = next;
 
-		list->count --;
-		hfree(NULL, entry);
-	} 
+	if(list->last)
+		list->last = prev;
+
+	list->count --;
+	hfree(NULL, entry);
+
+	spinlock_unlock(&list->internalLock);
 }
 
+size_t list_count(list_t *list)
+{
+	return list->count;
+}
 
-list_base_t *list_first(list_t *list)
+void *list_first(list_t *list)
 {
 	return list->first;
 }
 
-list_base_t *list_last(list_t *list)
+void *list_last(list_t *list)
 {
 	return list->last;
 }

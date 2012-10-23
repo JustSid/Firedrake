@@ -26,18 +26,19 @@
 
 #define _SYS_MAXCALLS 		128 // Increase if needed
 
-#define SYS_PRINT 			0 // syscall1(char *message)
-#define SYS_PRINTCOLOR 		1 // syscall2(int color, char *message)
-#define SYS_EXIT 			2 // syscall0()
-#define SYS_SLEEP			3 // syscall0()
-#define SYS_THREADATTACH	4 // syscall4(void *function, void *arg1, unsigned int stacksize, void *arg2), returns thread id, stacksize must be a multiple of 4k
-#define SYS_THREADEXIT		5 // syscall0()
-#define SYS_THREADJOIN		6 // syscall1(unsigned int tid)
-#define SYS_PROCESSCREATE	7 // syscall1(char *name), returns pid
-#define SYS_PROCESSKILL		8 // syscall1(unsgined int pid)
-#define SYS_MMAP			9 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, uint32_t offset)
-#define SYS_UNMAP			10 // (void*, size_t) // Doesn't exist yet!
-#define SYS_FORK			11 // uint32_t fork(void)
+#define SYS_PRINT 			0
+#define SYS_PRINTCOLOR 		1
+#define SYS_EXIT 			2
+#define SYS_SLEEP			3
+#define SYS_THREADATTACH	4
+#define SYS_THREADEXIT		5
+#define SYS_THREADJOIN		6
+#define SYS_PROCESSCREATE	7
+#define SYS_PROCESSKILL		8
+#define SYS_MMAP			9
+#define SYS_MUNMAP			10
+#define SYS_MPROTECT		11
+#define SYS_FORK			12
 
 typedef uint32_t (*syscall_callback_t)(uint32_t *esp, uint32_t *uesp, int *errno);
 

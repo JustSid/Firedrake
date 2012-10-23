@@ -65,6 +65,7 @@ void ir_idt_init(uint64_t *idt, uint32_t offset)
 
 	// Syscall
 	ir_idt_setEntry(idt, 0x30, ((uint32_t)idt_interrupt_0x30) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING3 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x31, ((uint32_t)idt_interrupt_0x31) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
 	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x80) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING3 | IDT_FLAG_PRESENT);
 
 	// Reload the IDT
@@ -112,13 +113,11 @@ void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt)
 uint32_t __ir_handleException(uint32_t esp);
 uint32_t __ir_handleInterrupt(uint32_t esp)
 {
-	// Send EOI to the pic
-	outb(0xA0, 0x20);
-	outb(0x20, 0x20);
-
 	return esp;
 }
 
+
+void time_tick();
 
 uint32_t ir_handleInterrupt(uint32_t esp)
 {
@@ -126,9 +125,7 @@ uint32_t ir_handleInterrupt(uint32_t esp)
 
 	ir_interrupt_handler_t handler = __ir_interruptHandler[state->interrupt];
 	if(!handler)
-	{
 		panic("Unhandled interrupt %i!", state->interrupt);
-	}
 
 	esp = handler(esp);
 
@@ -145,14 +142,20 @@ uint32_t ir_handleInterrupt(uint32_t esp)
 
 
 
-void ir_disableInterrupts() 
+void ir_disableInterrupts(bool disableNMI)
 {
 	__asm__ volatile("cli;");
+
+	if(disableNMI)
+		outb(0x70, inb(0x70) | 0x80);
 }
 
-void ir_enableInterrupts()  
+void ir_enableInterrupts(bool enableNMI)
 {
 	__asm__ volatile("sti;");
+
+	if(enableNMI)
+		outb(0x70, inb(0x70) & 0x7F);
 }
 
 bool ir_init(void *unused)

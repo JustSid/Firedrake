@@ -38,7 +38,7 @@ typedef uint16_t elf32_version_t;
 
 typedef struct
 {
-    unsigned char   e_ident[16];	/* Magic number and other info */
+	unsigned char   e_ident[16];	/* Magic number and other info */
 	elf32_half_t	e_type;			/* Object file type */
 	elf32_half_t	e_machine;		/* Architecture */
 	elf32_word_t	e_version;		/* Object file version */
@@ -194,15 +194,15 @@ typedef struct
 
 typedef struct
 {
-    elf32_address_t	r_offset;		/* Address */
-    elf32_word_t	r_info;			/* Relocation type and symbol index */
+	elf32_address_t	r_offset;		/* Address */
+	elf32_word_t	r_info;			/* Relocation type and symbol index */
 } elf_rel_t;
 
 typedef struct
 {
-  elf32_address_t	r_offset;		/* Address */
-  elf32_address_t	r_info;			/* Relocation type and symbol index */
-  elf32_word_t 		r_addend;		/* Addend */
+	elf32_address_t	r_offset;		/* Address */
+	elf32_address_t	r_info;			/* Relocation type and symbol index */
+	elf32_word_t 	r_addend;		/* Addend */
 } elf_rela_t;
 
 #define ELF32_R_SYM(val)			((val) >> 8)
@@ -264,12 +264,12 @@ typedef struct
 
 typedef struct
 {
-    elf32_sword_t	d_tag;			/* Dynamic entry type */
-    union
-    {
-        elf32_word_t d_val;			/* Integer value */
-        elf32_address_t d_ptr;			/* Address value */
-    } d_un;
+	elf32_sword_t	d_tag;			/* Dynamic entry type */
+	union
+	{
+		elf32_word_t d_val;			/* Integer value */
+		elf32_address_t d_ptr;			/* Address value */
+	} d_un;
 } elf_dyn_t;
 
 #define DT_NULL		0		/* Marks end of dynamic section */

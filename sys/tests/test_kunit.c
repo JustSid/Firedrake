@@ -18,27 +18,27 @@
 
 #include "unittests.h"
 
-void _test_simpleSuitTest();
-void _test_NullSuiteTest();
-void _test_AssertionTest();
-void _test_TestMember();
-void _test_JumpOnFail();
+void _test_kunit_simpleSuitTest();
+void _test_kunit_NullSuiteTest();
+void _test_kunit_AssertionTest();
+void _test_kunit_TestMember();
+void _test_kunit_JumpOnFail();
 
 void test_kunit()
 {
 	kunit_test_suite_t *testSuite = kunit_test_suiteCreate("Test Suite", "A test suite which creates and tests test suites", true);
 	{
-		kunit_test_suiteAddTest(testSuite, kunit_testCreate("Simple test", "Tests wether test suites can be created or not", _test_simpleSuitTest));
-		kunit_test_suiteAddTest(testSuite, kunit_testCreate("NULL test", "Tests wether test suites can be created with NULL arguments", _test_NullSuiteTest));
-		kunit_test_suiteAddTest(testSuite, kunit_testCreate("Assertion test", "Tests wether assertions work correctly", _test_AssertionTest));
+		kunit_test_suiteAddTest(testSuite, kunit_testCreate("Simple test", "Tests wether test suites can be created or not", _test_kunit_simpleSuitTest));
+		kunit_test_suiteAddTest(testSuite, kunit_testCreate("NULL test", "Tests wether test suites can be created with NULL arguments", _test_kunit_NullSuiteTest));
+		kunit_test_suiteAddTest(testSuite, kunit_testCreate("Assertion test", "Tests wether assertions work correctly", _test_kunit_AssertionTest));
 	}
 	kunit_test_suiteRun(testSuite);
 
 	// ---
 	kunit_test_suite_t *testsSuite = kunit_test_suiteCreate("Tests Suite", "Tests if kunit_test_t is working correctly", true);
 	{
-		kunit_test_suiteAddTest(testsSuite, kunit_testCreate("Member test", "Tests the members of kunit_test_t", _test_TestMember));
-		kunit_test_suiteAddTest(testsSuite, kunit_testCreate("Jump test", "Tests wether jumps on failures work", _test_JumpOnFail));
+		kunit_test_suiteAddTest(testsSuite, kunit_testCreate("Member test", "Tests the members of kunit_test_t", _test_kunit_TestMember));
+		kunit_test_suiteAddTest(testsSuite, kunit_testCreate("Jump test", "Tests wether jumps on failures work", _test_kunit_JumpOnFail));
 	}
 	kunit_test_suiteRun(testsSuite);
 }
@@ -46,7 +46,7 @@ void test_kunit()
 
 
 
-void _test_simpleSuitTest()
+void _test_kunit_simpleSuitTest()
 {
 	kunit_test_suite_t *suite = kunit_test_suiteCreate("Test", "A test suite", true);
 
@@ -60,7 +60,7 @@ void _test_simpleSuitTest()
 	kunit_test_suiteDestroy(suite);
 }
 
-void _test_NullSuiteTest()
+void _test_kunit_NullSuiteTest()
 {
 	kunit_test_t *test = kunit_testCurrent();
 	test->continueOnError = false;
@@ -78,7 +78,7 @@ void _test_NullSuiteTest()
 	kunit_test_suiteDestroy(noDesc);	
 }
 
-void _test_AssertionTest()
+void _test_kunit_AssertionTest()
 {
 	kunit_test_t *test = kunit_testCurrent();
 	test->continueOnError = false;
@@ -101,9 +101,10 @@ void _test_AssertionTest()
 	KUAssertFalse(NULL, NULL);
 
 	// Lets test if tests can fail, thus we need the continue on error functionality!
- 	test->continueOnError = true;
+	test->continueOnError = true;
 
-	info("All of the following 6 assertions MUST fail!\n");
+	warn("All of the following 6 assertions MUST fail!\n");
+
 	KUAssertEquals(0, 1, NULL);
 	KUAssertEqualsWithAccuracy(10.3582 - 9.23151, 1.0, 0.001, NULL);
 	KUAssertNull((void *)0x1000, NULL);
@@ -119,8 +120,7 @@ void _test_AssertionTest()
 	KUAssertEquals(test->failures, 6, NULL);
 }
 
-
-void _test_TestMember()
+void _test_kunit_TestMember()
 {
 	kunit_test_t *test = kunit_testCurrent();
 
@@ -130,12 +130,12 @@ void _test_TestMember()
 	KUAssertEquals(test->suite, kunit_test_suiteCurrent(), "The current tests suite should be equal to the currently running suite");
 }
 
-void _test_JumpOnFail()
+void _test_kunit_JumpOnFail()
 {
 	kunit_test_t *test = kunit_testCurrent();
 	test->continueOnError = false;
 
-	info("This test is supposed to fail!\n");
+	warn("This test is supposed to fail!\n");
 	KUAssertTrue(false, NULL); // MUST fail here!
 
 	KUFail("We MUST not be here!");

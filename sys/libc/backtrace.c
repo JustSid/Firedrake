@@ -18,49 +18,71 @@
 
 #include <types.h>
 #include <memory/memory.h>
+#include <scheduler/scheduler.h>
 #include <system/syslog.h>
 
 #define FramePointerLinkOffset 1
 #define	FramePointerIsAligned(a1) ((((uintptr_t)a1) & 0x1) == 0)
 
-void kernel_stack_backtrace(vm_address_t *buffer, uint32_t max, uint32_t *nb, uint32_t skip)
+struct stack_frame_s
 {
-    void *frame, *next;
-    *nb = 0;
-    frame = __builtin_frame_address(0);
+	struct stack_frame_s *next;
+	void *ret;
+};
 
-    if(!FramePointerIsAligned(frame))
+void kernel_stacktraceForEBP(void *ebp, void **buffer, uint32_t max, uint32_t *numOut, uint32_t skip)
+{
+	struct stack_frame_s *frame = (struct stack_frame_s *)ebp;
+	*numOut = 0;
+
+	if(!FramePointerIsAligned(frame))
 		return;
 
+	for(; skip>0; skip--)
+	{
+		if(!FramePointerIsAligned(frame->next) || frame->next <= frame)
+			return;
 
-    for(; skip > 0; skip --)
-    {
-		next = *(void **)frame;
+		frame = frame->next;
+	}
 
-		if(!FramePointerIsAligned(next) || next <= frame)
-	    	return;
+	for(; max>0; max--)
+	{
+		buffer[(*numOut) ++] = frame->ret;
 
-		frame = next;
-    }
+		if(!FramePointerIsAligned(frame->next) || frame->next <= frame)
+			return;
 
-    for(; max > 0; max --)
-    {
-    	vm_address_t offset = *(vm_address_t *)(((void **)frame) + FramePointerLinkOffset);
+		frame = frame->next;
+	}
+}
 
-        buffer[(*nb)++] = offset;
-		next = *(void **)frame;
+void kernel_stacktrace(void **buffer, uint32_t max, uint32_t *numOut, uint32_t skip)
+{
+	void *ebp = __builtin_frame_address(0);
+	kernel_stacktraceForEBP(ebp, buffer, max, numOut, skip);
+}
 
-		if(!FramePointerIsAligned(next) || next <= frame)
-	    	return;
 
-		frame = next;
-    }
+
+int backtraceForEBP(void *ebp, void **buffer, int size)
+{
+	if(!ebp)
+		return 0;
+
+	uint32_t frames;
+	kernel_stacktraceForEBP(ebp, buffer, (uint32_t)size, &frames, 1);
+
+	while(frames >= 1 && buffer[frames-1] == NULL) 
+		frames --;
+
+	return (int)frames;
 }
 
 int backtrace(void **buffer, int size)
 {
 	uint32_t frames;
-	kernel_stack_backtrace((vm_address_t *)buffer, (uint32_t)size, &frames, 1);
+	kernel_stacktrace(buffer, (uint32_t)size, &frames, 1);
 
 	while(frames >= 1 && buffer[frames-1] == NULL) 
 		frames --;

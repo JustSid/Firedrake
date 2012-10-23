@@ -1,5 +1,5 @@
 //
-//  iolink.h
+//  loader.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,59 +16,31 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOLINK_H_
-#define _IOLINK_H_
+#ifndef _LOADER_H_
+#define _LOADER_H_
 
 #include <types.h>
-#include <system/elf.h>
 #include <memory/memory.h>
-#include <container/list.h>
 
-typedef struct
+typedef struct ld_exectuable_s
 {
-	list_base_t base;
-	char *path;
+	vm_page_directory_t pdirectory;
+	struct ld_exectuable_s *source;
 
-	// Dynamic section content
-	void *dynamic;
+	vm_address_t entry; // The main entry point into the executable
 
-	const char *strtab;
-	size_t 		strtabSize;
-	elf_sym_t  *symtab;
+	// Location and size of the image
+	uintptr_t    	pimage;
+	vm_address_t 	vimage;
+	size_t 			imagePages;
 
-	elf_rel_t  *rel, *pltRel;
-	elf_rel_t  *rellimit, *pltRellimit;
-	elf_rela_t *rela;
-	elf_rela_t *relalimit;
+	uint32_t useCount;
+} ld_exectuable_t;
 
-	uint32_t *hashtab;
-	uint32_t *buckets;
-	uint32_t *chains;
-	uint32_t nbuckets;
-	uint32_t nchains;
+ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory,  uint8_t *begin, size_t size);
+ld_exectuable_t *ld_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file);
+ld_exectuable_t *ld_exectuableCopy(vm_page_directory_t pdirectory, ld_exectuable_t *source);
 
-	// Binary content and info
-	offset_t relocBase;
+void ld_executableRelease(ld_exectuable_t *executable);
 
-	uintptr_t 		pmemory;
-	vm_address_t 	vmemory;
-	size_t pages;
-
-	// Misc
-	uint32_t refCount;
-} io_library_t;
-
-
-io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t length);
-io_library_t *io_libraryCreateWithFile(const char *file);
-
-void io_libraryRelease(io_library_t *library);
-bool io_libraryRelocateNonPLT(io_library_t *library);
-bool io_libraryRelocatePLT(io_library_t *library);
-
-vm_address_t io_libraryResolveAddress(io_library_t *library, vm_address_t address);
-
-elf_sym_t *io_librarySymbolWithAddress(io_library_t *library, vm_address_t address);
-elf_sym_t *io_libraryLookupSymbol(io_library_t *library, const char *name, uint32_t hash);
-
-#endif /* _IOLINK_H_ */
+#endif /* _LOADER_H_ */

@@ -1,9 +1,11 @@
 #!/bin/bash
 BASEDIR="$(cd -P "$(dirname "$0")" && pwd)"
+runobjdump=true
 
 ## Arrays
 programs=(hellostatic)
-libraries=(libkernel)
+libraries=()
+drivers=(libio libps2)
 
 ## Misc
 grubpath="$BASEDIR/image/boot/grub/grub.cfg"
@@ -22,12 +24,30 @@ echo -e -n "GRUB_DEFAULT=0\nGRUB_TIMEOUT=1\n\nmenuentry \"Firedrake\" {\n\tmulti
 for i in ${programs[@]}; do
 	echo -e -n "\tmodule /modules/${i}.bin ${i}.bin\n" >> $grubpath
 	cp "$BASEDIR/../bin/${i}/${i}.bin" "$BASEDIR/image/modules/${i}.bin"
+
+	if [ $runobjdump = true ]; then
+		objdump -d "$BASEDIR/../bin/${i}/${i}.bin" > "$BASEDIR/../bin/${i}/dump.txt"
+	fi
 done
 
 ## Copy libraries
 for i in ${libraries[@]}; do
 	echo -e -n "\tmodule /modules/${i}.so ${i}.so\n" >> $grubpath
 	cp "$BASEDIR/../lib/${i}/${i}.so" "$BASEDIR/image/modules/${i}.so"
+
+	if [ $runobjdump = true ]; then
+		objdump -d "$BASEDIR/../lib/${i}/${i}.so" > "$BASEDIR/../lib/${i}/dump.txt"
+	fi
+done
+
+## Copy drivers
+for i in ${drivers[@]}; do
+	echo -e -n "\tmodule /modules/${i}.so ${i}.so\n" >> $grubpath
+	cp "$BASEDIR/../libkernel/${i}/${i}.so" "$BASEDIR/image/modules/${i}.so"
+
+	if [ $runobjdump = true ]; then
+		objdump -d "$BASEDIR/../libkernel/${i}/${i}.so" > "$BASEDIR/../libkernel/${i}/dump.txt"
+	fi
 done
 
 ## Finish the grub.cfg and copy the kernel

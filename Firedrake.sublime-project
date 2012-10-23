@@ -3,9 +3,9 @@
 	[
 		{
 			"name": "Firedrake",
-			"path": "/",
-			"file_exclude_patterns": ["*.sublime-workspace", "*.gitignore"],
-			"folder_exclude_patterns": ["bin", "lib"]
+			"path": "./",
+			"file_exclude_patterns": ["*.sublime-workspace", "*.sublime-project", "*.gitignore"],
+			"folder_exclude_patterns": ["libkernel"]
 		}
 	],
 	"settings":
@@ -14,11 +14,14 @@
 		"sublimeclang_options":
 		[
 			"-I${folder:${project_path:Firedrake.sublime-project}}/sys/.",
+			"-I${folder:${project_path:Firedrake.sublime-project}}/bin/.",
+			"-I${folder:${project_path:Firedrake.sublime-project}}/lib/.",
+			"-m32",
 			"-Wall",
 			"-Wextra",
-			"-Wno-unused-paramater",
 			"-std=c99",
 			"-nostdlib",
+			"-nostdinc",
 			"-fno-builtin",
 			"-pedantic-errors"
 		]
@@ -30,6 +33,7 @@
             "working_dir": "${project_path}",
 			"cmd": ["exec ./remotebuild.sh"],
 			"shell": true,
+			"selector": "source.c, source.c++, source.asm",
 
 			"variants":
 			[
@@ -40,6 +44,10 @@
 				{
 					"name": "Instrument",
 					"cmd": ["qemu -d int,cpu_reset -no-reboot -no-shutdown ${project_path}/boot/Firedrake.iso"]
+				},
+				{
+					"name": "Clean",
+					"cmd": ["exec ./remotebuild.sh --clean"]
 				}
 			]
 		}

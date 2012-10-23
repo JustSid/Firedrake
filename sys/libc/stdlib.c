@@ -68,13 +68,13 @@ double atof(const char *string)
 	{
 		double value = (double)character - '0';
 		result = (result * 10.0) + value;
-   	}
+	}
 
 	if(character == '.')
 	{
-   		string ++;
+		string ++;
 
-   		while((character = *string++) != '\0' && isdigit(character)) 
+		while((character = *string++) != '\0' && isdigit(character)) 
 		{
 			double value = (double)character - '0';
 			result = (result * 10.0) + value;
@@ -89,17 +89,17 @@ double atof(const char *string)
 		exponent += atoi(string);
 	}
 
-   	// Process the exponent
-   	while(exponent > 0)
-   	{
-   		result *= 10.0;
-   		exponent --;
-   	}
-   	while(exponent < 0)
-   	{
-   		result *= 0.1;
-   		exponent ++;
-   	}
+	// Process the exponent
+	while(exponent > 0)
+	{
+		result *= 10.0;
+		exponent --;
+	}
+	while(exponent < 0)
+	{
+		result *= 0.1;
+		exponent ++;
+	}
 
 	return negative ? -result : result;
 }

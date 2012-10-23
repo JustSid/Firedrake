@@ -111,20 +111,21 @@ static inline thread_t *_sd_threadPreviousThread(thread_t *thread)
 
 // MARK: Scheduler
 
-uint32_t _sd_schedule(uint32_t esp)
+uint32_t sd_schedule(uint32_t esp)
 {
 	process_t *process = _process_currentProcess;
 	thread_t  *thread  = process->scheduledThread;
 
 	if(esp)
 	{
-		// We only try to obtain the lock here because if we would wait on it, the currently process couldn't work anymore because the scheduler would never return to it
-		// so if the can't obtain the lock, we don't deadlock ourself and simply return
+		// Try to obtain the lock, if we can't, we simply return to the current process
+		// The reason behind this is that its possible that the currently scheduled thread holds the lock in which case we would deadlock ourself
 		bool result = spinlock_tryLock(&_sd_lock);
 		if(!result)
 			return esp;
 
 		thread->esp = esp;
+		thread->hasBeenRunning = true;
 	}
 
 	// Check if the process or thread died
@@ -150,7 +151,6 @@ uint32_t _sd_schedule(uint32_t esp)
 			thread->next = _sd_deadThread;
 			_sd_deadThread = thread;
 
-
 			thread = previous->next ? previous->next : process->mainThread;
 			process->scheduledThread = thread;
 		}
@@ -159,8 +159,7 @@ uint32_t _sd_schedule(uint32_t esp)
 
 	// Update the thread
 	thread->usedTicks ++;
-
-	while(thread->usedTicks >= thread->wantedTicks || thread->blocked > 0)
+	while(thread->usedTicks >= thread->wantedTicks || thread->blocked > 0 || thread->died)
 	{
 		thread->usedTicks = 0;
 
@@ -168,41 +167,89 @@ uint32_t _sd_schedule(uint32_t esp)
 		thread = thread->next ? thread->next : process->mainThread;
 		process->scheduledThread = thread;
 
-		// Schedule a new process
+		// Find a new process
 		process = process->next ? process->next : _process_firstProcess;
-		thread = process->scheduledThread;
+		thread  = process->scheduledThread;
 
-		if(process->died || thread->died) // Remotely killed process
+		if(process->died) // Remotely killed process
 		{
 			_process_currentProcess = process;
-			return _sd_schedule(0x0);
+			return sd_schedule(0x0);
 		}
 	}
 
+	// Update the processes time
+	process->usedTime += TIME_MILLISECS_PER_TICK;
+	if(((time_t)(process->usedTime) % 1000) == 0)
+	{
+		time_t time = (time_t)(process->usedTime >> 32);
+		process->usedTime = ((timestamp_t)(time + 1) << 32);
+	}
 
 	_process_currentProcess = process;
-	ir_trampoline_map->pagedir = process->pdirectory;
-	ir_trampoline_map->tss.esp0 = thread->esp;
+	ir_trampoline_map->pagedir  = process->pdirectory;
+	ir_trampoline_map->tss.esp0 = thread->esp + sizeof(cpu_state_t);
+
+	thread->wasNice = false;
 
 	spinlock_unlock(&_sd_lock);
 	return thread->esp;
 }
 
+uint32_t sd_schedule_kernel(uint32_t esp)
+{
+	process_t *process = _process_currentProcess;
+	thread_t  *thread  = process->scheduledThread;
 
+	thread->wasNice = true;
+	thread->usedTicks = thread->wantedTicks;
+
+	return sd_schedule(esp);
+}
+
+
+
+void sd_yield()
+{
+	__asm__ volatile("int $0x31");
+}
+
+void sd_threadExit()
+{
+	thread_t *thread = thread_getCurrentThread();
+	thread->died = true;
+
+	while(1)
+		sd_yield();
+}
+
+
+void sd_disableScheduler()
+{
+	spinlock_lock(&_sd_lock); // This effectively disables the scheduler
+}
 
 // MARK: Init
-bool sd_init(void *ingored)
+extern uintptr_t spinlock_wait;
+
+bool sd_init(void *UNUSED(ingored))
 {
 	process_t *process = process_createKernel();
 	thread_t *thread = process->mainThread;
 
 	// Prepare everything for the kernel task
 	ir_trampoline_map->pagedir  = process->pdirectory;
-	ir_trampoline_map->tss.esp0 = thread->esp;
+	ir_trampoline_map->tss.esp0 = thread->esp + sizeof(cpu_state_t);
 
 	// Setup the interrupt handler and enable interrupts now that we have a stack for the interrupt handler
-	ir_setInterruptHandler(_sd_schedule, 0x20);
-	ir_enableInterrupts();
+	ir_setInterruptHandler(sd_schedule_kernel, 0x31);
+	ir_enableInterrupts(false);
+
+	// Now that the interrupt handler are in place, fixup spinlock_lock!
+	// See /system/lock.S for more details
+	uint8_t *buffer = (uint8_t *)&spinlock_wait;
+	*(buffer ++) = 0xcd;
+	*(buffer ++) = 0x31;
 
 	return (process != NULL);
 }

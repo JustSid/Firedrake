@@ -21,6 +21,7 @@
 
 #include <types.h>
 #include <libc/setjmp.h>
+#include <system/time.h>
 
 typedef enum 
 {
@@ -37,6 +38,9 @@ typedef struct kunit_test_s
 	char *description;
 
 	bool continueOnError;
+	
+	timestamp_t started;
+	timestamp_t finished;
 
 	kunit_test_state_t state;
 	uint32_t failures;

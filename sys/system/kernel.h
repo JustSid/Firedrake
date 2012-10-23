@@ -25,6 +25,9 @@
 const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary);
 uintptr_t kern_resolveAddress(uintptr_t address);
 
+struct thread_s;
+
+void kern_printBacktraceForThread(struct thread_s *thread, long depth);
 void kern_printBacktrace(long depth);
 
 typedef enum 

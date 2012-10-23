@@ -21,7 +21,10 @@
 
 #include <memory/memory.h>
 
-void kernel_stack_backtrace(vm_address_t *buffer, uint32_t max, uint32_t *nb, uint32_t skip);
+void kernel_stacktraceForEBP(void *ebp, void **buffer, uint32_t max, uint32_t *numOut, uint32_t skip);
+void kernel_stacktrace(void **buffer, uint32_t max, uint32_t *numOut, uint32_t skip);
+
+int backtraceForEBP(void *ebp, void **buffer, int size);
 int backtrace(void **buffer, int size);
 
 #endif /* _BACKTRACE_H_ */

@@ -27,6 +27,6 @@ void *mmap(void *addr, size_t length, int prot, int flags, int fd, uint32_t offs
 
 int munmap(void *address, size_t length)
 {
-	uint32_t result = syscall(SYS_UNMAP, address, length);
+	uint32_t result = syscall(SYS_MUNMAP, address, length);
 	return (int)result;
 }

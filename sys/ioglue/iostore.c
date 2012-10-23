@@ -17,169 +17,204 @@
 //
 
 #include <memory/memory.h>
+#include <container/array.h>
 #include <system/syslog.h>
 #include <libc/string.h>
-
 #include "iostore.h"
 #include "iostubs.h"
+#include "iomodule.h"
 
-io_store_t *__io_store = NULL;
+//static spinlock_t __io_storeLock = SPINLOCK_INIT;
+static atree_t *__io_storeLibraries = NULL;
+static io_library_t *__io_libio = NULL;
 
-elf_sym_t *io_storeFindLibraryWithSymbol(const char *name, uint32_t hash, io_library_t **outLib)
+elf_sym_t *io_storeLookupSymbol(io_library_t *library, uint32_t symNum, io_library_t **outLib)
 {
-	elf_sym_t *symbol = io_findKernelSymbol(name);
-	if(symbol)
+	elf_sym_t *lookup = library->symtab + symNum;
+	const char *name  = library->strtab + lookup->st_name;
+
+	if(ELF32_ST_BIND(lookup->st_info) == STB_LOCAL)
 	{
-		if(outLib)
-			*outLib = io_kernelLibraryStub();
-
-		return symbol;
-	}
-
-	list_base_t *entry = list_first(__io_store->libraries);
-	while(entry)
-	{
-		symbol = io_libraryLookupSymbol((io_library_t *)entry, name, hash);
-		if(symbol)
-		{
-			if(outLib)
-				*outLib = (io_library_t *)entry;
-
-			return symbol;
-		}
-
-		entry = entry->next;
-	}
-
-	if(outLib)
-		*outLib = NULL;
-
-	return NULL;
-}
-
-elf_sym_t *io_storeFindSymbol(io_library_t *library, uint32_t symbol, io_library_t **outLib)
-{
-	io_library_t *container = NULL;
-	elf_sym_t *defintion = NULL;
-	elf_sym_t *reference = library->symtab + symbol;
-
-	const char *name = library->strtab + reference->st_name;
-	uint32_t hash;
-
-	if(ELF32_ST_BIND(reference->st_info) != STB_LOCAL)
-	{
-		hash = elf_hash(name);
-		defintion = io_storeFindLibraryWithSymbol(name, hash, &container);
+		*outLib = library;
+		return lookup;
 	}
 	else
 	{
-		defintion = reference;
-		container = library;
+		uint32_t hash = elf_hash(name);
+		elf_sym_t *symbol;
+
+		// Look it up in the kernel
+		symbol = io_findKernelSymbol(name);
+		if(symbol)
+		{
+			*outLib = io_kernelLibraryStub();
+			return symbol;
+		}
+
+		// Look it up in the library
+		symbol = io_librarySymbolWithName(library, name, hash);
+		if(symbol)
+		{
+			*outLib = library;
+			return symbol;
+		}
+
+		// Search through the dependencies
+		// Breadth first
+		array_t *dependencyTree = array_create();
+		array_addObject(dependencyTree, library->dependencies);
+		
+		for(size_t i=0; i<array_count(dependencyTree); i++)
+		{
+			list_t *dependencies = array_objectAtIndex(dependencyTree, i);
+			struct io_dependency_s *dependency = list_first(dependencies);
+			while(dependency)
+			{
+				symbol = io_librarySymbolWithName(dependency->library, name, hash);
+				if(symbol)
+				{
+					*outLib = dependency->library;
+					array_destroy(dependencyTree);
+					return symbol;
+				}
+
+				if(list_count(dependency->library->dependencies) > 0)
+					array_addObject(dependencyTree, dependency->library->dependencies);
+				
+				dependency = dependency->next;
+			}
+		}
+
+		array_destroy(dependencyTree);
 	}
 
-	if(defintion)
-	{
-		if(outLib)
-			*outLib = container;
-
-		return defintion;
-	}
-
-	dbg("iolink: Failed to lookup symbol '%s'\n", name);
 	return NULL;
 }
 
 
-void *io_storeLookupSymbol(const char *name)
+
+int io_storeAtreeLookup(void *key1, void *key2)
 {
-	io_library_t *container;
-	elf_sym_t *defintion;
+	const char *name1 = (const char *)key1;
+	const char *name2 = (const char *)key2;
 
-	uint32_t hash = elf_hash(name);
-	defintion = io_storeFindLibraryWithSymbol(name, hash, &container);
-
-	if(defintion && container)
+	uint32_t index = 0;
+	while(1)
 	{
-		uint32_t address = container->relocBase + defintion->st_value;
-		return (void *)address;
+		char char1 = name1[index];
+		char char2 = name2[index];
+
+		if(char1 == char2)
+		{
+			if(char1 == '\0')
+				return kCompareEqualTo;
+
+			index ++;
+			continue;
+		}
+
+		if(char1 > char2)
+			return kCompareGreaterThan;
+
+		if(char1 < char2)
+			return kCompareLesserThan;
 	}
-
-	return NULL;
-}
-
-void *io_storeLookupSymbolInLibrary(io_library_t *library, const char *name)
-{
-	uint32_t hash = elf_hash(name);
-	elf_sym_t *defintion = io_libraryLookupSymbol(library, name, hash);
-
-	if(defintion)
-	{
-		uint32_t address = library->relocBase + defintion->st_value;
-		return (void *)address;
-	}
-
-	return NULL;
 }
 
 
 
 io_library_t *io_storeLibraryWithName(const char *name)
 {
-	list_base_t *entry = list_first(__io_store->libraries);
-	while(entry)
-	{
-		io_library_t *library = (io_library_t *)entry;
-
-		if(strcmp(library->path, name) == 0)
-			return library;
-
-		entry = entry->next;
-	}
-
-	return NULL;
+	io_library_t *library = (io_library_t *)atree_find(__io_storeLibraries, (void *)name);
+	return library;
 }
 
 io_library_t *io_storeLibraryWithAddress(vm_address_t address)
 {
-	list_base_t *entry = list_first(__io_store->libraries);
-	while(entry)
+	iterator_t *iterator = atree_iterator(__io_storeLibraries);
+	io_library_t *library;
+
+	while((library = iterator_nextObject(iterator)))
 	{
-		io_library_t *library = (io_library_t *)entry;
 		vm_address_t vlimit = library->vmemory + (library->pages * VM_PAGE_SIZE);
+		//dbg("Checking %p against %s; %p to %p\n", address, library->path, library->vmemory, vlimit);
 
 		if(address >= library->vmemory && address <= vlimit)
+		{
+			//dbg("True!\n");
+			iterator_destroy(iterator);
 			return library;
-
-		entry = entry->next;
+		}
 	}
 
+	iterator_destroy(iterator);
 	return NULL;
 }
 
 
-
-io_store_t *io_storeGetStore()
+bool io_storeAddLibrary(io_library_t *library)
 {
-	return __io_store;
+	if(!atree_find(__io_storeLibraries, (void *)library->path))
+	{
+		atree_insert(__io_storeLibraries, library, (void *)library->path);
+
+		bool rel1 = io_libraryRelocateNonPLT(library);
+		bool rel2 = io_libraryRelocatePLT(library); 
+
+		if(!rel1 || !rel2)
+		{
+			atree_remove(__io_storeLibraries, (void *)library->path);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void io_storeRemoveLibrary(io_library_t *library)
+{
+	atree_remove(__io_storeLibraries, (void *)library->path);
 }
 
 
-bool io_init(void *unused)
+typedef bool (*libio_init_t)();
+
+bool io_init(void *UNUSED(unused))
 {
-	bool result = io_initStubs();
-	if(!result)
+	bool stubs = io_initStubs();
+	__io_storeLibraries = atree_create(io_storeAtreeLookup);
+
+	if(!stubs || !__io_storeLibraries)
 		return false;
 
-	__io_store = halloc(NULL, sizeof(io_store_t));
-
-	if(__io_store)
+	__io_libio = io_libraryCreateWithFile("libio.so"); // This is the essential kernel library which MUST be present
+	if(__io_libio)
 	{
-		__io_store->lock = SPINLOCK_INIT;
-		__io_store->libraries = list_create(sizeof(io_library_t));
+		bool result = io_storeAddLibrary(__io_libio);
+		if(!result)
+		{
+			dbg("Couldn't add libio.so to the iostore!");
+			return false;
+		}
 
+		for(size_t i=0; i<__io_libio->initArrayCount; i++)
+		{
+			uintptr_t ptr = __io_libio->initArray[i];
+			if(ptr == 0x0 || ptr == UINT32_MAX)
+				continue;
 
-		io_library_t *libkernelso = io_libraryCreateWithFile("libkernel.so"); // This is the essential kernel library which MUST be present
-		return (libkernelso != NULL);
+			io_module_init_t init = (io_module_init_t)ptr;
+			init();
+		}
+
+		libio_init_t libio_init = (libio_init_t)io_libraryFindSymbol(__io_libio, "libio_init");
+		if(!libio_init)
+		{
+			dbg("libio_init() not found in libio!");
+			return false;
+		}
+
+		return libio_init();
 	}
 
 	return false;

@@ -96,8 +96,8 @@ void kunit_test_suiteAddTest(kunit_test_suite_t *suite, kunit_test_t *test)
 {
 	assert(test);
 	assert(test->suite == NULL);
-	test->suite = suite;
 
+	test->suite = suite;
 
 	if(suite->lastTest)
 	{
@@ -117,6 +117,8 @@ void kunit_test_suiteRun(kunit_test_suite_t *suite)
 	kunit_test_suite_currentSuite = suite;
 	info("Test suite '%s' started.\n", suite->name);
 
+	suite->started = time_getTimestamp();
+
 	kunit_test_t *test = suite->firstTest;
 	while(test)
 	{
@@ -131,7 +133,13 @@ void kunit_test_suiteRun(kunit_test_suite_t *suite)
 		test = test->next;
 	}
 
-	info("Executed %i tests with %i failures.\n\n", suite->run, suite->failed);
+	suite->finished = time_getTimestamp();
+	timestamp_t diff = timestamp_getDifference(suite->finished, suite->started);
+
+	uint32_t seconds = timestamp_getSeconds(diff);
+	uint32_t millisecs = timestamp_getMilliseconds(diff);
+
+	info("Executed %i tests with %i failures (%i.%03i s).\n\n", suite->run, suite->failed, seconds, millisecs);
 	kunit_test_suite_currentSuite = NULL;
 
 	if(suite->destroyAfterRun)

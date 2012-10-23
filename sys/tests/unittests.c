@@ -20,6 +20,10 @@
 
 void test_kunit();
 void test_heap();
+void test_array();
+void test_atree();
+void test_hashset();
+void test_list();
 
 void runUnitTests()
 {
@@ -29,4 +33,8 @@ void runUnitTests()
 
 	test_kunit();
 	test_heap();
+	test_array();
+	test_atree();
+	test_hashset();
+	test_list();
 }

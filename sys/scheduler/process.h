@@ -23,8 +23,9 @@
 #include <container/list.h>
 #include <system/lock.h>
 #include <system/kernel.h>
+#include <system/time.h>
 #include <memory/memory.h>
-#include <dylink/dylink.h>
+#include <loader/loader.h>
 #include "thread.h"
 
 typedef struct process_s
@@ -41,7 +42,10 @@ typedef struct process_s
 	thread_t *mainThread; // The main thread, ie. the first spawned thread
 	thread_t *scheduledThread; // The thread that is currently scheduled
 
-	dy_exectuable_t *image;
+	timestamp_t startTime;
+	timestamp_t usedTime;
+
+	ld_exectuable_t *image;
 
 	list_t *mappings; // used for mmap() 
 

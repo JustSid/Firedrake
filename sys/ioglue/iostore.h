@@ -22,24 +22,19 @@
 #include <types.h>
 #include <system/lock.h>
 #include <container/list.h>
+#include <container/atree.h>
 #include <memory/vmemory.h>
-#include "iolink.h"
 
-typedef struct
-{
-	spinlock_t lock;
-	list_t *libraries;
-} io_store_t;
+#include "iolibrary.h"
+#include "iomodule.h"
 
-elf_sym_t *io_storeFindSymbol(io_library_t *library, uint32_t symbol, io_library_t **outLib);
-//elf_sym_t *io_storeFindSymbolPLT(io_library_t *library, uint32_t symbol, io_library_t **outLib);
-
-void *io_storeLookupSymbol(const char *name);
-void *io_storeLookupSymbolInLibrary(io_library_t *library, const char *name);
+elf_sym_t *io_storeLookupSymbol(io_library_t *library, uint32_t symbol, io_library_t **outLib);
 
 io_library_t *io_storeLibraryWithAddress(vm_address_t address);
 io_library_t *io_storeLibraryWithName(const char *name);
-io_store_t *io_storeGetStore();
+
+bool io_storeAddLibrary(io_library_t *library);
+void io_storeRemoveLibrary(io_library_t *library);
 
 bool io_init(void *unused);
 

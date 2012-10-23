@@ -17,14 +17,130 @@
 //
 
 #include <bootstrap/multiboot.h>
+#include <interrupts/interrupts.h>
 #include <memory/memory.h>
 #include <system/helper.h>
 #include <system/syslog.h>
+#include <system/cpu.h>
+#include <system/panic.h>
 #include <libc/string.h>
+
 #include "iostubs.h"
+#include "iostore.h"
+
+// Actual stub implementation
+
+heap_t *__io_heap = NULL;
+spinlock_t __io_lazy_lock = SPINLOCK_INIT; // Lock used todo lazy allocation
+
+void __IOPrimitiveLog(char *message)
+{
+	syslog(LOG_INFO, "%s\n", message);
+}
+
+void *IOMalloc(size_t size)
+{
+	spinlock_lock(&__io_lazy_lock);
+
+	if(__io_heap == NULL)
+	{
+		__io_heap = heap_create((1024 * 1024) * 5, vm_getKernelDirectory(), kHeapFlagSecure | kHeapFlagUntrusted);
+		if(__io_heap == NULL)
+			panic("Couldn't create heap for libio!");
+	}
+
+	spinlock_unlock(&__io_lazy_lock);
+
+
+	void *mem = halloc(__io_heap, size);
+	return mem;
+}
+
+void IOFree(void *mem)
+{
+	hfree(__io_heap, mem);
+}
+
+
+spinlock_t __io_interrupt_lock = SPINLOCK_INIT;
+
+typedef void (*IOServiceInterruptHandler)(void *target, uint32_t irq, void *context);
+typedef struct
+{
+	IOServiceInterruptHandler handler;
+	void *target;
+	void *context;
+} IOServiceInterruptHandlerContext;
+
+IOServiceInterruptHandlerContext *__io_interruptHandler[IDT_ENTRIES];
+
+uint32_t io_dispatchInterrupt(uint32_t esp)
+{
+	cpu_state_t *state = (cpu_state_t *)esp;
+	IOServiceInterruptHandlerContext *context = __io_interruptHandler[state->interrupt];
+
+	if(context)
+	{
+		IOServiceInterruptHandler handler = context->handler;
+		handler(context->target, state->interrupt, context->context);
+	}
+
+	return esp;
+}
+
+IOReturn __IOServiceTryRegisterIRQ(void *target, uint32_t irq, void *src, IOServiceInterruptHandler handler)
+{
+	spinlock_lock(&__io_interrupt_lock);
+
+	IOServiceInterruptHandlerContext *context = __io_interruptHandler[irq];
+	if(context)
+	{
+		if(handler)
+		{
+			spinlock_unlock(&__io_interrupt_lock);
+			return kIOReturnInterruptTaken;
+		}
+
+		hfree(NULL, context);
+		__io_interruptHandler[irq] = NULL;
+
+		spinlock_unlock(&__io_interrupt_lock);
+		return kIOReturnSuccess;
+	}
+
+
+	context = halloc(NULL, sizeof(IOServiceInterruptHandlerContext));
+	context->target = target;
+	context->handler = handler;
+	context->context = src;
+
+	__io_interruptHandler[irq] = context;
+	ir_setInterruptHandler(io_dispatchInterrupt, irq);
+
+	spinlock_unlock(&__io_interrupt_lock);
+	return kIOReturnSuccess;
+}
+
+
+
+// Symbol lookup
+
+// List of exported symbols from the kernel
+// The kernel will only allow libraries to link the symbols in this list
+const char *__io_exportedSymbolNames[] = {
+	"panic",
+	"__IOPrimitiveLog",
+	"__IOServiceTryRegisterIRQ",
+	"IOMalloc",
+	"IOFree"
+};
 
 io_library_t *__io_kernelLibrary = NULL;
+elf_sym_t **__io_exportedSymbols = NULL;
+
 size_t __io_kernelLibrarySymbolCount;
+
+
 
 io_library_t *io_kernelLibraryStub()
 {
@@ -33,7 +149,31 @@ io_library_t *io_kernelLibraryStub()
 
 elf_sym_t *io_findKernelSymbol(const char *name)
 {
+	// Look if the symbol was already exported...
+	bool isExported = false;
+	size_t index = 0;
+
+	size_t size = sizeof(__io_exportedSymbolNames) / sizeof(char *);
+	for(size_t i=0; i<size; i++)
+	{
+		if(strcmp(__io_exportedSymbolNames[i], name) == 0)
+		{
+			if(__io_exportedSymbols[i] != NULL)
+				return __io_exportedSymbols[i];
+
+			index = i;
+			isExported = true;
+			break;
+		}
+	}
+
+	// If the symbol isn't exported by the kernel in general, we won't look into the kernels symbol at all
+	if(!isExported)
+		return NULL;
+
+	// Find the symbol in the binary
 	elf_sym_t *symbol = __io_kernelLibrary->symtab;
+
 	for(size_t i=0; i<__io_kernelLibrarySymbolCount; i++, symbol++)
 	{
 		if(symbol->st_name >= __io_kernelLibrary->strtabSize || symbol->st_name == 0)
@@ -42,6 +182,7 @@ elf_sym_t *io_findKernelSymbol(const char *name)
 		const char *symname = __io_kernelLibrary->strtab + symbol->st_name;
 		if(strcmp(symname, name) == 0)
 		{
+			__io_exportedSymbols[index] = symbol;
 			return symbol;
 		}
 	}
@@ -78,18 +219,14 @@ bool io_initStubs()
 			}
 		}
 
-		__io_kernelLibrary->relocBase = 0x0;
+		size_t exportedSymbolCount = sizeof(__io_exportedSymbolNames) / sizeof(char *);
 
-		return (__io_kernelLibrary->strtab && __io_kernelLibrary->symtab);
+		__io_kernelLibrary->relocBase = 0x0;
+		__io_exportedSymbols = halloc(NULL, exportedSymbolCount * sizeof(elf_sym_t *));
+
+		return (__io_kernelLibrary->strtab && __io_kernelLibrary->symtab && __io_exportedSymbols);
 	}
 
 	return true;
-}
-
-// Actual stub implementation
-
-void IOLog(const char *message)
-{
-	syslog(LOG_INFO, "IOLog: %s\n", message);
 }
 

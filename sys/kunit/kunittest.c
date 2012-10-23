@@ -90,6 +90,8 @@ void kunit_testRun(kunit_test_t *test)
 	jmp_buf buffer;
 	test->buffer = &buffer;
 
+	test->started = time_getTimestamp();
+
 	if(setjmp(buffer) == 0)
 	{
 #ifndef CONF_KUNITFAILSONLY
@@ -100,21 +102,25 @@ void kunit_testRun(kunit_test_t *test)
 		test->function();
 	}
 
+	test->finished = time_getTimestamp();
+	timestamp_t diff = timestamp_getDifference(test->finished, test->started);
+
+
 	if(test->state == kunit_test_state_ran)
 	{
 #ifndef CONF_KUNITFAILSONLY
-		info("Test case '%s' passed.\n", test->name);
+		info("Test case '%s' passed (%i.%03i s).\n", test->name, timestamp_getSeconds(diff), timestamp_getMilliseconds(diff));
 #endif
 	}
 	else
 	{
-		info("Test case '%s' failed.\n", test->name);
+		info("Test case '%s' failed (%i.%03i s).\n", test->name, timestamp_getSeconds(diff), timestamp_getMilliseconds(diff));
 	}
 
 	test->buffer = NULL;
 }
 
-void kunit_testFail(kunit_test_t *test, char *description, ...)
+void kunit_testFail(kunit_test_t *test, char *UNUSED(description), ...)
 {
 	test->state = kunit_test_state_failed;
 	test->failures ++;

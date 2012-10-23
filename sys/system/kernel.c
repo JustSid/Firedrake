@@ -22,6 +22,7 @@
 #include <interrupts/interrupts.h>
 #include <interrupts/trampoline.h>
 #include <ioglue/iostore.h>
+#include <scheduler/scheduler.h>
 #include "elf.h"
 #include "assert.h"
 #include "kernel.h"
@@ -73,6 +74,15 @@ bool kern_fetchSymbolTable()
 
 const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary)
 {
+	if(!kern_kernelModule)
+		kern_kernelModule = sys_multibootModuleWithName("firedrake");
+
+	if(!kern_stringTable)
+		kern_fetchStringTable();
+
+	if(!kern_symbolTable)
+		kern_fetchSymbolTable();
+
 	if(kern_kernelModule == NULL || kern_stringTable == NULL || kern_symbolTable == NULL)
 		return "???";
 
@@ -132,6 +142,12 @@ const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary)
 
 uintptr_t kern_resolveAddress(uintptr_t address)
 {
+	if(!kern_kernelModule)
+		kern_kernelModule = sys_multibootModuleWithName("firedrake");
+
+	if(!kern_symbolTable)
+		kern_fetchSymbolTable();
+
 	if(kern_kernelModule == NULL || kern_symbolTable == NULL)
 		return 0x0;
 
@@ -181,8 +197,7 @@ uintptr_t kern_resolveAddress(uintptr_t address)
 }
 
 
-
-void kern_printBacktrace(long depth)
+void kern_printBacktraceForThread(thread_t *thread, long depth)
 {
 	if(!kern_kernelModule)
 		kern_kernelModule = sys_multibootModuleWithName("firedrake");
@@ -195,29 +210,58 @@ void kern_printBacktrace(long depth)
 
 
 	void *addresses[depth];
-	size_t size = backtrace(addresses, depth);
+	size_t size;
 
-	for(size_t i=1; i<size; i++)
+	if(thread != thread_getCurrentThread())
+	{
+		cpu_state_t *state = (cpu_state_t *)thread->esp;
+
+		addresses[0] = (void *)state->eip;
+		size = backtraceForEBP((void *)state->ebp, &addresses[1], depth) + 1;
+	}
+	else
+	{
+		size = backtrace(addresses, depth);
+	}
+
+
+	for(size_t i=0; i<size; i++)
 	{
 		size_t level = (size - 1) - i;
 		uintptr_t uaddress = (uintptr_t)addresses[i];
-		uintptr_t address = kern_resolveAddress(uaddress);
+		uintptr_t address  = kern_resolveAddress(uaddress);
 
 		io_library_t *library = NULL;
 		const char *name = kern_nameForAddress(address, &library);
 
-		dbg("(%2i) %08x: ", level, address);
 		if(!library)
 		{
+			dbg("(%2i) %08x: ", level, address);
 			info("%s\n", name);
 		}
 		else
 		{
-			info("%s (%s)\n", name, library->path);
+			dbg("(%2i) %08x: ", level, address - library->relocBase);
+			info("%s (%s + %p)\n", name, library->path, library->relocBase);
 		}
 	}
 }
 
+
+void kern_printBacktrace(long depth)
+{
+	kern_printBacktraceForThread(thread_getCurrentThread(), depth);
+}
+
+
+
+
+// Spinlock helper
+void kern_dumpSpinlock(spinlock_t *spinlock)
+{
+	dbg("\n\nWaiting on spinlock: %p. Backtrace:\n", spinlock);
+	kern_printBacktrace(20);
+}
 
 void kern_setWatchpoint(uint8_t reg, bool global, uintptr_t address, kern_breakCondition condition, kern_watchBytes bytes)
 {

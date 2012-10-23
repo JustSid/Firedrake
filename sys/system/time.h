@@ -1,5 +1,5 @@
 //
-//  dylink.h
+//  time.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,9 +16,38 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _DYLINK_H_
-#define _DYLINK_H_
+#ifndef _TIME_H_
+#define _TIME_H_
 
-#include "dyexecutable.h"
+#include <types.h>
 
-#endif /* _DYLINK_H_ */
+#define TIME_FREQUENCY 1000
+#define TIME_MILLISECS_PER_TICK 1
+
+typedef uint32_t time_t;
+typedef uint64_t timestamp_t; // Precise time
+
+time_t time_getSeconds();
+time_t time_getMilliSeconds();
+timestamp_t time_getTimestamp();
+timestamp_t time_getTimestampSinceBoot();
+
+timestamp_t timestamp_getDifference(timestamp_t timestamp1, timestamp_t timestamp2);
+
+static inline uint32_t timestamp_getSeconds(timestamp_t timestamp)
+{
+	uint32_t seconds = (uint32_t)(timestamp >> 32);
+	return seconds;
+}
+
+static inline uint32_t timestamp_getMilliseconds(timestamp_t timestamp)
+{
+	uint32_t millisecs = (uint32_t)(timestamp & 0xFFFFFFFF);
+	return millisecs;
+}
+
+time_t time_create(uint32_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second);
+
+bool time_init(void *unused); // Assumes that no interrupts are enabled!
+
+#endif /* _TIME_H_ */

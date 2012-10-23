@@ -1,5 +1,5 @@
 //
-//  iolink.h
+//  iolibrary.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -22,37 +22,106 @@
 #include <system/syslog.h>
 #include <libc/string.h>
 
-#include "iolink.h"
+#include "iolibrary.h"
 #include "iostore.h"
 
-elf_sym_t *io_libraryLookupSymbol(io_library_t *library, const char *name, uint32_t hash)
+vm_address_t io_libraryResolveAddress(io_library_t *library, vm_address_t address)
 {
-	uint32_t symnumber = library->buckets[hash % library->nbuckets];
+	elf_sym_t *closest = NULL;
+	vm_address_t address_noReloc = address - library->relocBase;
 
-	while(symnumber != 0)
+	//dbg("Library: %p\n", library);
+	//dbg("Num buckets: %i\n", library->nbuckets);
+
+	for(uint32_t i=0; i<library->nbuckets; i++)
 	{
-		elf_sym_t *symbol = library->symtab + symnumber;
+		uint32_t symnum = library->buckets[i];
+		while(symnum != 0)
+		{
+			elf_sym_t *symbol = library->symtab + symnum;
+			//dbg("Possible: %s\n", library->strtab + symbol->st_name);
+
+			if(symbol->st_value <= address_noReloc)
+			{
+				if(!closest || symbol->st_value > closest->st_value)
+					closest = symbol;
+			}
+
+			symnum = library->chains[symnum];
+		}
+	}
+
+	if(!closest)
+		return 0x0;
+
+	return library->relocBase + closest->st_value;
+}
+
+
+elf_sym_t *io_librarySymbolWithAddress(io_library_t *library, vm_address_t address)
+{
+	vm_address_t address_noReloc = address - library->relocBase;
+
+	for(uint32_t i=0; i<library->nbuckets; i++)
+	{
+		uint32_t symnum = library->buckets[i];
+		while(symnum != 0)
+		{
+			elf_sym_t *symbol = library->symtab + symnum;
+			if(symbol->st_value == address_noReloc)
+				return symbol;
+
+			symnum = library->chains[symnum];
+		}
+	}
+
+	return NULL;
+}
+
+elf_sym_t *io_librarySymbolWithName(io_library_t *library, const char *name, uint32_t hash)
+{
+	uint32_t symnum = library->buckets[hash % library->nbuckets];
+
+	//dbg("Hash: %i, symnum: %i\n", hash, symnum);
+
+	while(symnum != 0)
+	{
+		elf_sym_t *symbol = library->symtab + symnum;
 		const char *str = library->strtab + symbol->st_name;
 
 		if(strcmp(str, name) == 0)
-		{
 			return symbol;
-		}
 
-		symnumber = library->chains[symnumber];
+		symnum = library->chains[symnum];
 	}
 
 	return NULL;
 }
 
 
+void *io_libraryFindSymbol(io_library_t *library, const char *name)
+{
+	elf_sym_t *symbol = io_librarySymbolWithName(library, name, elf_hash(name));
+	if(symbol)
+	{
+		void *ptr = (void *)(library->relocBase + symbol->st_value);
+		return ptr;
+	}
+
+	return NULL;
+}
+
+
+// -----------
+// Relocation
+// -----------
+
 bool io_libraryRelocateNonPLT(io_library_t *library)
 {
-	elf_rel_t *rel = library->rel;
-	for(; rel<library->rellimit; rel ++)
+	for(elf_rel_t *rel = library->rel; rel<library->rellimit; rel++)
 	{
 		elf32_address_t *address = (elf32_address_t *)(library->relocBase + rel->r_offset);
-		elf32_address_t target, temp;
+		elf32_address_t target;
 
 		elf_sym_t *symbol;
 		io_library_t *container;
@@ -67,14 +136,16 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 
 			case R_386_32:
 			case R_386_GLOB_DAT:
-				symbol = io_storeFindSymbol(library, symnum, &container);
+				symbol = io_storeLookupSymbol(library, symnum, &container);
 				if(!symbol)
 					return false;
 
 				target = (elf32_address_t)(container->relocBase + symbol->st_value);
-				temp = target + *address;
+				*address = target + *address;
+				break;
 
-				*address = temp;
+			case R_386_RELATIVE:
+				*address += container->relocBase;
 				break;
 
 			default:
@@ -88,8 +159,7 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 
 bool io_libraryRelocatePLT(io_library_t *library)
 {
-	elf_rel_t *rel = library->pltRel;
-	for(; rel<library->pltRellimit; rel ++)
+	for(elf_rel_t *rel = library->pltRel; rel<library->pltRellimit; rel ++)
 	{
 		elf32_address_t *address = (elf32_address_t *)(library->relocBase + rel->r_offset);
 		elf32_address_t target;
@@ -99,7 +169,7 @@ bool io_libraryRelocatePLT(io_library_t *library)
 
 		assert(ELF32_R_TYPE(rel->r_info) == R_386_JMP_SLOT);
 
-		symbol = io_storeFindSymbol(library, ELF32_R_SYM(rel->r_info), &container);
+		symbol = io_storeLookupSymbol(library, ELF32_R_SYM(rel->r_info), &container);
 		if(!symbol)
 			return false;
 
@@ -111,56 +181,9 @@ bool io_libraryRelocatePLT(io_library_t *library)
 }
 
 
-vm_address_t io_libraryResolveAddress(io_library_t *library, vm_address_t address)
-{
-	elf_sym_t *closest = NULL;
-	vm_address_t address_noReloc = address - library->relocBase;
-
-	for(uint32_t i=0; i<library->nbuckets; i++)
-	{
-		uint32_t symnum = library->buckets[i];
-		while(symnum != 0)
-		{
-			elf_sym_t *symbol = library->symtab + symnum;
-
-			if(symbol->st_value <= address_noReloc)
-			{
-				if(!closest || (closest && closest->st_value > symbol->st_value))
-					closest = symbol;
-			}
-
-			symnum = library->chains[symnum];
-		}
-	}
-
-	if(!closest)
-		return 0x0;
-
-	return closest->st_value + library->relocBase;
-}
-
-elf_sym_t *io_librarySymbolWithAddress(io_library_t *library, vm_address_t address)
-{
-	vm_address_t address_noReloc = address - library->relocBase;
-
-	for(uint32_t i=0; i<library->nbuckets; i++)
-	{
-		uint32_t symnum = library->buckets[i];
-		while(symnum != 0)
-		{
-			elf_sym_t *symbol = library->symtab + symnum;
-			if(symbol->st_value == address_noReloc)
-			{
-				return symbol;
-			}
-
-			symnum = library->chains[symnum];
-		}
-	}
-
-	return NULL;
-}
-
+// -----------
+// Dynamic section
+// -----------
 
 void io_libraryDigestDynamic(io_library_t *library)
 {
@@ -174,10 +197,19 @@ void io_libraryDigestDynamic(io_library_t *library)
 	elf32_address_t pltRel = 0;
 	size_t pltRelSize = 0;
 
-	for(dyn = (elf_dyn_t *)library->dynamic; dyn->d_tag != DT_NULL; dyn ++)
+	for(dyn=library->dynamic; dyn->d_tag != DT_NULL; dyn ++)
 	{
 		switch(dyn->d_tag)
 		{
+			case DT_NEEDED:
+			{
+				struct io_dependency_s *dependency = list_addBack(library->dependencies);
+				dependency->name    = dyn->d_un.d_val;
+				dependency->library = NULL;
+
+				break;
+			}
+
 			case DT_REL:
 				library->rel = (elf_rel_t *)(library->relocBase + dyn->d_un.d_ptr);
 				break;
@@ -224,7 +256,7 @@ void io_libraryDigestDynamic(io_library_t *library)
 
 			case DT_HASH:
 				library->hashtab  = (uint32_t *)(library->relocBase + dyn->d_un.d_ptr);
-				
+
 				library->nbuckets = library->hashtab[0];
 				library->nchains  = library->hashtab[1];
 				
@@ -233,8 +265,16 @@ void io_libraryDigestDynamic(io_library_t *library)
 				break;
 
 			case DT_PLTREL:
-				usePLTRel = (dyn->d_un.d_val == DT_REL);
+				usePLTRel  = (dyn->d_un.d_val == DT_REL);
 				usePLTRela = (dyn->d_un.d_val == DT_RELA);
+				break;
+
+			case DT_INIT_ARRAY:
+				library->initArray = (uintptr_t *)(library->relocBase + dyn->d_un.d_ptr);
+				break;
+
+			case DT_INIT_ARRAYSZ:
+				library->initArrayCount = (dyn->d_un.d_val / sizeof(uintptr_t));
 				break;
 
 			default:
@@ -242,6 +282,18 @@ void io_libraryDigestDynamic(io_library_t *library)
 		}
 	}
 
+	// Resolve dependencies
+	struct io_dependency_s *dependency = list_first(library->dependencies);
+	while(dependency)
+	{
+		const char *name = library->strtab + dependency->name;
+		io_library_t *other = io_storeLibraryWithName(name);
+
+		dependency->library = other;
+		dependency = dependency->next;
+	}
+
+	// Relocation
 	library->rellimit  = (elf_rel_t *)((uint8_t *)library->rel + relSize);
 	library->relalimit = (elf_rela_t *)((uint8_t *)library->rela + relaSize);
 
@@ -257,10 +309,14 @@ void io_libraryDigestDynamic(io_library_t *library)
 	}
 }
 
-io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t length)
+
+// -----------
+// Creation / Deletion
+// -----------
+
+io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t UNUSED(length))
 {
-	io_store_t *store = io_storeGetStore();
-	io_library_t *library = list_addBack(store->libraries);
+	io_library_t *library = halloc(NULL, sizeof(io_library_t));
 	if(library)
 	{
 		// Setup the library
@@ -268,33 +324,31 @@ io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t length)
 
 		library->refCount = 1;
 		library->path = halloc(NULL, strlen(path) + 1);
+		library->dependencies = list_create(sizeof(struct io_dependency_s), offsetof(struct io_dependency_s, next), offsetof(struct io_dependency_s, prev));
 
-		if(!library->path)
+		if(!library->path || !library->dependencies)
 		{
-			list_remove(store->libraries, library);
-			dbg("iolink: Couldn't allocate enough memory for %s\n", path);
+			if(library->path)
+				hfree(NULL, library->path);
 
+			if(library->dependencies)
+				list_destroy(library->dependencies);
+
+			dbg("iolink: Couldn't allocate enough memory for %s\n", path);
 			return NULL;
 		}
 
 		strcpy(library->path, path);
 
+
 		// Get the basic ELF info
 		elf_header_t *header = (elf_header_t *)buffer;
-
-		if(strncmp((const char *)header->e_ident, ELF_MAGIC, strlen(ELF_MAGIC)) != 0)
+		if(strncmp((const char *)header->e_ident, ELF_MAGIC, strlen(ELF_MAGIC)) != 0 || header->e_type != ET_DYN)
 		{
-			list_remove(store->libraries, library);
-			dbg("iolink: %s is not a valid ELF file!\n", path);
+			hfree(NULL, library->path);
+			list_destroy(library->dependencies);
 
-			return NULL;
-		}
-
-		if(header->e_type != ET_DYN)
-		{
-			list_remove(store->libraries, library);
-			dbg("iolink: %s is not a dynamic ELF file!\n", path);
-
+			dbg("iolink: %s is not a valid binary!\n", path);
 			return NULL;
 		}
 
@@ -306,7 +360,6 @@ io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t length)
 		vm_address_t minAddress = -1;
 		vm_address_t maxAddress = 0;
 
-		size_t pages = 0;
 		size_t segments = 0;
 
 		// Calculate the needed size
@@ -326,57 +379,47 @@ io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t length)
 			}
 
 			if(program->p_type == PT_DYNAMIC)
-			{
-				library->dynamic = (void *)program->p_vaddr;
-			}
+				library->dynamic = (elf_dyn_t *)program->p_vaddr;
 		}
 
-
 		// Reserve enough memory and copy the .text section
-		pages = pageCount(maxAddress - minAddress);
+		library->pages = pageCount(maxAddress - minAddress);
 
-		library->pmemory = pm_alloc(pages);
+		library->pmemory = pm_alloc(library->pages);
 		if(!library->pmemory)
-			goto io_libraryFailed;
+		{
+			io_libraryRelease(library);
+			return NULL;
+		}
 
-		library->vmemory = vm_alloc(vm_getKernelDirectory(), (uintptr_t)library->pmemory, pages, VM_FLAGS_KERNEL);
+		library->vmemory = vm_alloc(vm_getKernelDirectory(), (uintptr_t)library->pmemory, library->pages, VM_FLAGS_KERNEL);
 		if(!library->vmemory)
-			goto io_libraryFailed;
-
-		library->relocBase = library->vmemory - minAddress;
-		library->pages = pages;
+		{
+			io_libraryRelease(library);
+			return NULL;
+		}
 
 		uint8_t *target = (uint8_t *)library->vmemory;
 		uint8_t *source = buffer;
 
-		memset(target, 0, pages * VM_PAGE_SIZE);
-
-		for(int i=0; i<2; i++)
+		memset(target, 0, library->pages * VM_PAGE_SIZE);
+		for(size_t i=0; i<segments; i++)
 		{
 			elf_program_header_t *program = ptload[i];
 			memcpy(&target[program->p_vaddr - minAddress], &source[program->p_offset], program->p_filesz);
 		}
 
+		library->relocBase = library->vmemory - minAddress;
+
 		// Verify
 		if(library->dynamic)
 		{
-			library->dynamic = (void *)(library->relocBase + ((uintptr_t)library->dynamic));
+			library->dynamic = (elf_dyn_t *)(library->relocBase + ((uintptr_t)library->dynamic));
 			io_libraryDigestDynamic(library);
 		}
-
-		io_libraryRelocateNonPLT(library);
-		io_libraryRelocatePLT(library);
-
-		return library;
-
-	io_libraryFailed:
-		io_libraryRelease(library);
-		dbg("iolink: Failed to create library!\n");
-
-		return NULL;
 	}
 
-	return NULL;
+	return library;
 }
 
 io_library_t *io_libraryCreateWithFile(const char *file)
@@ -395,9 +438,7 @@ io_library_t *io_libraryCreateWithFile(const char *file)
 
 void io_libraryRelease(io_library_t *library)
 {
-	library->refCount --;
-
-	if(library->refCount == 0)
+	if((-- library->refCount) == 0)
 	{
 		if(library->vmemory)
 			vm_free(vm_getKernelDirectory(), library->vmemory, library->pages);
@@ -405,10 +446,9 @@ void io_libraryRelease(io_library_t *library)
 		if(library->pmemory)
 			pm_free(library->pmemory, library->pages);
 
-		if(library->path)
-			hfree(NULL, library->path);
+		hfree(NULL, library->path);
+		list_destroy(library->dependencies);
 
-		io_store_t *store = io_storeGetStore();
-		list_remove(store->libraries, library);
+		io_storeRemoveLibrary(library);
 	}
 }

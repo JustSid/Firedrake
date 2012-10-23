@@ -36,15 +36,6 @@ typedef enum
 	LOG_DEBUG	
 } syslog_level_t;
 
-/**
- * Sets the logging level, messages with a lower level won't be shown.
- * @default LOG_WARNING
- **/
-void setLogLevel(syslog_level_t level);
-
-/**
- * Logs a message, format string is printf() like
- **/
 void syslog(syslog_level_t level, const char *format, ...);
 
 #define dbg(...) syslog(LOG_DEBUG, __VA_ARGS__) // Macro for LOG_DEBUG

@@ -87,6 +87,7 @@ INTERRUPT(0x2D)
 INTERRUPT(0x2E)
 INTERRUPT(0x2F)
 INTERRUPT(0x30)
+INTERRUPT(0x31) // Force reschedule without time update
 INTERRUPT(0x80)
 
 ENTRY(idt_entry_handler)
@@ -103,12 +104,11 @@ ENTRY(idt_entry_handler)
 
 	cld
 
-	// Load the kernel register, if needed
-	// Because we trash the TLB when we load the new page directory, we first check if it isn't already loaded and skip ahead if so
+	// Load the kernel page directory if needed, because this process involves trashing the TLB we first check wether its actually needed to switch the address space
 	movl $0x1000, %ecx
 	movl %cr3, %eax
-	cmpl %eax, %ecx
 
+	cmpl %eax, %ecx
 	jz idt_entry_handler_call_handler
 
 	movl %ecx, %cr3
@@ -118,11 +118,11 @@ idt_entry_handler_call_handler:
 	call ir_handleInterrupt
 	addl $4, %esp
 
-	// Switch to the new stack which is returned by ir_handleInterrupt in the eax register
+	// Load the new stack returned by ir_handleInterrupt
 	movl %eax, %esp 
 
 	// Switch to a new page directory if needed
-	// Note that at this point the active page directory is always the kernel ones, so we can compare it with an scalar type
+	// Note that at this point the active page directory is always the kernel ones, so we can safely compare it with a scalar type
 	movl (IR_TRAMPOLINE_PAGEDIR), %ecx
 	cmpl $0x1000, %ecx
 	jz idt_entry_handler_outro
