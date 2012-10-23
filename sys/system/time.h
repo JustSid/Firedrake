@@ -1,5 +1,5 @@
 //
-//  dyexecutable.h
+//  time.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,29 +16,38 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _DYEXECTUABLE_H_
-#define _DYEXECTUABLE_H_
+#ifndef _TIME_H_
+#define _TIME_H_
 
 #include <types.h>
-#include <memory/memory.h>
 
-typedef struct dy_exectuable_s
+#define TIME_FREQUENCY 1000
+#define TIME_MILLISECS_PER_TICK 1
+
+typedef uint32_t time_t;
+typedef uint64_t timestamp_t; // Precise time
+
+time_t time_getSeconds();
+time_t time_getMilliSeconds();
+timestamp_t time_getTimestamp();
+timestamp_t time_getTimestampSinceBoot();
+
+timestamp_t timestamp_getDifference(timestamp_t timestamp1, timestamp_t timestamp2);
+
+static inline uint32_t timestamp_getSeconds(timestamp_t timestamp)
 {
-	vm_address_t entry;
-	vm_page_directory_t pdirectory;
-	struct dy_exectuable_s *source;
+	uint32_t seconds = (uint32_t)(timestamp >> 32);
+	return seconds;
+}
 
-	uintptr_t    	pimage;
-	vm_address_t 	vimage;
-	size_t 			imagePages;
+static inline uint32_t timestamp_getMilliseconds(timestamp_t timestamp)
+{
+	uint32_t millisecs = (uint32_t)(timestamp & 0xFFFFFFFF);
+	return millisecs;
+}
 
-	uint32_t useCount;
-} dy_exectuable_t;
+time_t time_create(uint32_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second);
 
-dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory,  uint8_t *elfstart, size_t elfsize);
-dy_exectuable_t *dy_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file);
-dy_exectuable_t *dy_exectuableCopy(vm_page_directory_t pdirectory, dy_exectuable_t *source);
+bool time_init(void *unused); // Assumes that no interrupts are enabled!
 
-void dy_executableRelease(dy_exectuable_t *executable);
-
-#endif /* _DYEXECTUABLE_H_ */
+#endif /* _TIME_H_ */

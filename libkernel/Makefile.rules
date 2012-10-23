@@ -1,0 +1,4 @@
+ASFLAGS  = -m32 -I. -I../.
+CFLAGS	 = -m32 -std=c99 -Wall -Wextra -pedantic -O2 -fpic -fno-stack-protector -fno-builtin -nostdinc -nostdlib -I. -I../.
+CPPFLAGS = -m32 -std=c++11 -Wall -Wextra -pedantic -O2 -fpic -fno-stack-protector -fno-builtin -fno-rtti -fno-exceptions -nostdinc -nostdlib -I. -I../.
+LDFLAGS  = -shared

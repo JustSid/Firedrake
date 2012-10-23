@@ -33,69 +33,75 @@
 extern uintptr_t kernelBegin; // Marks the beginning of the kernel (set by the linker)
 extern uintptr_t kernelEnd;	// Marks the end of the kernel (also set by the linker)
 
+extern uintptr_t stack_bottom;
+extern uintptr_t stack_top;
+
 // Bitmap of the heap.
 static uint32_t __pm_heap[PM_HEAPSIZE];
 static spinlock_t __pm_spinlock = SPINLOCK_INIT;
-
 
 // Marks the given page as used in the heap bitmap
 static inline void __pm_markUsed(uintptr_t page)
 {
 	uint32_t index = page / PM_PAGE_SIZE;
-	__pm_heap[index / 32] &= ~(1 << (index % 32));
+	__pm_heap[index / 32] &= ~(1 << (index & 31));
 }
 
 // Marks the given page as unused in the heap bitmap
 static inline void __pm_markFree(uintptr_t page)
 {
 	uint32_t index = page / PM_PAGE_SIZE;
-	__pm_heap[index / 32] |= (1 << (index % 32));
+	__pm_heap[index / 32] |= (1 << (index & 31));
 }
 
 
 static inline uintptr_t __pm_findFreePages(uintptr_t lowerLimit, size_t pages)
 {
-    size_t found = 0; // The number of found pages
-    uintptr_t page = 0; // Address of the first found page
+	size_t found = 0; // The number of found pages
+	uintptr_t page = 0; // Address of the first found page
 
-    for(uint32_t i = lowerLimit / PM_PAGE_SIZE / 32; i<PM_HEAPSIZE; i++)
-    {
-        if(__pm_heap[i] == 0)
-        {
-            found = 0;
-            continue;
-        }
+	for(uint32_t i = lowerLimit / PM_PAGE_SIZE / 32; i<PM_HEAPSIZE; i++)
+	{
+		if(__pm_heap[i] == 0)
+		{
+			found = 0;
+			continue;
+		}
 
 
-        if(__pm_heap[i] == 0xFFFFFFFF)
-        {
-            if(found == 0)
-                page = i * PM_PAGE_SIZE * 32;
+		if(__pm_heap[i] == 0xFFFFFFFF)
+		{
+			if(found == 0)
+				page = i * 32 * PM_PAGE_SIZE;
  
-            found += 32;
-        }
-        else
-        {
-            for(uint32_t j=0; j<32; j++)
-            {
-                if(__pm_heap[i] & (1 << j))
-                {
-                    if(found == 0)
-                        page = (i * 32 + j) * PM_PAGE_SIZE;
+			found += 32;
+		}
+		else
+		{
+			for(uint32_t j=0; j<32; j++)
+			{
+				if(__pm_heap[i] & (1 << j))
+				{
+					if(found == 0)
+						page = (i * 32 + j) * PM_PAGE_SIZE;
 
-                    if((++ found) >= pages)
-                        return page;
-                }
-                else
-                    found = 0;
-            }
-        }
+					if((++ found) > pages)
+						return page;
+				}
+				else
+				{
+					found = 0;
+				}
+			}
+		}
 
-        if(found >= pages)
-            return page;
-    }
+		if(found > pages)
+		{
+			return page;
+		}
+	}
 
-    return 0x0;
+	return 0x0;
 }
 
 
@@ -154,47 +160,44 @@ void pm_free(uintptr_t page, size_t pages)
 }
 
 // MARK: Init
+
 void pm_markMultibootModule(struct multiboot_module_s *module)
 {
 	// Mark the module data as used
 	uintptr_t start = round4kDown((uintptr_t)module->start);
 	uintptr_t end   = round4kUp((uintptr_t)module->end);
 
-	size_t size  = end - start;
-	size_t pages = ((size % PM_PAGE_SIZE) == 0) ? size / PM_PAGE_SIZE : (size / PM_PAGE_SIZE) + 1;
+	size_t pages = pageCount((end - start));
+	for(size_t i=0; i<pages; i++)
+	{
+		__pm_markUsed(start);
+		start += PM_PAGE_SIZE;
+	}
 
-    for(size_t i=0; i<pages; i++)
-    {
-    	__pm_markUsed(start);
-    	start += 0x1000;
-    }
+	// Mark the name of the module
+	uintptr_t name = round4kDown((uintptr_t)module->name);
+	pages = pageCount(strlen((const char *)name));
 
-
-    // Mark the name of the module
-    uintptr_t name = round4kDown((uintptr_t)module->name);
-
-    size = strlen((const char *)name);
-    pages = ((size % PM_PAGE_SIZE) == 0) ? size / PM_PAGE_SIZE : (size / PM_PAGE_SIZE) + 1;
-
-    for(size_t i=0; i<pages; i++)
-    {
-    	__pm_markUsed(name);
-    	name += 0x1000;
-    }
+	for(size_t i=0; i<pages; i++)
+	{
+		__pm_markUsed(name);
+		name += PM_PAGE_SIZE;
+	}
 }
 
 void pm_markMultiboot(struct multiboot_s *info)
 {
-    struct multiboot_module_s *modules = (struct multiboot_module_s *)info->mods_addr;
+	struct multiboot_module_s *modules = (struct multiboot_module_s *)info->mods_addr;
 
-    uintptr_t infostart = round4kDown((uintptr_t)info);
-    __pm_markUsed(infostart); // TODO: We might run into alignment issues here if the info sits partially on two pages because we only mark the lower page in this case
+	uintptr_t infostart = round4kDown((uintptr_t)info);
+	__pm_markUsed(infostart);
 
-    for(uint32_t i=0; i<info->mods_count; i++)
-    {
-        struct multiboot_module_s *module = &modules[i];
-        pm_markMultibootModule(module);
-    }
+	for(uint32_t i=0; i<info->mods_count; i++)
+	{
+		struct multiboot_module_s *module = &modules[i];
+		pm_markMultibootModule(module);
+	}
+
 }
 
 bool pm_init(void *data)
@@ -246,7 +249,19 @@ bool pm_init(void *data)
 		address += PM_PAGE_SIZE;
 	}
 
-	
+	// Mark the kernel stack as allocated
+	uintptr_t _stack_bottom = (uintptr_t)&stack_bottom;
+	uintptr_t _stack_top    = (uintptr_t)&stack_top;
+
+	_stack_bottom = round4kDown(_stack_bottom);
+	_stack_top = round4kUp(_stack_top);
+
+	while(_stack_bottom < _stack_top)
+	{
+		__pm_markUsed(_stack_bottom);
+		_stack_bottom += PM_PAGE_SIZE;
+	}
+
 	pm_markMultiboot(info); // Oh and, we should probably mark the multiboot stuff as used? Yeah...
 	__pm_markUsed(0x0); // Last but not least, lets mark NULL as used to avoid allocating it.
 	
@@ -266,7 +281,7 @@ bool pm_init(void *data)
 		return false;
 	}
 
-	// Print some pretty debug info and unlock the spinlock afterwards
+	// Print some pretty debug info
 	suffix = sys_unitForSize(memoryTotal, &memoryTotal); // Calculate the largest integer quantity of the memory
 	syslog(LOG_DEBUG, "%i %s RAM", memoryTotal, suffix); // And print how much RAM is available.
 

@@ -17,42 +17,20 @@
 //
 
 #include <libc/stdio.h>
+#include <kerneld/syslogd.h>
 #include "syslog.h"
-#include "video.h"
 
 #define SYSLOG_BUFFER_SIZE 512
 
-static syslog_level_t __syslog_level = LOG_WARNING;
-static vd_color_t __sylog_color_table[] = {
-	vd_color_red,			// LOG_ALERT
-	vd_color_lightRed, 		// LOG_CRITICAL
-	vd_color_brown, 		// LOG_ERROR
-	vd_color_yellow, 		// LOG_WARNING
-	vd_color_lightGray, 	// LOG_INFO
-	vd_color_lightBlue 		// LOG_DEBUG
-};
-
 void syslog(syslog_level_t level, const char *format, ...)
 {
-	if(level > __syslog_level)
-		return;
-	
 	char buffer[SYSLOG_BUFFER_SIZE];
 
 	va_list arguments;
 	va_start(arguments, format);
 	
 	vsnprintf(buffer, SYSLOG_BUFFER_SIZE, format, arguments);
+	syslogd_queueMessage(level, buffer);
 
 	va_end(arguments);
-
-	vd_printString(buffer, __sylog_color_table[(int)level]);
-}
-
-void setLogLevel(syslog_level_t level)
-{
-	if(level > LOG_DEBUG)
-		return;
-	
-	__syslog_level = level;
 }

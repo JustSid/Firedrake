@@ -19,6 +19,7 @@
 #include <libc/string.h>
 #include "video.h"
 #include "port.h"
+#include "lock.h"
 
 static uint8_t *_vd_address = (uint8_t *)0xB8000;
 static uint32_t _vd_width  = 80;
@@ -53,10 +54,10 @@ static inline void __vd_setCursor(uint32_t x, uint32_t y)
 	_vd_cursorY = y;
 	
 	outb(0x3D4, 0x0F);
-   	outb(0x3D5, (uint8_t)(pos & 0xFF));
+	outb(0x3D5, (uint8_t)(pos & 0xFF));
 	
-   	outb(0x3D4, 0x0E);
-   	outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
+	outb(0x3D4, 0x0E);
+	outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 	
 	__vd_setColor(x, y, true, vd_color_lightGray); // Give the cursor a color so that its visible
 }
@@ -74,6 +75,8 @@ static inline void __vd_scrollLine()
 
 
 // MARK: Public functions
+spinlock_t vd_lock = SPINLOCK_INIT;
+
 void vd_clear()
 {
 	_vd_cursorX = 0;
@@ -113,7 +116,7 @@ void vd_setColor(uint32_t x, uint32_t y, bool foreground, vd_color_t color, size
 	}
 }
 
-void vd_printString(char *string, vd_color_t color)
+void vd_printString(const char *string, vd_color_t color)
 {
 	while(*string != '\0')
 	{

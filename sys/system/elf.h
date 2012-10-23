@@ -38,7 +38,7 @@ typedef uint16_t elf32_version_t;
 
 typedef struct
 {
-    unsigned char   e_ident[16];	/* Magic number and other info */
+	unsigned char   e_ident[16];	/* Magic number and other info */
 	elf32_half_t	e_type;			/* Object file type */
 	elf32_half_t	e_machine;		/* Architecture */
 	elf32_word_t	e_version;		/* Object file version */
@@ -161,22 +161,65 @@ typedef struct
 	elf32_index_t	st_shndx;		/* Section index */
 } elf_sym_t;
 
+
+#define ELF32_ST_BIND(val)			(((uint32_t)(val)) >> 4)
+#define ELF32_ST_TYPE(val)			((val) & 0xF)
+#define ELF32_ST_INFO(bind,type)	(((bind) << 4) + ((type) & 0xF))
+
+#define STN_UNDEF	0		/* Undefined symbol index */
+
+#define STB_LOCAL	0		/* Symbol not visible outside obj */
+#define STB_GLOBAL	1		/* Symbol visible outside obj */
+#define STB_WEAK	2		/* Like globals, lower precedence */
+#define STB_LOOS	10		/* OS-specific semantics */
+#define STB_GNU_UNIQUE	10		/* Symbol is unique in namespace */
+#define STB_HIOS	12		/* OS-specific semantics */
+#define STB_LOPROC	13		/* Processor-specific semantics */
+#define STB_HIPROC	15		/* Processor-specific semantics */
+
+#define STT_NOTYPE	0		/* Symbol type is unspecified */
+#define STT_OBJECT	1		/* Symbol is a data object */
+#define STT_FUNC	2		/* Symbol is a code object */
+#define STT_SECTION	3		/* Symbol associated with a section */
+#define STT_FILE	4		/* Symbol gives a file name */
+#define STT_COMMON	5		/* An uninitialised common block */
+#define STT_TLS		6		/* Thread local data object */
+#define STT_RELC	8		/* Complex relocation expression */
+#define STT_SRELC	9		/* Signed Complex relocation expression */
+#define STT_LOOS	10		/* OS-specific semantics */
+#define STT_GNU_IFUNC	10		/* Symbol is an indirect code object */
+#define STT_HIOS	12		/* OS-specific semantics */
+#define STT_LOPROC	13		/* Processor-specific semantics */
+#define STT_HIPROC	15		/* Processor-specific semantics */
+
 typedef struct
 {
-    elf32_address_t	r_offset;		/* Address */
-    elf32_word_t	r_info;			/* Relocation type and symbol index */
+	elf32_address_t	r_offset;		/* Address */
+	elf32_word_t	r_info;			/* Relocation type and symbol index */
 } elf_rel_t;
 
 typedef struct
 {
-  elf32_address_t	r_offset;		/* Address */
-  elf32_address_t	r_info;			/* Relocation type and symbol index */
-  elf32_word_t 		r_addend;		/* Addend */
+	elf32_address_t	r_offset;		/* Address */
+	elf32_address_t	r_info;			/* Relocation type and symbol index */
+	elf32_word_t 	r_addend;		/* Addend */
 } elf_rela_t;
 
 #define ELF32_R_SYM(val)			((val) >> 8)
 #define ELF32_R_TYPE(val)			((val) & 0xff)
 #define ELF32_R_INFO(sym, type)		(((sym) << 8) + ((type) & 0xff))
+
+#define	R_386_NONE	0
+#define	R_386_32	1
+#define	R_386_PC32	2
+#define	R_386_GOT32	3
+#define	R_386_PLT32	4
+#define	R_386_COPY	5
+#define	R_386_GLOB_DAT	6
+#define	R_386_JMP_SLOT	7
+#define	R_386_RELATIVE	8
+#define	R_386_GOTOFF	9
+#define	R_386_GOTPC	10
 
 // Program header
 
@@ -221,12 +264,12 @@ typedef struct
 
 typedef struct
 {
-    elf32_sword_t	d_tag;			/* Dynamic entry type */
-    union
-    {
-        elf32_word_t d_val;			/* Integer value */
-        elf32_address_t d_ptr;			/* Address value */
-    } d_un;
+	elf32_sword_t	d_tag;			/* Dynamic entry type */
+	union
+	{
+		elf32_word_t d_val;			/* Integer value */
+		elf32_address_t d_ptr;			/* Address value */
+	} d_un;
 } elf_dyn_t;
 
 #define DT_NULL		0		/* Marks end of dynamic section */
@@ -269,5 +312,7 @@ typedef struct
 #define DT_LOPROC	0x70000000	/* Start of processor-specific */
 #define DT_HIPROC	0x7fffffff	/* End of processor-specific */
 #define	DT_PROCNUM	DT_MIPS_NUM	/* Most used by any processor */
+
+uint32_t elf_hash(const char *name);
 
 #endif /* _ELF_H_ */

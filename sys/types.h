@@ -24,6 +24,8 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
 
+#include <config.h>
+
 #define NULL (void *)0
 
 #ifndef __cplusplus
@@ -35,7 +37,6 @@
 	#define	false	0
 	#define	true	1
 #endif
-
 
 // MARK: Variadic function helpers
 typedef __builtin_va_list	va_list;
@@ -62,6 +63,21 @@ typedef uint32_t 		size_t;
 #endif
 typedef long 			intptr_t;
 typedef unsigned long 	uintptr_t;
+
+// MARK: Other stuff
+typedef int32_t pid_t;
+typedef size_t  offset_t;
+typedef uint32_t mode_t;
+
+#define kCompareLesserThan -1
+#define kCompareEqualTo 0
+#define kCompareGreaterThan 1
+
+typedef int8_t comparison_result_t;
+typedef comparison_result_t (*comparator_t)(void *object1, void *object2);
+
+#define UNUSED(x) UNUSED_ ## x __attribute__((unused))
+#define offsetof(type, member) ((unsigned int)&(((type *)0)->member))
 
 // MARK: Fixed size integer constraints
 #define INT8_C(v)   (v)
@@ -92,9 +108,5 @@ typedef unsigned long 	uintptr_t;
 #define UINT16_MAX     UINT16_C(65535)
 #define UINT32_MAX     UINT32_C(4294967295)
 #define UINT64_MAX     UINT64_C(18446744073709551615)
-
-// MARK: Kernel related types
-
-typedef int32_t pid_t;
 
 #endif /* _TYPES_H_ */

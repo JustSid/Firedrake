@@ -17,39 +17,50 @@
 //
 
 #include <asm.h>
+#include <config.h>
+
+.global kern_dumpSpinlock
+.global spinlock_wait
 
 ENTRY(spinlock_lock)
-    pushl %edi
-    movl 0x8(%esp), %edi
-    movb $0x1, %cl
+	pushl %edi
+	movl 0x8(%esp), %edi
+	movb $0x1, %cl
+
+	jmp spinlock_tryObtain
+spinlock_wait:
+	// Spinlock code is exectued before interrupt handler are in place. Once they are in place, the nop's will be replaced by int $0x31 (0xcd 0x31) 
+	nop
+	nop
 
 spinlock_tryObtain:
-    xorb %al, %al
-    lock cmpxchgb %cl, (%edi)
-    jne spinlock_tryObtain
-    popl %edi
-    ret
+	xorb %al, %al
+	lock cmpxchgb %cl, (%edi)
+	jne spinlock_wait
+
+	popl %edi
+	ret
 
 
 ENTRY(spinlock_tryLock)
-    pushl %edi
-    movl 0x8(%esp), %edi
-    movb $0x1, %cl
-    xorb %al, %al
-    lock cmpxchgb %cl, (%edi)
-    jne spinlock_failedObtain
-    movl $0x1, %eax
-    popl %edi
-    ret
+	pushl %edi
+	movl 0x8(%esp), %edi
+	movb $0x1, %cl
+	xorb %al, %al
+	lock cmpxchgb %cl, (%edi)
+	jne spinlock_failedObtain
+	movl $0x1, %eax
+	popl %edi
+	ret
 
 spinlock_failedObtain:
-    xorl %eax, %eax
-    popl %edi
-    ret
+	xorl %eax, %eax
+	popl %edi
+	ret
 
 
 ENTRY(spinlock_unlock)
-    movl 0x4(%esp), %eax
-    movb $0x0, (%eax)
-    ret
-    
+	movl 0x4(%esp), %eax
+	movb $0x0, (%eax)
+	ret
+	

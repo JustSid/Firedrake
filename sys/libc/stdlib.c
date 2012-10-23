@@ -68,13 +68,13 @@ double atof(const char *string)
 	{
 		double value = (double)character - '0';
 		result = (result * 10.0) + value;
-   	}
+	}
 
 	if(character == '.')
 	{
-   		string ++;
+		string ++;
 
-   		while((character = *string++) != '\0' && isdigit(character)) 
+		while((character = *string++) != '\0' && isdigit(character)) 
 		{
 			double value = (double)character - '0';
 			result = (result * 10.0) + value;
@@ -89,23 +89,23 @@ double atof(const char *string)
 		exponent += atoi(string);
 	}
 
-   	// Process the exponent
-   	while(exponent > 0)
-   	{
-   		result *= 10.0;
-   		exponent --;
-   	}
-   	while(exponent < 0)
-   	{
-   		result *= 0.1;
-   		exponent ++;
-   	}
+	// Process the exponent
+	while(exponent > 0)
+	{
+		result *= 10.0;
+		exponent --;
+	}
+	while(exponent < 0)
+	{
+		result *= 0.1;
+		exponent ++;
+	}
 
 	return negative ? -result : result;
 }
 
 
-int _itostr(int i, int base, char *buffer)
+int _itostr(int i, int base, char *buffer, bool lowerCase)
 {
 	if(i == 0)
 	{
@@ -119,7 +119,7 @@ int _itostr(int i, int base, char *buffer)
 	
 	char _buffer[STDLIBBUFFERLENGTH];
 	char *temp = _buffer + (STDLIBBUFFERLENGTH - 1);
-	const char *digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // TODO: What about lowercase letters?
+	const char *digits = (lowerCase) ? "0123456789abcdefghijklmnopqrstuvwxyz" : "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	
 	if(negative)
 		i = -i;
@@ -139,11 +139,11 @@ int _itostr(int i, int base, char *buffer)
 		length ++;
 	}
 	
-	strlcpy(buffer, (const char *)temp, length);
+	strlcpy(buffer, (const char *)temp, (size_t)length);
 	return length;
 }
 
-int _uitostr(unsigned int i, int base, char *buffer)
+int _uitostr(unsigned int i, int base, char *buffer, bool lowerCase)
 {
 	if(i == 0)
 	{
@@ -155,7 +155,7 @@ int _uitostr(unsigned int i, int base, char *buffer)
 	int length = 0;
 	char _buffer[STDLIBBUFFERLENGTH];
 	char *temp = _buffer + (STDLIBBUFFERLENGTH - 1);
-	const char *digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; // TODO: What about lowercase letters?
+	const char *digits = (lowerCase) ? "0123456789abcdefghijklmnopqrstuvwxyz" : "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 	while(i > 0)
 	{
@@ -165,7 +165,7 @@ int _uitostr(unsigned int i, int base, char *buffer)
 		length ++;
 	}
 
-	strlcpy(buffer, (const char *)temp, length);
+	strlcpy(buffer, (const char *)temp, (size_t)length);
 	return length;
 }
 

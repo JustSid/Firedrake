@@ -1,0 +1,57 @@
+{
+	"folders":
+	[
+		{
+			"name": "libkernel",
+			"path": "./",
+			"file_exclude_patterns": ["*.sublime-workspace", "*.sublime-project"]
+		}
+	],
+	"settings":
+	{
+		"sublimeclang_enabled": true,
+		"sublimeclang_options":
+		[
+			"-I${folder:${project_path:libkernel.sublime-project}}/.",
+			"-I${folder:${project_path:libkernel.sublime-project}}/libio/.",
+			"-I${folder:${project_path:libkernel.sublime-project}}/libps2/.",
+			"-m32",
+			"-std=c++11",
+			"-Wall",
+			"-Wextra",
+			"-pedantic",
+			"-nostdlib",
+			"-nostdinc",
+			"-fno-builtin",
+			"-fno-rtti",
+			"-fno-exceptions",
+			"-pedantic-errors"
+		]
+	},
+	"build_systems":
+    [
+        {
+            "name": "Build Firedrake",
+            "working_dir": "${project_path}",
+			"cmd": ["exec ./../remotebuild.sh"],
+			"shell": true,
+			"selector": "source.c, source.c++, source.asm",
+
+			"variants":
+			[
+				{
+					"name": "Run",
+					"cmd": ["qemu -d cpu_reset ${project_path}/../boot/Firedrake.iso"]
+				},
+				{
+					"name": "Instrument",
+					"cmd": ["qemu -d int,cpu_reset -no-reboot -no-shutdown ${project_path}/../boot/Firedrake.iso"]
+				},
+				{
+					"name": "Clean",
+					"cmd": ["exec ./../remotebuild.sh --clean"]
+				}
+			]
+		}
+	]
+}

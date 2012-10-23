@@ -17,6 +17,7 @@
 //
 
 #include <system/syslog.h>
+#include <system/panic.h>
 #include <libc/string.h>
 #include "trampoline.h"
 
@@ -25,7 +26,7 @@ ir_trampoline_map_t *ir_trampoline_map = (ir_trampoline_map_t *)IR_TRAMPOLINE_BE
 extern uintptr_t idt_sectionBegin; // idt.S
 extern uintptr_t idt_sectionEnd; // idt.S
 
-extern void idt_entry_handler(); // Guess what: idt.S!
+extern void idt_entry_handler(); // Guess what? idt.S!
 extern uint32_t ir_handleInterrupt(uint32_t esp); // interrupts.c
 
 
@@ -38,35 +39,42 @@ uintptr_t ir_trampolineResolveFrame(vm_address_t frame)
 }
 
 
-uint32_t ir_trampolineResolveCall(uint8_t *buffer, uintptr_t function)
+static inline uint32_t ir_trampolineResolveCall(uint8_t *buffer, uintptr_t function)
 {
 	uint32_t base = (uint32_t)buffer;
 	return function - base;
 }
 
-void ir_trampoline_fixEntryCall(uint32_t offset)
+void ir_trampolineFixEntryCall(uint32_t offset, size_t limit)
 {
 	uint8_t *buffer = &ir_trampoline_map->base[offset];
+	size_t index = 0;
 
 	while(*buffer != 0xE8) // Look for the call
+	{
 		buffer ++;
+		index ++;
+
+		if(index >= limit)
+			panic("ir_trampoline_fixEntryCall(). Couldn't find call!");
+	}
 	
 	uint32_t *call = (uint32_t *)(buffer + 1);
 	*call = ir_trampolineResolveCall((uint8_t *)(call + 1), (uintptr_t)ir_handleInterrupt);
 }
 
-bool ir_trampoline_init(void *unused)
+bool ir_trampoline_init(void *UNUSED(unused))
 {
 	// Map the trampoline area into memory
 	vm_mapPageRange(vm_getKernelDirectory(), (uintptr_t)IR_TRAMPOLINE_PHYSICAL, (vm_address_t)IR_TRAMPOLINE_BEGIN, IR_TRAMPOLINE_PAGES, VM_FLAGS_KERNEL);
 
 	// Copy the IDT section into the trampoline
-	vm_address_t _idt_sectionBegin = (vm_address_t)&idt_sectionBegin;
-	vm_address_t _idt_sectionEnd   = (vm_address_t)&idt_sectionEnd;
-	vm_address_t _idt_entryHandler = (vm_address_t)&idt_entry_handler;
+	vm_address_t _idt_sectionBegin      = (vm_address_t)&idt_sectionBegin;
+	vm_address_t _idt_sectionEnd        = (vm_address_t)&idt_sectionEnd;
+	vm_address_t _idt_entryHandler      = (vm_address_t)&idt_entry_handler;
 
 	memcpy(ir_trampoline_map->base, &idt_sectionBegin, _idt_sectionEnd - _idt_sectionBegin);
-	ir_trampoline_fixEntryCall(_idt_entryHandler - _idt_sectionBegin);
+	ir_trampolineFixEntryCall(_idt_entryHandler - _idt_sectionBegin, _idt_sectionEnd - _idt_entryHandler);
 
 	// Set IDT and GDT straight
 	ir_idt_init(ir_trampoline_map->idt, IR_TRAMPOLINE_BEGIN - _idt_sectionBegin);

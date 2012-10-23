@@ -26,7 +26,9 @@
 
 extern spinlock_t _sd_lock;
 
-uint32_t _sd_schedule(uint32_t esp);
+uint32_t sd_schedule(uint32_t esp);
+void sd_yield();
+void sd_threadExit() __attribute__ ((noinline, noreturn));
 
 bool sd_init(void *ingored);
 

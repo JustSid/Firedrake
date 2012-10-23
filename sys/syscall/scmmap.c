@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <system/assert.h>
 #include <system/syslog.h>
 #include <libc/string.h>
 
@@ -40,10 +41,9 @@ bool mmap_copyMappings(process_t *target, process_t *source)
 	list_lock(target->mappings);
 	list_lock(source->mappings);
 
-	list_base_t *entry = list_first(source->mappings);
-	while(entry)
+	mmap_description_t *srcDescription = list_first(source->mappings);
+	while(srcDescription)
 	{
-		mmap_description_t *srcDescription = (mmap_description_t *)entry;
 		mmap_description_t *dstDescription = list_addBack(target->mappings);
 
 		size_t pages = pageCount(srcDescription->length);
@@ -63,7 +63,7 @@ bool mmap_copyMappings(process_t *target, process_t *source)
 		vm_free(vm_getKernelDirectory(), (vm_address_t)srcmem, pages);
 		vm_free(vm_getKernelDirectory(), (vm_address_t)dstmem, pages);
 
-		entry = entry->next;
+		srcDescription = srcDescription->next;
 	}
 
 	list_unlock(source->mappings);
@@ -72,10 +72,161 @@ bool mmap_copyMappings(process_t *target, process_t *source)
 	return true;
 }
 
+// Splits a mmap_description_t from address to address + length
+void mmap_splitDescription(mmap_description_t *description, vm_address_t address, size_t length, mmap_description_t **prevOut, mmap_description_t **nextOut)
+{
+	process_t *process = (process_t *)description->process;
+
+	if(prevOut)
+		*prevOut = NULL;
+
+	if(nextOut)
+		*nextOut = NULL;
+
+	if((length % 4096) != 0)
+		length = round4kUp(length);
+
+	if(description->length == length)
+		return;
+
+	if(description->vaddress == address)
+	{
+		mmap_description_t *next = list_addBack(process->mappings);
+		next->paddress   = description->paddress + length;
+		next->vaddress   = description->vaddress + length;
+		next->length     = description->length - length;
+		next->protection = description->protection;
+		next->next       = description->next;
+		next->process    = description->process;
+
+		description->length = description->length - next->length;
+		description->next = next;
+
+		if(nextOut)
+			*nextOut = next;
+	}
+	else if(description->vaddress + description->length == address + length)
+	{
+		mmap_description_t *prev = list_addBack(process->mappings);
+		prev->paddress   = description->paddress;
+		prev->vaddress   = description->vaddress;
+		prev->length     = description->length - length;
+		prev->protection = description->protection;
+		prev->prev       = description->prev;
+		prev->process    = description->process;
+
+		description->vaddress = prev->vaddress + prev->length;
+		description->paddress = prev->paddress + prev->length;
+		description->length   = description->length - prev->length;
+		description->prev     = prev;
+
+		if(prevOut)
+			*prevOut = prev;
+	}
+	else
+	{
+		mmap_description_t *prev = list_addBack(process->mappings);
+		prev->paddress   = description->paddress;
+		prev->vaddress   = description->vaddress;
+		prev->length     = address - description->vaddress;
+		prev->protection = description->protection;
+		prev->prev       = description->prev;
+		prev->process    = description->process;
+
+		mmap_description_t *next = list_addBack(process->mappings);
+		next->paddress   = description->paddress + length;
+		next->vaddress   = description->vaddress + length;
+		next->length     = (description->vaddress + description->length) - (address + length);
+		next->protection = description->protection;
+		next->next       = description->next;
+		next->process    = description->process;
+
+		description->vaddress = prev->vaddress + prev->length;
+		description->paddress = prev->paddress + prev->length;
+		description->length   = description->length - (prev->length + next->length);
+		description->prev     = prev;
+		description->next     = next;
+
+		if(nextOut)
+			*nextOut = next;
+
+		if(prevOut)
+			*prevOut = prev;
+	}
+}
+
+// Joins the two descriptions
+// 
+void mmap_joinDescription(mmap_description_t *description, mmap_description_t *joining)
+{
+	assert((joining == description->next || joining == description->prev));
+
+	process_t *process = (process_t *)description->process;
+
+	if(description->next == joining)
+	{
+		description->next = joining->next;
+		description->length += joining->length;
+		
+		list_remove(process->mappings, joining);
+	}
+	else
+	{
+		description->prev = joining->prev;
+		description->length += joining->length;
+		description->vaddress = joining->vaddress;
+		description->paddress = joining->paddress;
+
+		list_remove(process->mappings, joining);
+	}
+}
+
+bool mmap_tryJoinFragments(mmap_description_t *description, vm_address_t address, size_t length)
+{
+	// Check if the mapping is just fragmented
+	mmap_description_t *last = NULL;
+	mmap_description_t *current = description->next;
+
+	size_t lengthLeft = (address + length) - (description->vaddress + description->length);
+	while(current)
+	{
+		if(lengthLeft <= current->length)
+		{
+			size_t overflow = current->length - lengthLeft;
+			if(overflow > 0)
+				mmap_splitDescription(current, current->vaddress, overflow, NULL, NULL);
+
+			last = current;
+			break;
+		}
+
+		lengthLeft -= current->length;
+		current = current->next;
+	}
+
+	if(last)
+	{
+		// Join the fragments together
+		current = description->next;
+		while(1)
+		{
+			mmap_joinDescription(description, current);
+			if(current == last)
+				break;
+
+			current = description->next;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+
 // mmap() signature:
 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, uint32_t offset)
 
-uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_mmap(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 
@@ -84,8 +235,10 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 	size_t length     = *((size_t *)(uesp + 1));
 	int protection    = *((int *)(uesp + 2));
 	int flags         = *((int *)(uesp + 3));
-	int filed         = *((int *)(uesp + 4));
-	uint32_t offset   = *((int *)(uesp + 5));
+
+	// Unused stuff
+	int UNUSED(filed)         = *((int *)(uesp + 4));
+	uint32_t UNUSED(offset)   = *((int *)(uesp + 5));
 
 	list_lock(process->mappings);
 	mmap_description_t *description = list_addBack(process->mappings);
@@ -97,6 +250,8 @@ uint32_t _sc_mmap(uint32_t *esp, uint32_t *uesp, int *errno)
 		*errno = ENOMEM;
 		return MAP_FAILED;
 	}
+
+	description->process = process;
 
 	if((flags & MAP_PRIVATE) && (flags & MAP_SHARED))
 		goto mmapFailed;
@@ -184,7 +339,7 @@ mmapFailed:
 
 // munmap() signature
 // int munmap(void *address, size_t length)
-uint32_t _sc_munmap(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_munmap(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 
@@ -201,78 +356,101 @@ uint32_t _sc_munmap(uint32_t *esp, uint32_t *uesp, int *errno)
 	list_lock(process->mappings);
 
 	// Search for the mmap entry that fits the address and length
-	list_base_t *entry = list_first(process->mappings); 
-	while(entry)
+	mmap_description_t *description = list_first(process->mappings); 
+	while(description)
 	{
-		mmap_description_t *description = (mmap_description_t *)entry;
-
 		if(description->vaddress >= address && address <= description->vaddress + description->length)
 		{
-			if(description->vaddress == address && description->length == length)
+			if(address + length > description->vaddress + description->length)
 			{
-				size_t pages = pageCount(length);
-
-				vm_free(process->pdirectory, description->vaddress, pages);
-				pm_free(description->paddress, pages);
-			}
-			else
-			{
-				if((length % 4096) != 0)
-					length = round4kUp(length);
-
-				size_t pages = pageCount(length);
-				uintptr_t pmemory = vm_resolveVirtualAddress(process->pdirectory, address);
-
-				if(description->vaddress == address)
+				if(!mmap_tryJoinFragments(description, address, length))
 				{
-					mmap_description_t *next = list_addBack(process->mappings);
-					next->paddress   = description->paddress + length;
-					next->vaddress   = description->vaddress + length;
-					next->length     = description->length - length;
-					next->protection = description->protection;
+					*errno = ENOMEM;
+					return -1;
 				}
-				else if(description->vaddress + description->length == address + length)
-				{
-					mmap_description_t *prev = list_addBack(process->mappings);
-					prev->paddress   = description->paddress;
-					prev->vaddress   = description->vaddress;
-					prev->length     = description->length - length;
-					prev->protection = description->protection;
-				}
-				else
-				{
-					mmap_description_t *prev = list_addBack(process->mappings);
-					prev->paddress   = description->paddress;
-					prev->vaddress   = description->vaddress;
-					prev->length     = address - description->vaddress;
-					prev->protection = description->protection;
-
-					mmap_description_t *next = list_addBack(process->mappings);
-					next->paddress   = description->paddress + length;
-					next->vaddress   = description->vaddress + length;
-					next->length     = (description->vaddress + description->length) - (address + length);
-					next->protection = description->protection;
-				}
-
-				vm_free(process->pdirectory, address, pages);
-				pm_free(pmemory, pages);
 			}
 
-			list_remove(process->mappings, entry);
+			mmap_splitDescription(description, address, length, NULL, NULL);
+			size_t pages = pageCount(description->length);
+
+			vm_free(process->pdirectory, description->vaddress, pages);
+			pm_free(description->vaddress, pages);
+
+			list_remove(process->mappings, description);
 			list_unlock(process->mappings);
 			return 0;
 		}
 
-		entry = entry->next;
+		description = description->next;
 	}
 
 	list_unlock(process->mappings);
-	return 0;
+	
+	*errno = EINVAL;
+	return -1;
 }
+
+// mprotect() signature
+// int mprotect(const void *addr, size_t len, int prot)
+
+uint32_t _sc_mprotect(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
+{
+	process_t *process = process_getCurrentProcess();
+
+	// fetch the arguments from the stack
+	uintptr_t address = *((uintptr_t *)(uesp + 0));
+	size_t length     = *((size_t *)(uesp + 1));
+	int  protection   = *((int *)(uesp + 2));
+
+	if((address % 4096) != 0 || length == 0)
+	{
+		*errno = EINVAL;
+		return -1;
+	}
+
+
+	list_lock(process->mappings);
+
+	mmap_description_t *description = list_first(process->mappings); 
+	while(description)
+	{
+		if(description->vaddress >= address && address <= description->vaddress + description->length)
+		{
+			if(address + length > description->vaddress + description->length)
+			{
+				if(!mmap_tryJoinFragments(description, address, length))
+				{
+					*errno = ENOMEM;
+					return -1;
+				}
+			}
+
+			mmap_splitDescription(description, address, length, NULL, NULL);
+
+			uint32_t vmflags = mmap_vmflagsForProtectionFlags(protection);
+			size_t pages = pageCount(description->length);
+
+			vm_mapPageRange(process->pdirectory, description->paddress, description->vaddress, pages, vmflags);
+			description->protection = protection;
+
+			list_unlock(process->mappings);
+			return 0;
+		}
+
+		description = description->next;
+	}
+
+	list_unlock(process->mappings);
+
+	*errno = EINVAL;
+	return -1;
+}
+
 
 
 void _sc_mmapInit()
 {
 	sc_setSyscallHandler(SYS_MMAP, _sc_mmap);
-	sc_setSyscallHandler(SYS_UNMAP, _sc_munmap);
+	sc_setSyscallHandler(SYS_MUNMAP, _sc_munmap);
+	sc_setSyscallHandler(SYS_MPROTECT, _sc_mprotect);
 }

@@ -1,5 +1,5 @@
 //
-//  dylink.h
+//  iostubs.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,10 +16,20 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _DYLINK_H_
-#define _DYLINK_H_
+#ifndef _IOSTUBS_H_
+#define _IOSTUBS_H_
 
-#include "elf.h"
-#include "dyexecutable.h"
+#include <system/elf.h>
+#include "iolibrary.h"
 
-#endif /* _DYLINK_H_ */
+typedef uint32_t IOReturn;
+
+#define kIOReturnSuccess 0
+#define kIOReturnInterruptTaken 1
+
+io_library_t *io_kernelLibraryStub();
+elf_sym_t *io_findKernelSymbol(const char *name);
+
+bool io_initStubs();
+
+#endif /* _IOSTUBS_H_ */

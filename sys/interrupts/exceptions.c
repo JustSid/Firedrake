@@ -88,7 +88,7 @@ uint32_t __ir_handleException(uint32_t esp)
 			process->died = true;
 
 			dbg("General protection fault in %i:%i\n", process->pid, thread->id);
-			return _sd_schedule(esp);
+			return sd_schedule(esp);
 		}
 	}
 	else
@@ -114,12 +114,11 @@ uint32_t __ir_handleException(uint32_t esp)
 			process->died = true;
 
 			dbg("%s while %s (to/from) address %p, caused by %i:%i. Killing.\n", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), __ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), address, process->pid, thread->id);
-			return _sd_schedule(esp);
+			return sd_schedule(esp);
 		}
 	}
 
 	panic("Unhandled exception %i occured!", state->interrupt);
-	return esp; // We won't reach this point...
 }
 
 const char *__ir_exception_pageFaultTranslateBit(int bit, int set)
@@ -128,15 +127,12 @@ const char *__ir_exception_pageFaultTranslateBit(int bit, int set)
 	{
 		case 1:
 			return set ? "Protection violation" : "Non-present page";
-			break;
 
 		case 2:
 			return set ? "writing" : "reading";
-			break;
 
 		case 3:
 			return set ? "ring 3" : "ring 0";
-			break;
 
 		default:
 			break;

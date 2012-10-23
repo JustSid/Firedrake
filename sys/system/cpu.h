@@ -30,28 +30,28 @@
  **/
 typedef struct 
 {	
-    uint16_t gs  __attribute__((aligned(4)));
-    uint16_t fs  __attribute__((aligned(4)));
-    uint16_t es  __attribute__((aligned(4)));
-    uint16_t ds  __attribute__((aligned(4)));
+	uint16_t gs  __attribute__((aligned(4)));
+	uint16_t fs  __attribute__((aligned(4)));
+	uint16_t es  __attribute__((aligned(4)));
+	uint16_t ds  __attribute__((aligned(4)));
 
-    uint32_t edi;
-    uint32_t esi;
-    uint32_t ebp;
-    uint32_t esp_;
-    uint32_t ebx;
-    uint32_t edx;
-    uint32_t ecx;
-    uint32_t eax;
+	uint32_t edi;
+	uint32_t esi;
+	uint32_t ebp;
+	uint32_t esp_;
+	uint32_t ebx;
+	uint32_t edx;
+	uint32_t ecx;
+	uint32_t eax;
 
-    uint32_t interrupt;
-    uint32_t error;
+	uint32_t interrupt;
+	uint32_t error;
 
-    uint32_t eip;
-    uint32_t cs;
-    uint32_t eflags;
-    uint32_t esp;
-    uint32_t ss;
+	uint32_t eip;
+	uint32_t cs;
+	uint32_t eflags;
+	uint32_t esp;
+	uint32_t ss;
 } cpu_state_t; 
 
 #endif /* _CPU_H_ */

@@ -1,5 +1,5 @@
 //
-//  dyexecutable.c
+//  loader.c
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -18,29 +18,27 @@
 
 #include <libc/string.h>
 #include <bootstrap/multiboot.h>
+#include <system/elf.h>
 #include <system/helper.h>
 #include <system/syslog.h>
 
-#include "elf.h"
-#include "dyexecutable.h"
+#include "loader.h"
 
-dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *begin, size_t size)
+ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *begin, size_t UNUSED(size))
 {
-	dy_exectuable_t *executable = halloc(NULL, sizeof(dy_exectuable_t));
+	elf_header_t *header = (elf_header_t *)begin;
 
+	if(strncmp((const char *)header->e_ident, ELF_MAGIC, strlen(ELF_MAGIC)) != 0)
+		return NULL;
+
+	ld_exectuable_t *executable = halloc(NULL, sizeof(ld_exectuable_t));
 	if(executable)
 	{
-		elf_header_t *header = (elf_header_t *)begin;
-
-		if(strncmp((const char *)header->e_ident, ELF_MAGIC, strlen(ELF_MAGIC)) != 0)
-		{
-			hfree(NULL, executable);
-			return NULL;
-		}
-
+		// Initialize the executable
 		executable->useCount   = 1;
 		executable->entry      = header->e_entry;
 		executable->pdirectory = pdirectory;
+
 
 		elf_program_header_t *programHeader = (elf_program_header_t *)(begin + header->e_phoff);
 		vm_address_t minAddress = -1;
@@ -59,7 +57,7 @@ dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 					minAddress = program->p_paddr;
 
 				if(program->p_paddr + program->p_memsz > maxAddress)
-					maxAddress = program->p_paddr + program->p_memsz ;
+					maxAddress = program->p_paddr + program->p_memsz;
 			}
 		}
 
@@ -67,13 +65,14 @@ dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 		minAddress = round4kDown(minAddress);
 		pages = pageCount(maxAddress - minAddress);
 
-		// Memory foo
+		// Memory allocation
 		uint8_t *memory = (uint8_t *)pm_alloc(pages);
 		uint8_t *target = (uint8_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)memory, pages, VM_FLAGS_KERNEL);
 		uint8_t *source = begin;
 
 		memset(target, 0, pages * VM_PAGE_SIZE);
 
+		// Copy the data from the image
 		for(int i=0; i<header->e_phnum; i++) 
 		{
 			elf_program_header_t *program = &programHeader[i];
@@ -95,7 +94,7 @@ dy_exectuable_t *dy_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 	return executable;
 }
 
-dy_exectuable_t *dy_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file)
+ld_exectuable_t *ld_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file)
 {
 	struct multiboot_module_s *module = sys_multibootModuleWithName(file);
 	if(module)
@@ -103,18 +102,18 @@ dy_exectuable_t *dy_executableCreateWithFile(vm_page_directory_t pdirectory, con
 		uint8_t *begin = (uint8_t *)module->start;
 		uint8_t *end = (uint8_t *)module->end;
 
-		return dy_exectuableCreate(pdirectory, begin, (size_t)(end - begin));
+		return ld_exectuableCreate(pdirectory, begin, (size_t)(end - begin));
 	}
 
 	return NULL;
 }
 
-dy_exectuable_t *dy_exectuableCopy(vm_page_directory_t pdirectory, dy_exectuable_t *source)
+ld_exectuable_t *ld_exectuableCopy(vm_page_directory_t pdirectory, ld_exectuable_t *source)
 {
 	if(!source)
 		return NULL;
 
-	dy_exectuable_t *executable = halloc(NULL, sizeof(dy_exectuable_t));
+	ld_exectuable_t *executable = halloc(NULL, sizeof(ld_exectuable_t));
 	if(executable)
 	{
 		source->useCount ++;
@@ -134,14 +133,14 @@ dy_exectuable_t *dy_exectuableCopy(vm_page_directory_t pdirectory, dy_exectuable
 	return executable;
 }
 
-void dy_executableRelease(dy_exectuable_t *executable)
+void ld_executableRelease(ld_exectuable_t *executable)
 {
 	executable->useCount --;
 
 	if(executable->useCount == 0)
 	{
 		if(executable->source)
-			dy_executableRelease(executable->source);
+			ld_executableRelease(executable->source);
 
 		if(executable->pimage)
 			pm_free(executable->pimage, executable->imagePages);

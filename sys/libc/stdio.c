@@ -28,10 +28,16 @@
 int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 {
 	size_t written = 0;
+	size_t total = 0;
+
 	uint32_t index = 0;
+	bool keepWriting = true;
 	
-	while(format[index] != '\0' && written < size)
+	while(format[index] != '\0')
 	{
+		if(written >= size)
+			keepWriting = false;
+
 		if(format[index] == '%')
 		{
 			index ++;
@@ -68,7 +74,6 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 				break;
 			}
 
-
 			// Get the width, if supplied
 			long width = 0;
 			while(isdigit(format[index]))
@@ -84,8 +89,13 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 			{
 				case 'c':
 				{
-					char character = va_arg(arg, int);
-					buffer[written ++] = (char)character;
+					if(keepWriting)
+					{
+						char character = (char)va_arg(arg, int);
+						buffer[written ++] = (char)character;
+					}
+
+					total ++;
 					break;
 				}
 				
@@ -95,9 +105,15 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					if(!string)
 						string = "(null)";
 					
-					while(*string != '\0' && written < size)
+					while(*string != '\0')
 					{
-						buffer[written ++] = *string++;
+						if(keepWriting && written < size)
+						{
+							buffer[written ++] = *string;
+						}
+
+						total ++;
+						string ++;
 					}
 					
 					break;
@@ -107,6 +123,7 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 				case 'd':
 				case 'p':
 				case 'x':
+				case 'X':
 				case 'u':
 				{
 					int  base = (format[index] == 'i' || format[index] == 'd') ? 10 : 16;
@@ -119,12 +136,12 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					if(isUint)
 					{
 						unsigned long value = va_arg(arg, unsigned long);
-						_uitostr(value, base, string);
+						_uitostr(value, base, string, (format[index] == 'x'));
 					}
 					else 
 					{
 						long value = va_arg(arg, long);
-						_itostr(value, base, string);
+						_itostr(value, base, string, (format[index] == 'x'));
 					}
 
 
@@ -134,10 +151,15 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					// Left pad
 					if(!(flags & kVsnprintfFlagRightAlign))
 					{
-						while(width > 0 && written < size)
+						while(width > 0)
 						{
-							buffer[written ++] = (flags & kVsnprintfZeroPad) ? '0' : ' ';
+							if(keepWriting && written < size)
+							{
+								buffer[written ++] = (flags & kVsnprintfZeroPad) ? '0' : ' ';
+							}
+
 							width --;
+							total ++;
 						}
 					}
 					
@@ -145,18 +167,27 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					for(int i=0; i<2; i++)
 					{
 						char *printStr = (i == 0) ? prefix : string;
-						while(*printStr != '\0' && written < size)
+						while(*printStr != '\0')
 						{
-							buffer[written ++] = *printStr++;
+							if(keepWriting && written < size)
+							{
+								buffer[written ++] = *printStr;
+							}
+
+							total ++;
+							printStr ++;
 						}
 					}
 
 					// Right pad
 					if((flags & kVsnprintfFlagRightAlign))
 					{
-						while(width > 0 && written < size)
+						while(width > 0)
 						{
-							buffer[written ++] = ' ';
+							if(keepWriting && written < size)
+								buffer[written ++] = ' ';
+
+							total ++;
 							width --;
 						}
 					}
@@ -167,36 +198,35 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					
 				case '%':
 				{
-					buffer[written++] = '%';		
+					if(keepWriting)
+						buffer[written ++] = '%';		
+
+					total ++;
 					break;
 				}
 					
 				default:
-				{
-					buffer[written++] = '%';	
-					buffer[written++] = format[index];
 					break;
-				}
 			}
 		}
 		else
 		{
-			buffer[written++] = format[index];
+			if(keepWriting)
+				buffer[written ++] = format[index];
+
+			total ++;
 		}
 		
 		index ++;
 	}
 	
-	if(written >= size)
+	if(buffer)
 	{
-		buffer[written - 1] = '\0';	
-	}
-	else
-	{
-		buffer[written] = '\0';
+		index = (written >= size) ? written - 1 : written;
+		buffer[index] = '\0';
 	}
 	
-	return (int)written;
+	return (int)total;
 }
 
 int vsprintf(char *buffer, const char *format, va_list arg)

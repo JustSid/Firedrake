@@ -21,7 +21,6 @@
 
 #include "cpu.h"
 
-void panic(const char *format, ...);
-// DON'T call this from usermode, otherwise you get another panic with a general protection fault!
+void panic(const char *format, ...) __attribute__ ((noreturn));
 
 #endif /* _PANIC_H_ */

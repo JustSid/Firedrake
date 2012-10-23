@@ -29,7 +29,7 @@ setjmp:
 	movl %esp, 		16(%ecx)
 	movl %edx, 		20(%ecx)
 	xorl %eax, 		%eax
-    jmp  *%edx
+	jmp  *%edx
 
 .global longjmp
 longjmp:

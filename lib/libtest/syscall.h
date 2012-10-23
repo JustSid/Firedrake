@@ -31,8 +31,9 @@
 #define SYS_PROCESSCREATE	7
 #define SYS_PROCESSKILL		8
 #define SYS_MMAP			9
-#define SYS_UNMAP			10
-#define SYS_FORK			11
+#define SYS_MUNMAP			10
+#define SYS_MPROTECT		11
+#define SYS_FORK			12
 
 uint32_t syscall(int type, ...);
 

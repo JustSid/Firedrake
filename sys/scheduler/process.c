@@ -52,7 +52,10 @@ process_t *process_createVoid(bool insert)
 		process->image       = NULL;
 		process->pdirectory  = NULL;
 
-		process->mappings = list_create(sizeof(mmap_description_t));
+		process->startTime = time_getTimestampSinceBoot();
+		process->usedTime  = 0;
+
+		process->mappings = list_create(sizeof(mmap_description_t), offsetof(mmap_description_t, listNext), offsetof(mmap_description_t, listPrev));
 
 		process->threadLock = SPINLOCK_INIT;
 		process->mainThread = NULL;
@@ -83,7 +86,7 @@ process_t *process_createWithFile(const char *name)
 	if(process)
 	{
 		process->pdirectory = vm_createDirectory();
-		process->image 		= dy_executableCreateWithFile(process->pdirectory, name);
+		process->image 		= ld_executableCreateWithFile(process->pdirectory, name);
 
 		thread_create(process, (thread_entry_t)process->image->entry, 4 * 4096, 0);
 	}
@@ -100,7 +103,7 @@ process_t *process_fork(process_t *parent)
 	if(child)
 	{
 		child->pdirectory = vm_createDirectory();
-		child->image = dy_exectuableCopy(child->pdirectory, parent->image);
+		child->image = ld_exectuableCopy(child->pdirectory, parent->image);
 		child->ring0 = parent->ring0;
 
 		thread_copy(child, parent->scheduledThread);
@@ -131,7 +134,7 @@ process_t *process_createKernel()
 		process->pdirectory = vm_getKernelDirectory();
 		process->ring0      = true;
 
-		thread_create(process, NULL, 1 * 4096, 0);
+		thread_create(process, NULL, 4096, 0);
 	}
 
 	spinlock_unlock(&_sd_lock);
@@ -160,20 +163,23 @@ void process_destroy(process_t *process)
 	}
 
 	if(process->image)
-		dy_executableRelease(process->image);
+		ld_executableRelease(process->image);
+
+	uint32_t seconds = timestamp_getSeconds(process->usedTime);
+	uint32_t millisecs = timestamp_getMilliseconds(process->usedTime);
+
+	dbg("Process %i died, used %i.%03i secs on CPU\n", process->pid, seconds, millisecs);
 
 	// Remove all mappings
-	list_base_t *entry = list_first(process->mappings);
-	while(entry)
+	mmap_description_t *description = list_first(process->mappings);
+	while(description)
 	{
-		mmap_description_t *description = (mmap_description_t *)entry;
-
 		size_t pages = pageCount(description->length);
 
 		vm_free(process->pdirectory, description->vaddress, pages);
 		pm_free(description->paddress, pages);
 
-		entry = entry->next;
+		description = description->next;
 	}
 
 	list_destroy(process->mappings);

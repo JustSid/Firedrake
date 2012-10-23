@@ -33,10 +33,10 @@
 
 #define KUFail(...) \
 	do { \
-		kunit_test_t *test = kunit_testCurrent(); \
-		if(test) \
+		kunit_test_t *__ktest = kunit_testCurrent(); \
+		if(__ktest) \
 		{ \
-			kunit_testFail(test, __VA_ARGS__); \
+			kunit_testFail(__ktest, __VA_ARGS__); \
 		} \
 		else \
 		{ \
@@ -49,11 +49,11 @@
 	do { \
 		if(a1 != a2) \
 		{ \
-			kunit_test_t *test = kunit_testCurrent(); \
-			if(test) \
+			kunit_test_t *__ktest = kunit_testCurrent(); \
+			if(__ktest) \
 			{ \
 				err("%s:%i: Expected (%s) == (%s)\n", sys_fileWithoutPath(__FILE__), __LINE__, #a1, #a2); \
-				kunit_testFail(test, __VA_ARGS__); \
+				kunit_testFail(__ktest, __VA_ARGS__); \
 			} \
 			else \
 			{ \
@@ -69,11 +69,11 @@
 	do { \
 		if(KUAbsoluteDifference((a1), (a2)) > accuracy) \
 		{ \
-			kunit_test_t *test = kunit_testCurrent(); \
-			if(test) \
+			kunit_test_t *__ktest = kunit_testCurrent(); \
+			if(__ktest) \
 			{ \
 				err("%s:%i: Expected (%s) - (%s) <= (%s)\n", sys_fileWithoutPath(__FILE__), __LINE__, #a1, #a2, #accuracy); \
-				kunit_testFail(test, __VA_ARGS__); \
+				kunit_testFail(__ktest, __VA_ARGS__); \
 			} \
 			else \
 			{ \
@@ -87,11 +87,11 @@
 	do { \
 		if(a1 != NULL) \
 		{ \
-			kunit_test_t *test = kunit_testCurrent(); \
-			if(test) \
+			kunit_test_t *__ktest = kunit_testCurrent(); \
+			if(__ktest) \
 			{ \
 				err("%s:%i: Expected (%s) to be NULL!\n", sys_fileWithoutPath(__FILE__), __LINE__, #a1); \
-				kunit_testFail(test, __VA_ARGS__); \
+				kunit_testFail(__ktest, __VA_ARGS__); \
 			} \
 			else \
 			{ \
@@ -105,11 +105,11 @@
 	do { \
 		if(a1 == NULL) \
 		{ \
-			kunit_test_t *test = kunit_testCurrent(); \
-			if(test) \
+			kunit_test_t *__ktest = kunit_testCurrent(); \
+			if(__ktest) \
 			{ \
 				err("%s:%i: Expected (%s) to be not NULL!\n", sys_fileWithoutPath(__FILE__), __LINE__, #a1); \
-				kunit_testFail(test, __VA_ARGS__); \
+				kunit_testFail(__ktest, __VA_ARGS__); \
 			} \
 			else \
 			{ \
@@ -123,11 +123,11 @@
 	do { \
 		if(!(expr)) \
 		{ \
-			kunit_test_t *test = kunit_testCurrent(); \
-			if(test) \
+			kunit_test_t *__ktest = kunit_testCurrent(); \
+			if(__ktest) \
 			{ \
 				err("%s:%i: Expected (%s) to be true!\n", sys_fileWithoutPath(__FILE__), __LINE__, #expr); \
-				kunit_testFail(test, __VA_ARGS__); \
+				kunit_testFail(__ktest, __VA_ARGS__); \
 			} \
 			else \
 			{ \
@@ -141,11 +141,11 @@
 	do { \
 		if((expr)) \
 		{ \
-			kunit_test_t *test = kunit_testCurrent(); \
-			if(test) \
+			kunit_test_t *__ktest = kunit_testCurrent(); \
+			if(__ktest) \
 			{ \
 				err("%s:%i: Expected (%s) to be false!\n", sys_fileWithoutPath(__FILE__), __LINE__, #expr); \
-				kunit_testFail(test, __VA_ARGS__); \
+				kunit_testFail(__ktest, __VA_ARGS__); \
 			} \
 			else \
 			{ \

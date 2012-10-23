@@ -13,7 +13,7 @@ libtest.a: $(OBJS)
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $^ 
 
-%.so: %.S
+%.o: %.S
 	$(CC) $(ASFLAGS) -c -o $@ $^
 
 clean:

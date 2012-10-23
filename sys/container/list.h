@@ -22,13 +22,7 @@
 #include <types.h>
 #include <system/lock.h>
 
-typedef struct list_base_s
-{
-	void *list;
-
-	struct list_base_s *next;
-	struct list_base_s *prev;
-} list_base_t;
+typedef bool (*list_fillEntryCallback_t)(void *entry);
 
 typedef struct
 {
@@ -36,12 +30,18 @@ typedef struct
 	size_t entrySize;
 
 	spinlock_t lock;
+	spinlock_t internalLock;
+	
+	list_fillEntryCallback_t fillEntry;
 
-	list_base_t *first;
-	list_base_t *last;
+	size_t offsetNext;
+	size_t offsetPrev;
+
+	void *first;
+	void *last;
 } list_t;
 
-list_t *list_create(size_t size);
+list_t *list_create(size_t size, size_t offsetNext, size_t offsetPrev);
 void list_destroy(list_t *list);
 
 void list_lock(list_t *list);
@@ -52,7 +52,9 @@ void *list_addFront(list_t *list);
 
 void list_remove(list_t *list, void *entry);
 
-list_base_t *list_first(list_t *list);
-list_base_t *list_last(list_t *list);
+size_t list_count(list_t *list);
+
+void *list_first(list_t *list);
+void *list_last(list_t *list);
 
 #endif /* _LIST_H_ */

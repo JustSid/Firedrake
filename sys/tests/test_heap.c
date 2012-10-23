@@ -19,9 +19,11 @@
 #include <memory/memory.h>
 #include "unittests.h"
 
-void _test_integrity();
-void _test_free();
-void _test_fragmentation();
+void _test_heap_integrity();
+void _test_heap_free();
+void _test_heap_fragmentation();
+void _test_heap_misc();
+void _test_heap_subheaps();
 
 #define _test_heap_size 1024 * 1024
 extern void heap_defrag(heap_t *heap);
@@ -30,9 +32,11 @@ void test_heap()
 {
 	kunit_test_suite_t *heapSuite = kunit_test_suiteCreate("Heap Tests", "A test suite for testing the heap allocator", true);
 	{
-		kunit_test_suiteAddTest(heapSuite, kunit_testCreate("Integrity test", "Tests the integrity of the heap allocator", _test_integrity));
-		kunit_test_suiteAddTest(heapSuite, kunit_testCreate("Free test", "Tests if free works correctly", _test_free));
-		kunit_test_suiteAddTest(heapSuite, kunit_testCreate("Fragmentions test", "Tests if the defragmention works correctly", _test_fragmentation));
+		kunit_test_suiteAddTest(heapSuite, kunit_testCreate("Integrity test", "Tests the integrity of the heap allocator", _test_heap_integrity));
+		kunit_test_suiteAddTest(heapSuite, kunit_testCreate("Free test", "Tests if free works correctly", _test_heap_free));
+		kunit_test_suiteAddTest(heapSuite, kunit_testCreate("Fragmentions test", "Tests if the defragmention works correctly", _test_heap_fragmentation));
+		kunit_test_suiteAddTest(heapSuite, kunit_testCreate("Misc test", "Tests various other stuff...", _test_heap_misc));
+		kunit_test_suiteAddTest(heapSuite, kunit_testCreate("Subheap test", "Tests subheaps...", _test_heap_subheaps));
 	}
 	kunit_test_suiteRun(heapSuite);
 }
@@ -42,22 +46,48 @@ void test_heap()
 size_t _test_heap_numberOfAllocations(heap_t *heap)
 {
 	size_t count = 0;
-	struct _heap_allocation_s *allocation = heap->firstAllocation;
 
-	while(allocation)
+	for(size_t i=0; i<heap->maxHeaps; i++)
 	{
-		count ++;
-		allocation = allocation->next;
+		struct heap_subheap_s *subheap = &heap->subheaps[i];
+
+		if(subheap->initialized)
+		{
+			struct heap_allocation_s *allocation = subheap->firstAllocation;
+
+			while(allocation)
+			{
+				count ++;
+				allocation = allocation->next;
+			}
+		}
 	}
+	
+
+	return count;
+}
+
+size_t _test_heap_numberOfSubheaps(heap_t *heap)
+{
+	size_t count = 0;
+
+	for(size_t i=0; i<heap->maxHeaps; i++)
+	{
+		struct heap_subheap_s *subheap = &heap->subheaps[i];
+
+		if(subheap->initialized)
+			count ++;
+	}
+	
 
 	return count;
 }
 
 // Test implementations
 
-void _test_integrity()
+void _test_heap_integrity()
 {
-	heap_t *heap = heap_create(_test_heap_size, vm_getKernelDirectory(), 0, VM_FLAGS_KERNEL);
+	heap_t *heap = heap_create(_test_heap_size, vm_getKernelDirectory(), VM_FLAGS_KERNEL);
 	KUAssertNotNull(heap, "We need a heap to test!");
 
 	uintptr_t pptr = 0x0;
@@ -67,16 +97,16 @@ void _test_integrity()
 		if(pptr != 0x0)
 		{
 			size_t diff = ptr - pptr;
-			KUAssertTrue(diff >= 64 + sizeof(struct _heap_allocation_s), "Allocation %i isn't large enough!", i);
+			KUAssertTrue(diff >= 64 + sizeof(struct heap_allocation_s), "Allocation %i isn't large enough!", i);
 		}
 	}
 
 	heap_destroy(heap);
 }
 
-void _test_free()
+void _test_heap_free()
 {
-	heap_t *heap = heap_create(_test_heap_size, vm_getKernelDirectory(), 0, VM_FLAGS_KERNEL);
+	heap_t *heap = heap_create(_test_heap_size, vm_getKernelDirectory(), VM_FLAGS_KERNEL);
 	KUAssertNotNull(heap, "We need a heap to test!");
 
 	void *pointer = NULL;
@@ -94,9 +124,9 @@ void _test_free()
 	heap_destroy(heap);
 }
 
-void _test_fragmentation()
+void _test_heap_fragmentation()
 {
-	heap_t *heap = heap_create(_test_heap_size, vm_getKernelDirectory(), 0, VM_FLAGS_KERNEL);
+	heap_t *heap = heap_create(_test_heap_size, vm_getKernelDirectory(), VM_FLAGS_KERNEL);
 	KUAssertNotNull(heap, "We need a heap to test!");
 
 	void *ptr[20];
@@ -136,3 +166,33 @@ void _test_fragmentation()
 
 	heap_destroy(heap);
 }
+
+void _test_heap_misc()
+{
+	heap_t *heap = heap_create(_test_heap_size, vm_getKernelDirectory(), 0);
+	KUAssertNotNull(heap, "We need a heap to test!");
+
+	for(int i=0; i<8; i++)
+	{
+		uintptr_t memory = (uintptr_t)halloc(heap, 173);
+		KUAssertTrue((memory % 4) == 0, "Memory must be 4byte aligned!");
+	}
+
+	heap_destroy(heap);
+}
+
+void _test_heap_subheaps()
+{
+	heap_t *heap = heap_create(1024, vm_getKernelDirectory(), 0);
+	KUAssertNotNull(heap, "We need a heap to test!");
+
+	for(int i=0; i<5; i++)
+	{
+		void *memory = halloc(heap, 2000); // A subheap spans at least one page!
+		KUAssertNotNull(memory, "The heap must be able to allocate the memory!");
+	}
+
+	KUAssertEquals(_test_heap_numberOfSubheaps(heap), 3, "The heap must have three subheaps!");
+	heap_destroy(heap);
+}
+

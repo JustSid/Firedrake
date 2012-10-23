@@ -31,7 +31,8 @@ double atof(const char *string);
 
 
 #define STDLIBBUFFERLENGTH 128
-int _itostr(int i, int base, char *buffer); // Converts an integer to a string and copies the result into buffer
-int _uitostr(unsigned int i, int base, char *buffer);
+
+int _itostr(int i, int base, char *buffer, bool lowerCase); // Converts an integer to a string and copies the result into buffer
+int _uitostr(unsigned int i, int base, char *buffer, bool lowerCase);
 
 #endif /* _STDLIB_H_ */

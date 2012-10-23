@@ -21,34 +21,38 @@
 #include <system/syslog.h>
 #include <system/panic.h>
 #include <scheduler/scheduler.h>
+#include <interrupts/interrupts.h>
 #include <libc/string.h>
 #include <libc/stdio.h>
 #include <tests/unittests.h>
 
-void kerneld_main() __attribute__((noinline));
+#include "watchdogd.h"
+#include "syslogd.h"
+#include "ioglued.h"
+
+extern void sd_disableScheduler();
+extern void syslogd_forceFlush();
+
+void kerneld_unitTests() __attribute__((noreturn));
+
+void kerneld_main() __attribute__((noinline, noreturn));
 void kerneld_main()
 {
-	__asm__ volatile("int $0x20"); // Force a reschedule right here, just to make sure that everything is properly initalized at the schedulers end
+	sd_yield(); // Force a reschedule right here, just to make sure that everything is properly initalized at the schedulers end
 
-#ifdef CONF_RUNKUNIT
-	// Run unit tests
-	runUnitTests();
+	// Create system threads
+	process_t *self = process_getCurrentProcess();
+	thread_create(self, watchdogd, 4096, 0);
+	thread_create(self, syslogd, 4096, 0);
+	thread_create(self, ioglued, 4096, 0);
+	thread_create(self, kerneld_unitTests, 4096, 0);
 
-#ifdef CONF_KUNITEXIT
-	info("Ran all unit tests, idling now\n");
-
-	while(1)
-		__asm__ volatile("cli; hlt;"); // Stop everything right here and now
-#endif /* CONF_KUNITEXIT */
+#ifndef CONF_RUNKUNIT
+	// Spawn a test process
+	//process_createWithFile("hellostatic.bin");
 #endif /* CONF_RUNKUNIT */
 
-	// Test process
-	process_createWithFile("hellostatic.bin");
-
-
-	// Enter the default run loop of the kernel daemon
-	// Note: that the kernel daemon runs in ring 0, so it can do things like 'hlt'
-	// Note: its also running in the kernels address space, so it can see everything the kernel sees.
+	// Let's do some work
 	while(1)
 	{
 		// Collect dead processes
@@ -63,15 +67,41 @@ void kerneld_main()
 
 		// Collect dead threads
 		thread_t *thread = thread_getCollectableThreads();
-		thread_t *temp;
 		while(thread)
 		{
-			temp = thread;
+			if(thread->process == self)
+				watchdogd_removeThread(thread); // Watchdogd get's attached to all kernel threads, so we have to remove it
+
+			thread_t *temp = thread;
 			thread = thread->next;
 			
 			thread_destroy(temp);
 		}
 
+		self->mainThread->wasNice = true;
 		__asm__ volatile("hlt;"); // Idle for the heck of it!
 	}
+}
+
+// Unit Tests
+void kerneld_unitTests()
+{
+#ifdef CONF_RUNKUNIT
+	runUnitTests();
+
+#ifdef CONF_KUNITEXIT
+	watchdogd_printSamplingResults(thread_getCurrentThread());
+	info("Ran all unit tests, idling now\n");
+
+	ir_disableInterrupts(true);
+	sd_disableScheduler();
+
+	syslogd_forceFlush();
+
+	while(1)
+		__asm__ volatile("cli; hlt;"); // Stop everything right here and now
+#endif /* CONF_KUNITEXIT */
+#endif /* CONF_RUNKUNIT */
+
+	sd_threadExit();
 }

@@ -20,40 +20,88 @@
 #include <libc/string.h>
 #include <interrupts/interrupts.h>
 #include <scheduler/scheduler.h>
+#include <kerneld/syslogd.h>
 #include "panic.h"
 #include "kernel.h"
 #include "syslog.h"
 
-bool panic_triedPrintingStacktrace = false;
+extern void sd_disableScheduler();
+extern void syslogd_forceFlush();
+
+void panic_dumpStacktraces()
+{
+	process_t *process = process_getCurrentProcess();
+	if(!process)
+	{
+		dbg("Kernel backtrace:\n");
+		kern_printBacktraceForThread(NULL, 20);
+	}
+	else
+	{
+		//thread_t *thread = process->mainThread;
+		thread_t *current = process->scheduledThread;
+
+		dbg("Kernel backtrace, process %i:\n", process->pid);
+		dbg("Thread %i (panicked):\n", current->id);
+
+		kern_printBacktraceForThread(current, 15);
+
+		/*while(thread)
+		{
+			if(thread != current && thread->hasBeenRunning)
+			{
+				dbg("\nThread %i:\n", thread->id);
+				kern_printBacktraceForThread(thread, 5);
+			}
+
+			thread = thread->next;
+		}*/
+	}
+}
 
 void panic(const char *format, ...)
 {
-	ir_disableInterrupts();
+	ir_disableInterrupts(true); // Disable interrupts (including NMI)
+	sd_disableScheduler();
 
-	va_list args;	
+	va_list args;
 	va_start(args, format);
 	
-	char buffer[1024];
-	vsnprintf(buffer, 1024, format, args);
+	// Check the length of the formatted message
+	char *buffer = NULL;
+	int length = vsnprintf(buffer, 0, format, args);
 	
 	va_end(args);
 
+	// Allocate enough memory for the message and print it
+	// TODO: What if the allocation fails?! We can't panic, but could continue without a message?!
+	va_start(args, format);
 
+	size_t pages = pageCount(length);
+
+	buffer = (char *)vm_alloc(vm_getKernelDirectory(), pm_alloc(pages), pages, VM_FLAGS_KERNEL);
+	vsnprintf(buffer, length + 1, format, args);
+
+	va_end(args);
+
+	syslogd_forceFlush(); // Make sure that syslogd isn't blocked by anything
+
+	// Print the message
 	syslog(LOG_ALERT, "\nKernel Panic!");
 	syslog(LOG_INFO, "\nReason: ");
 	syslog(LOG_ERROR, "\"%s\"\n\n", buffer);
 	
 
-	if(!panic_triedPrintingStacktrace)
+	static bool triedPrintingBacktrace = false;
+	if(!triedPrintingBacktrace)
 	{
-		panic_triedPrintingStacktrace = true; // We try to pull of this trick only one time!
-
-		dbg("Kernel backtrace:\n");
-		kern_printBacktrace(20);
+		triedPrintingBacktrace = true;
+		panic_dumpStacktraces();
 	}
 	
 	syslog(LOG_ALERT, "\nCPU halted!");
+	syslogd_flush(); // Commit the messages
 
 	while(1) 
-		__asm__ volatile("cli; hlt"); // And this dear kids is how Mr. Kernel died, alone and without any friends.
+		__asm__ volatile("cli; hlt"); // And this, dear kids, is how Mr. Kernel died. Alone and without any friends.
 }

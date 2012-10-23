@@ -33,34 +33,55 @@
 #define kHeapAllocationTypeFree 0
 #define kHeapAllocationTypeUsed 1
 
-struct _heap_allocation_s
+#define kHeapFlagSecure 	(1 << 0) // The heap will initialize all memory with zeroes
+#define kHeapFlagUntrusted 	(1 << 1) // The heap won't trust any pointer you give to it
+
+struct heap_subheap_s;
+struct heap_allocation_s
 {
 	size_t size; // Size includes the size of the allocation itself as well!
-	uint8_t type;
+	uint32_t type;
 
 	uintptr_t ptr;
-	struct _heap_allocation_s *next;
+	struct heap_allocation_s *next;
+	struct heap_subheap_s *subheap;
+};
+
+struct heap_subheap_s
+{
+	uint8_t changes;
+	bool initialized;
+
+	uintptr_t pmemory;
+	vm_address_t vmemory;
+	size_t size;
+	size_t pages;
+
+	size_t freeSize;
+	size_t allocations;
+
+	struct heap_allocation_s *firstAllocation;
 };
 
 typedef struct
 {
-	size_t size;
-	size_t pages;
-
-	uint8_t changes; 
-	vm_page_directory_t directory;
+	uint8_t flags;
 
 	spinlock_t lock;
-	struct _heap_allocation_s *firstAllocation;
+	vm_page_directory_t directory;
+
+	size_t size; // Size of one subheap
+	size_t pages; // Pages used by one subheap
+
+	struct heap_subheap_s *subheaps;
+	size_t maxHeaps; // Max number of subheaps
 } heap_t;
 
 
-heap_t *heap_create(size_t bytes, vm_page_directory_t directory, vm_address_t start, uint32_t flags);
+heap_t *heap_create(size_t bytes, vm_page_directory_t directory, uint32_t flags);
 heap_t *heap_kernelHeap(); // Returns the main kernel heap
 
 void heap_destroy(heap_t *heap);
-
-size_t heap_allocationUsableSize(struct _heap_allocation_s *allocation);
 
 void *halloc(heap_t *heap, size_t size);
 void hfree(heap_t *heap, void *ptr);

@@ -21,27 +21,28 @@
 #include <system/panic.h>
 #include "syscall.h"
 
-uint32_t _sc_exit(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_exit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 {
 	process_t *process = process_getCurrentProcess();
 	process->died = true;
 
-	*esp = _sd_schedule(*esp);
+	*esp = sd_schedule(*esp);
 
 	return 0; // The process won't receive it...
 }
 
-uint32_t _sc_sleep(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_sleep(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 {
 	thread_t *thread = thread_getCurrentThread();
-	thread->usedTicks = thread->wantedTicks + 1;
+	thread->blocked ++;
 
-	*esp = _sd_schedule(*esp);
+	*esp = sd_schedule(*esp);
 
+	thread->blocked --;
 	return 0;
 }
 
-uint32_t _sc_threadAttach(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_threadAttach(uint32_t *UNUSED(esp), uint32_t *uesp, int *UNUSED(errno))
 {
 	process_t *process = process_getCurrentProcess();
 	uint32_t entry = *(uint32_t *)(uesp + 0);
@@ -54,26 +55,26 @@ uint32_t _sc_threadAttach(uint32_t *esp, uint32_t *uesp, int *errno)
 	return thread->id;
 }
 
-uint32_t _sc_threadJoin(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_threadJoin(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
 {
 	uint32_t tid = *(uint32_t *)(uesp);
 	thread_join(tid);
 
-	*esp = _sd_schedule(*esp);
+	*esp = sd_schedule(*esp);
 
 	return 0;
 }
 
-uint32_t _sc_threadExit(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_threadExit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 {
 	thread_t *thread = thread_getCurrentThread();
 	thread->died = true;
 
-	*esp = _sd_schedule(*esp);
+	*esp = sd_schedule(*esp);
 	return 0;
 }
 
-uint32_t _sc_processCreate(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_processCreate(uint32_t *UNUSED(esp), uint32_t *uesp, int *UNUSED(errno))
 {
 	process_t *current = process_getCurrentProcess();
 	const char *name = *(const char **)(uesp);
@@ -91,9 +92,9 @@ uint32_t _sc_processCreate(uint32_t *esp, uint32_t *uesp, int *errno)
 	return process ? (uint32_t)process->pid : PROCESS_NULL;
 }
 
-uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
 {
-	uint32_t pid = *(uint32_t *)(uesp);
+	pid_t pid = *(pid_t *)(uesp);
 	process_t *process = process_getFirstProcess();
 
 	while(process)
@@ -102,7 +103,7 @@ uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *errno)
 		{
 			process->died = true;
 
-			*esp = _sd_schedule(*esp);
+			*esp = sd_schedule(*esp);
 			return 1;
 		}
 
@@ -114,13 +115,12 @@ uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *errno)
 
 
 
-uint32_t _sc_fork(uint32_t *esp, uint32_t *uesp, int *errno)
+uint32_t _sc_fork(uint32_t *esp, uint32_t *UNUSED(uesp), int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	process->scheduledThread->esp = *esp; // Update the kernel stack for the thread because its needed when the thread is copied
 
 	process_t *child = process_fork(process);
-
 	if(child)
 	{
 		cpu_state_t *state = (cpu_state_t *)child->scheduledThread->esp;

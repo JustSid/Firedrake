@@ -18,6 +18,7 @@
 
 #include <libc/math.h>
 #include <libc/string.h>
+#include <kerneld/watchdogd.h>
 #include <system/assert.h>
 #include <system/panic.h>
 #include <system/syslog.h>
@@ -58,7 +59,7 @@ uint32_t _thread_getUniqueID(process_t *process)
 	return uid;
 }
 
-thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t stackSize, uint32_t args, ...)
+thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t args, ...)
 {
 	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
 	if(thread)
@@ -81,9 +82,10 @@ thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t 
 		}
 
 		// Setup general stuff
-		thread->id 			= THREAD_NULL;
-		thread->entry 		= entry;
-		thread->died 		= false;
+		thread->id             = THREAD_NULL;
+		thread->entry          = entry;
+		thread->died           = false;
+		thread->hasBeenRunning = false;
 
 		// Priority and scheduling stuff
 		thread->maxTicks	= THREAD_MAX_TICKS;
@@ -177,6 +179,9 @@ thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t 
 			process->mainThread 		= thread;
 			process->scheduledThread 	= thread;
 		}
+
+		if(process->pid == 0)
+			watchdogd_addThread(thread); // Watchdogd is automatically attached to kernel threads!
 
 		spinlock_unlock(&process->threadLock);
 	}
