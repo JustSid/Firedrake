@@ -59,7 +59,121 @@ uint32_t _thread_getUniqueID(process_t *process)
 	return uid;
 }
 
-thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t args, ...)
+thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
+{
+	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
+	if(thread)
+	{
+		//size_t stackPages = 1; //MAX(1, stackSize / 4096);
+		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
+
+		if(!kernelStack)
+		{
+			hfree(NULL, thread);
+			return NULL;
+		}
+
+		// Setup general stuff
+		thread->id             = THREAD_NULL;
+		thread->entry          = entry;
+		thread->died           = false;
+		thread->hasBeenRunning = false;
+
+		// Priority and scheduling stuff
+		thread->maxTicks	= THREAD_MAX_TICKS;
+		thread->wantedTicks	= THREAD_WANTED_TICKS;
+		thread->usedTicks	= 0;
+
+		thread->blocked = 0;
+		thread->blocks  = NULL;
+		thread->process = process;
+		thread->next 	= NULL;
+
+		// Create user and kernel stack
+		thread->userStack     = NULL;
+		thread->userStackVirt = NULL;
+
+		thread->kernelStack = kernelStack;
+
+		// Map the user stack
+		thread->kernelStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
+
+		uint32_t *stack = ((uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE)) - argCount;
+		memset(thread->kernelStackVirt, 0, 1 * VM_PAGE_SIZE);
+
+		// Push the arguments for the thread on its stack
+		thread->arguments = NULL;
+		thread->argumentCount = argCount;
+
+		if(argCount > 0)
+		{
+			thread->arguments = (uintptr_t **)halloc(NULL, argCount * sizeof(uintptr_t *));
+
+			for(uint32_t i=0; i<argCount; i++)
+			{
+				uintptr_t *val = va_arg(args, uintptr_t *);
+				thread->arguments[i] = val;
+			}
+		}
+
+		// Forge initial kernel stackframe
+		*(-- stack) = 0x10; // ss
+		*(-- stack) = 0x0; // esp, kernel threads use the TSS
+		*(-- stack) = 0x0200; // eflags
+		*(-- stack) = 0x8; // cs
+		*(-- stack) = (uint32_t)entry; // eip
+
+		// Interrupt number and error code
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+
+		// General purpose register
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+
+		// Segment registers
+		*(-- stack) = 0x10;
+		*(-- stack) = 0x10;
+		*(-- stack) = 0x10;
+		*(-- stack) = 0x10;
+
+		// Update the threads
+		thread->esp = (uint32_t)stack;
+
+		// Attach the thread to the process;
+		spinlock_lock(&process->threadLock); // Acquire the process' thread lock so we don't end up doing bad things
+
+		thread->id = _thread_getUniqueID(process);
+		if(process->mainThread)
+		{
+			thread_t *mthread = process->mainThread;
+
+			// Attach the new thread next to the main thread
+			thread->next  = mthread->next;
+			mthread->next = thread;
+		}
+		else
+		{
+			process->mainThread 		= thread;
+			process->scheduledThread 	= thread;
+		}
+
+		if(process->pid == 0)
+			watchdogd_addThread(thread); // Watchdogd is automatically attached to kernel threads!
+
+		spinlock_unlock(&process->threadLock);
+	}
+
+	return thread;
+}
+
+thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
 {
 	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
 	if(thread)
@@ -106,23 +220,19 @@ thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t 
 		thread->userStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)thread->userStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_USERLAND);
 
 		uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
-		memset(ustack, 0, 1 * 4096);
+		memset(ustack, 0, 1 * VM_PAGE_SIZE);
 
 		// Push the arguments for the thread on its stack
-		if(args > 0)
+		if(argCount > 0)
 		{
-			va_list vlist;
-			va_start(vlist, args);
-			
-			uint32_t *vstack = ustack + 1023;
+			uint32_t *vstack = ustack + 1024;
+			vstack -= argCount;
 
-			for(uint32_t i=0; i<args; i++)
+			for(uint32_t i=0; i<argCount; i++)
 			{
-				uint32_t val = va_arg(vlist, uint32_t);
-				*(--vstack) = val;
+				uint32_t val = va_arg(args, uint32_t);
+				*(vstack ++) = val;
 			}
-
-			va_end(vlist);
 		}
 
 		vm_free(vm_getKernelDirectory(), (vm_address_t)ustack, 1);
@@ -130,36 +240,35 @@ thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t 
 		// Forge initial kernel stackframe
 		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
 
-		uint32_t *tstack = (uint32_t *)thread->kernelStackVirt;
-		uint32_t *stack = tstack + 1024;
+		uint32_t *stack = (uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE);
 
-		*(--stack) = (process->ring0) ? 0x10 : 0x23; // ss
-		*(--stack) = (uint32_t)(thread->userStackVirt + (4092 - (args * sizeof(uint32_t)))); // esp
-		*(--stack) = 0x0200; // eflags
-		*(--stack) = (process->ring0) ? 0x8 : 0x1B; // cs
-		*(--stack) = (uint32_t)entry; // eip
+		*(-- stack) = 0x23; // ss
+		*(-- stack) = (uint32_t)(thread->userStackVirt + 4092 - (argCount * sizeof(uint32_t))); // esp
+		*(-- stack) = 0x0200; // eflags
+		*(-- stack) = 0x1B; // cs
+		*(-- stack) = (uint32_t)entry; // eip
 
 		// Interrupt number and error code
-		*(--stack) = 0x0;
-		*(--stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
 
 		// General purpose register
-		*(--stack) = 0x0;
-		*(--stack) = 0x0;
-		*(--stack) = 0x0;
-		*(--stack) = 0x0;
-		*(--stack) = 0x0;
-		*(--stack) = 0x0;
-		*(--stack) = 0x0;
-		*(--stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
 
 		// Segment registers
-		*(--stack) = (process->ring0) ? 0x10 : 0x23;
-		*(--stack) = (process->ring0) ? 0x10 : 0x23;
-		*(--stack) = (process->ring0) ? 0x18 : 0x23;
-		*(--stack) = (process->ring0) ? 0x18 : 0x23;
+		*(-- stack) = 0x23;
+		*(-- stack) = 0x23;
+		*(-- stack) = 0x23;
+		*(-- stack) = 0x23;
 
-		// Unmap the stack and update the threads esp
+		// Update the threads
 		thread->esp = ((uint32_t)(thread->kernelStackVirt + VM_PAGE_SIZE)) - sizeof(cpu_state_t);
 
 		// Attach the thread to the process;
@@ -188,6 +297,28 @@ thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t 
 
 	return thread;
 }
+
+thread_t *thread_create(process_t *process, thread_entry_t entry, size_t stackSize, uint32_t args, ...)
+{
+	thread_t *thread;
+
+	va_list vlist;
+	va_start(vlist, args);
+
+	if(process->ring0)
+	{
+		thread = thread_createKernel(process, entry, stackSize, args, vlist);
+	}
+	else
+	{
+		thread = thread_createUserland(process, entry, stackSize, args, vlist);
+	}
+
+	va_end(vlist);
+	return thread;
+}
+
+
 
 thread_t *thread_copy(struct process_s *process, thread_t *source)
 {
@@ -278,9 +409,19 @@ thread_t *thread_copy(struct process_s *process, thread_t *source)
 
 void thread_destroy(struct thread_s *thread)
 {
+	process_t *process = thread->process;
+
 	thread_predicateBecameTrue(thread, thread_predicateOnExit);
+
+	if(thread->userStackVirt)
+	{
+		vm_free(process->pdirectory, (vm_address_t)thread->userStackVirt, thread->userStackSize);
+		pm_free((uintptr_t)thread->userStack, thread->userStackSize);
+	}
 	
-	pm_free((uintptr_t)thread->userStack, 1);
+	vm_free(process->pdirectory, (vm_address_t)thread->kernelStackVirt, 1);
+	vm_free(vm_getKernelDirectory(), (vm_address_t)thread->kernelStackVirt, 1);
+	
 	pm_free((uintptr_t)thread->kernelStack, 1);
 
 	hfree(NULL, thread);

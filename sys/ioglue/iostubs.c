@@ -18,6 +18,7 @@
 
 #include <bootstrap/multiboot.h>
 #include <interrupts/interrupts.h>
+#include <scheduler/scheduler.h>
 #include <memory/memory.h>
 #include <system/helper.h>
 #include <system/syslog.h>
@@ -38,6 +39,31 @@ void __IOPrimitiveLog(char *message)
 	syslog(LOG_INFO, "%s\n", message);
 }
 
+uint32_t __IOPrimitiveThreadCreate(void *entry, void *arg)
+{
+	process_t *process = process_getCurrentProcess();
+	thread_t *thread = thread_create(process, (thread_entry_t)entry, 4096, 1, arg);
+
+	return thread->id;
+}
+
+uint32_t __IOPrimitiveThreadID()
+{
+	thread_t *thread = thread_getCurrentThread();
+	return thread->id;
+}
+
+void *__IOPrimitiveThreadAccessArgument(size_t index)
+{
+	thread_t *thread = thread_getCurrentThread();
+	return (void *)thread->arguments[index];
+}
+
+void __IOPrimitiveThreadDied()
+{
+	sd_threadExit();
+}
+
 void *IOMalloc(size_t size)
 {
 	spinlock_lock(&__io_lazy_lock);
@@ -45,7 +71,7 @@ void *IOMalloc(size_t size)
 	if(__io_heap == NULL)
 	{
 		__io_heap = heap_create((1024 * 1024) * 5, vm_getKernelDirectory(), kHeapFlagSecure | kHeapFlagUntrusted);
-		if(__io_heap == NULL)
+		if(!__io_heap)
 			panic("Couldn't create heap for libio!");
 	}
 
@@ -130,6 +156,10 @@ IOReturn __IOServiceTryRegisterIRQ(void *target, uint32_t irq, void *src, IOServ
 const char *__io_exportedSymbolNames[] = {
 	"panic",
 	"__IOPrimitiveLog",
+	"__IOPrimitiveThreadCreate",
+	"__IOPrimitiveThreadID",
+	"__IOPrimitiveThreadAccessArgument",
+	"__IOPrimitiveThreadDied",
 	"__IOServiceTryRegisterIRQ",
 	"IOMalloc",
 	"IOFree"
