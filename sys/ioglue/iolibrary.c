@@ -30,17 +30,12 @@ vm_address_t io_libraryResolveAddress(io_library_t *library, vm_address_t addres
 	elf_sym_t *closest = NULL;
 	vm_address_t address_noReloc = address - library->relocBase;
 
-	//dbg("Library: %p\n", library);
-	//dbg("Num buckets: %i\n", library->nbuckets);
-
 	for(uint32_t i=0; i<library->nbuckets; i++)
 	{
 		uint32_t symnum = library->buckets[i];
 		while(symnum != 0)
 		{
 			elf_sym_t *symbol = library->symtab + symnum;
-			//dbg("Possible: %s\n", library->strtab + symbol->st_name);
-
 			if(symbol->st_value <= address_noReloc)
 			{
 				if(!closest || symbol->st_value > closest->st_value)
@@ -81,9 +76,6 @@ elf_sym_t *io_librarySymbolWithAddress(io_library_t *library, vm_address_t addre
 elf_sym_t *io_librarySymbolWithName(io_library_t *library, const char *name, uint32_t hash)
 {
 	uint32_t symnum = library->buckets[hash % library->nbuckets];
-
-	//dbg("Hash: %i, symnum: %i\n", hash, symnum);
-
 	while(symnum != 0)
 	{
 		elf_sym_t *symbol = library->symtab + symnum;
@@ -142,6 +134,15 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 
 				target = (elf32_address_t)(container->relocBase + symbol->st_value);
 				*address = target + *address;
+				break;
+
+			case R_386_PC32:
+				symbol = io_storeLookupSymbol(library, symnum, &container);
+				if(!symbol)
+					return false;
+
+				target = (elf32_address_t)(container->relocBase + symbol->st_value);
+				*address += target - (elf32_address_t)address;
 				break;
 
 			case R_386_RELATIVE:

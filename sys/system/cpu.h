@@ -29,11 +29,11 @@
  * Struct that is able to hold the state of the CPU
  **/
 typedef struct 
-{	
-	uint16_t gs  __attribute__((aligned(4)));
-	uint16_t fs  __attribute__((aligned(4)));
-	uint16_t es  __attribute__((aligned(4)));
-	uint16_t ds  __attribute__((aligned(4)));
+{
+	uint16_t gs __attribute__((aligned(4)));
+	uint16_t fs __attribute__((aligned(4)));
+	uint16_t es __attribute__((aligned(4)));
+	uint16_t ds __attribute__((aligned(4)));
 
 	uint32_t edi;
 	uint32_t esi;

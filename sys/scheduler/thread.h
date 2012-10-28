@@ -47,7 +47,12 @@ typedef struct thread_s
 
 	uint8_t *kernelStack;
 	uint8_t *kernelStackVirt;
+
 	uint32_t esp;
+
+	// Arguments. Kernel threads only
+	uintptr_t **arguments;
+	uint32_t argumentCount;
 
 	// Blocking
 	struct thread_block_s *blocks;
