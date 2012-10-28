@@ -92,7 +92,7 @@ void hashset_destroy(hashset_t *set)
 }
 
 
-array_t *hashset_allData(hashset_t *set)
+array_t *hashset_allObjects(hashset_t *set)
 {
 	array_t *array = array_create();
 
@@ -243,13 +243,13 @@ void hashset_unlock(hashset_t *set)
 }
 
 
-void *hashset_dataForKey(hashset_t *set, void *key)
+void *hashset_objectForKey(hashset_t *set, void *key)
 {
 	hashset_bucket_t *bucket = hashset_findBucket1(set, key);
 	return bucket ? bucket->data : NULL;
 }
 
-void hashset_removeDataForKey(hashset_t *set, void *key)
+void hashset_removeObjectForKey(hashset_t *set, void *key)
 {
 	hashset_bucket_t *bucket = hashset_findBucket1(set, key);
 	if(bucket)
@@ -262,11 +262,11 @@ void hashset_removeDataForKey(hashset_t *set, void *key)
 	}
 }
 
-void hashset_setDataForKey(hashset_t *set, void *data, void *key)
+void hashset_setObjectForKey(hashset_t *set, void *data, void *key)
 {
 	if(!data)
 	{
-		hashset_removeDataForKey(set, key);
+		hashset_removeObjectForKey(set, key);
 		return;
 	}
 
@@ -283,6 +283,76 @@ void hashset_setDataForKey(hashset_t *set, void *data, void *key)
 uint32_t hashset_count(hashset_t *set)
 {
 	return set->count;
+}
+
+void *hashset_iteratorGetNextObject(hashset_t *set, uintptr_t *__bucket, uint32_t *__index, bool object)
+{
+	hashset_bucket_t *bucket = (hashset_bucket_t *)*__bucket;
+	uint32_t index = *__index;
+
+	while(bucket)
+	{
+		if(bucket->data)
+		{
+			*__bucket = (uintptr_t)bucket->overflow;
+			return (object) ? bucket->data : bucket->key;
+		}
+
+		bucket = bucket->overflow;
+	}
+
+	*__bucket = 0;
+
+	while(index < set->capacity)
+	{
+		bucket = set->buckets[index];
+		while(bucket)
+		{
+			if(bucket->data)
+			{
+				*__bucket = (uintptr_t)bucket->overflow;
+				*__index = index + 1;
+
+				return (object) ? bucket->data : bucket->key;
+			}
+
+			bucket = bucket->overflow;
+		}
+
+		index ++;
+	}
+
+	return NULL;
+}
+
+size_t hashset_iteratorNextObject(iterator_t *iterator, size_t maxObjects)
+{
+	hashset_t *hashset = iterator->data;
+	uint32_t i = 0;
+
+	for(; i<maxObjects; i++)
+	{
+		void *object = hashset_iteratorGetNextObject(hashset, (uintptr_t *)&iterator->custom[0], (uint32_t *)&iterator->custom[1], iterator->custom[3] == 0);
+		if(!object)
+			break;
+
+		iterator->objects[i] = object;
+	}
+
+	return i;
+}
+
+iterator_t *hashset_iterator(hashset_t *set)
+{
+	iterator_t *iterator = iterator_create(hashset_iteratorNextObject, set);
+	return iterator;
+}
+
+iterator_t *hashset_keyIterator(hashset_t *set)
+{
+	iterator_t *iterator = iterator_create(hashset_iteratorNextObject, set);
+	iterator->custom[3] = 1;
+	return iterator;
 }
 
 // Hashing functions

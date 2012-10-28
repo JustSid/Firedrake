@@ -23,6 +23,8 @@
 #include <system/lock.h>
 #include <system/panic.h>
 
+#include "iterator.h"
+
 typedef struct
 {
 	size_t count;
@@ -49,6 +51,8 @@ void array_removeAllObjects(array_t *array);
 
 uint32_t array_indexOfObject(array_t *array, void *object);
 size_t array_count(array_t *array);
+
+iterator_t *array_iterator(array_t *array);
 
 void array_sort(array_t *array, comparator_t comparator);
 

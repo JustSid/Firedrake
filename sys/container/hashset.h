@@ -23,6 +23,7 @@
 #include <system/lock.h>
 
 #include "array.h"
+#include "iterator.h"
 
 typedef struct hashset_bucket_s
 {
@@ -47,16 +48,19 @@ typedef struct
 hashset_t *hashset_create(size_t capacity, hashset_hashfunc_t hashFunction);
 void hashset_destroy(hashset_t *set);
 
-array_t *hashset_allData(hashset_t *set);
+array_t *hashset_allObjects(hashset_t *set);
 
 void hashset_lock(hashset_t *set);
 void hashset_unlock(hashset_t *set);
 
-void *hashset_dataForKey(hashset_t *set, void *key);
-void hashset_removeDataForKey(hashset_t *set, void *key);
-void hashset_setDataForKey(hashset_t *set, void *data, void *key);
+void *hashset_objectForKey(hashset_t *set, void *key);
+void hashset_removeObjectForKey(hashset_t *set, void *key);
+void hashset_setObjectForKey(hashset_t *set, void *data, void *key);
 
 uint32_t hashset_count(hashset_t *set);
+
+iterator_t *hashset_iterator(hashset_t *set);
+iterator_t *hashset_keyIterator(hashset_t *set);
 
 // Hashing functions
 

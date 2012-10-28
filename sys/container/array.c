@@ -182,6 +182,31 @@ size_t array_count(array_t *array)
 	return array->count;
 }
 
+
+size_t array_iteratorNextObject(iterator_t *iterator, size_t maxObjects)
+{
+	array_t *array = iterator->data;
+	uint32_t index = (uint32_t)iterator->custom[0];
+	uint32_t i = 0;
+
+	for(; i<maxObjects; i++)
+	{
+		if(index + i >= array->count)
+			break;
+
+		iterator->objects[i] = array->data[index + i];
+	}
+
+	iterator->custom[0] = (int32_t)(index + i);
+	return i;
+}
+
+iterator_t *array_iterator(array_t *array)
+{
+	iterator_t *iterator = iterator_create(array_iteratorNextObject, array);
+	return iterator;
+}
+
 // Sorting
 static inline void __array_exchangeObjects(array_t *array, uint32_t index1, uint32_t index2)
 {

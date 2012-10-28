@@ -53,6 +53,8 @@ void atree_insert(atree_t *tree, void *data, void *key);
 void atree_remove(atree_t *tree, void *key);
 
 size_t atree_count(atree_t *tree);
+
 iterator_t *atree_iterator(atree_t *tree);
+iterator_t *atree_backwardsIterator(atree_t *tree);
 
 #endif /* _AATREE_H_ */

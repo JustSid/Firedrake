@@ -31,6 +31,7 @@ typedef void (*iterator_destroy_t)(struct iterator_s *iterator);
 typedef struct iterator_s
 {
 	void *data;
+	int32_t custom[5];
 
 	void *objects[kIteratorMaxObjects];
 	size_t objectCount;

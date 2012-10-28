@@ -17,6 +17,7 @@
 //
 
 #include <memory/memory.h>
+#include <libc/string.h>
 #include "iterator.h"
 
 iterator_t *iterator_create(iterator_fetch_t fetch, void *data)
@@ -24,6 +25,8 @@ iterator_t *iterator_create(iterator_fetch_t fetch, void *data)
 	iterator_t *iterator = halloc(NULL, sizeof(iterator_t));
 	if(iterator)
 	{
+		memset(iterator->custom, 0, 5 * sizeof(int32_t));
+
 		iterator->data = data;
 		iterator->objectCount = iterator->index = iterator->objectsLeft = 0;
 

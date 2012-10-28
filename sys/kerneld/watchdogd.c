@@ -27,8 +27,8 @@
 #include "watchdogd.h"
 
 #define kWatchdogdSampleRate   5
-#define kWatchdogdMaxSamples   50
-#define kWatchdogdPrintSamples 15
+#define kWatchdogdMaxSamples   15
+#define kWatchdogdPrintSamples 50
 
 typedef struct
 {
@@ -75,7 +75,7 @@ void __watchdogd_printThreadResults(watchdogd_thread_t *wthread)
 	if(wthread->totalSamples == 0)
 		return;
 	
-	array_t *samples = hashset_allData(wthread->samples);
+	array_t *samples = hashset_allObjects(wthread->samples);
 	array_sort(samples, __watchdogd_sampleSort);
 
 	dbg("Watchdog sampling results for %i:%i. ", wthread->thread->process->pid, wthread->thread->id);
@@ -142,46 +142,40 @@ void watchdogd_sampleThread(thread_t *thread, watchdogd_thread_t *wthread)
 	uintptr_t address = kern_resolveAddress(eip);
 	const char *name  = kern_nameForAddress(address, NULL);
 
-	watchdogd_sample_t *sample = hashset_dataForKey(wthread->samples, (void *)name);
+	watchdogd_sample_t *sample = hashset_objectForKey(wthread->samples, (void *)name);
 	if(!sample)
 	{
 		sample = halloc(NULL, sizeof(watchdogd_sample_t *));
 		sample->count = 0;
 		sample->name  = name;
 
-		hashset_setDataForKey(wthread->samples, sample, (void *)name);
+		hashset_setObjectForKey(wthread->samples, sample, (void *)name);
 
 		if(hashset_count(wthread->samples) > kWatchdogdMaxSamples)
 		{
 			watchdogd_sample_t *leastFavorite = NULL;
+			watchdogd_sample_t *sample;
 
-			for(uint32_t i=0; i<wthread->samples->capacity; i++)
+			iterator_t *iterator = hashset_iterator(wthread->samples);
+
+			while((sample = iterator_nextObject(iterator)))
 			{
-				hashset_bucket_t *bucket = wthread->samples->buckets[i];
-				while(bucket)
+				if(!leastFavorite)
 				{
-					if(bucket->data && bucket->data != sample)
-					{
-						watchdogd_sample_t *tsample = (watchdogd_sample_t *)bucket->data;
-						if(!leastFavorite)
-						{
-							leastFavorite = tsample;
-							bucket = bucket->overflow;
-
-							continue;
-						}
-
-						if(leastFavorite->lastSeen > tsample->lastSeen)
-							leastFavorite = tsample;
-					}
-
-					bucket = bucket->overflow;
+					leastFavorite = sample;
+					continue;
 				}
+
+				if(leastFavorite->lastSeen > sample->lastSeen)
+					leastFavorite = sample;
 			}
 
 			wthread->keptSamples -= leastFavorite->count;
+			
 
-			hashset_removeDataForKey(wthread->samples, (void *)leastFavorite->name);
+			iterator_destroy(iterator);
+			hashset_removeObjectForKey(wthread->samples, (void *)leastFavorite->name);
+
 			hfree(NULL, leastFavorite);
 		}
 	}

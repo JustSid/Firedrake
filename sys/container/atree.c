@@ -288,6 +288,7 @@ typedef struct
 	atree_node_t *path[kAtreeMaxHeight];
 
 	size_t top;
+	int direction;
 } atree_iterator_t;
 
 size_t atree_iteratorNextObject(iterator_t *iterator, size_t maxObjects)
@@ -298,15 +299,15 @@ size_t atree_iteratorNextObject(iterator_t *iterator, size_t maxObjects)
 		atree_iterator_t *aiterator = iterator->data;
 		atree_node_t *nil = aiterator->tree->nil;
 
-		if(aiterator->node->link[1] != nil)
+		if(aiterator->node->link[aiterator->direction] != nil)
 		{
 			aiterator->path[aiterator->top ++] = aiterator->node;
-			aiterator->node = aiterator->node->link[1];
+			aiterator->node = aiterator->node->link[aiterator->direction];
 
-			while(aiterator->node->link[0] != nil)
+			while(aiterator->node->link[!aiterator->direction] != nil)
 			{
 				aiterator->path[aiterator->top ++] = aiterator->node;
-				aiterator->node = aiterator->node->link[0];
+				aiterator->node = aiterator->node->link[!aiterator->direction];
 			}
 		}
 		else
@@ -324,7 +325,7 @@ size_t atree_iteratorNextObject(iterator_t *iterator, size_t maxObjects)
 
 				node = aiterator->node;
 				aiterator->node = aiterator->path[-- aiterator->top];
-			} while(node == aiterator->node->link[1]);
+			} while(node == aiterator->node->link[aiterator->direction]);
 		}
 
 		if(aiterator->node == nil)
@@ -335,6 +336,8 @@ size_t atree_iteratorNextObject(iterator_t *iterator, size_t maxObjects)
 
 	return gathered;
 }
+
+
 
 void atree_iteratorDestroy(iterator_t *iterator)
 {
@@ -349,6 +352,7 @@ iterator_t *atree_iterator(atree_t *tree)
 		aiterator->tree = tree;
 		aiterator->node = tree->root;
 		aiterator->top  = 0;
+		aiterator->direction = 1;
 
 		if(aiterator->node != tree->nil)
 		{
@@ -356,6 +360,34 @@ iterator_t *atree_iterator(atree_t *tree)
 			{
 				aiterator->path[aiterator->top ++] = aiterator->node;
 				aiterator->node = aiterator->node->link[0];
+			}
+		}
+
+		iterator_t *iterator = iterator_create(atree_iteratorNextObject, aiterator);
+		iterator->destroy = atree_iteratorDestroy;
+
+		return iterator;
+	}
+
+	return NULL;
+}
+
+iterator_t *atree_backwardsIterator(atree_t *tree)
+{
+		atree_iterator_t *aiterator = halloc(NULL, sizeof(atree_iterator_t));
+	if(aiterator)
+	{
+		aiterator->tree = tree;
+		aiterator->node = tree->root;
+		aiterator->top  = 0;
+		aiterator->direction = 0;
+
+		if(aiterator->node != tree->nil)
+		{
+			while(aiterator->node->link[1] != tree->nil)
+			{
+				aiterator->path[aiterator->top ++] = aiterator->node;
+				aiterator->node = aiterator->node->link[1];
 			}
 		}
 
