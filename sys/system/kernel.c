@@ -234,6 +234,14 @@ void kern_printBacktraceForThread(thread_t *thread, long depth)
 		io_library_t *library = NULL;
 		const char *name = kern_nameForAddress(address, &library);
 
+		if(isCPPName(name))
+		{
+			char buffer[255];
+			demangleCPPName(name, buffer);
+
+			name = (const char *)buffer;
+		}
+
 		if(!library)
 		{
 			dbg("(%2i) %08x: ", level, address);

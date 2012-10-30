@@ -17,6 +17,7 @@
 //
 
 #include <libc/string.h>
+#include <libc/stdlib.h>
 #include "helper.h"
 
 #define SYS_UNITTABLE_MAX 6
@@ -64,8 +65,60 @@ const char *sys_fileWithoutPath(const char *path)
 	return path;
 }
 
+bool isCPPName(const char *name)
+{
+	return (strstr((char *)name, "_Z") == name);
+}
 
-#include <system/syslog.h>
+const char *demangleNext(const char *name, char *buffer, char **outbuffer)
+{
+	if(isdigit(*name))
+	{
+		int length = atoi(name);
+		
+		while(isdigit(*name))
+			name ++;
+		
+		for(int i=0; i<length; i++)
+			*buffer++ = *name++;
+
+		if(outbuffer)
+			*outbuffer = buffer;
+	}
+	
+	return name;
+}
+
+void demangleCPPName(const char *name, char *buffer)
+{
+	name += 2;
+	switch(*name)
+	{
+		case 'N':
+		{
+			name ++;			
+			while(!isdigit(*name))
+				name ++;
+			
+			bool first = true;
+			while(isdigit(*name))
+			{
+				if(!first)
+				{
+					*buffer++ = ':';
+					*buffer++ = ':';
+				}
+					
+				name = demangleNext(name, buffer, &buffer);
+				first = false;
+			}
+			
+			break;
+		}
+	}
+
+	*buffer++ = '\0';
+}
 
 struct multiboot_module_s *sys_multibootModuleWithName(const char *name)
 {
