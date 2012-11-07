@@ -219,6 +219,7 @@ void watchdogd_addThread(thread_t *thread)
 	{
 		wthread->samples = hashset_create(0, hash_cstring);
 		wthread->thread = thread;
+		wthread->thread->watched = true;
 
 		wthread->nextCheck = 0;
 
@@ -249,6 +250,7 @@ void watchdogd_removeThread(thread_t *thread)
 			hashset_destroy(wthread->samples);
 			hfree(NULL, wthread);
 
+			wthread->thread->watched = false;
 			return;
 		}
 	}
@@ -258,7 +260,10 @@ void watchdogd_removeThread(thread_t *thread)
 
 void watchdogd()
 {
-	watchdogd_removeThread(thread_getCurrentThread()); // We don't watch over ourself
+	thread_t *thread = thread_getCurrentThread();
+	
+	watchdogd_removeThread(thread); // We don't watch over ourself
+	thread_setName(thread, "watchdogd");
 
 	while(1)
 	{
