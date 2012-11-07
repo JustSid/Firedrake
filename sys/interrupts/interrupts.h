@@ -70,13 +70,16 @@ extern void idt_interrupt_0x30();
 extern void idt_interrupt_0x31();
 extern void idt_interrupt_0x80();
 
+typedef uint32_t (*ir_interrupt_handler_t)(uint32_t);
+
+
 void ir_disableInterrupts(bool disableNMI);
 void ir_enableInterrupts(bool enableNMI);
 
-
-typedef uint32_t (*ir_interrupt_handler_t)(uint32_t);
-
 void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt);
+
+bool ir_isInsideInterruptHandler();
+uint32_t ir_lastInterruptESP();
 
 void ir_idt_init(uint64_t *idt, uint32_t offset);
 bool ir_init(void *unused);

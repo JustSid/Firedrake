@@ -54,6 +54,10 @@ typedef struct thread_s
 	uintptr_t **arguments;
 	uint32_t argumentCount;
 
+	// Debugging related
+	const char *name;
+	bool watched; // Watchdog
+
 	// Blocking
 	struct thread_block_s *blocks;
 	uint32_t blocked;
@@ -90,6 +94,7 @@ void thread_join(uint32_t id); // Don't forget to force a reschedule
 
 void thread_predicateBecameTrue(struct thread_s *thread, thread_predicate_t predicate);
 void thread_attachPredicate(struct thread_s *thread, struct thread_s *blockThread, thread_predicate_t predicate);
+void thread_setName(struct thread_s *thread, const char *name);
 
 void thread_destroy(struct thread_s *thread); // Frees the memory of the thread.
 // Be careful to not destroy the running thread, no sanity check is performed!

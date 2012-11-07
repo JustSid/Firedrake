@@ -69,9 +69,6 @@ void kerneld_main()
 		thread_t *thread = thread_getCollectableThreads();
 		while(thread)
 		{
-			if(thread->process == self)
-				watchdogd_removeThread(thread); // Watchdogd get's attached to all kernel threads, so we have to remove it
-
 			thread_t *temp = thread;
 			thread = thread->next;
 			
@@ -86,11 +83,11 @@ void kerneld_main()
 // Unit Tests
 void kerneld_unitTests()
 {
-#ifdef CONF_RUNKUNIT
+#if CONF_RUNKUNIT
 	runUnitTests();
 
-#ifdef CONF_KUNITEXIT
 	watchdogd_printSamplingResults(thread_getCurrentThread());
+#ifdef CONF_KUNITEXIT
 	info("Ran all unit tests, idling now\n");
 
 	ir_disableInterrupts(true);

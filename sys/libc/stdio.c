@@ -144,19 +144,26 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 						_itostr(value, base, string, (format[index] == 'x'));
 					}
 
+				
+					
+					while(*prefix != '\0')
+					{
+						if(keepWriting && written < size)
+							buffer[written ++] = *prefix;
 
-					size_t length = strlen(prefix) + strlen(string);
-					width -= length;
+						total ++;
+						prefix ++;
+					}
 
 					// Left pad
 					if(!(flags & kVsnprintfFlagRightAlign))
 					{
+						width -=  strlen(string);
+
 						while(width > 0)
 						{
 							if(keepWriting && written < size)
-							{
 								buffer[written ++] = (flags & kVsnprintfZeroPad) ? '0' : ' ';
-							}
 
 							width --;
 							total ++;
@@ -164,24 +171,21 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					}
 					
 					// Print the actual string
-					for(int i=0; i<2; i++)
+					char *printString = (char *)string;
+					while(*printString != '\0')
 					{
-						char *printStr = (i == 0) ? prefix : string;
-						while(*printStr != '\0')
-						{
-							if(keepWriting && written < size)
-							{
-								buffer[written ++] = *printStr;
-							}
+						if(keepWriting && written < size)
+							buffer[written ++] = *printString;
 
-							total ++;
-							printStr ++;
-						}
+						total ++;
+						printString ++;
 					}
 
 					// Right pad
 					if((flags & kVsnprintfFlagRightAlign))
 					{
+						width -=  strlen(string);
+
 						while(width > 0)
 						{
 							if(keepWriting && written < size)

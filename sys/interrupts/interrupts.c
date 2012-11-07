@@ -118,9 +118,14 @@ uint32_t __ir_handleInterrupt(uint32_t esp)
 
 
 void time_tick();
+static uint32_t ir_entries = 0;
+static uint32_t ir_lastESP = 0;
 
 uint32_t ir_handleInterrupt(uint32_t esp)
 {
+	ir_entries ++;
+	ir_lastESP = esp;
+
 	cpu_state_t *state = (cpu_state_t *)esp;
 
 	ir_interrupt_handler_t handler = __ir_interruptHandler[state->interrupt];
@@ -137,9 +142,20 @@ uint32_t ir_handleInterrupt(uint32_t esp)
 		outb(0x20, 0x20);
 	}
 
+	ir_entries --;
 	return esp;
 }
 
+
+bool ir_isInsideInterruptHandler()
+{
+	return (ir_entries > 0);
+}
+
+uint32_t ir_lastInterruptESP()
+{
+	return ir_lastESP;
+}
 
 
 void ir_disableInterrupts(bool disableNMI)

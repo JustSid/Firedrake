@@ -103,10 +103,9 @@ uint32_t __ir_handleException(uint32_t esp)
 		process_t *process = process_getCurrentProcess();
 		if(process->pid == 0)
 		{
-			panic("Page Fault exception; %s while %s in %s.\nVirtual address: %p. EIP: %p", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), // Panic with the type of the error
+			panic("%s (%p) while %s in %s.", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), address, // Panic with the type of the error
 				__ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), // Why it occured
-				__ir_exception_pageFaultTranslateBit(3, error & (1 << 2)), // And in which mode it occured.
-				address, state->eip);
+				__ir_exception_pageFaultTranslateBit(3, error & (1 << 2))); // And in which mode it occured.
 		}
 		else
 		{

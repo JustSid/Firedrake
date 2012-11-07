@@ -233,12 +233,11 @@ void kern_printBacktraceForThread(thread_t *thread, long depth)
 
 		io_library_t *library = NULL;
 		const char *name = kern_nameForAddress(address, &library);
+		char buffer[256];
 
 		if(isCPPName(name))
 		{
-			char buffer[255];
 			demangleCPPName(name, buffer);
-
 			name = (const char *)buffer;
 		}
 
@@ -255,21 +254,11 @@ void kern_printBacktraceForThread(thread_t *thread, long depth)
 	}
 }
 
-
 void kern_printBacktrace(long depth)
 {
 	kern_printBacktraceForThread(thread_getCurrentThread(), depth);
 }
 
-
-
-
-// Spinlock helper
-void kern_dumpSpinlock(spinlock_t *spinlock)
-{
-	dbg("\n\nWaiting on spinlock: %p. Backtrace:\n", spinlock);
-	kern_printBacktrace(20);
-}
 
 void kern_setWatchpoint(uint8_t reg, bool global, uintptr_t address, kern_breakCondition condition, kern_watchBytes bytes)
 {

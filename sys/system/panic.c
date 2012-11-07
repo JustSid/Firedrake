@@ -24,12 +24,37 @@
 #include "panic.h"
 #include "kernel.h"
 #include "syslog.h"
+#include "helper.h"
 
 extern void sd_disableScheduler();
 extern void syslogd_forceFlush();
 
 void panic_dumpStacktraces()
 {
+	if(ir_isInsideInterruptHandler())
+	{
+		cpu_state_t *state = (cpu_state_t *)ir_lastInterruptESP();
+
+		io_library_t *library = NULL;
+		uintptr_t resolved = kern_resolveAddress(state->eip);
+		const char *name = kern_nameForAddress(resolved, &library);
+		char buffer[265];
+
+		if(isCPPName(name))
+		{
+			demangleCPPName(name, buffer);
+			name = (const char *)buffer;
+		}
+
+		dbg("CPU State (interrupt vector %i):\n", state->interrupt);
+		dbg("  eax: %08x, ecx: %08x, edx: %08x, ebx: %08x\n", state->eax, state->ecx, state->edx, state->ebx);
+		dbg("  esp: %08x, ebp: %08x, esi: %08x, edi: %08x\n", state->esp, state->ebp, state->esi, state->edi);
+		dbg("  eip: %08x, eflags: %08x.\n", state->eip, state->eflags);
+		dbg("  resolved eip: ");
+		info("%s (found in %s)\n", name, library ? library->path : "Firedrake");
+		dbg("\n");
+	}
+
 	process_t *process = process_getCurrentProcess();
 	if(!process)
 	{
@@ -38,24 +63,10 @@ void panic_dumpStacktraces()
 	}
 	else
 	{
-		//thread_t *thread = process->mainThread;
-		thread_t *current = process->scheduledThread;
+		thread_t *thread = process->scheduledThread;
 
-		dbg("Kernel backtrace, process %i:\n", process->pid);
-		dbg("Thread %i (panicked):\n", current->id);
-
-		kern_printBacktraceForThread(current, 15);
-
-		/*while(thread)
-		{
-			if(thread != current && thread->hasBeenRunning)
-			{
-				dbg("\nThread %i:\n", thread->id);
-				kern_printBacktraceForThread(thread, 5);
-			}
-
-			thread = thread->next;
-		}*/
+		dbg("Kernel backtrace of process %i, thread %i (%s):\n", process->pid, thread->id, thread->name);
+		kern_printBacktraceForThread(thread, 15);
 	}
 }
 

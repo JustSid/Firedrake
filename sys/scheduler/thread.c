@@ -79,6 +79,10 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 		thread->died           = false;
 		thread->hasBeenRunning = false;
 
+		// Debugging related
+		thread->name    = NULL;
+		thread->watched = false;
+
 		// Priority and scheduling stuff
 		thread->maxTicks	= THREAD_MAX_TICKS;
 		thread->wantedTicks	= THREAD_WANTED_TICKS;
@@ -200,6 +204,10 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 		thread->entry          = entry;
 		thread->died           = false;
 		thread->hasBeenRunning = false;
+		
+		// Debugging related
+		thread->name    = NULL;
+		thread->watched = false;
 
 		// Priority and scheduling stuff
 		thread->maxTicks	= THREAD_MAX_TICKS;
@@ -221,6 +229,8 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 
 		uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
 		memset(ustack, 0, 1 * VM_PAGE_SIZE);
+
+		thread->arguments = NULL; // Only for kernel threads
 
 		// Push the arguments for the thread on its stack
 		if(argCount > 0)
@@ -410,8 +420,11 @@ thread_t *thread_copy(struct process_s *process, thread_t *source)
 void thread_destroy(struct thread_s *thread)
 {
 	process_t *process = thread->process;
-
 	thread_predicateBecameTrue(thread, thread_predicateOnExit);
+
+	if(thread->watched)
+		watchdogd_removeThread(thread);
+
 
 	if(thread->userStackVirt)
 	{
@@ -419,6 +432,18 @@ void thread_destroy(struct thread_s *thread)
 		pm_free((uintptr_t)thread->userStack, thread->userStackSize);
 	}
 	
+	if(thread->arguments)
+	{
+		hfree(NULL, thread->arguments);
+		thread->arguments = NULL;
+	}
+
+	if(thread->name)
+	{
+		hfree(NULL, (void *)thread->name);
+		thread->name = NULL;
+	}
+
 	vm_free(process->pdirectory, (vm_address_t)thread->kernelStackVirt, 1);
 	vm_free(vm_getKernelDirectory(), (vm_address_t)thread->kernelStackVirt, 1);
 	
@@ -497,6 +522,27 @@ void thread_attachPredicate(struct thread_s *thread, struct thread_s *blockThrea
 		
 		thread->blocks = block;
 		blockThread->blocked ++;
+	}
+}
+
+void thread_setName(struct thread_s *thread, const char *name)
+{
+	if(thread->name)
+	{
+		hfree(NULL, (void *)thread->name);
+		thread->name = NULL;
+	}
+
+	if(name)
+	{
+		size_t length = strlen(name) + 1;
+		char *copy = halloc(NULL, length);
+
+		if(copy)
+		{
+			strcpy(copy, name);
+			thread->name = (const char *)copy;
+		}
 	}
 }
 
