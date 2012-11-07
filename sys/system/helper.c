@@ -115,6 +115,32 @@ void demangleCPPName(const char *name, char *buffer)
 			
 			break;
 		}
+		
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+		{
+			bool first = true;
+			while(isdigit(*name))
+			{
+				if(!first)
+				{
+					*buffer++ = ':';
+					*buffer++ = ':';
+				}
+					
+				name = demangleNext(name, buffer, &buffer);
+				first = false;
+			}
+			
+			break;
+		}
 	}
 
 	*buffer++ = '\0';
