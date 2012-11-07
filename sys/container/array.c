@@ -18,7 +18,6 @@
 
 #include <memory/memory.h>
 #include <libc/string.h>
-#include <system/assert.h>
 #include "array.h"
 
 array_t *array_create()
@@ -88,7 +87,7 @@ void array_addObject(array_t *array, void *object)
 
 void array_insertObject(array_t *array, void *object, uint32_t index)
 {
-	assert(index >= array->count);
+	assert(index < array->count);
 	__array_resizeToNextStepIfNeeded(array);
 
 	for(uint32_t i=array->count; i>index; i--)
@@ -132,7 +131,7 @@ void array_removeObject(array_t *array, void *object)
 
 void array_removeObjectAtIndex(array_t *array, uint32_t index)
 {
-	assert(index >= array->count || index == UINT32_MAX);
+	assert(index < array->count);
 
 	if(index < array->count -1)
 	{

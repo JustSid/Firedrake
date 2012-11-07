@@ -21,7 +21,7 @@
 
 #include <types.h>
 #include <system/lock.h>
-#include <system/panic.h>
+#include <system/assert.h>
 
 typedef struct
 {
@@ -54,12 +54,7 @@ void array_sort(array_t *array, comparator_t comparator);
 
 static inline void *array_objectAtIndex(array_t *array, uint32_t index) 
 { 
-#ifndef CONF_RELEASE
-	if(index >= array->count || index == UINT32_MAX)
-	{
-		panic("array_objectAtIndex(), index %i out of bounds (%i)!", index, array->count);
-	}
-#endif
+	assert(index < array->count);
 	return array->data[index]; 
 }
 
