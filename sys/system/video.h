@@ -27,30 +27,36 @@
 
 typedef enum
 {
-	vd_color_black			= 0x0,
-	vd_color_blue			= 0x1,
-	vd_color_green			= 0x2,
-	vd_color_cyan			= 0x3,
-	vd_color_red			= 0x4,
-	vd_color_magenta		= 0x5,
-	vd_color_brown			= 0x6,
-	vd_color_lightGray		= 0x7,
-	vd_color_darkGray		= 0x8,
-	vd_color_lightBlue		= 0x9,
-	vd_color_lightGreen		= 0xA,
-	vd_color_lightCyan		= 0xB,
-	vd_color_lightRed		= 0xC,
-	vd_color_lightMagenta	= 0xD,
-	vd_color_yellow			= 0xE,
-	vd_color_white			= 0xF
+	vd_color_black			= 0x0, // 020
+	vd_color_blue			= 0x1, // 021
+	vd_color_green			= 0x2, // 022
+	vd_color_cyan			= 0x3, // 023
+	vd_color_red			= 0x4, // 024
+	vd_color_magenta		= 0x5, // 025
+	vd_color_brown			= 0x6, // 026
+	vd_color_lightGray		= 0x7, // 027
+	vd_color_darkGray		= 0x8, // 030
+	vd_color_lightBlue		= 0x9, // 031
+	vd_color_lightGreen		= 0xA, // 032
+	vd_color_lightCyan		= 0xB, // 033
+	vd_color_lightRed		= 0xC, // 034
+	vd_color_lightMagenta	= 0xD, // 035
+	vd_color_yellow			= 0xE, // 036
+	vd_color_white			= 0xF  // 037
 } vd_color_t;
 
 void vd_clear();
 
 void vd_scrollLines(uint32_t lines);
 void vd_setCursor(uint32_t x, uint32_t y);
-void vd_setColor(uint32_t x, uint32_t y, bool foreground, vd_color_t color, size_t size);
+void vd_setColor(vd_color_t color, bool foreground);
 
-void vd_printString(const char *string, vd_color_t color);
+void vd_writeString(const char *string);
+
+static inline uint8_t vd_translateColor(vd_color_t color)
+{
+	uint8_t character = (uint8_t)color;
+	return character + 16;
+}
 
 #endif /* _VIDEO_H_ */

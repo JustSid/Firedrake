@@ -72,12 +72,9 @@ void sys_boot(struct multiboot_s *info)
 	syslogd_setLogLevel(LOG_INFO);
 #endif
 	
-	syslog(LOG_INFO, "Firedrake v%i.%i.%i:%i%s (%s)\n", VersionMajor, VersionMinor, VersionPatch, VersionCurrent, versionAppendix, versionBeast);
+	syslog(LOG_INFO, "\16\24Firedrake\16\27 v%i.%i.%i:%i%s (%s)\n", VersionMajor, VersionMinor, VersionPatch, VersionCurrent, versionAppendix, versionBeast);
 	syslog(LOG_INFO, "Kernel compiled on %s %s\n", __DATE__, __TIME__);
 	syslog(LOG_INFO, "Here be dragons!\n\n");
-
-	// Color the dragon!
-	vd_setColor(0, 0, true, vd_color_red, 9);
 
 	// Load the modules
 	sys_init("physical memory", pm_init, (void *)info, true);
