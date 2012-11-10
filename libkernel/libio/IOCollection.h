@@ -25,7 +25,7 @@
 class IOCollection : public IOObject
 {
 protected:
-	virtual bool initWithCapacity(size_t capacity) = 0;
+	virtual IOCollection *initWithCapacity(size_t capacity) = 0;
 
 	virtual size_t count() = 0;
 	virtual size_t capacity() = 0;

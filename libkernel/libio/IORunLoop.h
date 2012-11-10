@@ -1,5 +1,5 @@
 //
-//  IOModule.h
+//  IORunLoop.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,47 +16,33 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOMODULE_H_
-#define _IOMODULE_H_
+#ifndef _IORUNLOOP_H_
+#define _IORUNLOOP_H_
 
 #include "IOObject.h"
 #include "IOArray.h"
-#include "IOService.h"
-#include "IOThread.h"
+#include "IOSpinlock.h"
 
-class IOModule : public IOObject
+class IOThread;
+
+class IORunLoop : public IOObject
 {
+friend class IOThread;
 public:
-	virtual IOModule *init();
-	virtual void free();
+	static IORunLoop *currentRunLoop();	
 
-	virtual bool publish();
-	virtual void unpublish();
-
-	IOThread *getThread() { return _thread; }
+	void step();
+	void run();
+	void stop();
 
 private:
-	static void finalizePublish(IOThread *thread);
-	void preparePublishing();
+	virtual IORunLoop *init();
+	virtual void free();
 
-	IOThread *_thread;
-	IOArray *_providers;
-	bool _published;
+	bool _shouldStop;
+	IOSpinlock _lock;
 
-	IODeclareClass(IOModule)
+	IODeclareClass(IORunLoop)
 };
 
-#define IOModuleRegister(class) \
-	extern "C" { \
-		void *IOModulePublish() \
-		{ \
-			IOModule *module = class::alloc()->init(); \
-			return module; \
-		} \
-		void IOModuleUnpublish(IOModule *module) \
-		{ \
-			module->unpublish(); \
-		} \
-	} \
-	
-#endif /* _IOMODULE_H_ */
+#endif /* _IORUNLOOP_H_ */

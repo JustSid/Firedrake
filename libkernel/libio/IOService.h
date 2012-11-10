@@ -1,5 +1,5 @@
 //
-//  IOModule.h
+//  IOService.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,47 +16,53 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOMODULE_H_
-#define _IOMODULE_H_
+#ifndef _IOSERVICE_H_
+#define _IOSERVICE_H_
 
+#include "IOTypes.h"
 #include "IOObject.h"
+#include "IOString.h"
+#include "IODictionary.h"
 #include "IOArray.h"
-#include "IOService.h"
-#include "IOThread.h"
 
-class IOModule : public IOObject
+extern IOString *IOServiceAttributeIdentifier; // IOString
+extern IOString *IOServiceAttributeFamily; // IOString
+extern IOString *IOServiceAttributeProperties; // IODictionary
+
+class IOService : public IOObject
 {
+friend class IODatabase;
 public:
-	virtual IOModule *init();
+	typedef void (*InterruptAction)(IOObject *target, uint32_t interrupt, void *context);
+
+	virtual bool start();
+	virtual void stop();
+
+	virtual void requestProbe();
+
+	IOService *provider() { return _provider; }
+
+protected:
+	virtual IOService *init();
 	virtual void free();
 
-	virtual bool publish();
-	virtual void unpublish();
+	IOReturn registerInterrupt(uint32_t interrupt, IOObject *target, InterruptAction handler, void *context = 0);
+	IOReturn unregisterInterrupt(uint32_t interrupt);
 
-	IOThread *getThread() { return _thread; }
+	IOReturn registerService(IOSymbol *symbol, IODictionary *attributes);
+	IOReturn unregisterService(IOSymbol *symbol);
+
+	IOService *findMatchingService(IODictionary *attributes);
+	void publishService(IOService *service);
+	void unpublishService(IOService *service);
 
 private:
-	static void finalizePublish(IOThread *thread);
-	void preparePublishing();
+	void setProvider(IOService *provider);
 
-	IOThread *_thread;
-	IOArray *_providers;
-	bool _published;
+	IOArray *_published;
+	IOService *_provider;
 
-	IODeclareClass(IOModule)
+	IODeclareClass(IOService)
 };
 
-#define IOModuleRegister(class) \
-	extern "C" { \
-		void *IOModulePublish() \
-		{ \
-			IOModule *module = class::alloc()->init(); \
-			return module; \
-		} \
-		void IOModuleUnpublish(IOModule *module) \
-		{ \
-			module->unpublish(); \
-		} \
-	} \
-	
-#endif /* _IOMODULE_H_ */
+#endif /* _IOSERVICE_H_ */

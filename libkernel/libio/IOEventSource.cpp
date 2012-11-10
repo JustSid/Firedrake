@@ -1,5 +1,5 @@
 //
-//  IOModule.h
+//  IOEventSource.cpp
 //  libio
 //
 //  Created by Sidney Just
@@ -16,47 +16,63 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOMODULE_H_
-#define _IOMODULE_H_
+#include "IOEventSource.h"
 
-#include "IOObject.h"
-#include "IOArray.h"
-#include "IOService.h"
-#include "IOThread.h"
+#ifdef super
+#undef super
+#endif
+#define super IOObject
 
-class IOModule : public IOObject
+IORegisterClass(IOEventSource, super);
+
+IOEventSource *IOEventSource::init()
 {
-public:
-	virtual IOModule *init();
-	virtual void free();
+	if(super::init())
+	{
+		_enabled = true;
+		_action  = 0;
+	}
 
-	virtual bool publish();
-	virtual void unpublish();
+	return this;
+}
 
-	IOThread *getThread() { return _thread; }
+IOEventSource *IOEventSource::initWithAction(Action action)
+{
+	if(init())
+	{
+		_action = action;
+	}
 
-private:
-	static void finalizePublish(IOThread *thread);
-	void preparePublishing();
+	return this;
+}
 
-	IOThread *_thread;
-	IOArray *_providers;
-	bool _published;
 
-	IODeclareClass(IOModule)
-};
+void IOEventSource::free()
+{
+	super::free();
+}
 
-#define IOModuleRegister(class) \
-	extern "C" { \
-		void *IOModulePublish() \
-		{ \
-			IOModule *module = class::alloc()->init(); \
-			return module; \
-		} \
-		void IOModuleUnpublish(IOModule *module) \
-		{ \
-			module->unpublish(); \
-		} \
-	} \
-	
-#endif /* _IOMODULE_H_ */
+
+void IOEventSource::doWork()
+{
+}
+
+void IOEventSource::setAction(Action action)
+{
+	_action = action;
+}
+
+void IOEventSource::enable()
+{
+	_enabled = true;
+}
+
+void IOEventSource::disable()
+{
+	_enabled = false;
+}
+
+bool IOEventSource::isEnabled()
+{
+	return _enabled;
+}

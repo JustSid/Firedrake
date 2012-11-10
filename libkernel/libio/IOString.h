@@ -24,10 +24,10 @@
 class IOString : public IOObject
 {
 public:
-	bool initWithString(const IOString *other);
-	bool initWithCString(const char *cstring);
-	bool initWithFormat(const char *cstring, ...);
-	bool initWithVariadic(const char *format, va_list args);
+	IOString *initWithString(const IOString *other);
+	IOString *initWithCString(const char *cstring);
+	IOString *initWithFormat(const char *cstring, ...);
+	IOString *initWithVariadic(const char *format, va_list args);
 
 	static IOString *withString(const IOString *other);
 	static IOString *withCString(const char *cstring);
@@ -42,7 +42,7 @@ public:
 	const char *CString() const;
 
 protected:
-	virtual bool init();
+	virtual IOString *init(); // Designated initializer!
 	virtual void free();
 
 private:

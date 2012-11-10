@@ -1,5 +1,5 @@
 //
-//  IOModule.cpp
+//  IOAutoreleasePool.cpp
 //  libio
 //
 //  Created by Sidney Just
@@ -16,86 +16,90 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "IOModule.h"
+#include <libc/string.h>
 #include "IOAutoreleasePool.h"
+#include "IOThread.h"
+#include "IOMemory.h"
+#include "IORuntime.h"
 
 #ifdef super
 #undef super
 #endif
 #define super IOObject
 
-IORegisterClass(IOModule, super);
+IORegisterClass(IOAutoreleasePool, super);
 
-IOModule *IOModule::init()
+IOAutoreleasePool *IOAutoreleasePool::init()
 {
-	if(super::init())
+	IOThread *owner = IOThread::currentThread();
+	if(!owner)
 	{
-		_providers = IOArray::alloc()->init();
-		if(!_providers)
-		{
-			release();
-			return 0;
-		}
-
-		_published = false;
-
-		preparePublishing();
+		release();
+		return 0;
 	}
 
-	return this;
+	if(super::init())
+	{
+		_owner = owner;
+		_count = 0;
+		_size  = 5;
+		_objects = (IOObject **)IOMalloc(_size * sizeof(IOObject *));
+
+		if(_objects)
+		{
+			_previous = _owner->_topPool;
+			_owner->_topPool = this;
+
+			return this;
+		}
+	}
+
+	release();
+	return 0;
 }
 
-void IOModule::free()
+void IOAutoreleasePool::free()
 {
-	_providers->release();
+	if(_owner)
+	{
+		if(this != _owner->_topPool)
+			panic("IOAutoreleasePool::free() called, but IOAutoreleasePool is not the top most pool!");
+		
+		_owner->_topPool = _previous;
+	}
+
+	if(_objects)
+	{
+		for(size_t i=0; i<_count; i++)
+		{
+			IOObject *object = _objects[i];
+			object->release();
+		}
+
+		IOFree(_objects);
+	}
+
 	super::free();
 }
 
 
-bool IOModule::publish()
-{
-	return true;
-}
 
-void IOModule::unpublish()
+void IOAutoreleasePool::addObject(IOObject *object)
 {
-	if(_published && !IOThread::currentThread()->isEqual(_thread))
+	if(_count >= _size)
 	{
-		_thread->getRunLoop()->stop();
-		return;
+		size_t nsize = _size * 2;
+		IOObject **nobjects = (IOObject **)IOMalloc(nsize * sizeof(IOObject **));
+
+		if(!nobjects)
+			panic("IOAutoreleasePool::addObject() failed, not enough memory!");
+
+		memcpy(nobjects, _objects, _size * sizeof(IOObject **));
+		IOFree(_objects);
+
+		_objects = nobjects;
+		_size = nsize;
 	}
 
-	for(size_t i=0; i<_providers->count();)
-	{
-		IOService *service = (IOService *)_providers->objectAtIndex(i);
-		service->stop();
-
-		_providers->removeObject(i);
-	}
-}
-
-
-void IOModule::finalizePublish(IOThread *thread)
-{
-	IOAutoreleasePool *pool = IOAutoreleasePool::alloc()->init();
-
-	IOModule *module = (IOModule *)thread->propertyForKey(IOString::withCString("Owner"));
-	module->publish();
-	module->_published = true;
-
-	pool->release();
-	thread->getRunLoop()->run();
-}
-
-void IOModule::preparePublishing()
-{
-	IOString *key = IOString::alloc();
-	key->initWithCString("Owner");
-
-	_thread = IOThread::alloc();
-	_thread->initWithFunction(&IOModule::finalizePublish);
-	_thread->setPropertyForKey(this, key);
-	_thread->detach();
-
-	key->release();
+	_objects[_count ++] = object;
 }

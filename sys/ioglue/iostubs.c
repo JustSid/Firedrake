@@ -28,6 +28,7 @@
 
 #include "iostubs.h"
 #include "iostore.h"
+#include "ioerror.h"
 
 // Actual stub implementation
 
@@ -59,6 +60,22 @@ void *__IOPrimitiveThreadAccessArgument(size_t index)
 	return (void *)thread->arguments[index];
 }
 
+void __IOPrimitiveThreadSetName(uint32_t id, const char *name)
+{
+	process_t *process = process_getCurrentProcess();
+	thread_t *thread = process->mainThread;
+	while(thread)
+	{
+		if(thread->id == id)
+		{
+			thread_setName(thread, name);
+			break;
+		}
+		
+		thread = thread->next;
+	}
+}
+
 void __IOPrimitiveThreadDied()
 {
 	sd_threadExit();
@@ -70,13 +87,12 @@ void *IOMalloc(size_t size)
 
 	if(__io_heap == NULL)
 	{
-		__io_heap = heap_create((1024 * 1024) * 5, vm_getKernelDirectory(), kHeapFlagSecure | kHeapFlagUntrusted);
+		__io_heap = heap_create(kHeapFlagSecure | kHeapFlagUntrusted);
 		if(!__io_heap)
 			panic("Couldn't create heap for libio!");
 	}
 
 	spinlock_unlock(&__io_lazy_lock);
-
 
 	void *mem = halloc(__io_heap, size);
 	return mem;
@@ -90,36 +106,37 @@ void IOFree(void *mem)
 
 spinlock_t __io_interrupt_lock = SPINLOCK_INIT;
 
-typedef void (*IOServiceInterruptHandler)(void *target, uint32_t irq, void *context);
+typedef void (*IOServiceInterruptHandler)(void *target, uint32_t interrupt, void *context);
 typedef struct
 {
 	IOServiceInterruptHandler handler;
+	void *owner;
 	void *target;
 	void *context;
-} IOServiceInterruptHandlerContext;
+} IOServiceInterruptHandlerVector;
 
-IOServiceInterruptHandlerContext *__io_interruptHandler[IDT_ENTRIES];
+IOServiceInterruptHandlerVector *__io_interruptHandler[IDT_ENTRIES];
 
 uint32_t io_dispatchInterrupt(uint32_t esp)
 {
 	cpu_state_t *state = (cpu_state_t *)esp;
-	IOServiceInterruptHandlerContext *context = __io_interruptHandler[state->interrupt];
+	IOServiceInterruptHandlerVector *vector = __io_interruptHandler[state->interrupt];
 
-	if(context)
+	if(vector)
 	{
-		IOServiceInterruptHandler handler = context->handler;
-		handler(context->target, state->interrupt, context->context);
+		IOServiceInterruptHandler handler = vector->handler;
+		handler(vector->target, state->interrupt, vector->context);
 	}
 
 	return esp;
 }
 
-IOReturn __IOServiceTryRegisterIRQ(void *target, uint32_t irq, void *src, IOServiceInterruptHandler handler)
+IOReturn __IOServiceTryRegisterInterrupt(void *owner, void *target, uint32_t interrupt, void *context, IOServiceInterruptHandler handler)
 {
 	spinlock_lock(&__io_interrupt_lock);
 
-	IOServiceInterruptHandlerContext *context = __io_interruptHandler[irq];
-	if(context)
+	IOServiceInterruptHandlerVector *vector = __io_interruptHandler[interrupt];
+	if(vector)
 	{
 		if(handler)
 		{
@@ -127,21 +144,38 @@ IOReturn __IOServiceTryRegisterIRQ(void *target, uint32_t irq, void *src, IOServ
 			return kIOReturnInterruptTaken;
 		}
 
-		hfree(NULL, context);
-		__io_interruptHandler[irq] = NULL;
+		IOReturn result;
+		if(vector->owner == owner)
+		{
+			hfree(NULL, vector);
+
+			__io_interruptHandler[interrupt] = NULL;
+			ir_setInterruptHandler(NULL, interrupt);
+
+			result = kIOReturnSuccess;
+		}
+		else
+		{
+			result = kIOReturnNoInterrupt;
+		}
 
 		spinlock_unlock(&__io_interrupt_lock);
-		return kIOReturnSuccess;
+		return result;
+	}
+	else if(!handler)
+	{
+		spinlock_unlock(&__io_interrupt_lock);
+		return kIOReturnNoInterrupt;
 	}
 
+	vector = halloc(NULL, sizeof(IOServiceInterruptHandlerVector));
+	vector->owner = owner;
+	vector->target = target;
+	vector->handler = handler;
+	vector->context = context;
 
-	context = halloc(NULL, sizeof(IOServiceInterruptHandlerContext));
-	context->target = target;
-	context->handler = handler;
-	context->context = src;
-
-	__io_interruptHandler[irq] = context;
-	ir_setInterruptHandler(io_dispatchInterrupt, irq);
+	__io_interruptHandler[interrupt] = vector;
+	ir_setInterruptHandler(io_dispatchInterrupt, interrupt);
 
 	spinlock_unlock(&__io_interrupt_lock);
 	return kIOReturnSuccess;
@@ -155,12 +189,14 @@ IOReturn __IOServiceTryRegisterIRQ(void *target, uint32_t irq, void *src, IOServ
 // The kernel will only allow libraries to link the symbols in this list
 const char *__io_exportedSymbolNames[] = {
 	"panic",
+	"sd_yield",
 	"__IOPrimitiveLog",
 	"__IOPrimitiveThreadCreate",
 	"__IOPrimitiveThreadID",
 	"__IOPrimitiveThreadAccessArgument",
+	"__IOPrimitiveThreadSetName",
 	"__IOPrimitiveThreadDied",
-	"__IOServiceTryRegisterIRQ",
+	"__IOServiceTryRegisterInterrupt",
 	"IOMalloc",
 	"IOFree"
 };

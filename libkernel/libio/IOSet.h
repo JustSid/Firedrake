@@ -43,8 +43,8 @@ public:
 	virtual size_t capacity();
 
 private:
-	virtual bool init();
-	virtual bool initWithCapacity(size_t capacity);
+	virtual IOSet *init();
+	virtual IOSet *initWithCapacity(size_t capacity);
 
 	virtual void free();
 

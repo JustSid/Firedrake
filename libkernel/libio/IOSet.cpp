@@ -43,7 +43,7 @@ static uint32_t __IOSetMaxCount[42] =
 
 // Constructor
 
-IORegisterClass(IOSet, super)
+IORegisterClass(IOSet, super);
 
 IOSet *IOSet::withCapacity(size_t capacity)
 {
@@ -54,45 +54,51 @@ IOSet *IOSet::withCapacity(size_t capacity)
 		return 0;
 	}
 
-	return set;
+	return set->autorelease();
 }
 
-bool IOSet::init()
+IOSet *IOSet::init()
 {
-	if(!super::init())
-		return false;
-
-	_capacity = __IOSetCapacity[0];
-	_count = 0;
-
-	_buckets = (IOSetBucket **)IOMalloc(_capacity * sizeof(IOSetBucket **));
-	if(_buckets == 0)
-		return false;
-
-	return true;
-}
-
-bool IOSet::initWithCapacity(size_t capacity)
-{
-	if(!super::initWithCapacity(capacity))
-		return false;
-
-	for(int i=1; i<42; i++)
+	if(super::init())
 	{
-		if(__IOSetCapacity[i] > capacity || i == 41)
+		_capacity = __IOSetCapacity[0];
+		_count = 0;
+
+		_buckets = (IOSetBucket **)IOMalloc(_capacity * sizeof(IOSetBucket **));
+		if(_buckets == 0)
 		{
-			_capacity = __IOSetCapacity[i - 1];
-			break;
+			release();
+			return 0;
 		}
 	}
 
-	_count = 0;
+	return this;
+}
 
-	_buckets = (IOSetBucket **)IOMalloc(_capacity * sizeof(IOSetBucket **));
-	if(_buckets == 0)
-		return false;
+IOSet *IOSet::initWithCapacity(size_t capacity)
+{
+	if(super::initWithCapacity(capacity))
+	{
+		for(int i=1; i<42; i++)
+		{
+			if(__IOSetCapacity[i] > capacity || i == 41)
+			{
+				_capacity = __IOSetCapacity[i - 1];
+				break;
+			}
+		}
 
-	return true;
+		_count = 0;
+
+		_buckets = (IOSetBucket **)IOMalloc(_capacity * sizeof(IOSetBucket **));
+		if(_buckets == 0)
+		{
+			release();
+			return 0;
+		}
+	}
+
+	return this;
 }
 
 void IOSet::free()

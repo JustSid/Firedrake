@@ -1,5 +1,5 @@
 //
-//  IOModule.h
+//  IOIterator.cpp
 //  libio
 //
 //  Created by Sidney Just
@@ -16,47 +16,6 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOMODULE_H_
-#define _IOMODULE_H_
+#include "IOIterator.h"
 
-#include "IOObject.h"
-#include "IOArray.h"
-#include "IOService.h"
-#include "IOThread.h"
-
-class IOModule : public IOObject
-{
-public:
-	virtual IOModule *init();
-	virtual void free();
-
-	virtual bool publish();
-	virtual void unpublish();
-
-	IOThread *getThread() { return _thread; }
-
-private:
-	static void finalizePublish(IOThread *thread);
-	void preparePublishing();
-
-	IOThread *_thread;
-	IOArray *_providers;
-	bool _published;
-
-	IODeclareClass(IOModule)
-};
-
-#define IOModuleRegister(class) \
-	extern "C" { \
-		void *IOModulePublish() \
-		{ \
-			IOModule *module = class::alloc()->init(); \
-			return module; \
-		} \
-		void IOModuleUnpublish(IOModule *module) \
-		{ \
-			module->unpublish(); \
-		} \
-	} \
-	
-#endif /* _IOMODULE_H_ */
+IORegisterClass(IOIterator, IOObject);

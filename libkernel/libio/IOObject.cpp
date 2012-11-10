@@ -20,12 +20,14 @@
 #include "IOMemory.h"
 #include "IOString.h"
 #include "IOSymbol.h"
+#include "IOThread.h"
+#include "IOAutoreleasePool.h"
 #include "IORuntime.h"
 #include "IOLog.h"
 
-bool IOObject::init()
+IOObject *IOObject::init()
 {
-	return true;
+	return this;
 }
 
 void IOObject::free()
@@ -52,9 +54,26 @@ void IOObject::release()
 	}
 }
 
-void IOObject::retain()
+IOObject *IOObject::retain()
 {
 	retainCount ++;
+	return this;
+}
+
+IOObject *IOObject::autorelease()
+{
+	if(!this)
+		return this;
+
+	IOThread *thread = IOThread::currentThread();
+	if(!thread->_topPool)
+	{
+		IOLog("%s::autorelease() with no pool in place, leaking.", _symbol->name()->CString());
+		return this;
+	}
+
+	thread->_topPool->addObject(this);
+	return this;
 }
 
 
@@ -95,7 +114,9 @@ bool IOObject::isSubclassOf(IOSymbol *symbol) const
 	if(_symbol == symbol)
 		return true;
 
-	IOLog("IOObject::isSubclassOf()");
+	if(!_symbol)
+		return false;
+
 	return _symbol->inheritsFrom(symbol);
 }
 

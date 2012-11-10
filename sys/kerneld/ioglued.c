@@ -29,13 +29,15 @@ const char *ioglued_modules[] = {
 
 bool ioglued_loadModule(const char *name)
 {
-	io_library_t *library = io_libraryCreateWithFile(name);
+	io_library_t *library = io_storeLibraryWithName(name);
 	if(!library)
-		return false;
+	{
+		library = io_libraryCreateWithFile(name);
+		bool result  = io_storeAddLibrary(library);
 
-	bool result = io_storeAddLibrary(library);
-	if(!result)
-		return false;
+		if(!result)
+			return false;
+	}
 
 	io_module_t *module = io_moduleCreateWithLibrary(library);
 	if(!module)
@@ -47,12 +49,14 @@ bool ioglued_loadModule(const char *name)
 
 void ioglued()
 {
-	size_t size = sizeof(ioglued_modules) / sizeof(char *);
+	thread_setName(thread_getCurrentThread(), "syslogd");
+
 	for(size_t i=0; i<size; i++)
 	{
-		bool result = ioglued_loadModule(ioglued_modules[i]);
+		const char *name = ioglued_modules[i];
+		bool result = ioglued_loadModule(name);
 		if(!result)
-			dbg("ioglued: Failed to publish \"%s\"\n", ioglued_modules[i]);
+			dbg("ioglued: Failed to publish \"%s\"\n", name);
 	}
 
 	uint32_t workload;

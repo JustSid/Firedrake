@@ -27,14 +27,135 @@
 #endif
 #define super IOObject
 
-IORegisterClass(IOString, super)
+IORegisterClass(IOString, super);
 
-bool IOString::init()
+// Factory methods
+
+IOString *IOString::withString(const IOString *other)
 {
-	_string = 0;
-	_length = 0;
+	IOString *string = IOString::alloc()->initWithString(other);
+	return string->autorelease();
+}
 
-	return super::init();
+IOString *IOString::withCString(const char *cstring)
+{
+	IOString *string = IOString::alloc()->initWithCString(cstring);
+	return string->autorelease();
+}
+
+IOString *IOString::withFormat(const char *message, ...)
+{
+	va_list args;
+	va_start(args, message);
+
+	char buffer[1024];
+	vsnprintf(buffer, 1024, message, args);
+
+	IOString *string = IOString::alloc()->initWithCString(buffer);
+
+	va_end(args);
+
+	return string->autorelease();
+}
+
+// Constructor / Destructor
+
+IOString *IOString::init()
+{
+	if(super::init())
+	{
+		_string = 0;
+		_length = 0;
+	}
+
+	return this;
+}
+
+IOString *IOString::initWithString(const IOString *other)
+{
+	if(init())
+	{
+		_length = other->_length;
+		_string = (char *)IOMalloc(other->_length + 1);
+
+		if(_string)
+		{
+			strlcpy(_string, other->_string, other->_length);
+			return this;
+		}
+	}
+
+	release();
+	return 0;
+}
+
+IOString *IOString::initWithCString(const char *cstring)
+{
+	if(init())
+	{
+		_length = strlen(cstring);
+		_string = (char *)IOMalloc(_length + 1);
+
+		if(_string)
+		{
+			strlcpy(_string, cstring, _length);
+			return this;
+		}
+	}
+
+	release();
+	return 0;
+}
+
+IOString *IOString::initWithFormat(const char *cstring, ...)
+{
+	if(init())
+	{
+		va_list args;
+		va_start(args, cstring);
+
+		char buffer[1024];
+		vsnprintf(buffer, 1024, cstring, args);
+
+		_length = strlen(buffer);
+		_string = (char *)IOMalloc(_length + 1);
+
+		if(_string)
+		{
+			strlcpy(_string, buffer, _length);
+			va_end(args);
+
+			return this;
+		}
+
+		va_end(args);
+	}
+
+	release();
+	return 0;
+}
+
+IOString *IOString::initWithVariadic(const char *format, va_list args)
+{
+	if(init())
+	{
+		char buffer[1024];
+		vsnprintf(buffer, 1024, format, args);
+
+		_length = strlen(buffer);
+		_string = (char *)IOMalloc(_length + 1);
+
+		if(_string)
+		{
+			strlcpy(_string, buffer, _length);
+			va_end(args);
+
+			return this;
+		}
+	}
+
+	release();
+	return 0;
 }
 
 void IOString::free()
@@ -46,130 +167,12 @@ void IOString::free()
 }
 
 
-
-bool IOString::initWithString(const IOString *other)
-{
-	_string = 0;
-	_length = 0;
-
-	if(!super::init())
-		return false;
-	
-	_string = (char *)IOMalloc(other->_length + 1);
-	if(_string)
-	{
-		strlcpy(_string, other->_string, other->_length);
-		_length = other->_length;
-
-		return true;
-	}
-
-	return false;
-}
-
-bool IOString::initWithCString(const char *cstring)
-{
-	_string = 0;
-	_length = 0;
-
-	if(!super::init())
-		return false;
-	
-	_length = strlen(cstring);
-	_string = (char *)IOMalloc(_length + 1);
-
-	if(_string)
-	{
-		strlcpy(_string, cstring, _length);
-		return true;
-	}
-
-	return false;
-}
-
-bool IOString::initWithFormat(const char *cstring, ...)
-{
-	va_list args;
-	va_start(args, cstring);
-
-	bool result = initWithVariadic(cstring, args);
-	va_end(args);
-
-	return result;
-}
-
-bool IOString::initWithVariadic(const char *format, va_list args)
-{
-	char buffer[1024];
-	size_t written = vsnprintf(buffer, 1024, format, args);
-
-	if(written > 0)
-		return IOString::initWithCString(buffer);
-	
-	return false;
-}
-
-
-
-IOString *IOString::withString(const IOString *other)
-{
-	IOString *string = IOString::alloc();
-	if(string)
-	{
-		bool result = string->initWithString(other);
-		if(!result)
-		{
-			string->release();
-			return 0;
-		}
-	}
-
-	return string;
-}
-
-IOString *IOString::withCString(const char *cstring)
-{
-	IOString *string = IOString::alloc();
-	if(string)
-	{
-		bool result = string->initWithCString(cstring);
-		if(!result)
-		{
-			string->release();
-			return 0;
-		}
-	}
-
-	return string;
-}
-
-IOString *IOString::withFormat(const char *message, ...)
-{
-	IOString *string = IOString::alloc();
-	if(string)
-	{
-		va_list args;
-		va_start(args, message);
-
-		bool result = string->initWithVariadic(message, args);
-		if(!result)
-		{
-			string->release();
-			va_end(args);
-
-			return 0;
-		}
-
-		va_end(args);
-	}
-
-	return string;
-}
+// Misc
 
 IOString *IOString::description() const
 {	
 	IOString *copy = IOString::withString(this);
-	return copy;
+	return copy->autorelease();
 }
 
 hash_t IOString::hash() const

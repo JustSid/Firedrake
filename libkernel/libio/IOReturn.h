@@ -24,6 +24,7 @@
 typedef uint32_t IOReturn;
 
 #define kIOReturnSuccess 0
-#define kIOReturnInterruptTaken 1
+#define kIOReturnNoInterrupt 1
+#define kIOReturnSlotTaken 2
 
 #endif /* _IORETURN_H_ */

@@ -25,6 +25,9 @@
 class IOArray : public IOCollection
 {
 public:
+	virtual IOArray *init();
+	virtual IOArray *initWithCapacity(uint32_t capacity);
+	
 	static IOArray *withCapacity(uint32_t capacity);
 
 	void addObject(IOObject *object);
@@ -43,9 +46,6 @@ public:
 	virtual uint32_t capacity();
 
 private:
-	virtual bool init();
-	virtual bool initWithCapacity(uint32_t capacity);
-
 	virtual void free();
 
 	IOObject **_objects;

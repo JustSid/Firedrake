@@ -25,9 +25,13 @@
 #include "IOString.h"
 #include "IOSymbol.h"
 
+class IOService;
+class IODatabaseEntry;
+
 class IODatabase
 {
 friend class IOSymbol;
+friend class IOService;
 public:
 	static IODatabase *database();
 
@@ -42,11 +46,19 @@ private:
 	bool publishSymbol(IOSymbol *symbol);
 	void unpublishSymbol(IOSymbol *symbol);
 
+	IOReturn registerService(IOSymbol *symbol, IODictionary *attributes);
+	IOReturn unregisterService(IOSymbol *symbol);
+
+	uint32_t scoreForEntryMatch(IODatabaseEntry *entry, IODictionary *attributes);
+	IOService *serviceMatchingAttributes(IODictionary *attributes);
+
 	bool _symbolsFixed;
 	bool _dictionaryFixed;
 
 	IOSpinlock _lock;
+
 	__IOPointerDictionary *_symbols;
+	IODictionary *_services;
 };
 
 #endif /* _IODATABASE_H_ */

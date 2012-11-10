@@ -22,7 +22,7 @@
 #include "IOTypes.h"
 #include "IOObject.h"
 #include "IOCollection.h"
-#include "IOArray.h"
+#include "IOIterator.h"
 
 struct IODictionaryBucket
 {
@@ -32,9 +32,15 @@ struct IODictionaryBucket
 	struct IODictionaryBucket *next;
 };
 
+class IODictionaryIterator;
+
 class IODictionary : public IOCollection
 {
+friend class IODictionaryIterator;
 public:
+	virtual IODictionary *init();
+	virtual IODictionary *initWithCapacity(size_t capacity);
+	
 	static IODictionary *withCapacity(size_t capacity);
 
 	virtual void setObjectForKey(IOObject *object, IOObject *key);
@@ -45,10 +51,10 @@ public:
 	virtual size_t count();
 	virtual size_t capacity();
 
-protected:
-	virtual bool init();
-	virtual bool initWithCapacity(size_t capacity);
+	IOIterator *objectIterator();
+	IOIterator *keyIterator();
 
+protected:
 	virtual void free();
 
 	IODictionaryBucket *findBucket1(IOObject *key);

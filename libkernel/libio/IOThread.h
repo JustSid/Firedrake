@@ -1,5 +1,5 @@
 //
-//  IOModule.h
+//  IOThread.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,47 +16,54 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOMODULE_H_
-#define _IOMODULE_H_
+#ifndef _IOTHREAD_H_
+#define _IOTHREAD_H_
 
+#include "IOTypes.h"
 #include "IOObject.h"
-#include "IOArray.h"
-#include "IOService.h"
-#include "IOThread.h"
+#include "IORunLoop.h"
+#include "IODictionary.h"
+#include "IOSpinlock.h"
+#include "IOString.h"
 
-class IOModule : public IOObject
+class IOAutoreleasePool;
+
+class IOThread : public IOObject
 {
+friend class IOObject;
+friend class IORunLoop;
+friend class IOAutoreleasePool;
 public:
-	virtual IOModule *init();
-	virtual void free();
+	typedef void (*Function)(IOThread *thread);
 
-	virtual bool publish();
-	virtual void unpublish();
+	IOThread *initWithFunction(IOThread::Function function);
 
-	IOThread *getThread() { return _thread; }
+	void detach();
+	IORunLoop *getRunLoop();
 
+	void setName(IOString *name);
+	void setPropertyForKey(IOObject *property, IOObject *key);
+	IOObject *propertyForKey(IOObject *key); 
+
+	static IOThread *currentThread();
+	static IOThread *withFunction(IOThread::Function function);
+	
 private:
-	static void finalizePublish(IOThread *thread);
-	void preparePublishing();
+	virtual void free();
+	static void __threadEntry();
 
-	IOThread *_thread;
-	IOArray *_providers;
-	bool _published;
+	uint32_t _id;
+	IOThread::Function _entry;
+	bool _detached;
 
-	IODeclareClass(IOModule)
+	IOSpinlock _lock;
+
+	IOString *_name;
+	IORunLoop *_runLoop;
+	IOAutoreleasePool *_topPool;
+	IODictionary *_properties;
+
+	IODeclareClass(IOThread)
 };
 
-#define IOModuleRegister(class) \
-	extern "C" { \
-		void *IOModulePublish() \
-		{ \
-			IOModule *module = class::alloc()->init(); \
-			return module; \
-		} \
-		void IOModuleUnpublish(IOModule *module) \
-		{ \
-			module->unpublish(); \
-		} \
-	} \
-	
-#endif /* _IOMODULE_H_ */
+#endif /* _IOTHREAD_H_ */

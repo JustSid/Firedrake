@@ -1,5 +1,5 @@
 //
-//  IOModule.h
+//  IONumber.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,47 +16,60 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOMODULE_H_
-#define _IOMODULE_H_
+#ifndef _IONUMBER_H_
+#define _IONUMBER_H_
 
+#include "IOTypes.h"
 #include "IOObject.h"
-#include "IOArray.h"
-#include "IOService.h"
-#include "IOThread.h"
 
-class IOModule : public IOObject
+typedef enum
+{
+	kIONumberTypeInt8,
+	kIONumberTypeInt16,
+	kIONumberTypeInt32,
+	kIONumberTypeInt64,
+	kIONumberTypeUInt8,
+	kIONumberTypeUInt16,
+	kIONumberTypeUInt32,
+	kIONumberTypeUInt64,
+} IONumberType;
+
+class IONumber : public IOObject
 {
 public:
-	virtual IOModule *init();
-	virtual void free();
+	IONumber *initWithInt8(int8_t val);
+	IONumber *initWithInt16(int16_t val);
+	IONumber *initWithInt32(int32_t val);
+	IONumber *initWithInt64(int64_t val);
 
-	virtual bool publish();
-	virtual void unpublish();
+	IONumber *initWithUInt8(uint8_t val);
+	IONumber *initWithUInt16(uint16_t val);
+	IONumber *initWithUInt32(uint32_t val);
+	IONumber *initWithUInt64(uint64_t val);
 
-	IOThread *getThread() { return _thread; }
+	int8_t int8Value() const;
+	int16_t int16Value() const;
+	int32_t int32Value() const;
+	int64_t int64Value() const;
+
+	uint8_t uint8Value() const;
+	uint16_t uint16Value() const;
+	uint32_t uint32Value() const;
+	uint64_t uint64Value() const;
+
+	virtual hash_t hash() const;
+	virtual bool isEqual(const IOObject *other) const;
+
+	virtual IOString *description() const;
 
 private:
-	static void finalizePublish(IOThread *thread);
-	void preparePublishing();
+	IONumber *initWithBuffer(IONumberType type, void *blob, size_t size);
+	virtual void free();
 
-	IOThread *_thread;
-	IOArray *_providers;
-	bool _published;
+	IONumberType _type;
+	void *_buffer;
 
-	IODeclareClass(IOModule)
+	IODeclareClass(IONumber)
 };
 
-#define IOModuleRegister(class) \
-	extern "C" { \
-		void *IOModulePublish() \
-		{ \
-			IOModule *module = class::alloc()->init(); \
-			return module; \
-		} \
-		void IOModuleUnpublish(IOModule *module) \
-		{ \
-			module->unpublish(); \
-		} \
-	} \
-	
-#endif /* _IOMODULE_H_ */
+#endif /* _IONUMBER_H_ */

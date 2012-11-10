@@ -29,8 +29,8 @@
 IOSymbol::IOSymbol(const char *name, const char *super, size_t size)
 {
 	_size = size;
-	_name = new IOString;
 
+	_name = new IOString;
 	_name->prepareWithSymbol(0);
 	_name->initWithCString(name);
 

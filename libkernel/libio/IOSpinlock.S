@@ -19,37 +19,42 @@
 #include <IOAsm.h>
 
 ENTRY(IOSpinlockLock)
-    pushl %edi
-    movl 0x8(%esp), %edi
-    movb $0x1, %cl
+	pushl %edi
+	movl 0x8(%esp), %edi
+	movb $0x1, %cl
+
+	jmp IOSpinlockLock_wait
+IOSpinlockLock_wait:
+	int $0x31
 
 IOSpinlockLock_tryObtain:
-    xorb %al, %al
-    lock cmpxchgb %cl, (%edi)
-    jne IOSpinlockLock_tryObtain
-    popl %edi
-    ret
+	xorb %al, %al
+	lock cmpxchgb %cl, (%edi)
+	jne spinlock_wait
+
+	popl %edi
+	ret
 
 
 ENTRY(IOSpinlockTryLock)
-    pushl %edi
-    movl 0x8(%esp), %edi
-    movb $0x1, %cl
-    xorb %al, %al
-    lock cmpxchgb %cl, (%edi)
-    jne IOSpinlockTryLock_failedObtain
-    movl $0x1, %eax
-    popl %edi
-    ret
+	pushl %edi
+	movl 0x8(%esp), %edi
+	movb $0x1, %cl
+	xorb %al, %al
+	lock cmpxchgb %cl, (%edi)
+	jne IOSpinlockTryLock_failedObtain
+	movl $0x1, %eax
+	popl %edi
+	ret
 
 IOSpinlockTryLock_failedObtain:
-    xorl %eax, %eax
-    popl %edi
-    ret
+	xorl %eax, %eax
+	popl %edi
+	ret
 
 
 ENTRY(IOSpinlockUnlock)
-    movl 0x4(%esp), %eax
-    movb $0x0, (%eax)
-    ret
-    
+	movl 0x4(%esp), %eax
+	movb $0x0, (%eax)
+	ret
+	

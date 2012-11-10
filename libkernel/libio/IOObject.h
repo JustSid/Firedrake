@@ -32,8 +32,9 @@ class IOObject
 friend class IOSymbol;
 friend class IODatabase;
 public:
-	void retain();
 	void release();
+	virtual IOObject *retain();
+	virtual IOObject *autorelease();
 
 	static IOObject *alloc();
 	IOSymbol *symbol() const;
@@ -48,7 +49,7 @@ public:
 	virtual IOString *description() const;
 
 protected:
-	virtual bool init();
+	virtual IOObject *init();
 	virtual void free();
 
 	void prepareWithSymbol(IOSymbol *symbol);
@@ -63,6 +64,8 @@ private:
 
 #define IODeclareClass(className) \
 	public: \
+		virtual className *retain(); \
+		virtual className *autorelease(); \
 		static className *alloc(); \
 	private: \
 
@@ -75,12 +78,18 @@ private:
 		instance->prepareWithSymbol(symbol); \
 		return instance; \
 	} \
+	className *className::retain() \
+	{ \
+		return (className *)super::retain(); \
+	} \
+	className *className::autorelease() \
+	{ \
+		return (className *)super::autorelease(); \
+	} \
 	void __##className##__load() __attribute((constructor)); \
 	void __##className##__load() \
 	{ \
 		__##className##__symbol = new IOSymbol(#className, __IOToken(super), sizeof(className)); \
 	}
-
-//
 
 #endif /* _IOOBJECT_H_ */

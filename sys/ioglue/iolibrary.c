@@ -121,6 +121,9 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 		uint32_t symnum = ELF32_R_SYM(rel->r_info);
 		uint32_t type = ELF32_R_TYPE(rel->r_info);
 
+		elf_sym_t *lookup = library->symtab + symnum;
+		const char *name  = library->strtab + lookup->st_name;
+
 		switch(type)
 		{	
 			case R_386_NONE:
@@ -130,7 +133,10 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 			case R_386_GLOB_DAT:
 				symbol = io_storeLookupSymbol(library, symnum, &container);
 				if(!symbol)
+				{
+					dbg("Couldn't find symbol %s for %s!\n", name, library->path);
 					return false;
+				}
 
 				target = (elf32_address_t)(container->relocBase + symbol->st_value);
 				*address = target + *address;
@@ -139,7 +145,10 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 			case R_386_PC32:
 				symbol = io_storeLookupSymbol(library, symnum, &container);
 				if(!symbol)
+				{
+					dbg("Couldn't find symbol %s for %s!\n", name, library->path);
 					return false;
+				}
 
 				target = (elf32_address_t)(container->relocBase + symbol->st_value);
 				*address += target - (elf32_address_t)address;
@@ -168,11 +177,20 @@ bool io_libraryRelocatePLT(io_library_t *library)
 		elf_sym_t *symbol;
 		io_library_t *container;
 
-		assert(ELF32_R_TYPE(rel->r_info) == R_386_JMP_SLOT);
+		uint32_t symnum = ELF32_R_SYM(rel->r_info);
+		uint32_t type = ELF32_R_TYPE(rel->r_info);
 
-		symbol = io_storeLookupSymbol(library, ELF32_R_SYM(rel->r_info), &container);
+		assert(type == R_386_JMP_SLOT);
+
+		elf_sym_t *lookup = library->symtab + symnum;
+		const char *name  = library->strtab + lookup->st_name;
+
+		symbol = io_storeLookupSymbol(library, symnum, &container);
 		if(!symbol)
+		{
+			dbg("Couldn't find symbol %s for %s!\n", name, library->path);
 			return false;
+		}
 
 		target = (elf32_address_t)(container->relocBase + symbol->st_value);
 		*address = target;

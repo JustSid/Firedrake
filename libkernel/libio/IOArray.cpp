@@ -28,50 +28,47 @@
 
 // Constructor
 
-IORegisterClass(IOArray, super)
+IORegisterClass(IOArray, super);
 
 IOArray *IOArray::withCapacity(uint32_t capacity)
 {
-	IOArray *array = IOArray::alloc();
-	if(!array->initWithCapacity(capacity))
+	IOArray *array = IOArray::alloc()->initWithCapacity(capacity);
+	return array->autorelease();
+}
+
+
+IOArray *IOArray::init()
+{
+	if(super::init())
 	{
-		array->release();
-		return 0;
+		_capacity = _changeSize = 5;
+		_count = 0;
+
+		_objects = (IOObject **)IOMalloc(_capacity * sizeof(IOObject));
+		if(!_objects)
+		{
+			release();
+			return 0;
+		}
 	}
 
-	return array;
+	return this;
 }
 
-
-bool IOArray::init()
+IOArray *IOArray::initWithCapacity(uint32_t capacity)
 {
-	if(!super::init())
-		return false;
+	if(super::init())
+	{
+		_capacity  = capacity;
+		_count = 0;
+		_changeSize = 5;
 
-	_capacity = _changeSize = 5;
-	_count = 0;
+		_objects = (IOObject **)IOMalloc(_capacity * sizeof(IOObject));
+		if(!_objects)
+			return 0;
+	}
 
-	_objects = (IOObject **)IOMalloc(_capacity * sizeof(IOObject));
-	if(!_objects)
-		return false;
-
-	return true;
-}
-
-bool IOArray::initWithCapacity(uint32_t capacity)
-{
-	if(!super::init())
-		return false;
-
-	_capacity  = capacity;
-	_count = 0;
-	_changeSize = 5;
-
-	_objects = (IOObject **)IOMalloc(_capacity * sizeof(IOObject));
-	if(!_objects)
-		return false;
-
-	return true;
+	return this;
 }
 
 void IOArray::free()

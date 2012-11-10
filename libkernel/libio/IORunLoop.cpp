@@ -1,5 +1,5 @@
 //
-//  IOModule.h
+//  IORunLoop.cpp
 //  libio
 //
 //  Created by Sidney Just
@@ -16,47 +16,64 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOMODULE_H_
-#define _IOMODULE_H_
-
-#include "IOObject.h"
-#include "IOArray.h"
-#include "IOService.h"
+#include "IORunLoop.h"
 #include "IOThread.h"
+#include "IOAutoreleasePool.h"
 
-class IOModule : public IOObject
+#ifdef super
+#undef super
+#endif
+#define super IOObject
+
+IORegisterClass(IORunLoop, super);
+
+extern "C" void sd_yield();
+
+IORunLoop *IORunLoop::currentRunLoop()
 {
-public:
-	virtual IOModule *init();
-	virtual void free();
+	IOThread *thread = IOThread::currentThread();
+	return thread->_runLoop;
+}
 
-	virtual bool publish();
-	virtual void unpublish();
 
-	IOThread *getThread() { return _thread; }
+IORunLoop *IORunLoop::init()
+{
+	if(super::init())
+	{
+		_shouldStop = false;
+		_lock = IO_SPINLOCK_INIT;
+	}
 
-private:
-	static void finalizePublish(IOThread *thread);
-	void preparePublishing();
+	return this;
+}
 
-	IOThread *_thread;
-	IOArray *_providers;
-	bool _published;
+void IORunLoop::free()
+{
+	super::free();
+}
 
-	IODeclareClass(IOModule)
-};
 
-#define IOModuleRegister(class) \
-	extern "C" { \
-		void *IOModulePublish() \
-		{ \
-			IOModule *module = class::alloc()->init(); \
-			return module; \
-		} \
-		void IOModuleUnpublish(IOModule *module) \
-		{ \
-			module->unpublish(); \
-		} \
-	} \
-	
-#endif /* _IOMODULE_H_ */
+
+void IORunLoop::step()
+{
+	IOAutoreleasePool *pool = IOAutoreleasePool::alloc();
+	pool->init();
+
+
+	pool->release();
+}
+
+void IORunLoop::run()
+{
+	_shouldStop = false;
+	while(!_shouldStop)
+	{
+		step();
+		sd_yield();
+	}
+}
+
+void IORunLoop::stop()
+{
+	_shouldStop = true;
+}

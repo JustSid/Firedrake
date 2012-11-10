@@ -1,5 +1,5 @@
 //
-//  IOModule.h
+//  IOAutoreleasePool.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,47 +16,30 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOMODULE_H_
-#define _IOMODULE_H_
+#ifndef _IOAUTORELEASEPOOL_H_
+#define _IOAUTORELEASEPOOL_H_
 
 #include "IOObject.h"
-#include "IOArray.h"
-#include "IOService.h"
 #include "IOThread.h"
 
-class IOModule : public IOObject
+class IOAutoreleasePool : public IOObject
 {
 public:
-	virtual IOModule *init();
-	virtual void free();
+	IOAutoreleasePool *init();
 
-	virtual bool publish();
-	virtual void unpublish();
-
-	IOThread *getThread() { return _thread; }
+	void addObject(IOObject *object);
 
 private:
-	static void finalizePublish(IOThread *thread);
-	void preparePublishing();
+	void free();
 
-	IOThread *_thread;
-	IOArray *_providers;
-	bool _published;
+	IOObject **_objects;
+	size_t _count;
+	size_t _size;
 
-	IODeclareClass(IOModule)
+	IOThread *_owner;
+	IOAutoreleasePool *_previous;
+
+	IODeclareClass(IOAutoreleasePool)
 };
 
-#define IOModuleRegister(class) \
-	extern "C" { \
-		void *IOModulePublish() \
-		{ \
-			IOModule *module = class::alloc()->init(); \
-			return module; \
-		} \
-		void IOModuleUnpublish(IOModule *module) \
-		{ \
-			module->unpublish(); \
-		} \
-	} \
-	
-#endif /* _IOMODULE_H_ */
+#endif /* _IOAUTORELEASEPOOL_H_ */

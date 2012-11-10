@@ -19,6 +19,11 @@
 #include "IOMemory.h"
 #include "IORuntime.h"
 #include "IOLog.h"
+#include "IOThread.h"
+#include "IOAutoreleasePool.h"
+#include "IONumber.h"
+
+extern "C" void sd_yield();
 
 void *operator new(size_t size)
 {
@@ -46,11 +51,32 @@ void operator delete[](void *ptr)
 		IOFree(ptr);
 }
 
+void libio_worker(IOThread *thread)
+{
+	IOAutoreleasePool *pool = IOAutoreleasePool::alloc()->init();
+
+	thread->setName(IOString::withCString("libio worker"));
+
+	while(1)
+	{
+		pool->release();
+		pool = IOAutoreleasePool::alloc()->init();
+
+		sd_yield();
+	}
+}
 
 extern "C"
 {
 	bool libio_init()
 	{
-		return true;
+		IOThread *worker = IOThread::alloc()->initWithFunction(libio_worker);
+		if(worker)
+		{
+			worker->detach();
+			return true;
+		}
+
+		return false;
 	}
 }
