@@ -43,7 +43,11 @@ io_module_t *io_moduleCreateWithLibrary(io_library_t *library)
 		// Call the init functions
 		for(size_t i=0; i<library->initArrayCount; i++)
 		{
-			io_module_init_t init = (io_module_init_t)(library->initArray[i]);
+			uintptr_t ptr = (library->initArray[i]);
+			if(ptr == 0x0 || ptr == UINT32_MAX)
+				continue;
+
+			io_module_init_t init = (io_module_init_t)ptr;
 			init();
 		}
 
