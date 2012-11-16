@@ -9,7 +9,6 @@ Currently implemented into Firedrake are the following features:
   * Preemptive multitasking
   * Support for processes and multithreading (can be loaded from ELF binaries)
   * Support for syscalls
-  * Virtual file system hierarchy
   * Kernel wide unit tests
 
 ## Compiling
