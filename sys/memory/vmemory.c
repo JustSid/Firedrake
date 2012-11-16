@@ -333,7 +333,6 @@ bool __vm_mapPage(vm_page_directory_t pdirectory, uintptr_t paddress, vm_address
 	}
 	else
 	{
-		//info("Well?!");
 		if(pdirectory == __vm_kernelDirectory)
 		{
 			if(__vm_usePhysicalKernelPages)
