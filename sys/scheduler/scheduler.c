@@ -236,6 +236,7 @@ bool sd_init(void *UNUSED(ingored))
 {
 	process_t *process = process_createKernel();
 	thread_t *thread = process->mainThread;
+	thread_setName(thread, "kerneld");
 
 	// Prepare everything for the kernel task
 	ir_trampoline_map->pagedir  = process->pdirectory;
