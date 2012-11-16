@@ -51,6 +51,7 @@ void ioglued()
 {
 	thread_setName(thread_getCurrentThread(), "syslogd");
 
+	size_t size = sizeof(ioglued_modules) / sizeof(const char *);
 	for(size_t i=0; i<size; i++)
 	{
 		const char *name = ioglued_modules[i];
