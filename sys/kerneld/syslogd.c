@@ -76,14 +76,12 @@ void syslogd_setLogLevel(syslog_level_t level)
 
 void __syslogd_flush()
 {
-	size_t length = ringbuffer_length(syslogd_buffer);
-	while(length > 0)
+	while(ringbuffer_length(syslogd_buffer) > 0)
 	{
 		char buffer[256];
 		size_t read = ringbuffer_read(syslogd_buffer, (uint8_t *)buffer, 255);
-
+		
 		buffer[read] = '\0';
-		length = ringbuffer_length(syslogd_buffer);
 
 		vd_writeString(buffer);
 	}
