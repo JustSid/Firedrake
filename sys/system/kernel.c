@@ -243,13 +243,13 @@ void kern_printBacktraceForThread(thread_t *thread, long depth)
 
 		if(!library)
 		{
-			dbg("(%2i) %08x: ", level, address);
+			dbg("(%2i) %08x: ", level, uaddress);
 			info("%s\n", name);
 		}
 		else
 		{
-			dbg("(%2i) %08x: ", level, address - library->relocBase);
-			info("%s (%s + %p)\n", name, library->path, library->relocBase);
+			dbg("(%2i) %08x: ", level, uaddress - library->relocBase);
+			info("%s (%s)\n", name, library->path);
 		}
 	}
 }
