@@ -43,6 +43,14 @@ elf_sym_t *io_storeLookupSymbol(io_library_t *library, uint32_t symNum, io_libra
 		uint32_t hash = elf_hash(name);
 		elf_sym_t *symbol;
 
+		// Try to find the symbol in the kernel
+		symbol = io_findKernelSymbol(name);
+		if(symbol)
+		{
+			*outLib = io_kernelLibraryStub();
+			return symbol;
+		}
+
 		// Search through the dependencies
 		// Breadth first
 		array_t *dependencyTree = array_create();
@@ -70,17 +78,6 @@ elf_sym_t *io_storeLookupSymbol(io_library_t *library, uint32_t symNum, io_libra
 		}
 
 		array_destroy(dependencyTree);
-
-		// Only libio.so is allowed to directly link with the kernel
-		if(library == __io_libio)
-		{
-			symbol = io_findKernelSymbol(name);
-			if(symbol)
-			{
-				*outLib = io_kernelLibraryStub();
-				return symbol;
-			}
-		}
 
 		// Look it up in the library
 		symbol = io_librarySymbolWithName(library, name, hash);
@@ -193,6 +190,8 @@ bool io_init(void *UNUSED(unused))
 	__io_libio = io_libraryCreateWithFile("libio.so"); // This is the essential kernel library which MUST be present
 	if(__io_libio)
 	{
+		dbg("libio.so loaded at %p", __io_libio->relocBase);
+
 		bool result = io_storeAddLibrary(__io_libio);
 		if(!result)
 		{
