@@ -29,89 +29,122 @@
 extern void sd_disableScheduler();
 extern void syslogd_forceFlush();
 
+void panic_dumpCPUState()
+{
+	static spinlock_t spinlock = SPINLOCK_INIT;
+
+	if(spinlock_tryLock(&spinlock))
+	{
+		if(ir_isInsideInterruptHandler())
+		{
+			cpu_state_t *state = (cpu_state_t *)ir_lastInterruptESP();
+
+			io_library_t *library = NULL;
+			uintptr_t resolved = kern_resolveAddress(state->eip);
+			const char *name = kern_nameForAddress(resolved, &library);
+			char buffer[265];
+
+			if(isCPPName(name))
+			{
+				demangleCPPName(name, buffer);
+				name = (const char *)buffer;
+			}
+
+			dbg("CPU State (interrupt vector %i):\n", state->interrupt);
+			dbg("  eax: \16\27%08x\16\031, ecx: \16\27%08x\16\031, edx: \16\27%08x\16\031, ebx: \16\27%08x\16\031\n", state->eax, state->ecx, state->edx, state->ebx);
+			dbg("  esp: \16\27%08x\16\031, ebp: \16\27%08x\16\031, esi: \16\27%08x\16\031, edi: \16\27%08x\16\031\n", state->esp, state->ebp, state->esi, state->edi);
+			dbg("  eip: \16\27%08x\16\031, eflags: \16\27%08x\16\031.\n", state->eip, state->eflags);
+			dbg("  resolved eip: \16\27%s\16\031 (found in %s)\n", name, library ? library->path : "Firedrake");
+			dbg("\n");
+		}
+	}
+}
+
 void panic_dumpStacktraces()
 {
-	if(ir_isInsideInterruptHandler())
+	static spinlock_t spinlock = SPINLOCK_INIT;
+
+	if(spinlock_tryLock(&spinlock))
 	{
-		cpu_state_t *state = (cpu_state_t *)ir_lastInterruptESP();
-
-		io_library_t *library = NULL;
-		uintptr_t resolved = kern_resolveAddress(state->eip);
-		const char *name = kern_nameForAddress(resolved, &library);
-		char buffer[265];
-
-		if(isCPPName(name))
+		process_t *process = process_getCurrentProcess();
+		if(!process)
 		{
-			demangleCPPName(name, buffer);
-			name = (const char *)buffer;
+			dbg("Kernel backtrace:\n");
+			kern_printBacktraceForThread(NULL, 20);
+		}
+		else
+		{
+			thread_t *thread = process->scheduledThread;
+
+			dbg("Kernel backtrace of process %i, thread %i (%s):\n", process->pid, thread->id, thread->name);
+			kern_printBacktraceForThread(thread, 15);
+		}
+	}
+}
+
+
+
+void panic_printReasonOnStack(size_t length, const char *format, va_list args)
+{
+	char buffer[length];
+	vsnprintf(buffer, length, format, args);
+
+	syslog(LOG_ERROR, "\"%s\"\n\n", buffer);
+}
+
+void panic_printReason(const char *format, va_list args)
+{
+	syslog(LOG_ALERT, "\nKernel Panic!");
+	syslog(LOG_INFO, "\nReason: ");
+
+	va_list copy;
+	va_copy(copy, args);
+
+	char *buffer = NULL;
+	int length = vsnprintf(buffer, 0, format, args);
+
+	buffer = mm_alloc(vm_getKernelDirectory(), pageCount(length), VM_FLAGS_KERNEL);
+	if(!buffer)
+	{
+		if(length < 255)
+		{
+			panic_printReasonOnStack(length + 1, format, copy);
+			return;
 		}
 
-		dbg("CPU State (interrupt vector %i):\n", state->interrupt);
-		dbg("  eax: %08x, ecx: %08x, edx: %08x, ebx: %08x\n", state->eax, state->ecx, state->edx, state->ebx);
-		dbg("  esp: %08x, ebp: %08x, esi: %08x, edi: %08x\n", state->esp, state->ebp, state->esi, state->edi);
-		dbg("  eip: %08x, eflags: %08x.\n", state->eip, state->eflags);
-		dbg("  resolved eip: ");
-		info("%s (found in %s)\n", name, library ? library->path : "Firedrake");
-		dbg("\n");
-	}
-
-	process_t *process = process_getCurrentProcess();
-	if(!process)
-	{
-		dbg("Kernel backtrace:\n");
-		kern_printBacktraceForThread(NULL, 20);
+		buffer = "Failed to allocate memory for panic reason!";
 	}
 	else
 	{
-		thread_t *thread = process->scheduledThread;
-
-		dbg("Kernel backtrace of process %i, thread %i (%s):\n", process->pid, thread->id, thread->name);
-		kern_printBacktraceForThread(thread, 15);
+		vsnprintf(buffer, length + 1, format, copy);
 	}
+
+	syslog(LOG_ERROR, "\"%s\"\n\n", buffer);
 }
 
 void panic(const char *format, ...)
 {
-	ir_disableInterrupts(true); // Disable interrupts (including NMI)
+	// Make sure that no other thread on the system will be scheduled again
+	ir_disableInterrupts(false);
 	sd_disableScheduler();
 
+	// Make sure that syslogd isn't locked
+	syslogd_forceFlush();
+	syslogd_setLogLevel(LOG_DEBUG);
+
+	// Print the panic reasion
 	va_list args;
 	va_start(args, format);
 	
-	// Check the length of the formatted message
-	char *buffer = NULL;
-	int length = vsnprintf(buffer, 0, format, args);
+	panic_printReason(format, args);
 	
 	va_end(args);
 
-	// Allocate enough memory for the message and print it
-	// TODO: What if the allocation fails?! We can't panic, but could continue without a message?!
-	va_start(args, format);
-
-	size_t pages = pageCount(length);
-
-	buffer = (char *)vm_alloc(vm_getKernelDirectory(), pm_alloc(pages), pages, VM_FLAGS_KERNEL);
-	vsnprintf(buffer, length + 1, format, args);
-
-	va_end(args);
-
-	syslogd_forceFlush(); // Make sure that syslogd isn't blocked by anything
-
-	// Print the message
-	syslog(LOG_ALERT, "\nKernel Panic!");
-	syslog(LOG_INFO, "\nReason: ");
-	syslog(LOG_ERROR, "\"%s\"\n\n", buffer);
-	
-
-	static bool triedPrintingBacktrace = false;
-	if(!triedPrintingBacktrace)
-	{
-		triedPrintingBacktrace = true;
-		panic_dumpStacktraces();
-	}
+	// Print some information about the systems state
+	panic_dumpCPUState();
+	panic_dumpStacktraces();
 	
 	syslog(LOG_ALERT, "\nCPU halted!");
-	syslogd_flush(); // Commit the messages
 
 	while(1) 
 		__asm__ volatile("cli; hlt"); // And this, dear kids, is how Mr. Kernel died. Alone and without any friends.
