@@ -32,17 +32,19 @@ extern void syslogd_forceFlush();
 void panic_dumpCPUState()
 {
 	static spinlock_t spinlock = SPINLOCK_INIT;
-
 	if(spinlock_tryLock(&spinlock))
 	{
+		// TODO: Currently it's only possible to grab a useful CPU state when panic was entered through an interrupt,
+		// but we could alter the panic function so that it pushes all registers onto the stack before doing anything.
 		if(ir_isInsideInterruptHandler())
 		{
 			cpu_state_t *state = (cpu_state_t *)ir_lastInterruptESP();
 
+			// Resolve the instruction pointer and get the name and the library it belongs to, if needed, demangle the name
 			io_library_t *library = NULL;
-			uintptr_t resolved = kern_resolveAddress(state->eip);
-			const char *name = kern_nameForAddress(resolved, &library);
-			char buffer[265];
+			const char *name = kern_nameForAddress(kern_resolveAddress(state->eip), &library);
+
+			char buffer[255];
 
 			if(isCPPName(name))
 			{
@@ -50,10 +52,15 @@ void panic_dumpCPUState()
 				name = (const char *)buffer;
 			}
 
-			dbg("CPU State (interrupt vector %i):\n", state->interrupt);
+
+			// Subtract the relocation base from the instruction pointer if the instruction comes from a library
+			// this makes it slightly easier to debug when looking at the objdump output of the library
+			uint32_t eip = library ? state->eip - library->relocBase : state->eip;
+
+			dbg("CPU State (interrupt vector \16\27%i\16\031):\n", state->interrupt);
 			dbg("  eax: \16\27%08x\16\031, ecx: \16\27%08x\16\031, edx: \16\27%08x\16\031, ebx: \16\27%08x\16\031\n", state->eax, state->ecx, state->edx, state->ebx);
 			dbg("  esp: \16\27%08x\16\031, ebp: \16\27%08x\16\031, esi: \16\27%08x\16\031, edi: \16\27%08x\16\031\n", state->esp, state->ebp, state->esi, state->edi);
-			dbg("  eip: \16\27%08x\16\031, eflags: \16\27%08x\16\031.\n", state->eip, state->eflags);
+			dbg("  eip: \16\27%08x\16\031, eflags: \16\27%08x\16\031.\n", eip, state->eflags);
 			dbg("  resolved eip: \16\27%s\16\031 (found in %s)\n", name, library ? library->path : "Firedrake");
 			dbg("\n");
 		}
@@ -63,7 +70,6 @@ void panic_dumpCPUState()
 void panic_dumpStacktraces()
 {
 	static spinlock_t spinlock = SPINLOCK_INIT;
-
 	if(spinlock_tryLock(&spinlock))
 	{
 		process_t *process = process_getCurrentProcess();
@@ -76,7 +82,7 @@ void panic_dumpStacktraces()
 		{
 			thread_t *thread = process->scheduledThread;
 
-			dbg("Kernel backtrace of process %i, thread %i (%s):\n", process->pid, thread->id, thread->name);
+			dbg("Kernel backtrace of process %i thread %i (%s):\n", process->pid, thread->id, thread->name);
 			kern_printBacktraceForThread(thread, 15);
 		}
 	}
@@ -103,15 +109,15 @@ void panic_printReason(const char *format, va_list args)
 	char *buffer = NULL;
 	int length = vsnprintf(buffer, 0, format, args);
 
+	if(length < 255)
+	{
+		panic_printReasonOnStack(length + 1, format, copy);
+		return;
+	}
+
 	buffer = mm_alloc(vm_getKernelDirectory(), pageCount(length), VM_FLAGS_KERNEL);
 	if(!buffer)
 	{
-		if(length < 255)
-		{
-			panic_printReasonOnStack(length + 1, format, copy);
-			return;
-		}
-
 		buffer = "Failed to allocate memory for panic reason!";
 	}
 	else
@@ -119,13 +125,13 @@ void panic_printReason(const char *format, va_list args)
 		vsnprintf(buffer, length + 1, format, copy);
 	}
 
-	syslog(LOG_ERROR, "\"%s\"\n\n", buffer);
+	syslog(LOG_ERROR, "\"%s\"\n\n", format);
 }
 
 void panic(const char *format, ...)
 {
 	// Make sure that no other thread on the system will be scheduled again
-	ir_disableInterrupts(false);
+	ir_disableInterrupts(true);
 	sd_disableScheduler();
 
 	// Make sure that syslogd isn't locked

@@ -212,7 +212,7 @@ void kern_printBacktraceForThread(thread_t *thread, long depth)
 	void *addresses[depth];
 	size_t size;
 
-	if(thread != thread_getCurrentThread())
+	if(thread && thread != thread_getCurrentThread())
 	{
 		cpu_state_t *state = (cpu_state_t *)thread->esp;
 
