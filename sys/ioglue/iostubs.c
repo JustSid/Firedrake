@@ -87,13 +87,13 @@ void *IOMalloc(size_t size)
 
 	if(__io_heap == NULL)
 	{
-		__io_heap = heap_create(kHeapFlagSecure | kHeapFlagUntrusted);
+		__io_heap = heap_create(kHeapFlagSecure | kHeapFlagAligned);
 		if(!__io_heap)
 			panic("Couldn't create heap for libio!");
 	}
 
 	spinlock_unlock(&__io_lazy_lock);
-
+	
 	void *mem = halloc(__io_heap, size);
 	return mem;
 }

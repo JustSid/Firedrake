@@ -137,11 +137,8 @@ io_library_t *io_storeLibraryWithAddress(vm_address_t address)
 	while((library = iterator_nextObject(iterator)))
 	{
 		vm_address_t vlimit = library->vmemory + (library->pages * VM_PAGE_SIZE);
-		//dbg("Checking %p against %s; %p to %p\n", address, library->path, library->vmemory, vlimit);
-
 		if(address >= library->vmemory && address <= vlimit)
 		{
-			//dbg("True!\n");
 			iterator_destroy(iterator);
 			return library;
 		}

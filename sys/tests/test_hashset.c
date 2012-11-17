@@ -122,7 +122,7 @@ void _test_hashset_stressTest()
 	for(uint32_t iteration=0; iteration<10; iteration++)
 	{
 		hashset_t *set = hashset_create(0, hash_cstring);
-		heap_t *heap = heap_create(1024 * 1024, vm_getKernelDirectory(), 0);
+		heap_t *heap = heap_create(kHeapFlagSecure | kHeapFlagAligned);
 
 		for(uint32_t i=0; i<kHashsetStressTestCount; i++)
 		{
