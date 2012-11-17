@@ -26,7 +26,6 @@
 #include <libc/stdio.h>
 #include <tests/unittests.h>
 
-#include "watchdogd.h"
 #include "syslogd.h"
 #include "ioglued.h"
 
@@ -42,7 +41,6 @@ void kerneld_main()
 
 	// Create system threads
 	process_t *self = process_getCurrentProcess();
-	thread_create(self, watchdogd, 4096, 0);
 	thread_create(self, syslogd, 4096, 0);
 	thread_create(self, ioglued, 4096, 0);
 	thread_create(self, kerneld_unitTests, 4096, 0);

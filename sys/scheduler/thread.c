@@ -18,7 +18,6 @@
 
 #include <libc/math.h>
 #include <libc/string.h>
-#include <kerneld/watchdogd.h>
 #include <system/assert.h>
 #include <system/panic.h>
 #include <system/syslog.h>
@@ -168,9 +167,6 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 			process->scheduledThread 	= thread;
 		}
 
-		if(process->pid == 0)
-			watchdogd_addThread(thread); // Watchdogd is automatically attached to kernel threads!
-
 		spinlock_unlock(&process->threadLock);
 	}
 
@@ -299,9 +295,6 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 			process->scheduledThread 	= thread;
 		}
 
-		if(process->pid == 0)
-			watchdogd_addThread(thread); // Watchdogd is automatically attached to kernel threads!
-
 		spinlock_unlock(&process->threadLock);
 	}
 
@@ -421,10 +414,6 @@ void thread_destroy(struct thread_s *thread)
 {
 	process_t *process = thread->process;
 	thread_predicateBecameTrue(thread, thread_predicateOnExit);
-
-	if(thread->watched)
-		watchdogd_removeThread(thread);
-
 
 	if(thread->userStackVirt)
 	{
