@@ -260,7 +260,7 @@ int sprintf(char *dst, const char *format, ...)
 	return written;
 }
 
-void __IOPrimitiveLog(const char *message);
+void __IOPrimitiveLog(const char *message, bool appendNewline);
 
 void printf(const char *format, ...)
 {
@@ -271,7 +271,7 @@ void printf(const char *format, ...)
 	char buffer[1024];
 	vsnprintf(buffer, 1024, format, args);
 
-	__IOPrimitiveLog(buffer);
+	__IOPrimitiveLog(buffer, false);
 
 	va_end(args);
 }

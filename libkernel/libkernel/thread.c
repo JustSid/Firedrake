@@ -45,7 +45,7 @@ thread_t kern_threadCurrent()
 	return __IOPrimitiveThreadID();
 }
 
-void thread_setName(thread_t thread, const char *name)
+void kern_thread_setName(thread_t thread, const char *name)
 {
 	__IOPrimitiveThreadSetName(thread, name);
 }

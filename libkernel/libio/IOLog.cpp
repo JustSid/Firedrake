@@ -255,7 +255,7 @@ int __IOvsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 }
 
 #define IOLOG_BUFFER_SIZE 1024
-extern "C" void __IOPrimitiveLog(const char *message);
+extern "C" void __IOPrimitiveLog(const char *message, bool appendNewline);
 
 void IOLog(const char *message, ...)
 {
@@ -265,7 +265,7 @@ void IOLog(const char *message, ...)
 	va_start(arguments, message);
 	
 	__IOvsnprintf(buffer, IOLOG_BUFFER_SIZE, message, arguments);
-	__IOPrimitiveLog(buffer);
+	__IOPrimitiveLog(buffer, true);
 
 	va_end(arguments);
 }

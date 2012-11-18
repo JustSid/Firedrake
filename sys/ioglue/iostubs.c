@@ -35,15 +35,16 @@
 heap_t *__io_heap = NULL;
 spinlock_t __io_lazy_lock = SPINLOCK_INIT; // Lock used todo lazy allocation
 
-void __IOPrimitiveLog(char *message)
+void __IOPrimitiveLog(char *message, bool appendNewline)
 {
-	syslog(LOG_INFO, "%s\n", message);
+	const char *format = appendNewline ? "%s\n" : "%s";
+	syslog(LOG_INFO, format, message);
 }
 
 uint32_t __IOPrimitiveThreadCreate(void *entry, void *arg1, void *arg2)
 {
 	process_t *process = process_getCurrentProcess();
-	thread_t *thread = thread_create(process, (thread_entry_t)entry, 4096, 1, arg1, arg2);
+	thread_t *thread = thread_create(process, (thread_entry_t)entry, 4096, 2, arg1, arg2);
 
 	return thread->id;
 }

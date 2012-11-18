@@ -28,6 +28,6 @@ typedef void (*thread_entry_t)(void *);
 kern_extern thread_t kern_threadCreate(thread_entry_t entry, void *arg);
 kern_extern thread_t kern_threadCurrent();
 
-kern_extern void thread_setName(thread_t thread, const char *name);
+kern_extern void kern_thread_setName(thread_t thread, const char *name);
 
 #endif /* _LIBKERNEL_THREAD_H_ */

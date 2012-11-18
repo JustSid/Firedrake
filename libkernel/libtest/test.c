@@ -20,7 +20,7 @@
 
 bool test_start(kern_module_t *module)
 {
-	printf("test_start() %s", module->name);
+	printf("test_start() %s\n", module->name);
 
 	kern_moduleRelease(module);
 
@@ -29,7 +29,7 @@ bool test_start(kern_module_t *module)
 
 bool test_stop(kern_module_t *module)
 {
-	printf("test_stop() %s", module->name);
+	printf("test_stop() %s\n", module->name);
 	return true;
 }
 

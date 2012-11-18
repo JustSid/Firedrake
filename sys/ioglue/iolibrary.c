@@ -478,8 +478,6 @@ void io_libraryRelease(io_library_t *library)
 
 	if((-- library->refCount) == 0)
 	{
-		dbg("Unloading library %s\n", library->name);
-
 		struct io_dependency_s *dependency = list_first(library->dependencies);
 		while(dependency)
 		{
