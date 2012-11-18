@@ -16,7 +16,7 @@
 			"-I${folder:${project_path:libkernel.sublime-project}}/.",
 			"-m32",
 			"-std=c++11",
-			"-std=c99",
+			//"-std=c99",
 			"-Wall",
 			"-Wextra",
 			"-pedantic",

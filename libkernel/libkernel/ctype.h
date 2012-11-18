@@ -28,4 +28,6 @@
 #define isalnum(c) (isalpha(c) || isdigit(c))
 #define isspace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r')
 
+#define toupper(c) ((c >= 'a' && c <= 'z') ? c + 'A' - 'a': c)
+
 #endif /* _LIBKERNEL_CTYPE_H_ */

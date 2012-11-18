@@ -295,7 +295,7 @@ IOReturn IODatabase::registerService(IOSymbol *symbol, IODictionary *attributes)
 		IOLog("IODatabase::registerService(), identifier %@ already taken!", identifier);
 		kern_spinlock_unlock(&_lock);
 
-		return kIOReturnSlotTaken;
+		return kIOReturnNoMemory;
 	}
 
 	entry = IODatabaseEntry::withSymbolAndAttributes(symbol, attributes);
