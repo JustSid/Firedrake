@@ -35,6 +35,8 @@ typedef struct
 } array_t;
 
 array_t *array_create();
+array_t *array_copy(array_t *source);
+
 void array_destroy(array_t *array);
 
 void array_lock(array_t *array);

@@ -37,6 +37,24 @@ array_t *array_create()
 	return array;
 }
 
+array_t *array_copy(array_t *source)
+{
+	array_t *copy = halloc(NULL, sizeof(array_t));
+	if(copy)
+	{
+		copy->count = source->count;
+		copy->space = source->space;
+		copy->lock = SPINLOCK_INIT;
+
+		copy->allocationStep = source->allocationStep;
+		copy->data = halloc(NULL, copy->space * sizeof(void *));
+
+		memcpy(copy->data, source->data, copy->count * sizeof(void *));
+	}
+
+	return copy;
+}
+
 void array_destroy(array_t *array)
 {
 	hfree(NULL, array->data);
