@@ -61,7 +61,10 @@ void panic_dumpCPUState()
 			dbg("  eax: \16\27%08x\16\031, ecx: \16\27%08x\16\031, edx: \16\27%08x\16\031, ebx: \16\27%08x\16\031\n", state->eax, state->ecx, state->edx, state->ebx);
 			dbg("  esp: \16\27%08x\16\031, ebp: \16\27%08x\16\031, esi: \16\27%08x\16\031, edi: \16\27%08x\16\031\n", state->esp, state->ebp, state->esi, state->edi);
 			dbg("  eip: \16\27%08x\16\031, eflags: \16\27%08x\16\031.\n", eip, state->eflags);
-			dbg("  resolved eip: \16\27%s\16\031 (found in %s)\n", name, library ? library->path : "Firedrake");
+
+			if(strcmp(name, "<null>"))
+				dbg("  resolved eip: \16\27%s\16\031 (found in %s)\n", name, library ? library->name : "Firedrake");
+
 			dbg("\n");
 		}
 	}

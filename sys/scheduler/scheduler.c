@@ -224,13 +224,17 @@ void sd_threadExit()
 }
 
 
+extern uintptr_t spinlock_wait;
+
 void sd_disableScheduler()
 {
-	spinlock_lock(&_sd_lock); // This effectively disables the scheduler
-}
+	spinlock_lock(&_sd_lock);
 
-// MARK: Init
-extern uintptr_t spinlock_wait;
+	// Also, since there is no rescheduling possible anymore, let's reinsert those nops back into the spinlock code
+	uint8_t *buffer = (uint8_t *)&spinlock_wait;
+	*(buffer ++) = 0x90;
+	*(buffer ++) = 0x90;
+}
 
 bool sd_init(void *UNUSED(ingored))
 {

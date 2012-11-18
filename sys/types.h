@@ -28,15 +28,9 @@
 
 #define NULL (void *)0
 
-#ifndef __cplusplus
-	#define	bool _Bool
-	#if __STDC_VERSION__ < 199901L && __GNUC__ < 3
-		typedef	int	_Bool;
-	#endif
-
-	#define	false	0
-	#define	true	1
-#endif
+#define	bool int
+#define	false	0
+#define	true	1
 
 // MARK: Variadic function helpers
 typedef __builtin_va_list	va_list;
