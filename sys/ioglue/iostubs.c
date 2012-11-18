@@ -17,6 +17,8 @@
 //
 
 #include <bootstrap/multiboot.h>
+#include <container/hashset.h>
+#include <container/array.h>
 #include <interrupts/interrupts.h>
 #include <scheduler/scheduler.h>
 #include <memory/memory.h>
@@ -30,16 +32,17 @@
 #include "iostore.h"
 #include "ioerror.h"
 
-// Actual stub implementation
-
-heap_t *__io_heap = NULL;
-spinlock_t __io_lazy_lock = SPINLOCK_INIT; // Lock used todo lazy allocation
+spinlock_t __io_lazy_lock = SPINLOCK_INIT; // Shared spinlock for lazy allocation
 
 void __IOPrimitiveLog(char *message, bool appendNewline)
 {
 	const char *format = appendNewline ? "%s\n" : "%s";
 	syslog(LOG_INFO, format, message);
 }
+
+// ------
+// Thread management
+// ------
 
 uint32_t __IOPrimitiveThreadCreate(void *entry, void *arg1, void *arg2)
 {
@@ -82,6 +85,12 @@ void __IOPrimitiveThreadDied()
 	sd_threadExit();
 }
 
+// ------
+// Memory mamangement
+// ------
+
+heap_t *__io_heap = NULL;
+
 void *IOMalloc(size_t size)
 {
 	spinlock_lock(&__io_lazy_lock);
@@ -104,85 +113,125 @@ void IOFree(void *mem)
 	hfree(__io_heap, mem);
 }
 
+// ------
+// Interrupts
+// ------
 
-spinlock_t __io_interrupt_lock = SPINLOCK_INIT;
-
-typedef void (*IOServiceInterruptHandler)(void *target, uint32_t interrupt, void *context);
+typedef void (*io_interrupt_handler_callback_t)(uint32_t interrupt, void *target, void *context);
 typedef struct
 {
-	IOServiceInterruptHandler handler;
+	io_interrupt_handler_callback_t callback;
 	void *owner;
 	void *target;
 	void *context;
-} IOServiceInterruptHandlerVector;
+} io_interrupt_handler_t;
 
-IOServiceInterruptHandlerVector *__io_interruptHandler[IDT_ENTRIES];
+typedef struct
+{
+	bool exclusive;
+	array_t *handler;
+} io_interrupt_entry_t;
+
+static spinlock_t __io_interrupt_lock = SPINLOCK_INIT;
+static io_interrupt_entry_t *__io_interruptEntries[IDT_ENTRIES];
 
 uint32_t io_dispatchInterrupt(uint32_t esp)
 {
 	cpu_state_t *state = (cpu_state_t *)esp;
-	IOServiceInterruptHandlerVector *vector = __io_interruptHandler[state->interrupt];
+	io_interrupt_entry_t *entry = __io_interruptEntries[state->interrupt];
 
-	if(vector)
+	if(entry)
 	{
-		IOServiceInterruptHandler handler = vector->handler;
-		handler(vector->target, state->interrupt, vector->context);
+		array_t *allHandler = entry->handler;
+		for(size_t i=0; i<array_count(allHandler); i++)
+		{
+			io_interrupt_handler_t *handler = array_objectAtIndex(allHandler, i);
+			handler->callback(state->interrupt, handler->target, handler->context);
+		}
 	}
 
 	return esp;
 }
 
-IOReturn __IOServiceTryRegisterInterrupt(void *owner, void *target, uint32_t interrupt, void *context, IOServiceInterruptHandler handler)
+IOReturn __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owner, void *target, void *context, io_interrupt_handler_callback_t callback)
 {
 	spinlock_lock(&__io_interrupt_lock);
 
-	IOServiceInterruptHandlerVector *vector = __io_interruptHandler[interrupt];
-	if(vector)
+	io_interrupt_handler_t *handler;
+	io_interrupt_entry_t *entry = __io_interruptEntries[interrupt];
+	if(entry)
 	{
-		if(handler)
+		if(!callback)
+		{
+			for(size_t i=0; i<array_count(entry->handler); i++)
+			{
+				handler = array_objectAtIndex(entry->handler, i);
+				if(handler->owner == owner)
+				{
+					array_removeObjectAtIndex(entry->handler, i);
+					spinlock_unlock(&__io_interrupt_lock);
+
+					return kIOReturnSuccess;
+				}
+			}
+
+			spinlock_unlock(&__io_interrupt_lock);
+			return kIOReturnNoInterrupt;
+		}
+
+		if(entry->exclusive || exclusive)
 		{
 			spinlock_unlock(&__io_interrupt_lock);
 			return kIOReturnInterruptTaken;
 		}
 
-		IOReturn result;
-		if(vector->owner == owner)
+		handler = halloc(NULL, sizeof(io_interrupt_handler_t));
+		if(!handler)
 		{
-			hfree(NULL, vector);
-
-			__io_interruptHandler[interrupt] = NULL;
-			ir_setInterruptHandler(NULL, interrupt);
-
-			result = kIOReturnSuccess;
+			spinlock_unlock(&__io_interrupt_lock);
+			return kIOReturnNoMemory;
 		}
-		else
-		{
-			result = kIOReturnNoInterrupt;
-		}
-
-		spinlock_unlock(&__io_interrupt_lock);
-		return result;
 	}
-	else if(!handler)
+	else if(callback)
 	{
-		spinlock_unlock(&__io_interrupt_lock);
-		return kIOReturnNoInterrupt;
+		handler = halloc(NULL, sizeof(io_interrupt_handler_t));
+		entry = halloc(NULL, sizeof(io_interrupt_entry_t));
+
+		if(!handler || !entry)
+		{
+			if(handler)
+				hfree(NULL, handler);
+
+			if(entry)
+				hfree(NULL, entry);
+
+			spinlock_unlock(&__io_interrupt_lock);
+			return kIOReturnNoMemory;
+		}
+
+		entry->exclusive = exclusive;
+		entry->handler = array_create();
+
+		__io_interruptEntries[interrupt] = entry;
+		ir_setInterruptHandler(io_dispatchInterrupt, interrupt);
 	}
 
-	vector = halloc(NULL, sizeof(IOServiceInterruptHandlerVector));
-	vector->owner = owner;
-	vector->target = target;
-	vector->handler = handler;
-	vector->context = context;
+	if(callback)
+	{
+		handler->owner = owner;
+		handler->target = target;
+		handler->context = context;
+		handler->callback = callback;
 
-	__io_interruptHandler[interrupt] = vector;
-	ir_setInterruptHandler(io_dispatchInterrupt, interrupt);
+		array_addObject(entry->handler, handler);
+		spinlock_unlock(&__io_interrupt_lock);
+
+		return kIOReturnSuccess;
+	}
 
 	spinlock_unlock(&__io_interrupt_lock);
-	return kIOReturnSuccess;
+	return kIOReturnNoInterrupt;
 }
-
-
 
 // Symbol lookup
 
@@ -197,7 +246,7 @@ const char *__io_exportedSymbolNames[] = {
 	"__IOPrimitiveThreadAccessArgument",
 	"__IOPrimitiveThreadSetName",
 	"__IOPrimitiveThreadDied",
-	"__IOServiceTryRegisterInterrupt",
+	"__IORegisterForInterrupt",
 	"io_moduleWithName",
 	"io_moduleRetain",
 	"io_moduleRelease",
@@ -243,7 +292,6 @@ elf_sym_t *io_findKernelSymbol(const char *name)
 
 	// Find the symbol in the binary
 	elf_sym_t *symbol = __io_kernelLibrary->symtab;
-
 	for(size_t i=0; i<__io_kernelLibrarySymbolCount; i++, symbol++)
 	{
 		if(symbol->st_name >= __io_kernelLibrary->strtabSize || symbol->st_name == 0)

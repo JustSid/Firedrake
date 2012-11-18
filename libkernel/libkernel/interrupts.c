@@ -1,5 +1,5 @@
 //
-//  kalloc.h
+//  interrupts.c
 //  libkernel
 //
 //  Created by Sidney Just
@@ -16,13 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERNEL_KALLOC_H_
-#define _LIBKERNEL_KALLOC_H_
+#include "interrupts.h"
 
-#include "base.h"
-#include "stdint.h"
+extern kern_return_t __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owner, void *target, void *context, kern_interrupt_handler_t callback);
 
-kern_extern void *kalloc(size_t size);
-kern_extern void kfree(void *pointer);
+kern_return_t kern_setInterruptHandler(uint32_t interrupt, void *owner, void *context, kern_interrupt_handler_t callback)
+{
+	return __IORegisterForInterrupt(interrupt, false, owner, owner, context, callback);
+}
 
-#endif /* _LIBKERNEL_KALLOC_H_ */
+kern_return_t kern_setInterruptHandlerExclusive(uint32_t interrupt, void *owner, void *context, kern_interrupt_handler_t callback)
+{
+	return __IORegisterForInterrupt(interrupt, true, owner, owner, context, callback);
+}

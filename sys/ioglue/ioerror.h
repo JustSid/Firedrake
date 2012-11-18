@@ -19,8 +19,9 @@
 #ifndef _IOERROR_H_
 #define _IOERROR_H_
 
-#define kIOReturnSuccess 0
-#define kIOReturnNoInterrupt 1
-#define kIOReturnInterruptTaken 2
+#define kIOReturnSuccess 			0
+#define kIOReturnNoInterrupt 		1
+#define kIOReturnInterruptTaken 	2
+#define kIOReturnNoMemory 			3
 
 #endif /* _IOERROR_H_ */

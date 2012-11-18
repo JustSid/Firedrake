@@ -1,6 +1,6 @@
 //
-//  kalloc.h
-//  libkernel
+//  return.h
+//  libtest
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,13 +16,17 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERNEL_KALLOC_H_
-#define _LIBKERNEL_KALLOC_H_
+#ifndef _LIBKERNEL_RETURN_H_
+#define _LIBKERNEL_RETURN_H_
 
 #include "base.h"
 #include "stdint.h"
 
-kern_extern void *kalloc(size_t size);
-kern_extern void kfree(void *pointer);
+typedef uint32_t kern_return_t;
 
-#endif /* _LIBKERNEL_KALLOC_H_ */
+#define kReturnSuccess 			0
+#define kReturnNoInterrupt 		1
+#define kReturnInterruptTaken 	2
+#define kReturnNoMemory 		3
+
+#endif /* _LIBKERNEL_RETURN_H_ */

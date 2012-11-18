@@ -18,11 +18,32 @@
 
 #include <libkernel/libkernel.h>
 
-bool test_start(kern_module_t *module)
+void test_handleInterrupt(uint32_t UNUSED(interrupt), void *owner, void *UNUSED(context))
 {
-	printf("test_start() %s\n", module->name);
+	uint8_t scancode = inb(0x60);
+	printf("scancode: %i\n", (int)scancode);
 
-	kern_moduleRelease(module);
+	if(scancode == 1) // ESC key
+	{
+		kern_setInterruptHandler(0x21, owner, NULL, NULL);
+		kern_moduleRelease((kern_module_t *)owner);
+	}
+}
+
+bool test_start(kern_module_t *module)
+{	
+	kern_return_t result = kern_setInterruptHandler(0x21, module, NULL, test_handleInterrupt);
+	if(result != kReturnSuccess)
+		return false;
+
+	printf("test_start() %s\n", module->name);
+	
+	// Clear the keyboard buffer
+	while(inb(0x64) & 0x1)
+		inb(0x60);
+
+	while((inb(0x64) & 0x2)) {} // Wait until the keyboard is ready
+	outb(0x60, 0xF4); // Activate the keyboard
 
 	return true;
 }

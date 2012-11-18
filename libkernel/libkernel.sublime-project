@@ -4,6 +4,7 @@
 		{
 			"name": "libkernel",
 			"path": "./",
+			"folder_exclude_patterns": ["templates"],
 			"file_exclude_patterns": ["*.sublime-workspace", "*.sublime-project"]
 		}
 	],
@@ -15,6 +16,7 @@
 			"-I${folder:${project_path:libkernel.sublime-project}}/.",
 			"-m32",
 			"-std=c++11",
+			"-std=c99",
 			"-Wall",
 			"-Wextra",
 			"-pedantic",

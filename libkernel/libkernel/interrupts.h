@@ -1,5 +1,5 @@
 //
-//  kalloc.h
+//  interrupts.h
 //  libkernel
 //
 //  Created by Sidney Just
@@ -16,13 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERNEL_KALLOC_H_
-#define _LIBKERNEL_KALLOC_H_
+#ifndef _LIBKERNEL_INTERRUPTS_H_
+#define _LIBKERNEL_INTERRUPTS_H_
 
 #include "base.h"
 #include "stdint.h"
+#include "return.h"
 
-kern_extern void *kalloc(size_t size);
-kern_extern void kfree(void *pointer);
+typedef void (*kern_interrupt_handler_t)(uint32_t interrupt, void *owner, void *context);
 
-#endif /* _LIBKERNEL_KALLOC_H_ */
+kern_extern kern_return_t kern_setInterruptHandler(uint32_t interrupt, void *owner, void *context, kern_interrupt_handler_t callback);
+kern_extern kern_return_t kern_setInterruptHandlerExclusive(uint32_t interrupt, void *owner, void *context, kern_interrupt_handler_t callback);
+
+#endif /* _LIBKERNEL_INTERRUPTS_H_ */

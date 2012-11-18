@@ -33,7 +33,7 @@ class IOService : public IOObject
 {
 friend class IODatabase;
 public:
-	typedef void (*InterruptAction)(IOObject *target, uint32_t interrupt, void *context);
+	typedef void (*InterruptAction)(uint32_t interrupt, IOService *target, void *context);
 
 	virtual bool start();
 	virtual void stop();

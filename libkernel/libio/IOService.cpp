@@ -27,7 +27,7 @@
 
 IORegisterClass(IOService, super);
 
-extern "C" IOReturn __IOServiceTryRegisterInterrupt(IOService *owner, IOObject *target, uint32_t interrupt, void *context, IOService::InterruptAction handler);
+extern "C" IOReturn __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owner, void *target, void *context, IOService::InterruptAction callback);
 
 IOService *IOService::init()
 {
@@ -92,13 +92,14 @@ void IOService::requestProbe()
 
 IOReturn IOService::registerInterrupt(uint32_t interrupt, IOObject *target, InterruptAction handler, void *context)
 {
-	return __IOServiceTryRegisterInterrupt(this, target, interrupt, context, handler);
+	return __IORegisterForInterrupt(interrupt, false, this, target, context, handler);
 }
 
 IOReturn IOService::unregisterInterrupt(uint32_t interrupt)
 {
-	return __IOServiceTryRegisterInterrupt(this, 0, interrupt, 0, 0);
+	return __IORegisterForInterrupt(interrupt, false, this, 0, 0, 0);
 }
+
 
 
 IOReturn IOService::registerService(IOSymbol *symbol, IODictionary *attributes)

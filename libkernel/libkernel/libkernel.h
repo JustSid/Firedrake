@@ -26,10 +26,13 @@
 #include "stdlib.h"
 #include "string.h"
 
+#include "port.h"
+
 #include "kalloc.h"
 #include "entry.h"
 #include "module.h"
 #include "thread.h"
 #include "spinlock.h"
+#include "interrupts.h"
 
 #endif /* _LIBKERNEL_H_ */
