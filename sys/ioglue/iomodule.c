@@ -74,10 +74,10 @@ io_module_t *__io_moduleCreateWithLibrary(io_library_t *library, bool retainLibr
 
 		if(!module->start || !module->stop)
 		{
-			dbg("library %s doesn't provide kernel entry points!", library->name);
+			dbg("library %s doesn't provide kernel entry points!\n", library->name);
 			hfree(NULL, module);
 
-			return false;
+			return NULL;
 		}
 
 		// Call the init functions
@@ -127,7 +127,8 @@ io_module_t *io_moduleWithName(const char *name)
 		}
 
 		module = __io_moduleCreateWithLibrary(library, !createdLibrary);
-		module->initialized = true;
+		if(module)
+			module->initialized = true;
 	}
 
 	spinlock_unlock(&__io_moduleLock);

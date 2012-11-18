@@ -26,7 +26,7 @@
 
 IORegisterClass(IOModule, super);
 
-IOModule *IOModule::init()
+IOModule *IOModule::initWithKmod(kern_module_t *kmod)
 {
 	if(super::init())
 	{
@@ -38,6 +38,7 @@ IOModule *IOModule::init()
 		}
 
 		_published = false;
+		_kmod = kmod;
 
 		preparePublishing();
 	}
@@ -80,11 +81,14 @@ void IOModule::finalizePublish(IOThread *thread)
 	IOAutoreleasePool *pool = IOAutoreleasePool::alloc()->init();
 
 	IOModule *module = (IOModule *)thread->propertyForKey(IOString::withCString("Owner"));
-	module->publish();
-	module->_published = true;
+	module->_published = module->publish();
 
 	pool->release();
-	thread->getRunLoop()->run();
+
+	if(module->_published)
+		thread->getRunLoop()->run();
+
+	kern_moduleRelease(module->_kmod);
 }
 
 void IOModule::preparePublishing()

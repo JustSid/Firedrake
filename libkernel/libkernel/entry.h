@@ -49,7 +49,7 @@
 		} \
 
 	#define kern_stop_stub(function) \
-		extern bool _kern_stop(kern_module_t *mod);\
+		extern bool _kern_stop(kern_module_t *mod); \
 		bool _kern_stop(kern_module_t *mod) \
 		{ \
 			return function(mod); \

@@ -19,6 +19,9 @@
 #ifndef _IOMODULE_H_
 #define _IOMODULE_H_
 
+#include <libkernel/entry.h>
+#include <libkernel/module.h>
+
 #include "IOObject.h"
 #include "IOArray.h"
 #include "IOService.h"
@@ -27,13 +30,14 @@
 class IOModule : public IOObject
 {
 public:
-	virtual IOModule *init();
+	virtual IOModule *initWithKmod(kern_module_t *kmod);
 	virtual void free();
 
 	virtual bool publish();
 	virtual void unpublish();
 
 	IOThread *getThread() { return _thread; }
+	kern_module_t *getKernelModule() { return _kmod; }
 
 private:
 	static void finalizePublish(IOThread *thread);
@@ -43,6 +47,8 @@ private:
 	IOArray *_providers;
 	bool _published;
 
+	kern_module_t *_kmod;
+
 	IODeclareClass(IOModule)
 };
 
@@ -50,13 +56,15 @@ private:
 	extern "C" { \
 		bool _kern_start(kern_module_t *kmod) \
 		{ \
-			IOModule *module = class::alloc()->init(); \
+			IOModule *module = class::alloc()->initWithKmod(kmod); \
 			kmod->module = (void *)module; \
 			return (module != 0); \
 		} \
 		bool _kern_stop(kern_module_t *kmod) \
 		{ \
-			module->unpublish(); \
+			IOModule *module = (IOModule *)kmod->module; \
+			if(module) \
+				module->unpublish(); \
 			return true; \
 		} \
 	} \
