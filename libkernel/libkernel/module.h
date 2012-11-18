@@ -35,6 +35,7 @@ typedef struct kern_module_s
 
 	kern_spinlock_t lock;
 
+	bool initialized;
 	void *module;
 	uint32_t references;
 

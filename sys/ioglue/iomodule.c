@@ -127,6 +127,7 @@ io_module_t *io_moduleWithName(const char *name)
 		}
 
 		module = __io_moduleCreateWithLibrary(library, !createdLibrary);
+		module->initialized = true;
 	}
 
 	spinlock_unlock(&__io_moduleLock);
@@ -156,13 +157,9 @@ void io_moduleRelease(io_module_t *module)
 
 void io_moduleStop(io_module_t *module)
 {
-	spinlock_lock(&module->lock);
-
 	if(!module->stop(module))
 	{
 		module->references ++;
-		spinlock_unlock(&module->lock);
-
 		return;
 	}
 

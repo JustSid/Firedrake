@@ -35,6 +35,7 @@ typedef struct io_module_s
 	char *name;
 	spinlock_t lock;
 
+	bool initialized;
 	void *module;
 	uint32_t references;
 

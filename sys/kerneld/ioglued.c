@@ -71,6 +71,16 @@ void ioglued()
 			for(size_t i=0; i<array_count(copy); i++)
 			{
 				io_module_t *module = array_objectAtIndex(copy, i);
+
+				spinlock_lock(&module->lock);
+				if(!module->initialized)
+				{
+					__ioglued_addReferencelessModule(module);
+					spinlock_unlock(&module->lock);
+					continue;
+				}
+				
+				spinlock_unlock(&module->lock);
 				io_moduleStop(module);
 			}
 
