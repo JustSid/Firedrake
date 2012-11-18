@@ -1,6 +1,6 @@
 //
-//  stdlib.h
-//  libio
+//  thread.c
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,28 +16,36 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-/*
- * Overview:
- * Implements only a subset of the libc stdlib.h, namely the numeric conversion functions
- * Everything else has no place in the kernel.
- */
-#ifndef _STDLIB_H_
-#define _STDLIB_H_
+#include "thread.h"
 
-#include <IOTypes.h>
+extern thread_t __IOPrimitiveThreadCreate(void *entry, void *arg1, void *arg2);
+extern thread_t __IOPrimitiveThreadID();
+extern void __IOPrimitiveThreadSetName(thread_t id, const char *name);
+extern void *__IOPrimitiveThreadAccessArgument(size_t index);
+extern void __IOPrimitiveThreadDied();
 
-extern "C"
+void __kern_threadEntry()
 {
+	thread_entry_t entry = (thread_entry_t)__IOPrimitiveThreadAccessArgument(0);
+	void *arg = __IOPrimitiveThreadAccessArgument(1);
 
-	int atoi(const char *string);
-	double atof(const char *string);
-
-
-	#define STDLIBBUFFERLENGTH 128
-
-	int _itostr(int i, int base, char *buffer, bool lowerCase); // Converts an integer to a string and copies the result into buffer
-	int _uitostr(unsigned int i, int base, char *buffer, bool lowerCase);
-
+	entry(arg);
+	__IOPrimitiveThreadDied();
 }
 
-#endif /* _STDLIB_H_ */
+
+thread_t kern_threadCreate(thread_entry_t entry, void *arg)
+{
+	thread_t thread = __IOPrimitiveThreadCreate((void *)__kern_threadEntry, (void *)entry, (void *)arg);
+	return thread;
+}
+
+thread_t kern_threadCurrent()
+{
+	return __IOPrimitiveThreadID();
+}
+
+void thread_setName(thread_t thread, const char *name)
+{
+	__IOPrimitiveThreadSetName(thread, name);
+}

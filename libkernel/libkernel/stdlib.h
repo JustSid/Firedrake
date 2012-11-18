@@ -1,6 +1,6 @@
 //
-//  IOThread.h
-//  libio
+//  stdlib.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,55 +16,17 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOTHREAD_H_
-#define _IOTHREAD_H_
+#ifndef _LIBKERNEL_STDLIB_H_
+#define _LIBKERNEL_STDLIB_H_
 
-#include <libkernel/spinlock.h>
+#include "base.h"
+#include "stdint.h"
 
-#include "IOTypes.h"
-#include "IOObject.h"
-#include "IORunLoop.h"
-#include "IODictionary.h"
-#include "IOString.h"
+#define STDLIBBUFFERLENGTH 128
 
-class IOAutoreleasePool;
+kern_extern int atoi(const char *string);
 
-class IOThread : public IOObject
-{
-friend class IOObject;
-friend class IORunLoop;
-friend class IOAutoreleasePool;
-public:
-	typedef void (*Function)(IOThread *thread);
+kern_extern int _itostr(int i, int base, char *buffer, bool lowerCase); // Converts an integer to a string and copies the result into buffer
+kern_extern int _uitostr(unsigned int i, int base, char *buffer, bool lowerCase);
 
-	IOThread *initWithFunction(IOThread::Function function);
-
-	void detach();
-	IORunLoop *getRunLoop();
-
-	void setName(IOString *name);
-	void setPropertyForKey(IOObject *property, IOObject *key);
-	IOObject *propertyForKey(IOObject *key); 
-
-	static IOThread *currentThread();
-	static IOThread *withFunction(IOThread::Function function);
-	
-private:
-	virtual void free();
-	static void __threadEntry();
-
-	uint32_t _id;
-	IOThread::Function _entry;
-	bool _detached;
-
-	kern_spinlock_t _lock;
-
-	IOString *_name;
-	IORunLoop *_runLoop;
-	IOAutoreleasePool *_topPool;
-	IODictionary *_properties;
-
-	IODeclareClass(IOThread)
-};
-
-#endif /* _IOTHREAD_H_ */
+#endif /* _LIBKERNEL_STDLIB_H_ */

@@ -20,6 +20,7 @@
 #include <system/panic.h>
 #include <system/syslog.h>
 #include <system/kernel.h>
+#include <system/helper.h>
 #include <scheduler/scheduler.h>
 #include "interrupts.h"
 
@@ -63,7 +64,19 @@ uint32_t __ir_handleException(uint32_t esp)
 						break;
 				}
 
-				warn("Watchpoint #%i triggered. Address: %p\n", i, address);
+				io_library_t *library = NULL;
+				const char *name = kern_nameForAddress(kern_resolveAddress(state->eip), &library);
+
+				char buffer[255];
+				if(isCPPName(name))
+				{
+					demangleCPPName(name, buffer);
+					name = (const char *)buffer;
+				}
+
+				uint32_t eip = library ? state->eip - library->relocBase : state->eip;
+
+				warn("Watchpoint #%i triggered. Address: %p. eip: %p (%s)\n", i, address, eip, name);
 				kern_printBacktrace(20);
 			}
 		}

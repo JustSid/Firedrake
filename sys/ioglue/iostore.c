@@ -26,7 +26,10 @@
 
 //static spinlock_t __io_storeLock = SPINLOCK_INIT;
 static atree_t *__io_storeLibraries = NULL;
+static spinlock_t __io_storeLock = SPINLOCK_INIT;
+
 static io_library_t *__io_libio = NULL;
+static io_library_t *__io_libkernel = NULL;
 
 elf_sym_t *io_storeLookupSymbol(io_library_t *library, uint32_t symNum, io_library_t **outLib)
 {
@@ -125,12 +128,16 @@ int io_storeAtreeLookup(void *key1, void *key2)
 
 io_library_t *io_storeLibraryWithName(const char *name)
 {
+	spinlock_lock(&__io_storeLock);
 	io_library_t *library = (io_library_t *)atree_find(__io_storeLibraries, (void *)name);
+	spinlock_unlock(&__io_storeLock);
+
 	return library;
 }
 
 io_library_t *io_storeLibraryWithAddress(vm_address_t address)
 {
+	spinlock_lock(&__io_storeLock);
 	iterator_t *iterator = atree_iterator(__io_storeLibraries);
 	io_library_t *library;
 
@@ -140,71 +147,102 @@ io_library_t *io_storeLibraryWithAddress(vm_address_t address)
 		if(address >= library->vmemory && address <= vlimit)
 		{
 			iterator_destroy(iterator);
+			spinlock_unlock(&__io_storeLock);
+
 			return library;
 		}
 	}
 
 	iterator_destroy(iterator);
+	spinlock_unlock(&__io_storeLock);
 	return NULL;
 }
 
 
 bool io_storeAddLibrary(io_library_t *library)
 {
-	if(!atree_find(__io_storeLibraries, (void *)library->path))
+	spinlock_lock(&__io_storeLock);
+	if(!atree_find(__io_storeLibraries, (void *)library->name))
 	{
-		atree_insert(__io_storeLibraries, library, (void *)library->path);
+		atree_insert(__io_storeLibraries, library, (void *)library->name);
+		spinlock_unlock(&__io_storeLock);
+
+		io_libraryResolveDependencies(library);
 
 		bool rel1 = io_libraryRelocateNonPLT(library);
 		bool rel2 = io_libraryRelocatePLT(library); 
 
 		if(!rel1 || !rel2)
 		{
-			atree_remove(__io_storeLibraries, (void *)library->path);
+			io_storeRemoveLibrary(library);
 			return false;
 		}
+
+		return true;
 	}
 
+	spinlock_unlock(&__io_storeLock);
 	return true;
 }
 
 void io_storeRemoveLibrary(io_library_t *library)
 {
-	atree_remove(__io_storeLibraries, (void *)library->path);
+	spinlock_lock(&__io_storeLock);
+	atree_remove(__io_storeLibraries, (void *)library->name);
+	spinlock_unlock(&__io_storeLock);
 }
 
 
 typedef bool (*libio_init_t)();
 
+void io_storeCallInitFunctions(io_library_t *library)
+{
+	for(size_t i=0; i<library->initArrayCount; i++)
+	{
+		uintptr_t ptr = library->initArray[i];
+		if(ptr == 0x0 || ptr == UINT32_MAX)
+			continue;
+
+		io_module_init_t init = (io_module_init_t)ptr;
+		init();
+	}
+}
+
+bool io_initStubs();
+bool io_moduleInit();
+
 bool io_init(void *UNUSED(unused))
 {
-	bool stubs = io_initStubs();
-	__io_storeLibraries = atree_create(io_storeAtreeLookup);
-
-	if(!stubs || !__io_storeLibraries)
+	if(!io_initStubs() || !io_moduleInit())
 		return false;
 
-	__io_libio = io_libraryCreateWithFile("libio.so"); // This is the essential kernel library which MUST be present
-	if(__io_libio)
-	{
-		dbg("libio.so loaded at %p", __io_libio->relocBase);
+	__io_storeLibraries = atree_create(io_storeAtreeLookup);
+	if(!__io_storeLibraries)
+		return false;
 
-		bool result = io_storeAddLibrary(__io_libio);
-		if(!result)
+	// Load the two essential kernel libraries
+	__io_libkernel = io_libraryCreateWithFile("libkernel.so");
+	__io_libio     = io_libraryCreateWithFile("libio.so");
+
+	if(__io_libkernel && __io_libio)
+	{
+		// Relocate and link into the kernel
+		bool result1 = io_storeAddLibrary(__io_libkernel);
+		bool result2 = io_storeAddLibrary(__io_libio);
+		
+		if(!result1 || !result2)
 		{
-			dbg("Couldn't add libio.so to the iostore!");
+			if(!result1)
+				dbg("Couldn't add libkernel.so to the iostore!");
+
+			if(!result2)
+				dbg("Couldn't add libio.so to the iostore!");
+
 			return false;
 		}
-
-		for(size_t i=0; i<__io_libio->initArrayCount; i++)
-		{
-			uintptr_t ptr = __io_libio->initArray[i];
-			if(ptr == 0x0 || ptr == UINT32_MAX)
-				continue;
-
-			io_module_init_t init = (io_module_init_t)ptr;
-			init();
-		}
+		
+		io_storeCallInitFunctions(__io_libkernel);
+		io_storeCallInitFunctions(__io_libio);
 
 		libio_init_t libio_init = (libio_init_t)io_libraryFindSymbol(__io_libio, "libio_init");
 		if(!libio_init)
@@ -213,6 +251,7 @@ bool io_init(void *UNUSED(unused))
 			return false;
 		}
 
+		dbg("libkernel.so at \16\27%p\16\31, libio.so at \16\27%p\16\31", __io_libkernel->relocBase, __io_libio->relocBase);
 		return libio_init();
 	}
 

@@ -1,6 +1,6 @@
 //
-//  IOThread.h
-//  libio
+//  string.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,55 +16,23 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOTHREAD_H_
-#define _IOTHREAD_H_
+#ifndef _LIBKERNEL_STRING_H_
+#define _LIBKERNEL_STRING_H_
 
-#include <libkernel/spinlock.h>
+#include "base.h"
+#include "stdint.h"
 
-#include "IOTypes.h"
-#include "IOObject.h"
-#include "IORunLoop.h"
-#include "IODictionary.h"
-#include "IOString.h"
+kern_extern void *memset(void *dst, int c, size_t size);
+kern_extern void *memcpy(void *dst, const void *src, size_t size);
 
-class IOAutoreleasePool;
+kern_extern char *strcpy(char *dst, const char *src);
+kern_extern size_t strlcpy(char *dst, const char *src, size_t size);
+kern_extern size_t strlen(const char *string);
 
-class IOThread : public IOObject
-{
-friend class IOObject;
-friend class IORunLoop;
-friend class IOAutoreleasePool;
-public:
-	typedef void (*Function)(IOThread *thread);
+kern_extern int strcmp(const char *str1, const char *str2);
+kern_extern int strncmp(const char *str1, const char *str2, size_t size);
 
-	IOThread *initWithFunction(IOThread::Function function);
+kern_extern char *strstr(char *str1, const char *str2);
+kern_extern char *strpbrk(char *str1, const char *str2);
 
-	void detach();
-	IORunLoop *getRunLoop();
-
-	void setName(IOString *name);
-	void setPropertyForKey(IOObject *property, IOObject *key);
-	IOObject *propertyForKey(IOObject *key); 
-
-	static IOThread *currentThread();
-	static IOThread *withFunction(IOThread::Function function);
-	
-private:
-	virtual void free();
-	static void __threadEntry();
-
-	uint32_t _id;
-	IOThread::Function _entry;
-	bool _detached;
-
-	kern_spinlock_t _lock;
-
-	IOString *_name;
-	IORunLoop *_runLoop;
-	IOAutoreleasePool *_topPool;
-	IODictionary *_properties;
-
-	IODeclareClass(IOThread)
-};
-
-#endif /* _IOTHREAD_H_ */
+#endif /* _LIBKERNEL_STRING_H_ */

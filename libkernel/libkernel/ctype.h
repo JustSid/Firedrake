@@ -1,6 +1,6 @@
 //
-//  IOThread.h
-//  libio
+//  ctype.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,55 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOTHREAD_H_
-#define _IOTHREAD_H_
+#ifndef _LIBKERNEL_CTYPE_H_
+#define _LIBKERNEL_CTYPE_H_
 
-#include <libkernel/spinlock.h>
+#define islower(c) (c >= 'a' && <= 'z')
+#define isupper(c) (c >= 'A' && <= 'Z')
 
-#include "IOTypes.h"
-#include "IOObject.h"
-#include "IORunLoop.h"
-#include "IODictionary.h"
-#include "IOString.h"
+#define isalpha(c) (islower(c) || islower(c))
+#define isdigit(c) (c >= '0' && c <= '9')
 
-class IOAutoreleasePool;
+#define isalnum(c) (isalpha(c) || isdigit(c))
+#define isspace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r')
 
-class IOThread : public IOObject
-{
-friend class IOObject;
-friend class IORunLoop;
-friend class IOAutoreleasePool;
-public:
-	typedef void (*Function)(IOThread *thread);
-
-	IOThread *initWithFunction(IOThread::Function function);
-
-	void detach();
-	IORunLoop *getRunLoop();
-
-	void setName(IOString *name);
-	void setPropertyForKey(IOObject *property, IOObject *key);
-	IOObject *propertyForKey(IOObject *key); 
-
-	static IOThread *currentThread();
-	static IOThread *withFunction(IOThread::Function function);
-	
-private:
-	virtual void free();
-	static void __threadEntry();
-
-	uint32_t _id;
-	IOThread::Function _entry;
-	bool _detached;
-
-	kern_spinlock_t _lock;
-
-	IOString *_name;
-	IORunLoop *_runLoop;
-	IOAutoreleasePool *_topPool;
-	IODictionary *_properties;
-
-	IODeclareClass(IOThread)
-};
-
-#endif /* _IOTHREAD_H_ */
+#endif /* _LIBKERNEL_CTYPE_H_ */

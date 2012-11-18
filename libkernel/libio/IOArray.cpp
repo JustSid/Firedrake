@@ -16,10 +16,10 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/string.h>
+#include <libkernel/string.h>
+#include <libkernel/kalloc.h>
 
 #include "IOArray.h"
-#include "IOMemory.h"
 
 #ifdef super
 #undef super
@@ -44,7 +44,7 @@ IOArray *IOArray::init()
 		_capacity = _changeSize = 5;
 		_count = 0;
 
-		_objects = (IOObject **)IOMalloc(_capacity * sizeof(IOObject));
+		_objects = (IOObject **)kalloc(_capacity * sizeof(IOObject));
 		if(!_objects)
 		{
 			release();
@@ -63,7 +63,7 @@ IOArray *IOArray::initWithCapacity(uint32_t capacity)
 		_count = 0;
 		_changeSize = 5;
 
-		_objects = (IOObject **)IOMalloc(_capacity * sizeof(IOObject));
+		_objects = (IOObject **)kalloc(_capacity * sizeof(IOObject));
 		if(!_objects)
 			return 0;
 	}
@@ -79,7 +79,7 @@ void IOArray::free()
 		object->release();
 	}
 
-	IOFree(_objects);
+	kfree(_objects);
 	super::free();
 }
 
@@ -98,11 +98,11 @@ void IOArray::addObject(IOObject *object)
 	}
 
 
-	IOObject **temp = (IOObject **)IOMalloc((_capacity + _changeSize) * sizeof(IOObject));
+	IOObject **temp = (IOObject **)kalloc((_capacity + _changeSize) * sizeof(IOObject));
 	if(temp)
 	{
 		memcpy(temp, _objects, _count * sizeof(IOObject));
-		IOFree(_objects);
+		kfree(_objects);
 
 		_objects  = temp;
 		_capacity = _capacity + _changeSize;
@@ -133,9 +133,9 @@ void IOArray::removeObject(uint32_t index)
 
 	if((_capacity - (_changeSize * 2)) > _count)
 	{
-		IOObject **temp = (IOObject **)IOMalloc((_count + _changeSize) * sizeof(IOObject));
+		IOObject **temp = (IOObject **)kalloc((_count + _changeSize) * sizeof(IOObject));
 		memcpy(temp, _objects, _count * sizeof(IOObject));
-		IOFree(_objects);
+		kfree(_objects);
 
 		_objects = temp;
 		_capacity = _count + _changeSize;

@@ -21,7 +21,6 @@
 
 #include "IOTypes.h"
 #include "IOSymbol.h"
-#include "IOMemory.h"
 #include "IOLog.h"
 
 class IOString;

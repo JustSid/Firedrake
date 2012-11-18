@@ -1,6 +1,6 @@
 //
-//  IOMemory.h
-//  libio
+//  test.c
+//  libtest
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,15 +16,22 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOMEMORY_H_
-#define _IOMEMORY_H_
+#include <libkernel/libkernel.h>
 
-#include "IOTypes.h"
-
-extern "C" 
+bool test_start(kern_module_t *module)
 {
-	void *IOMalloc(size_t size);
-	void IOFree(void *mem);
+	printf("test_start() %s", module->name);
+
+	kern_moduleRelease(module);
+
+	return true;
 }
 
-#endif
+bool test_stop(kern_module_t *module)
+{
+	printf("test_stop() %s", module->name);
+	return true;
+}
+
+kern_start_stub(test_start)
+kern_stop_stub(test_stop)

@@ -16,8 +16,8 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libkernel/kalloc.h>
 #include "IOObject.h"
-#include "IOMemory.h"
 #include "IOString.h"
 #include "IOSymbol.h"
 #include "IOThread.h"
@@ -48,7 +48,7 @@ void IOObject::release()
 	if((-- retainCount) == 0)
 	{
 		free();
-		IOFree(this);
+		kfree(this);
 
 		return;
 	}

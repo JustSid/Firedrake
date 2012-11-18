@@ -6,7 +6,7 @@ OBJS = $(addsuffix .o, $(basename $(SRCS)))
 
 LDFLAGS += -L../libkernel/
 
-libio.so: $(OBJS)
+libtest.so: $(OBJS)
 	$(LD) $(LDFLAGS) -o $@ $^ -lkernel
 
 %.o: %.c

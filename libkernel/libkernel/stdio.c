@@ -1,6 +1,6 @@
 //
 //  stdio.c
-//  libio
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -19,10 +19,7 @@
 #include "stdio.h"
 #include "string.h"
 #include "stdlib.h"
-
-#include "IOObject.h"
-#include "IOString.h"
-#include "IOLog.h"
+#include "ctype.h"
 
 #define kVsnprintfFlagRightAlign (1 << 0) // '-'
 #define kVsnprintfFlagForceSign  (1 << 1) // '+'
@@ -31,10 +28,16 @@
 int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 {
 	size_t written = 0;
+	size_t total = 0;
+
 	uint32_t index = 0;
+	bool keepWriting = true;
 	
-	while(format[index] != '\0' && written < size)
+	while(format[index] != '\0')
 	{
+		if(written >= size)
+			keepWriting = false;
+
 		if(format[index] == '%')
 		{
 			index ++;
@@ -71,7 +74,6 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 				break;
 			}
 
-
 			// Get the width, if supplied
 			long width = 0;
 			while(isdigit(format[index]))
@@ -87,20 +89,31 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 			{
 				case 'c':
 				{
-					char character = (char)va_arg(arg, int);
-					buffer[written ++] = (char)character;
+					if(keepWriting)
+					{
+						char character = (char)va_arg(arg, int);
+						buffer[written ++] = (char)character;
+					}
+
+					total ++;
 					break;
 				}
 				
 				case 's':
 				{
-					const char *string = va_arg(arg, char *);
+					char *string = va_arg(arg, char *);
 					if(!string)
-						string = "(null)";
+						string = (char *)"(null)";
 					
-					while(*string != '\0' && written < size)
+					while(*string != '\0')
 					{
-						buffer[written ++] = *string++;
+						if(keepWriting && written < size)
+						{
+							buffer[written ++] = *string;
+						}
+
+						total ++;
+						string ++;
 					}
 					
 					break;
@@ -131,36 +144,54 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 						_itostr(value, base, string, (format[index] == 'x'));
 					}
 
+				
+					
+					while(*prefix != '\0')
+					{
+						if(keepWriting && written < size)
+							buffer[written ++] = *prefix;
 
-					size_t length = strlen(prefix) + strlen(string);
-					width -= length;
+						total ++;
+						prefix ++;
+					}
 
 					// Left pad
 					if(!(flags & kVsnprintfFlagRightAlign))
 					{
-						while(width > 0 && written < size)
+						width -=  strlen(string);
+
+						while(width > 0)
 						{
-							buffer[written ++] = (flags & kVsnprintfZeroPad) ? '0' : ' ';
+							if(keepWriting && written < size)
+								buffer[written ++] = (flags & kVsnprintfZeroPad) ? '0' : ' ';
+
 							width --;
+							total ++;
 						}
 					}
 					
 					// Print the actual string
-					for(int i=0; i<2; i++)
+					char *printString = (char *)string;
+					while(*printString != '\0')
 					{
-						const char *printStr = (i == 0) ? prefix : string;
-						while(*printStr != '\0' && written < size)
-						{
-							buffer[written ++] = *printStr++;
-						}
+						if(keepWriting && written < size)
+							buffer[written ++] = *printString;
+
+						total ++;
+						printString ++;
 					}
 
 					// Right pad
 					if((flags & kVsnprintfFlagRightAlign))
 					{
-						while(width > 0 && written < size)
+						width -=  strlen(string);
+
+						while(width > 0)
 						{
-							buffer[written ++] = ' ';
+							if(keepWriting && written < size)
+								buffer[written ++] = ' ';
+
+							total ++;
 							width --;
 						}
 					}
@@ -168,63 +199,38 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					
 					break;
 				}
-
-				case '@':
-				{
-					IOObject *object = va_arg(arg, IOObject *);
-					if(!object)
-					{
-						const char *string = "(null)";
-						while(*string != '\0' && written < size)
-						{
-							buffer[written ++] = *string++;
-						}
-					}
-					else
-					{
-						IOString *string = object->description();
-
-						const char *printStr = string->CString();
-						while(*printStr != '\0' && written < size)
-						{
-							buffer[written ++] = *printStr++;
-						}
-					}
-					break;
-				}
 					
 				case '%':
 				{
-					buffer[written++] = '%';		
+					if(keepWriting)
+						buffer[written ++] = '%';		
+
+					total ++;
 					break;
 				}
 					
 				default:
-				{
-					buffer[written++] = '%';	
-					buffer[written++] = format[index];
 					break;
-				}
 			}
 		}
 		else
 		{
-			buffer[written++] = format[index];
+			if(keepWriting)
+				buffer[written ++] = format[index];
+
+			total ++;
 		}
 		
 		index ++;
 	}
 	
-	if(written >= size)
+	if(buffer)
 	{
-		buffer[written - 1] = '\0';	
-	}
-	else
-	{
-		buffer[written] = '\0';
+		index = (written >= size) ? written - 1 : written;
+		buffer[index] = '\0';
 	}
 	
-	return (int)written;
+	return (int)total;
 }
 
 int vsprintf(char *buffer, const char *format, va_list arg)
@@ -252,4 +258,20 @@ int sprintf(char *dst, const char *format, ...)
 	va_end(param);
 	
 	return written;
+}
+
+void __IOPrimitiveLog(const char *message);
+
+void printf(const char *format, ...)
+{
+	
+	va_list args;
+	va_start(args, format);
+
+	char buffer[1024];
+	vsnprintf(buffer, 1024, format, args);
+
+	__IOPrimitiveLog(buffer);
+
+	va_end(args);
 }

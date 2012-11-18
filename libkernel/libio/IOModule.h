@@ -48,14 +48,16 @@ private:
 
 #define IOModuleRegister(class) \
 	extern "C" { \
-		void *IOModulePublish() \
+		bool _kern_start(kern_module_t *kmod) \
 		{ \
 			IOModule *module = class::alloc()->init(); \
-			return module; \
+			kmod->module = (void *)module; \
+			return (module != 0); \
 		} \
-		void IOModuleUnpublish(IOModule *module) \
+		bool _kern_stop(kern_module_t *kmod) \
 		{ \
 			module->unpublish(); \
+			return true; \
 		} \
 	} \
 	

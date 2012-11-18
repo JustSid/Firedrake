@@ -1,6 +1,6 @@
 //
-//  IOThread.h
-//  libio
+//  module.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,55 +16,35 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOTHREAD_H_
-#define _IOTHREAD_H_
+#ifndef _LIBKERNEL_MODULE_H_
+#define _LIBKERNEL_MODULE_H_
 
-#include <libkernel/spinlock.h>
+#include "base.h"
+#include "stdint.h"
+#include "spinlock.h"
 
-#include "IOTypes.h"
-#include "IOObject.h"
-#include "IORunLoop.h"
-#include "IODictionary.h"
-#include "IOString.h"
+struct kern_module_s;
 
-class IOAutoreleasePool;
+typedef bool (*kern_module_start_t)(struct kern_module_s *module);
+typedef bool (*kern_module_stop_t)(struct kern_module_s *module);
 
-class IOThread : public IOObject
+typedef struct kern_module_s
 {
-friend class IOObject;
-friend class IORunLoop;
-friend class IOAutoreleasePool;
-public:
-	typedef void (*Function)(IOThread *thread);
+	void *library;
+	char *name;
 
-	IOThread *initWithFunction(IOThread::Function function);
+	kern_spinlock_t lock;
 
-	void detach();
-	IORunLoop *getRunLoop();
+	void *module;
+	uint32_t references;
 
-	void setName(IOString *name);
-	void setPropertyForKey(IOObject *property, IOObject *key);
-	IOObject *propertyForKey(IOObject *key); 
+	kern_module_start_t start;
+	kern_module_stop_t stop;
+} kern_module_t;
 
-	static IOThread *currentThread();
-	static IOThread *withFunction(IOThread::Function function);
-	
-private:
-	virtual void free();
-	static void __threadEntry();
+kern_extern kern_module_t *kern_moduleWithName(const char *name);
 
-	uint32_t _id;
-	IOThread::Function _entry;
-	bool _detached;
+kern_extern void kern_moduleRetain(kern_module_t *module);
+kern_extern void kern_moduleRelease(kern_module_t *module);
 
-	kern_spinlock_t _lock;
-
-	IOString *_name;
-	IORunLoop *_runLoop;
-	IOAutoreleasePool *_topPool;
-	IODictionary *_properties;
-
-	IODeclareClass(IOThread)
-};
-
-#endif /* _IOTHREAD_H_ */
+#endif /* _LIBKERNEL_MODULE_H_ */

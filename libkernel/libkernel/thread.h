@@ -1,6 +1,6 @@
 //
-//  string.h
-//  libio
+//  thread.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,34 +16,18 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-/*
- * Overview:
- * Implements string and byte functions
- */
-#ifndef _STRING_H_
-#define _STRING_H_
+#ifndef _LIBKERNEL_THREAD_H_
+#define _LIBKERNEL_THREAD_H_
 
-#include <IOTypes.h>
- 
-#define isdigit(c) (c >= '0' && c <= '9')
-#define isspace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r')
+#include "stdint.h"
+#include "base.h"
 
-extern "C"
-{
+typedef uint32_t thread_t;
+typedef void (*thread_entry_t)(void *);
 
-	void *memset(void *dst, int c, size_t size);
-	void *memcpy(void *dst, const void *src, size_t size);
+kern_extern thread_t kern_threadCreate(thread_entry_t entry, void *arg);
+kern_extern thread_t kern_threadCurrent();
 
-	char *strcpy(char *dst, const char *src);
-	size_t strlcpy(char *dst, const char *src, size_t size); // Similar to strncpy, but appends the NULL byte always!
-	size_t strlen(const char *string);
+kern_extern void thread_setName(thread_t thread, const char *name);
 
-	int strcmp(const char *str1, const char *str2);
-	int strncmp(const char *str1, const char *str2, size_t size);
-
-	char *strstr(char *str1, const char *str2);
-	char *strpbrk(char *str1, const char *str2);
-
-}
-
-#endif /* _STRING_H_ */
+#endif /* _LIBKERNEL_THREAD_H_ */

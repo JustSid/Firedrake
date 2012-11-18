@@ -5,7 +5,7 @@ runobjdump=true
 ## Arrays
 programs=(hellostatic)
 libraries=()
-drivers=(libio libps2)
+drivers=(libkernel libio libtest)
 
 ## Misc
 grubpath="$BASEDIR/image/boot/grub/grub.cfg"

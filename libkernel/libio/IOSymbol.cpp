@@ -16,11 +16,12 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libkernel/kalloc.h>
+
 #include "IOSymbol.h"
 #include "IOObject.h"
 #include "IOString.h"
 #include "IORuntime.h"
-#include "IOMemory.h"
 #include "IODatabase.h"
 #include "IOLog.h"
 
@@ -80,7 +81,7 @@ size_t IOSymbol::size() const
 
 IOObject *IOSymbol::alloc()
 {
-	IOObject *object = (IOObject *)IOMalloc(_size);
+	IOObject *object = (IOObject *)kalloc(_size);
 	object->prepareWithSymbol(this);
 
 	return object;

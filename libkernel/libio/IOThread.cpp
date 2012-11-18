@@ -32,14 +32,14 @@ IORegisterClass(IOThread, super);
 
 extern "C"
 {
-	uint32_t __IOPrimitiveThreadCreate(void *entry, void *arg);
+	uint32_t __IOPrimitiveThreadCreate(void *entry, void *arg1, void *arg2);
 	uint32_t __IOPrimitiveThreadID();
 	void __IOPrimitiveThreadSetName(uint32_t id, const char *name);
 	void *__IOPrimitiveThreadAccessArgument(size_t index);
 	void __IOPrimitiveThreadDied();
 }
 
-static IOSpinlock __IOThreadLock = IO_SPINLOCK_INIT;
+static kern_spinlock_t __IOThreadLock = KERN_SPINLOCK_INIT;
 static IODictionary *__IOThreadDictionary = 0;
 
 
@@ -53,7 +53,7 @@ IOThread *IOThread::initWithFunction(IOThread::Function function)
 
 		_detached = false;
 		_entry    = function;
-		_lock     = IO_SPINLOCK_INIT;
+		_lock     = KERN_SPINLOCK_INIT;
 	}
 
 	return this;
@@ -84,9 +84,9 @@ IOThread *IOThread::currentThread()
 	IOThread *thread = 0;
 	IONumber *threadID = IONumber::alloc()->initWithUInt32(__IOPrimitiveThreadID());
 
-	IOSpinlockLock(&__IOThreadLock);
+	kern_spinlock_lock(&__IOThreadLock);
 	thread = (IOThread *)__IOThreadDictionary->objectForKey(threadID);
-	IOSpinlockUnlock(&__IOThreadLock);
+	kern_spinlock_unlock(&__IOThreadLock);
 
 	threadID->release();
 	return thread;
@@ -98,8 +98,8 @@ void IOThread::__threadEntry()
 	IOThread *thread = (IOThread *)__IOPrimitiveThreadAccessArgument(0);
 	IONumber *threadID = IONumber::alloc()->initWithUInt32(thread->_id);
 
-	IOSpinlockLock(&thread->_lock);
-	IOSpinlockLock(&__IOThreadLock);
+	kern_spinlock_lock(&thread->_lock);
+	kern_spinlock_lock(&__IOThreadLock);
 	{
 		if(!__IOThreadDictionary)
 		{
@@ -110,8 +110,8 @@ void IOThread::__threadEntry()
 		
 		__IOThreadDictionary->setObjectForKey(thread, threadID);
 	}
-	IOSpinlockUnlock(&__IOThreadLock);
-	IOSpinlockUnlock(&thread->_lock);
+	kern_spinlock_unlock(&__IOThreadLock);
+	kern_spinlock_unlock(&thread->_lock);
 
 	// Create a run loop for the thread
 	thread->_runLoop = IORunLoop::alloc()->init();
@@ -119,12 +119,12 @@ void IOThread::__threadEntry()
 	thread->_runLoop->release();
 
 
-	IOSpinlockLock(&__IOThreadLock);
+	kern_spinlock_lock(&__IOThreadLock);
 	{
 		__IOThreadDictionary->removeObjectForKey(threadID);
 		threadID->release();
 	}
-	IOSpinlockUnlock(&__IOThreadLock);
+	kern_spinlock_unlock(&__IOThreadLock);
 
 	thread->release();
 	__IOPrimitiveThreadDied();
@@ -132,17 +132,17 @@ void IOThread::__threadEntry()
 
 void IOThread::detach()
 {
-	IOSpinlockLock(&_lock);
+	kern_spinlock_lock(&_lock);
 
 	if(!_detached)
 	{
 		retain();
 
 		_detached = true;
-		_id = __IOPrimitiveThreadCreate((void *)&IOThread::__threadEntry, this);
+		_id = __IOPrimitiveThreadCreate((void *)&IOThread::__threadEntry, this, 0);
 	}
 
-	IOSpinlockUnlock(&_lock);
+	kern_spinlock_unlock(&_lock);
 }
 
 IORunLoop *IOThread::getRunLoop()
@@ -157,7 +157,7 @@ void IOThread::setName(IOString *name)
 
 void IOThread::setPropertyForKey(IOObject *property, IOObject *key)
 {
-	IOSpinlockLock(&_lock);
+	kern_spinlock_lock(&_lock);
 
 	if(!_detached)
 	{
@@ -167,21 +167,21 @@ void IOThread::setPropertyForKey(IOObject *property, IOObject *key)
 		_properties->setObjectForKey(property, key);
 	}
 
-	IOSpinlockUnlock(&_lock);
+	kern_spinlock_unlock(&_lock);
 }
 
 IOObject *IOThread::propertyForKey(IOObject *key)
 {
-	IOSpinlockLock(&_lock);
+	kern_spinlock_lock(&_lock);
 
 	if(!_properties)
 	{
-		IOSpinlockUnlock(&_lock);
+		kern_spinlock_unlock(&_lock);
 		return 0;
 	}
 
 	IOObject *property = _properties->objectForKey(key);
-	IOSpinlockUnlock(&_lock);
+	kern_spinlock_unlock(&_lock);
 
 	return property;
 }

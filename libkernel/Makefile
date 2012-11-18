@@ -1,4 +1,4 @@
-ALLDIRS = libio
+ALLDIRS = libkernel libio libtest
 
 all:
 	for i in $(ALLDIRS); do make -C $$i; done

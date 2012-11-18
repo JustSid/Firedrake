@@ -13,8 +13,6 @@
 		"sublimeclang_options":
 		[
 			"-I${folder:${project_path:libkernel.sublime-project}}/.",
-			"-I${folder:${project_path:libkernel.sublime-project}}/libio/.",
-			"-I${folder:${project_path:libkernel.sublime-project}}/libps2/.",
 			"-m32",
 			"-std=c++11",
 			"-Wall",

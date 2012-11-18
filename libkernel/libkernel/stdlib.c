@@ -1,6 +1,6 @@
 //
 //  stdlib.c
-//  libio
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -17,6 +17,7 @@
 //
 
 #include "stdlib.h"
+#include "ctype.h"
 #include "string.h"
 
 int atoi(const char *string)
@@ -48,62 +49,6 @@ int atoi(const char *string)
 	// FIXME: Underflows are still possible, in rare cases...
 	return negative ? -result : result;
 }
-
-double atof(const char *string)
-{
-	while(isspace(*string))
-		string ++; // Skip any leading whitespace
-
-	double result = 0.0;
-	bool negative = (*string == '-');
-	bool positive = (*string == '+');
-
-	int  exponent = 0;
-	char character;
-
-	if(negative || positive)
-		string ++; // Skip the '-' or '+' sign
-
-	while((character = *string++) != '\0' && isdigit(character)) 
-	{
-		double value = (double)character - '0';
-		result = (result * 10.0) + value;
-   	}
-
-	if(character == '.')
-	{
-   		string ++;
-
-   		while((character = *string++) != '\0' && isdigit(character)) 
-		{
-			double value = (double)character - '0';
-			result = (result * 10.0) + value;
-
-			exponent --;
-	   }
-	}
-
-	if(character == 'e' || character == 'E')
-	{
-		// TODO: Could be made faster by using either an inlined atoi version or just reimplementing what we need from atoi!
-		exponent += atoi(string);
-	}
-
-   	// Process the exponent
-   	while(exponent > 0)
-   	{
-   		result *= 10.0;
-   		exponent --;
-   	}
-   	while(exponent < 0)
-   	{
-   		result *= 0.1;
-   		exponent ++;
-   	}
-
-	return negative ? -result : result;
-}
-
 
 int _itostr(int i, int base, char *buffer, bool lowerCase)
 {

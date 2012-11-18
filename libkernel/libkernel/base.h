@@ -1,6 +1,6 @@
 //
-//  IOSpinlock.h
-//  libio
+//  base.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,27 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOSPINLOCK_H_
-#define _IOSPINLOCK_H_
-
-#include "IOTypes.h"
-
-typedef uint8_t IOSpinlock;
-
-#define IO_SPINLOCK_INIT 0
-#define IO_SPINLOCK_INIT_LOCKED 1
+#ifndef _LIBKERNEL_BASE_H_
+#define _LIBKERNEL_BASE_H_
 
 #ifdef __cplusplus
-extern "C"
-{
+	#define kern_extern extern "C"
+#else
+	#define kern_extern extern
 #endif
 
-	void IOSpinlockLock(IOSpinlock *lock);
-	bool IOSpinlockTryLock(IOSpinlock *lock);
-	void IOSpinlockUnlock(IOSpinlock *lock);
+#define UNUSED(x) UNUSED_ ## x __attribute__((unused))
 
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* _IOSPINLOCK_H_ */
+#endif /* _LIBKERNEL_BASE_H_ */

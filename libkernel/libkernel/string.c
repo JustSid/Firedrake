@@ -1,6 +1,6 @@
 //
 //  string.c
-//  libio
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -49,15 +49,20 @@ void *memcpy(void *dst, const void *src, size_t size)
 
 char *strcpy(char *dst, const char *src)
 {
-	while(*src != '\0')
+	char *d = dst;
+
+	while(1)
 	{
 		*dst = *src;
+
+		if(*src == '\0')
+			break;
 
 		dst ++;
 		src ++;
 	}
 
-	return dst;
+	return d;
 }
 
 size_t strlcpy(char *dst, const char *src, size_t size)

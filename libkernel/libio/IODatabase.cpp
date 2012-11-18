@@ -16,7 +16,9 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/string.h>
+#include <libkernel/string.h>
+#include <libkernel/base.h>
+
 #include "IODatabase.h"
 #include "IOService.h"
 #include "IOAutoreleasePool.h"
@@ -31,7 +33,7 @@ IOString *IOServiceAttributeProperties = 0;
 
 bool IODatabase::init()
 {
-	_lock = IO_SPINLOCK_INIT;
+	_lock = KERN_SPINLOCK_INIT;
 	_symbols = new __IOPointerDictionary;
 	_symbols->retainCount = 1;
 	_symbols->initWithCapacity(20);
@@ -61,9 +63,9 @@ IODatabase *IODatabase::database()
 
 IOSymbol *IODatabase::symbolWithName(IOString *name)
 {
-	IOSpinlockLock(&_lock);
+	kern_spinlock_lock(&_lock);
 	IOSymbol *symbol = (IOSymbol *)_symbols->pointerForKey(name);
-	IOSpinlockUnlock(&_lock);
+	kern_spinlock_unlock(&_lock);
 
 	return symbol;
 }
@@ -100,7 +102,7 @@ void IODatabase::fixSymbols(IOSymbol *stringSymbol)
 
 bool IODatabase::publishSymbol(IOSymbol *symbol)
 {
-	IOSpinlockLock(&_lock);
+	kern_spinlock_lock(&_lock);
 
 	IOString *key = (IOString *)symbol->name();
 	bool exists = (_symbols->pointerForKey(key) != 0);
@@ -130,7 +132,7 @@ bool IODatabase::publishSymbol(IOSymbol *symbol)
 		}
 	}
 
-	IOSpinlockUnlock(&_lock);
+	kern_spinlock_unlock(&_lock);
 
 	return (exists == false);
 }
@@ -246,7 +248,7 @@ IOService *IODatabase::serviceMatchingAttributes(IODictionary *attributes)
 	IOAutoreleasePool *pool = IOAutoreleasePool::alloc();
 	pool->init();
 
-	IOSpinlockLock(&_lock);
+	kern_spinlock_lock(&_lock);
 
 	IOIterator *iterator = _services->objectIterator();
 	IODatabaseEntry *entry;
@@ -261,7 +263,7 @@ IOService *IODatabase::serviceMatchingAttributes(IODictionary *attributes)
 		}
 	}
 
-	IOSpinlockUnlock(&_lock);
+	kern_spinlock_unlock(&_lock);
 	pool->release();
 
 	if(bestMatch)
@@ -277,7 +279,7 @@ IOService *IODatabase::serviceMatchingAttributes(IODictionary *attributes)
 
 IOReturn IODatabase::registerService(IOSymbol *symbol, IODictionary *attributes)
 {
-	IOSpinlockLock(&_lock);
+	kern_spinlock_lock(&_lock);
 
 	if(!_services)
 	{
@@ -291,7 +293,7 @@ IOReturn IODatabase::registerService(IOSymbol *symbol, IODictionary *attributes)
 	if(entry)
 	{
 		IOLog("IODatabase::registerService(), identifier %@ already taken!", identifier);
-		IOSpinlockUnlock(&_lock);
+		kern_spinlock_unlock(&_lock);
 
 		return kIOReturnSlotTaken;
 	}
@@ -299,7 +301,7 @@ IOReturn IODatabase::registerService(IOSymbol *symbol, IODictionary *attributes)
 	entry = IODatabaseEntry::withSymbolAndAttributes(symbol, attributes);
 	_services->setObjectForKey(entry, identifier);
 	
-	IOSpinlockUnlock(&_lock);
+	kern_spinlock_unlock(&_lock);
 	return kIOReturnSuccess;
 }
 

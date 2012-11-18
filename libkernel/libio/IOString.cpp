@@ -16,11 +16,11 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/string.h>
-#include <libc/stdio.h>
+#include <libkernel/string.h>
+#include <libkernel/stdio.h>
+#include <libkernel/kalloc.h>
 
 #include "IOString.h"
-#include "IOMemory.h"
 
 #ifdef super
 #undef super
@@ -76,7 +76,7 @@ IOString *IOString::initWithString(const IOString *other)
 	if(init())
 	{
 		_length = other->_length;
-		_string = (char *)IOMalloc(other->_length + 1);
+		_string = (char *)kalloc(other->_length + 1);
 
 		if(_string)
 		{
@@ -94,7 +94,7 @@ IOString *IOString::initWithCString(const char *cstring)
 	if(init())
 	{
 		_length = strlen(cstring);
-		_string = (char *)IOMalloc(_length + 1);
+		_string = (char *)kalloc(_length + 1);
 
 		if(_string)
 		{
@@ -118,7 +118,7 @@ IOString *IOString::initWithFormat(const char *cstring, ...)
 		vsnprintf(buffer, 1024, cstring, args);
 
 		_length = strlen(buffer);
-		_string = (char *)IOMalloc(_length + 1);
+		_string = (char *)kalloc(_length + 1);
 
 		if(_string)
 		{
@@ -143,7 +143,7 @@ IOString *IOString::initWithVariadic(const char *format, va_list args)
 		vsnprintf(buffer, 1024, format, args);
 
 		_length = strlen(buffer);
-		_string = (char *)IOMalloc(_length + 1);
+		_string = (char *)kalloc(_length + 1);
 
 		if(_string)
 		{
@@ -161,7 +161,7 @@ IOString *IOString::initWithVariadic(const char *format, va_list args)
 void IOString::free()
 {
 	if(_string)
-		IOFree(_string);
+		kfree(_string);
 
 	super::free();
 }

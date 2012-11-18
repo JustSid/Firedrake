@@ -16,9 +16,11 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libkernel/base.h>
+#include <libkernel/kalloc.h>
+
 #include "IODictionary.h"
 #include "IORuntime.h"
-#include "IOMemory.h"
 
 #ifdef super
 #undef super
@@ -107,7 +109,7 @@ IODictionary *IODictionary::init()
 		_capacity = __IODictionaryCapacity[0];
 		_count = 0;
 
-		_buckets = (IODictionaryBucket **)IOMalloc(_capacity * sizeof(IODictionaryBucket **));
+		_buckets = (IODictionaryBucket **)kalloc(_capacity * sizeof(IODictionaryBucket **));
 		if(_buckets == 0)
 		{
 			release();
@@ -133,7 +135,7 @@ IODictionary *IODictionary::initWithCapacity(size_t capacity)
 
 		_count = 0;
 
-		_buckets = (IODictionaryBucket **)IOMalloc(_capacity * sizeof(IODictionaryBucket **));
+		_buckets = (IODictionaryBucket **)kalloc(_capacity * sizeof(IODictionaryBucket **));
 		if(!_buckets)
 		{
 			release();
@@ -166,7 +168,7 @@ void IODictionary::free()
 			}
 		}
 
-		IOFree(_buckets);
+		kfree(_buckets);
 	}
 
 	super::free();
@@ -226,7 +228,7 @@ void IODictionary::rehash(size_t capacity)
 	size_t cCapacity = _capacity;
 
 	_capacity = capacity;
-	_buckets  = (IODictionaryBucket **)IOMalloc(_capacity * sizeof(IODictionaryBucket **));
+	_buckets  = (IODictionaryBucket **)kalloc(_capacity * sizeof(IODictionaryBucket **));
 
 	if(!_buckets)
 	{
@@ -261,7 +263,7 @@ void IODictionary::rehash(size_t capacity)
 		}
 	}
 
-	IOFree(buckets);
+	kfree(buckets);
 }
 
 void IODictionary::expandIfNeeded()
@@ -400,7 +402,7 @@ void __IOPointerDictionary::free()
 			}
 		}
 
-		IOFree(_buckets);
+		kfree(_buckets);
 	}
 
 	super::free();

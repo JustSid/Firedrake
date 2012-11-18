@@ -1,6 +1,6 @@
 //
-//  IOThread.h
-//  libio
+//  entry.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,55 +16,44 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOTHREAD_H_
-#define _IOTHREAD_H_
+#ifndef _LIBKERNEL_ENTRY_H_
+#define _LIBKERNEL_ENTRY_H_
 
-#include <libkernel/spinlock.h>
+#include "module.h"
 
-#include "IOTypes.h"
-#include "IOObject.h"
-#include "IORunLoop.h"
-#include "IODictionary.h"
-#include "IOString.h"
+#ifdef __cplusplus
 
-class IOAutoreleasePool;
+	#define kern_start_stub(function) \
+		extern "C" { \
+			bool _kern_start(kern_module_t *mod) \
+			{ \
+				return function(mod); \
+			} \
+		} \
 
-class IOThread : public IOObject
-{
-friend class IOObject;
-friend class IORunLoop;
-friend class IOAutoreleasePool;
-public:
-	typedef void (*Function)(IOThread *thread);
+	#define kern_stop_stub(function) \
+		extern "C" { \
+			bool _kern_stop(kern_module_t *mod) \
+			{ \
+				return function(mod); \
+			} \
+		} \
 
-	IOThread *initWithFunction(IOThread::Function function);
+#else
 
-	void detach();
-	IORunLoop *getRunLoop();
+	#define kern_start_stub(function) \
+		extern bool _kern_start(kern_module_t *mod); \
+		bool _kern_start(kern_module_t *mod) \
+		{ \
+			return function(mod); \
+		} \
 
-	void setName(IOString *name);
-	void setPropertyForKey(IOObject *property, IOObject *key);
-	IOObject *propertyForKey(IOObject *key); 
+	#define kern_stop_stub(function) \
+		extern bool _kern_stop(kern_module_t *mod);\
+		bool _kern_stop(kern_module_t *mod) \
+		{ \
+			return function(mod); \
+		} \
 
-	static IOThread *currentThread();
-	static IOThread *withFunction(IOThread::Function function);
-	
-private:
-	virtual void free();
-	static void __threadEntry();
-
-	uint32_t _id;
-	IOThread::Function _entry;
-	bool _detached;
-
-	kern_spinlock_t _lock;
-
-	IOString *_name;
-	IORunLoop *_runLoop;
-	IOAutoreleasePool *_topPool;
-	IODictionary *_properties;
-
-	IODeclareClass(IOThread)
-};
-
-#endif /* _IOTHREAD_H_ */
+#endif /* __cplusplus */
+#endif /* _LIBKERNEL_ENTRY_H_ */

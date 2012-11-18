@@ -1,6 +1,6 @@
 //
-//  string.h
-//  libio
+//  kalloc.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,23 +16,13 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _STDIO_H_
-#define _STDIO_H_
+#ifndef _LIBKERNEL_KALLOC_
+#define _LIBKERNEL_KALLOC_
 
-#include <IOTypes.h>
+#include "base.h"
+#include "stdint.h"
 
-extern "C"
-{
+kern_extern void *kalloc(size_t size);
+kern_extern void kfree(void *pointer);
 
-	int vsnprintf(char *buffer, size_t size, const char *format, va_list arg);
-	int vsprintf(char *buffer, const char *format, va_list arg);
-
-	int snprintf(char *dst, size_t size, const char *format, ...);
-	int sprintf(char *dst, const char *format, ...);
-
-
-	void sys_printf(const char *format, ...);
-	
-}
-
-#endif /* _STDIO_H_ */
+#endif /* _LIBKERNEL_KALLOC_ */

@@ -16,10 +16,11 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/string.h>
+#include <libkernel/string.h>
+#include <libkernel/kalloc.h>
+
 #include "IOAutoreleasePool.h"
 #include "IOThread.h"
-#include "IOMemory.h"
 #include "IORuntime.h"
 
 #ifdef super
@@ -43,7 +44,7 @@ IOAutoreleasePool *IOAutoreleasePool::init()
 		_owner = owner;
 		_count = 0;
 		_size  = 5;
-		_objects = (IOObject **)IOMalloc(_size * sizeof(IOObject *));
+		_objects = (IOObject **)kalloc(_size * sizeof(IOObject *));
 
 		if(_objects)
 		{
@@ -76,7 +77,7 @@ void IOAutoreleasePool::free()
 			object->release();
 		}
 
-		IOFree(_objects);
+		kfree(_objects);
 	}
 
 	super::free();
@@ -89,13 +90,13 @@ void IOAutoreleasePool::addObject(IOObject *object)
 	if(_count >= _size)
 	{
 		size_t nsize = _size * 2;
-		IOObject **nobjects = (IOObject **)IOMalloc(nsize * sizeof(IOObject **));
+		IOObject **nobjects = (IOObject **)kalloc(nsize * sizeof(IOObject **));
 
 		if(!nobjects)
 			panic("IOAutoreleasePool::addObject() failed, not enough memory!");
 
 		memcpy(nobjects, _objects, _size * sizeof(IOObject **));
-		IOFree(_objects);
+		kfree(_objects);
 
 		_objects = nobjects;
 		_size = nsize;

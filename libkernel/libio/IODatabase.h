@@ -19,8 +19,9 @@
 #ifndef _IODATABASE_H_
 #define _IODATABASE_H_
 
+#include <libkernel/spinlock.h>
+
 #include "IOObject.h"
-#include "IOSpinlock.h"
 #include "IODictionary.h"
 #include "IOString.h"
 #include "IOSymbol.h"
@@ -55,7 +56,7 @@ private:
 	bool _symbolsFixed;
 	bool _dictionaryFixed;
 
-	IOSpinlock _lock;
+	kern_spinlock_t _lock;
 
 	__IOPointerDictionary *_symbols;
 	IODictionary *_services;

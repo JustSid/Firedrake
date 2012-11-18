@@ -1,6 +1,6 @@
 //
-//  IOThread.h
-//  libio
+//  asm.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,55 +16,14 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOTHREAD_H_
-#define _IOTHREAD_H_
+#ifndef _LIBKERNEL_ASM_H_
+#define _LIBKERNEL_ASM_H_
 
-#include <libkernel/spinlock.h>
+#define FALIGN 4,0x90
 
-#include "IOTypes.h"
-#include "IOObject.h"
-#include "IORunLoop.h"
-#include "IODictionary.h"
-#include "IOString.h"
+#define EXT(x) x
+#define LEXT(x) x:
 
-class IOAutoreleasePool;
+#define	ENTRY(x) .global EXT(x); .align FALIGN; LEXT(x)
 
-class IOThread : public IOObject
-{
-friend class IOObject;
-friend class IORunLoop;
-friend class IOAutoreleasePool;
-public:
-	typedef void (*Function)(IOThread *thread);
-
-	IOThread *initWithFunction(IOThread::Function function);
-
-	void detach();
-	IORunLoop *getRunLoop();
-
-	void setName(IOString *name);
-	void setPropertyForKey(IOObject *property, IOObject *key);
-	IOObject *propertyForKey(IOObject *key); 
-
-	static IOThread *currentThread();
-	static IOThread *withFunction(IOThread::Function function);
-	
-private:
-	virtual void free();
-	static void __threadEntry();
-
-	uint32_t _id;
-	IOThread::Function _entry;
-	bool _detached;
-
-	kern_spinlock_t _lock;
-
-	IOString *_name;
-	IORunLoop *_runLoop;
-	IOAutoreleasePool *_topPool;
-	IODictionary *_properties;
-
-	IODeclareClass(IOThread)
-};
-
-#endif /* _IOTHREAD_H_ */
+#endif /* _LIBKERNEL_ASM_H_ */

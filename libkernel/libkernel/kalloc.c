@@ -1,6 +1,6 @@
 //
-//  IOSpinlock.S
-//  libio
+//  kalloc.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,45 +16,17 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <IOAsm.h>
+#include "kalloc.h"
 
-ENTRY(IOSpinlockLock)
-	pushl %edi
-	movl 0x8(%esp), %edi
-	movb $0x1, %cl
+extern void *IOMalloc(size_t size);
+extern void IOFree(void *mem);
 
-	jmp IOSpinlockLock_wait
-IOSpinlockLock_wait:
-	int $0x31
+void *kalloc(size_t size)
+{
+	return IOMalloc(size);
+}
 
-IOSpinlockLock_tryObtain:
-	xorb %al, %al
-	lock cmpxchgb %cl, (%edi)
-	jne spinlock_wait
-
-	popl %edi
-	ret
-
-
-ENTRY(IOSpinlockTryLock)
-	pushl %edi
-	movl 0x8(%esp), %edi
-	movb $0x1, %cl
-	xorb %al, %al
-	lock cmpxchgb %cl, (%edi)
-	jne IOSpinlockTryLock_failedObtain
-	movl $0x1, %eax
-	popl %edi
-	ret
-
-IOSpinlockTryLock_failedObtain:
-	xorl %eax, %eax
-	popl %edi
-	ret
-
-
-ENTRY(IOSpinlockUnlock)
-	movl 0x4(%esp), %eax
-	movb $0x0, (%eax)
-	ret
-	
+void kfree(void *pointer)
+{
+	IOFree(pointer);
+}

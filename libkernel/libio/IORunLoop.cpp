@@ -41,7 +41,7 @@ IORunLoop *IORunLoop::init()
 	if(super::init())
 	{
 		_shouldStop = false;
-		_lock = IO_SPINLOCK_INIT;
+		_lock = KERN_SPINLOCK_INIT;
 	}
 
 	return this;

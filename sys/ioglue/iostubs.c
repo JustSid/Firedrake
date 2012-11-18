@@ -40,10 +40,10 @@ void __IOPrimitiveLog(char *message)
 	syslog(LOG_INFO, "%s\n", message);
 }
 
-uint32_t __IOPrimitiveThreadCreate(void *entry, void *arg)
+uint32_t __IOPrimitiveThreadCreate(void *entry, void *arg1, void *arg2)
 {
 	process_t *process = process_getCurrentProcess();
-	thread_t *thread = thread_create(process, (thread_entry_t)entry, 4096, 1, arg);
+	thread_t *thread = thread_create(process, (thread_entry_t)entry, 4096, 1, arg1, arg2);
 
 	return thread->id;
 }
@@ -197,6 +197,9 @@ const char *__io_exportedSymbolNames[] = {
 	"__IOPrimitiveThreadSetName",
 	"__IOPrimitiveThreadDied",
 	"__IOServiceTryRegisterInterrupt",
+	"io_moduleWithName",
+	"io_moduleRetain",
+	"io_moduleRelease",
 	"IOMalloc",
 	"IOFree"
 };
@@ -287,6 +290,7 @@ bool io_initStubs()
 
 		size_t exportedSymbolCount = sizeof(__io_exportedSymbolNames) / sizeof(char *);
 
+		__io_kernelLibrary->name = __io_kernelLibrary->path = "firedrake";
 		__io_kernelLibrary->relocBase = 0x0;
 		__io_exportedSymbols = halloc(NULL, exportedSymbolCount * sizeof(elf_sym_t *));
 

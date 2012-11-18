@@ -19,9 +19,10 @@
 #ifndef _IORUNLOOP_H_
 #define _IORUNLOOP_H_
 
+#include <libkernel/spinlock.h>
+
 #include "IOObject.h"
 #include "IOArray.h"
-#include "IOSpinlock.h"
 
 class IOThread;
 
@@ -40,7 +41,7 @@ private:
 	virtual void free();
 
 	bool _shouldStop;
-	IOSpinlock _lock;
+	kern_spinlock_t _lock;
 
 	IODeclareClass(IORunLoop)
 };

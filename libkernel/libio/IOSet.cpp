@@ -16,8 +16,9 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libkernel/kalloc.h>
+
 #include "IOSet.h"
-#include "IOMemory.h"
 
 #ifdef super
 #undef super
@@ -64,7 +65,7 @@ IOSet *IOSet::init()
 		_capacity = __IOSetCapacity[0];
 		_count = 0;
 
-		_buckets = (IOSetBucket **)IOMalloc(_capacity * sizeof(IOSetBucket **));
+		_buckets = (IOSetBucket **)kalloc(_capacity * sizeof(IOSetBucket **));
 		if(_buckets == 0)
 		{
 			release();
@@ -90,7 +91,7 @@ IOSet *IOSet::initWithCapacity(size_t capacity)
 
 		_count = 0;
 
-		_buckets = (IOSetBucket **)IOMalloc(_capacity * sizeof(IOSetBucket **));
+		_buckets = (IOSetBucket **)kalloc(_capacity * sizeof(IOSetBucket **));
 		if(_buckets == 0)
 		{
 			release();
@@ -122,7 +123,7 @@ void IOSet::free()
 			}
 		}
 
-		IOFree(_buckets);
+		kfree(_buckets);
 	}
 
 	super::free();
@@ -181,7 +182,7 @@ void IOSet::rehash(size_t capacity)
 	size_t cCapacity = _capacity;
 
 	_capacity = capacity;
-	_buckets  = (IOSetBucket **)IOMalloc(_capacity * sizeof(IOSetBucket **));
+	_buckets  = (IOSetBucket **)kalloc(_capacity * sizeof(IOSetBucket **));
 
 	if(!_buckets)
 	{
@@ -215,6 +216,8 @@ void IOSet::rehash(size_t capacity)
 			bucket = next;
 		}
 	}
+
+	kfree(buckets);
 }
 
 void IOSet::expandIfNeeded()

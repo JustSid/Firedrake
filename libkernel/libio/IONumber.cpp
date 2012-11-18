@@ -16,10 +16,11 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/string.h>
+#include <libkernel/string.h>
+#include <libkernel/kalloc.h>
+
 #include "IONumber.h"
 #include "IOString.h"
-#include "IOMemory.h"
 
 #ifdef super
 #undef super
@@ -34,7 +35,7 @@ IONumber *IONumber::initWithBuffer(IONumberType type, void *blob, size_t size)
 {
 	if(super::init())
 	{
-		_buffer = IOMalloc(size);
+		_buffer = kalloc(size);
 		if(!_buffer)
 		{
 			release();
@@ -91,7 +92,7 @@ IONumber *IONumber::initWithUInt64(uint64_t val)
 void IONumber::free()
 {
 	if(_buffer)
-		IOFree(_buffer);
+		kfree(_buffer);
 
 	super::free();
 }

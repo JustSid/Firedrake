@@ -1,6 +1,6 @@
 //
-//  IOThread.h
-//  libio
+//  spinlock.S
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,55 +16,45 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOTHREAD_H_
-#define _IOTHREAD_H_
+#include "asm.h"
 
-#include <libkernel/spinlock.h>
+ENTRY(kern_spinlock_lock)
+	pushl %edi
+	movl 0x8(%esp), %edi
+	movb $0x1, %cl
 
-#include "IOTypes.h"
-#include "IOObject.h"
-#include "IORunLoop.h"
-#include "IODictionary.h"
-#include "IOString.h"
+	jmp kern_spinlock_tryObtain
+kern_spinlock_wait:
+	int $0x31
 
-class IOAutoreleasePool;
+kern_spinlock_tryObtain:
+	xorb %al, %al
+	lock cmpxchgb %cl, (%edi)
+	jne kern_spinlock_wait
 
-class IOThread : public IOObject
-{
-friend class IOObject;
-friend class IORunLoop;
-friend class IOAutoreleasePool;
-public:
-	typedef void (*Function)(IOThread *thread);
+	popl %edi
+	ret
 
-	IOThread *initWithFunction(IOThread::Function function);
 
-	void detach();
-	IORunLoop *getRunLoop();
+ENTRY(kern_spinlock_tryLock)
+	pushl %edi
+	movl 0x8(%esp), %edi
+	movb $0x1, %cl
+	xorb %al, %al
+	lock cmpxchgb %cl, (%edi)
+	jne kern_spinlock_failedObtain
+	movl $0x1, %eax
+	popl %edi
+	ret
 
-	void setName(IOString *name);
-	void setPropertyForKey(IOObject *property, IOObject *key);
-	IOObject *propertyForKey(IOObject *key); 
+kern_spinlock_failedObtain:
+	xorl %eax, %eax
+	popl %edi
+	ret
 
-	static IOThread *currentThread();
-	static IOThread *withFunction(IOThread::Function function);
+
+ENTRY(kern_spinlock_unlock)
+	movl 0x4(%esp), %eax
+	movb $0x0, (%eax)
+	ret
 	
-private:
-	virtual void free();
-	static void __threadEntry();
-
-	uint32_t _id;
-	IOThread::Function _entry;
-	bool _detached;
-
-	kern_spinlock_t _lock;
-
-	IOString *_name;
-	IORunLoop *_runLoop;
-	IOAutoreleasePool *_topPool;
-	IODictionary *_properties;
-
-	IODeclareClass(IOThread)
-};
-
-#endif /* _IOTHREAD_H_ */
