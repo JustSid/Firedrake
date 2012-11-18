@@ -54,6 +54,10 @@ done
 echo -e -n "}" >> $grubpath
 cp "$BASEDIR/../sys/firedrake" "$BASEDIR/image/boot/firedrake"
 
+if [ $runobjdump = true ]; then
+	objdump -d "$BASEDIR/../sys/firedrake" > "$BASEDIR/../sys/dump.txt"
+fi
+
 ## Create the image
 grub-mkrescue --modules="ext2 fshelp boot pc" --output="$BASEDIR/Firedrake.iso" "$BASEDIR/image"
 

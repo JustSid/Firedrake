@@ -487,7 +487,7 @@ void *halloc(heap_t *heap, size_t size)
 	if(!heap)
 		heap = _mm_kernelHeap;
 
-	spinlock_lock(&heap->lock);
+	/*spinlock_lock(&heap->lock);
 
 	heap_zone_t *zone;
 	void *allocation = NULL;
@@ -504,7 +504,9 @@ void *halloc(heap_t *heap, size_t size)
 	if(heap->flags & kHeapFlagSecure)
 		memset(pointer, 0, size);
 
-	return pointer;
+	return pointer;*/
+
+	return mm_alloc(vm_getKernelDirectory(), pageCount(size), VM_FLAGS_KERNEL);
 }
 
 void hfree(heap_t *heap, void *ptr)
@@ -512,7 +514,7 @@ void hfree(heap_t *heap, void *ptr)
 	if(!heap)
 		heap = _mm_kernelHeap;
 
-	spinlock_lock(&heap->lock);
+	/*spinlock_lock(&heap->lock);
 
 	void *allocationPtr = NULL;
 	heap_zone_t *zone = __heap_findZoneWithAllocation(heap, (uintptr_t)ptr, &allocationPtr);
@@ -531,9 +533,10 @@ void hfree(heap_t *heap, void *ptr)
 	__heap_freeAllocation(zone, allocationPtr);
 	__heap_zoneDefragment(zone);
 
-	spinlock_unlock(&heap->lock);
-}
+	spinlock_unlock(&heap->lock);*/
 
+	mm_free(ptr, vm_getKernelDirectory(), 1);
+}
 
 
 bool heap_init(void *UNUSED(unused))
