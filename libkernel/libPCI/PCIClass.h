@@ -1,6 +1,6 @@
 //
-//  kalloc.h
-//  libkernel
+//  PCIClass.h
+//  libPCI
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,17 +16,30 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "kalloc.h"
+#ifndef _PCICLASS_H_
+#define _PCICLASS_H_
 
-extern void *IOMalloc(size_t size);
-extern void IOFree(void *mem);
-
-void *kalloc(size_t size)
+typedef enum
 {
-	return IOMalloc(size);
-}
+	kPCIDeviceClassLegacy = 0x0,
+	kPCIDeviceClassMassStorageController = 0x1,
+	kPCIDeviceClassNetworkController = 0x2,
+	kPCIDeviceClassDisplayController = 0x3,
+	kPCIDeviceClassMultimediaController = 0x4,
+	kPCIDeviceClassMemoryController = 0x5,
+	kPCIDeviceClassBridgeDevice = 0x6,
+	kPCIDeviceClassSimpleCommunicationController = 0x7,
+	kPCIDeviceClassBaseSystemPeripherals = 0x8,
+	kPCIDeviceClassInputDevice = 0x9,
+	kPCIDeviceClassDockingStation = 0xA,
+	kPCIDeviceClassProcssor = 0xB,
+	kPCIDeviceClassSerialBusController = 0xC,
+	kPCIDeviceClassWirelessController = 0xD,
+	kPCIDeviceClassIntelligentIOController = 0xE,
+	kPCIDeviceClassSatelliteCommunicationController = 0xF,
+	kPCIDeviceClassCryptoController = 0x10,
+	kPCIDeviceClassSignalProcessingController = 0x11,
+	kPCIDeviceClassUndefined = 0xFF
+} PCIDeviceClass;
 
-void kfree(void *pointer)
-{
-	IOFree(pointer);
-}
+#endif /* _PCICLASS_H_ */

@@ -17,7 +17,6 @@
 //
 
 #include <system/port.h>
-#include <system/cpu.h>
 #include <system/panic.h>
 #include <system/syslog.h>
 #include <scheduler/scheduler.h>
@@ -27,6 +26,7 @@
 
 // IDT Related stuff
 static ir_interrupt_handler_t __ir_interruptHandler[IDT_ENTRIES];
+static ir_interrupt_callback_t __ir_interruptCallbacks[IDT_ENTRIES];
 
 void ir_idt_setEntry(uint64_t *idt, uint32_t index, uint32_t handler, uint32_t selector, uint32_t flags)
 {
@@ -67,6 +67,39 @@ void ir_idt_init(uint64_t *idt, uint32_t offset)
 	ir_idt_setEntry(idt, 0x30, ((uint32_t)idt_interrupt_0x30) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING3 | IDT_FLAG_PRESENT);
 	ir_idt_setEntry(idt, 0x31, ((uint32_t)idt_interrupt_0x31) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
 	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x80) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING3 | IDT_FLAG_PRESENT);
+
+	// Unused and open
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x81) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x82) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x83) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x84) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x85) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x86) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x87) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x88) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x89) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x8A) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x8B) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x8C) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x8D) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x8E) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x8F) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x90) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x91) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x92) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x93) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x94) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x95) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x96) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x97) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x98) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x99) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x9A) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x9B) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x9C) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x9D) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x9E) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+	ir_idt_setEntry(idt, 0x80, ((uint32_t)idt_interrupt_0x9F) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
 
 	// Reload the IDT
 	struct 
@@ -110,6 +143,12 @@ void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt)
 	__ir_interruptHandler[interrupt] = handler;
 }
 
+void ir_setInterruptCallback(ir_interrupt_callback_t callback, uint32_t interrupt)
+{
+	__ir_interruptCallbacks[interrupt] = callback;
+}
+
+
 uint32_t __ir_handleException(uint32_t esp);
 uint32_t __ir_handleInterrupt(uint32_t esp)
 {
@@ -133,6 +172,10 @@ uint32_t ir_handleInterrupt(uint32_t esp)
 		panic("Unhandled interrupt %i!", state->interrupt);
 
 	esp = handler(esp);
+
+	ir_interrupt_callback_t callback = __ir_interruptCallbacks[state->interrupt];
+	if(callback)
+		callback(state);
 
 	if(state->interrupt >= 0x20 && state->interrupt < 0x30)
 	{

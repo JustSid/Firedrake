@@ -21,7 +21,7 @@
 
 #include "IOTypes.h"
 #include "IOObject.h"
-#include "IOCollection.h"
+#include "IOIterator.h"
 
 struct IOSetBucket
 {
@@ -30,22 +30,29 @@ struct IOSetBucket
 	struct IOSetBucket *next;
 };
 
-class IOSet : public IOCollection
+class IOSetIterator;
+
+class IOSet : public IOObject
 {
+friend class IOSetIterator;
 public:
+	virtual IOSet *init();
+	virtual IOSet *initWithCapacity(size_t capacity);
+
 	IOSet *withCapacity(size_t capacity);
 
 	void addObject(IOObject *object);
 	void removeObject(IOObject *object);
 	bool containsObject(IOObject *object);
 
+	void removeAllObjects();
+
+	IOIterator *objectIterator();
+
 	virtual size_t count();
 	virtual size_t capacity();
 
 private:
-	virtual IOSet *init();
-	virtual IOSet *initWithCapacity(size_t capacity);
-
 	virtual void free();
 
 	IOSetBucket *findBucket1(IOObject *key);

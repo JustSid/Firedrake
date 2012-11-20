@@ -1,6 +1,6 @@
 //
-//  IOAsm.h
-//  libio
+//  types.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,14 +16,12 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOASM_H_
-#define _IOASM_H_
+#ifndef _LIBKERNEL_TYPES_H_
+#define _LIBKERNEL_TYPES_H_
 
-#define FALIGN 4,0x90
+#include "stdint.h"
 
-#define EXT(x) x
-#define LEXT(x) x:
+typedef uintptr_t vm_address_t;
+typedef uint32_t thread_t;
 
-#define	ENTRY(x) .global EXT(x); .align FALIGN; LEXT(x)
-
-#endif /* _IOASM_H_ */
+#endif /* _LIBKERNEL_TYPES_H_ */

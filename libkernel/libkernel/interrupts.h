@@ -21,11 +21,11 @@
 
 #include "base.h"
 #include "stdint.h"
-#include "return.h"
+#include "error.h"
 
-typedef void (*kern_interrupt_handler_t)(uint32_t interrupt, void *owner, void *context);
+typedef void (*kern_interrupt_handler_t)(void *owner, void *context, uint32_t interrupt);
 
-kern_extern kern_return_t kern_setInterruptHandler(uint32_t interrupt, void *owner, void *context, kern_interrupt_handler_t callback);
-kern_extern kern_return_t kern_setInterruptHandlerExclusive(uint32_t interrupt, void *owner, void *context, kern_interrupt_handler_t callback);
+kern_extern IOReturn kern_requestExclusiveInterrupt(void *owner, void *context, uint32_t *outInterrupt, kern_interrupt_handler_t callback);
+kern_extern IOReturn kern_registerForInterrupt(uint32_t interrupt, bool exclusive, void *owner, void *context, kern_interrupt_handler_t callback);
 
 #endif /* _LIBKERNEL_INTERRUPTS_H_ */

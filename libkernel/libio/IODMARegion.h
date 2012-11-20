@@ -1,5 +1,5 @@
 //
-//  IOCollection.h
+//  IODMARegion.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,19 +16,35 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOCOLLECTION_H_
-#define _IOCOLLECTION_H_
+#ifndef _IODMAREGION_H_
+#define _IODMAREGION_H_
+
+#include <libkernel/base.h>
+#include <libkernel/dma.h>
 
 #include "IOObject.h"
-#include "IOTypes.h"
 
-class IOCollection : public IOObject
+enum
 {
-protected:
-	virtual IOCollection *initWithCapacity(size_t capacity) = 0;
-
-	virtual size_t count() = 0;
-	virtual size_t capacity() = 0;
+	kIODMARegionRequestContiguous = (1 << 0)
 };
 
-#endif /* _IOCOLLECTION_H_ */
+class IODMARegion : public IOObject
+{
+public:
+	IODMARegion *initWithRequest(uint32_t request, size_t pages);
+
+	size_t physicalRegionCount() const;
+	uintptr_t physicalRegion(size_t index=0) const;
+
+	vm_address_t virtualRegion() const;
+
+private:
+	virtual void free();
+
+	dma_t *_wrapped;
+
+	IODeclareClass(IODMARegion)
+};
+
+#endif /* _IODMAREGION_H_ */

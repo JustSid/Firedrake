@@ -21,7 +21,7 @@
 
 #include "IOTypes.h"
 #include "IOSymbol.h"
-#include "IOLog.h"
+#include "IORuntime.h"
 
 class IOString;
 class IODatabase;
@@ -88,7 +88,7 @@ private:
 	void __##className##__load() __attribute((constructor)); \
 	void __##className##__load() \
 	{ \
-		__##className##__symbol = new IOSymbol(#className, __IOToken(super), sizeof(className)); \
+		__##className##__symbol = new IOSymbol(#className, __IOToken(super), sizeof(className), (IOSymbol::AllocCallback)&className::alloc); \
 	}
 
 #endif /* _IOOBJECT_H_ */

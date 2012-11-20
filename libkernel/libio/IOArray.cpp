@@ -44,7 +44,7 @@ IOArray *IOArray::init()
 		_capacity = _changeSize = 5;
 		_count = 0;
 
-		_objects = (IOObject **)kalloc(_capacity * sizeof(IOObject));
+		_objects = (IOObject **)kalloc(_capacity * sizeof(IOObject *));
 		if(!_objects)
 		{
 			release();
@@ -55,7 +55,7 @@ IOArray *IOArray::init()
 	return this;
 }
 
-IOArray *IOArray::initWithCapacity(uint32_t capacity)
+IOArray *IOArray::initWithCapacity(size_t capacity)
 {
 	if(super::init())
 	{
@@ -63,7 +63,7 @@ IOArray *IOArray::initWithCapacity(uint32_t capacity)
 		_count = 0;
 		_changeSize = 5;
 
-		_objects = (IOObject **)kalloc(_capacity * sizeof(IOObject));
+		_objects = (IOObject **)kalloc(_capacity * sizeof(IOObject *));
 		if(!_objects)
 			return 0;
 	}
@@ -98,10 +98,10 @@ void IOArray::addObject(IOObject *object)
 	}
 
 
-	IOObject **temp = (IOObject **)kalloc((_capacity + _changeSize) * sizeof(IOObject));
+	IOObject **temp = (IOObject **)kalloc((_capacity + _changeSize) * sizeof(IOObject *));
 	if(temp)
 	{
-		memcpy(temp, _objects, _count * sizeof(IOObject));
+		memcpy(temp, _objects, _count * sizeof(IOObject *));
 		kfree(_objects);
 
 		_objects  = temp;
@@ -133,8 +133,8 @@ void IOArray::removeObject(uint32_t index)
 
 	if((_capacity - (_changeSize * 2)) > _count)
 	{
-		IOObject **temp = (IOObject **)kalloc((_count + _changeSize) * sizeof(IOObject));
-		memcpy(temp, _objects, _count * sizeof(IOObject));
+		IOObject **temp = (IOObject **)kalloc((_count + _changeSize) * sizeof(IOObject *));
+		memcpy(temp, _objects, _count * sizeof(IOObject *));
 		kfree(_objects);
 
 		_objects = temp;
@@ -142,6 +142,24 @@ void IOArray::removeObject(uint32_t index)
 	}
 }
 
+void IOArray::removeAllObjects()
+{
+	for(uint32_t i=0; i<_count; i++)
+	{
+		IOObject *object = _objects[i];
+		object->release();
+	}
+
+	_capacity = _changeSize;
+	_count = 0;
+
+	IOObject **temp = (IOObject **)kalloc(_capacity * sizeof(IOObject *));
+	if(temp)
+	{
+		kfree(_objects);
+		_objects = temp;
+	}
+}
 
 
 uint32_t IOArray::indexOfObject(IOObject *object)
@@ -194,12 +212,12 @@ uint32_t IOArray::changeSize()
 	return _changeSize;
 }
 
-uint32_t IOArray::count()
+size_t IOArray::count()
 {
 	return _count;
 }
 
-uint32_t IOArray::capacity()
+size_t IOArray::capacity()
 {
 	return _capacity;
 }

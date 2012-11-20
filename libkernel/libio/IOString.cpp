@@ -29,6 +29,8 @@
 
 IORegisterClass(IOString, super);
 
+extern int __IOvsnprintf(char *buffer, size_t size, const char *format, va_list arg);
+
 // Factory methods
 
 IOString *IOString::withString(const IOString *other)

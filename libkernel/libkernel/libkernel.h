@@ -20,6 +20,7 @@
 #define _LIBKERNEL_H_
 
 #include "ctype.h"
+#include "types.h"
 #include "stdarg.h"
 #include "stdint.h"
 #include "stdio.h"
@@ -28,7 +29,9 @@
 
 #include "port.h"
 
+#include "dma.h"
 #include "kalloc.h"
+
 #include "entry.h"
 #include "module.h"
 #include "thread.h"

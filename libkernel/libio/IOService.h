@@ -21,46 +21,40 @@
 
 #include "IOTypes.h"
 #include "IOObject.h"
+#include "IOProvider.h"
 #include "IOString.h"
 #include "IODictionary.h"
 #include "IOArray.h"
 
-extern IOString *IOServiceAttributeIdentifier; // IOString
 extern IOString *IOServiceAttributeFamily; // IOString
 extern IOString *IOServiceAttributeProperties; // IODictionary
 
-class IOService : public IOObject
+class IOService : public IOProvider
 {
 friend class IODatabase;
+friend class IOProvider;
 public:
-	typedef void (*InterruptAction)(uint32_t interrupt, IOService *target, void *context);
+	typedef void (*InterruptAction)(IOService *service, void *context, uint32_t interrupt);
 
-	virtual bool start();
-	virtual void stop();
+	virtual IOService *init();
 
-	virtual void requestProbe();
+	virtual bool start(IOProvider *provider);
+	virtual void stop(IOProvider *provider);
 
-	IOService *provider() { return _provider; }
+	IOProvider *provider() { return _provider; }
+
+	static IOReturn registerService(IOSymbol *symbol, IODictionary *attributes);
+	static IOReturn unregisterService(IOSymbol *symbol);
+	static IODictionary *createMatchingDictionary(IOString *family, IODictionary *properties);
 
 protected:
-	virtual IOService *init();
 	virtual void free();
 
-	IOReturn registerInterrupt(uint32_t interrupt, IOObject *target, InterruptAction handler, void *context = 0);
+	IOReturn registerInterrupt(uint32_t interrupt, InterruptAction handler, void *context = 0);
 	IOReturn unregisterInterrupt(uint32_t interrupt);
 
-	IOReturn registerService(IOSymbol *symbol, IODictionary *attributes);
-	IOReturn unregisterService(IOSymbol *symbol);
-
-	IOService *findMatchingService(IODictionary *attributes);
-	void publishService(IOService *service);
-	void unpublishService(IOService *service);
-
 private:
-	void setProvider(IOService *provider);
-
-	IOArray *_published;
-	IOService *_provider;
+	IOProvider *_provider;
 
 	IODeclareClass(IOService)
 };

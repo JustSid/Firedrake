@@ -19,9 +19,19 @@
 #ifndef _IOERROR_H_
 #define _IOERROR_H_
 
-#define kIOReturnSuccess 			0
-#define kIOReturnNoInterrupt 		1
-#define kIOReturnInterruptTaken 	2
-#define kIOReturnNoMemory 			3
+#include <types.h>
+
+typedef uint32_t IOReturn;
+
+#define kIOReturnSuccess 			0 // Everything is just fine, move on
+#define kIOReturnError				1 // A general error
+#define kIOReturnNoMemory 			2 // We are out of memory
+#define kIOReturnInvalidArgument 	3 // One or more argument passed was invalid
+#define kIOReturnAlignmentError 	4 // Passed data wasn't aligned correctly
+#define kIOReturnTimeout 			5 // The request timed out
+#define kIOReturnNoInterrupt 		6 // The specified interrupt isn't valid
+#define kIOReturnNotFound 			7 // The requested resource wasn't found
+#define kIOReturnUnsupported 		8 // The requested operation isn't supported
+#define kIOReturnNoExclusiveAccess	9 // A request for an exclusive resource couldn't be fulfilled
 
 #endif /* _IOERROR_H_ */

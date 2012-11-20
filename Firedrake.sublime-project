@@ -39,12 +39,12 @@
 			[
 				{
 					"name": "Run",
-					"cmd": ["qemu -d cpu_reset ${project_path}/boot/Firedrake.iso"]
+					"cmd": ["exec ./executeqemu.sh"]
 				},
 				{
 					"name": "Instrument",
-					"cmd": ["qemu -d int,cpu_reset -no-reboot -no-shutdown ${project_path}/boot/Firedrake.iso"]
-				},
+					"cmd": ["exec ./executeqemu.sh --debug"]
+					},
 				{
 					"name": "Clean",
 					"cmd": ["exec ./remotebuild.sh --clean"]

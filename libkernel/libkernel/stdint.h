@@ -38,7 +38,11 @@ typedef unsigned long long 	uint64_t;
 
 #ifndef	_SIZE_T
 #define	_SIZE_T
-typedef uint32_t size_t;
+#ifdef SUBLIME_TEXT // Dirty hack to get the compiler to shut up about unsigned int vs unsigned long
+typedef unsigned long size_t;
+#else
+typedef unsigned int size_t;
+#endif
 #endif
 typedef int32_t  intptr_t;
 typedef uint32_t uintptr_t;

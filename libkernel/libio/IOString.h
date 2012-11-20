@@ -41,11 +41,10 @@ public:
 	size_t length() const;
 	const char *CString() const;
 
-protected:
-	virtual IOString *init(); // Designated initializer!
+private:
+	virtual IOString *init();
 	virtual void free();
 
-private:
 	char *_string;
 	size_t _length;
 

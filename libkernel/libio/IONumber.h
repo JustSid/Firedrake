@@ -47,6 +47,16 @@ public:
 	IONumber *initWithUInt32(uint32_t val);
 	IONumber *initWithUInt64(uint64_t val);
 
+	static IONumber *withInt8(int8_t val);
+	static IONumber *withInt16(int16_t val);
+	static IONumber *withInt32(int32_t val);
+	static IONumber *withInt64(int64_t val);
+
+	static IONumber *withUInt8(uint8_t val);
+	static IONumber *withUInt16(uint16_t val);
+	static IONumber *withUInt32(uint32_t val);
+	static IONumber *withUInt64(uint64_t val);
+
 	int8_t int8Value() const;
 	int16_t int16Value() const;
 	int32_t int32Value() const;

@@ -27,7 +27,9 @@ class IOString;
 class IOSymbol
 {
 public:
-	IOSymbol(const char *name, const char *super, size_t size);
+	typedef IOObject *(*AllocCallback)();
+
+	IOSymbol(const char *name, const char *super, size_t size, AllocCallback callback);
 
 	static IOSymbol *withName(const char *name);
 	static IOSymbol *withName(IOString *name);
@@ -44,6 +46,7 @@ private:
 	IOString *_name;
 	IOSymbol *_super;
 
+	AllocCallback _allocCallback;
 	const char *_superName;
 	size_t _size;
 };

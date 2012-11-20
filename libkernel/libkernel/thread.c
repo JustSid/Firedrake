@@ -17,35 +17,27 @@
 //
 
 #include "thread.h"
+#include "spinlock.h"
 
-extern thread_t __IOPrimitiveThreadCreate(void *entry, void *arg1, void *arg2);
-extern thread_t __IOPrimitiveThreadID();
-extern void __IOPrimitiveThreadSetName(thread_t id, const char *name);
-extern void *__IOPrimitiveThreadAccessArgument(size_t index);
-extern void __IOPrimitiveThreadDied();
-
-void __kern_threadEntry()
-{
-	thread_entry_t entry = (thread_entry_t)__IOPrimitiveThreadAccessArgument(0);
-	void *arg = __IOPrimitiveThreadAccessArgument(1);
-
-	entry(arg);
-	__IOPrimitiveThreadDied();
-}
+extern thread_t __io_threadCreate(void *entry, void *owner, void *arg);
+extern thread_t __io_threadID();
+extern void __io_threadSetName(thread_t id, const char *name);
 
 
 thread_t kern_threadCreate(thread_entry_t entry, void *arg)
 {
-	thread_t thread = __IOPrimitiveThreadCreate((void *)__kern_threadEntry, (void *)entry, (void *)arg);
-	return thread;
+	kern_spinlock_t test = 0;
+	kern_spinlock_lock(&test);
+
+	return __io_threadCreate((void *)entry, arg, arg);
 }
 
 thread_t kern_threadCurrent()
 {
-	return __IOPrimitiveThreadID();
+	return __io_threadID();
 }
 
 void kern_thread_setName(thread_t thread, const char *name)
 {
-	__IOPrimitiveThreadSetName(thread, name);
+	__io_threadSetName(thread, name);
 }

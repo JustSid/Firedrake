@@ -1,5 +1,5 @@
 //
-//  IOCollection.cpp
+//  IOEthernetController.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,10 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "IOCollection.h"
+#ifndef _IOETHERNETCONTROLLER_H_
+#define _IOETHERNETCONTROLLER_H_
 
-#ifdef super
-#undef super
-#endif
-#define super IOObject
+#include "IOService.h"
 
+class IOEthernetController : public IOService
+{
+public:
+
+	IODeclareClass(IOEthernetController)
+};
+
+#endif /* _IOETHERNETCONTROLLER_H_ */

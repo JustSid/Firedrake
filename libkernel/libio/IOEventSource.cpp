@@ -17,6 +17,7 @@
 //
 
 #include "IOEventSource.h"
+#include "IORunLoop.h"
 
 #ifdef super
 #undef super
@@ -29,18 +30,17 @@ IOEventSource *IOEventSource::init()
 {
 	if(super::init())
 	{
-		_enabled = true;
-		_action  = 0;
 	}
 
 	return this;
 }
 
-IOEventSource *IOEventSource::initWithAction(Action action)
+IOEventSource *IOEventSource::initWithAction(IOObject *owner, Action action)
 {
 	if(init())
 	{
 		_action = action;
+		_owner = owner;
 	}
 
 	return this;
@@ -49,17 +49,32 @@ IOEventSource *IOEventSource::initWithAction(Action action)
 
 void IOEventSource::free()
 {
+	if(_runLoop)
+		_runLoop->removeEventSource(this);
+
 	super::free();
+}
+
+
+void IOEventSource::setRunLoop(IORunLoop *runLoop)
+{
+	if(!runLoop)
+		disable();
+
+	_runLoop = runLoop;
+
+	if(_runLoop && !_enabled)
+		enable();
+}
+void IOEventSource::signalWorkAvailable()
+{
+	if(_runLoop && _enabled)
+		_runLoop->signalWorkAvailable();
 }
 
 
 void IOEventSource::doWork()
 {
-}
-
-void IOEventSource::setAction(Action action)
-{
-	_action = action;
 }
 
 void IOEventSource::enable()

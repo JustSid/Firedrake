@@ -21,11 +21,11 @@
 
 #include <libkernel/stdint.h>
 #include <libkernel/stdarg.h>
+#include <libkernel/types.h>
+#include <libkernel/error.h>
 
 typedef uint32_t hash_t;
 
 #define IONotFound ((uint32_t)-1)
-
-#include "IOReturn.h"
 
 #endif /* _IOTYPES_H_ */

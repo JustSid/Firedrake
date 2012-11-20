@@ -16,7 +16,6 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libio/IOLog.h>
 #include "{PROJECT_TITLE}.h"
 
 #ifdef super
@@ -24,7 +23,7 @@
 #endif
 #define super IOModule
 
-IOModuleRegister({PROJECT_TITLE}Module);
+IORegisterModule({PROJECT_TITLE}Module);
 IORegisterClass({PROJECT_TITLE}Module, super);
 
 bool {PROJECT_TITLE}Module::publish()

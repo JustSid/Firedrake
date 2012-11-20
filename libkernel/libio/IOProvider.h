@@ -1,6 +1,6 @@
 //
-//  return.h
-//  libtest
+//  IOProvider.h
+//  libio
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,17 +16,41 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERNEL_RETURN_H_
-#define _LIBKERNEL_RETURN_H_
+#ifndef _IOPROVIDER_H_
+#define _IOPROVIDER_H_
 
-#include "base.h"
-#include "stdint.h"
+#include "IOObject.h"
+#include "IOSet.h"
+#include "IODictionary.h"
+#include "IORunLoop.h"
 
-typedef uint32_t kern_return_t;
+class IOService;
+class IOModule;
 
-#define kReturnSuccess 			0
-#define kReturnNoInterrupt 		1
-#define kReturnInterruptTaken 	2
-#define kReturnNoMemory 		3
+class IOProvider : public IOObject
+{
+friend class IOModule;
+public:
+	virtual void requestProbe() {};
 
-#endif /* _LIBKERNEL_RETURN_H_ */
+	bool publishService(IOService *service);
+	void unpublishService(IOService *service);
+	void unpublishAllServices();
+
+	IOIterator *serviceIterator();
+	IORunLoop *runLoop() { return _runLoop; }
+
+protected:
+	virtual IOProvider *init();
+	virtual void free();
+
+	IOService *findMatchingService(IODictionary *attributes);
+
+private:
+	IOSet *_services;
+	IORunLoop *_runLoop;
+
+	IODeclareClass(IOProvider)
+};
+
+#endif /* _IOPROVIDER_H_ */

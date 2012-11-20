@@ -21,6 +21,7 @@
 
 #include "IONumber.h"
 #include "IOString.h"
+#include "IOAutoreleasePool.h"
 
 #ifdef super
 #undef super
@@ -95,6 +96,39 @@ void IONumber::free()
 		kfree(_buffer);
 
 	super::free();
+}
+
+IONumber *IONumber::withInt8(int8_t val)
+{
+	return IONumber::alloc()->initWithInt8(val)->autorelease();
+}
+IONumber *IONumber::withInt16(int16_t val)
+{
+	return IONumber::alloc()->initWithInt16(val)->autorelease();
+}
+IONumber *IONumber::withInt32(int32_t val)
+{
+	return IONumber::alloc()->initWithInt32(val)->autorelease();
+}
+IONumber *IONumber::withInt64(int64_t val)
+{
+	return IONumber::alloc()->initWithInt64(val)->autorelease();
+}
+IONumber *IONumber::withUInt8(uint8_t val)
+{
+	return IONumber::alloc()->initWithUInt8(val)->autorelease();
+}
+IONumber *IONumber::withUInt16(uint16_t val)
+{
+	return IONumber::alloc()->initWithUInt16(val)->autorelease();
+}
+IONumber *IONumber::withUInt32(uint32_t val)
+{
+	return IONumber::alloc()->initWithUInt32(val)->autorelease();
+}
+IONumber *IONumber::withUInt64(uint64_t val)
+{
+	return IONumber::alloc()->initWithUInt64(val)->autorelease();
 }
 
 

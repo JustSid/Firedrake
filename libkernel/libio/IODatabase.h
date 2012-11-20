@@ -27,12 +27,14 @@
 #include "IOSymbol.h"
 
 class IOService;
+class IOProvider;
 class IODatabaseEntry;
 
 class IODatabase
 {
 friend class IOSymbol;
 friend class IOService;
+friend class IOProvider;
 public:
 	static IODatabase *database();
 
@@ -57,6 +59,9 @@ private:
 	bool _dictionaryFixed;
 
 	kern_spinlock_t _lock;
+	kern_spinlock_t _readLock;
+
+	IOSymbol *_stringSymbol;
 
 	__IOPointerDictionary *_symbols;
 	IODictionary *_services;

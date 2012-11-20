@@ -21,27 +21,35 @@
 
 #include "IOObject.h"
 
-class IOEventSource : IOObject
+class IORunLoop;
+class IOEventSource : public IOObject
 {
+friend class IORunLoop;
 public:
-	typedef void (*Action)(IOEventSource *source, ...);
+	typedef void (*Action)(IOObject *owner, ...);
 
-	virtual IOEventSource *initWithAction(Action action);
 	virtual void doWork();
 
-	void setAction(Action action);
-
-	void enable();
-	void disable();
+	virtual void setRunLoop(IORunLoop *runLoop);
+	virtual void signalWorkAvailable();
+	
+	virtual void enable();
+	virtual void disable();
 
 	bool isEnabled();
 
 protected:
 	virtual IOEventSource *init();
+	virtual IOEventSource *initWithAction(IOObject *owner, Action action);
+
 	virtual void free();
 
 	bool _enabled;
+
+	IOObject *_owner;
 	Action _action;
+
+	IORunLoop *_runLoop;
 
 	IODeclareClass(IOEventSource)
 };

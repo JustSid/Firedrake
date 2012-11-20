@@ -506,7 +506,9 @@ void *halloc(heap_t *heap, size_t size)
 
 	return pointer;*/
 
-	return mm_alloc(vm_getKernelDirectory(), pageCount(size), VM_FLAGS_KERNEL);
+	void *pointer = mm_alloc(vm_getKernelDirectory(), pageCount(size), VM_FLAGS_KERNEL);
+	memset(pointer, 0, size);
+	return pointer;
 }
 
 void hfree(heap_t *heap, void *ptr)

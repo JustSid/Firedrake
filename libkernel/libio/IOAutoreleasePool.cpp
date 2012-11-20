@@ -65,20 +65,28 @@ void IOAutoreleasePool::free()
 	{
 		if(this != _owner->_topPool)
 			panic("IOAutoreleasePool::free() called, but IOAutoreleasePool is not the top most pool!");
-		
-		_owner->_topPool = _previous;
 	}
 
-	if(_objects)
+	while(_count)
 	{
-		for(size_t i=0; i<_count; i++)
+		IOObject **objects = _objects;
+		size_t count = _count;
+
+		_count = 0;
+		_size  = 5;
+		_objects = (IOObject **)kalloc(_size * sizeof(IOObject *));
+
+		for(size_t i=0; i<count; i++)
 		{
-			IOObject *object = _objects[i];
+			IOObject *object = objects[i];
 			object->release();
 		}
 
-		kfree(_objects);
+		kfree(objects);
 	}
+
+	kfree(_objects);
+	_owner->_topPool = _previous;
 
 	super::free();
 }
@@ -90,12 +98,12 @@ void IOAutoreleasePool::addObject(IOObject *object)
 	if(_count >= _size)
 	{
 		size_t nsize = _size * 2;
-		IOObject **nobjects = (IOObject **)kalloc(nsize * sizeof(IOObject **));
+		IOObject **nobjects = (IOObject **)kalloc(nsize * sizeof(IOObject *));
 
 		if(!nobjects)
 			panic("IOAutoreleasePool::addObject() failed, not enough memory!");
 
-		memcpy(nobjects, _objects, _size * sizeof(IOObject **));
+		memcpy(nobjects, _objects, _size * sizeof(IOObject *));
 		kfree(_objects);
 
 		_objects = nobjects;

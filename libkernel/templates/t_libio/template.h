@@ -19,7 +19,7 @@
 #ifndef _{PROJECT_TITLE}_H_
 #define _{PROJECT_TITLE}_H_
 
-#include <libio/IOModule.h>
+#include <libio/libio.h>
 
 class {PROJECT_TITLE}Module : public IOModule
 {

@@ -21,7 +21,6 @@
 
 #include "IOTypes.h"
 #include "IOObject.h"
-#include "IOCollection.h"
 #include "IOIterator.h"
 
 struct IODictionaryBucket
@@ -34,7 +33,7 @@ struct IODictionaryBucket
 
 class IODictionaryIterator;
 
-class IODictionary : public IOCollection
+class IODictionary : public IOObject
 {
 friend class IODictionaryIterator;
 public:
@@ -42,6 +41,7 @@ public:
 	virtual IODictionary *initWithCapacity(size_t capacity);
 	
 	static IODictionary *withCapacity(size_t capacity);
+	static IODictionary *withObjectsAndKeys(IOObject *object, IOObject *key, ...);
 
 	virtual void setObjectForKey(IOObject *object, IOObject *key);
 	virtual void removeObjectForKey(IOObject *key);

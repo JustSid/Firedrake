@@ -103,7 +103,7 @@ void kunit_testRun(kunit_test_t *test)
 	}
 
 	test->finished = time_getTimestamp();
-	timestamp_t diff = timestamp_getDifference(test->finished, test->started);
+	timestamp_t diff = timestamp_subtract(test->finished, test->started);
 
 
 	if(test->state == kunit_test_state_ran)

@@ -20,6 +20,7 @@
 #define _IOTHREAD_H_
 
 #include <libkernel/spinlock.h>
+#include <libkernel/thread.h>
 
 #include "IOTypes.h"
 #include "IOObject.h"
@@ -39,23 +40,32 @@ public:
 
 	IOThread *initWithFunction(IOThread::Function function);
 
+	void sleep(uint32_t time);
+	void wakeup();
 	void detach();
-	IORunLoop *getRunLoop();
 
 	void setName(IOString *name);
 	void setPropertyForKey(IOObject *property, IOObject *key);
+
+	IOString *name();
 	IOObject *propertyForKey(IOObject *key); 
+
+	IORunLoop *runLoop() const;
+	IOAutoreleasePool *autoreleasePool() const;
 
 	static IOThread *currentThread();
 	static IOThread *withFunction(IOThread::Function function);
+
+	static void yield();
 	
 private:
 	virtual void free();
-	static void __threadEntry();
 
-	uint32_t _id;
-	IOThread::Function _entry;
+	void threadEntry();
+
 	bool _detached;
+	thread_t _id;
+	Function _entry;
 
 	kern_spinlock_t _lock;
 

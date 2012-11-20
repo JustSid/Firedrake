@@ -23,18 +23,28 @@
 #include <libkernel/module.h>
 
 #include "IOObject.h"
+#include "IOProvider.h"
 #include "IOArray.h"
 #include "IOService.h"
 #include "IOThread.h"
 
-class IOModule : public IOObject
+class IOModule : public IOProvider
 {
 public:
 	virtual IOModule *initWithKmod(kern_module_t *kmod);
 	virtual void free();
 
+	static IOModule *withName(const char *name);
+	static IOModule *withName(IOString *name);
+
 	virtual bool publish();
 	virtual void unpublish();
+
+	bool requestUnpublish();
+	bool isPublished();
+
+	bool isOnThread();
+	void waitForPublish();
 
 	IOThread *getThread() { return _thread; }
 	kern_module_t *getKernelModule() { return _kmod; }
@@ -44,15 +54,18 @@ private:
 	void preparePublishing();
 
 	IOThread *_thread;
-	IOArray *_providers;
-	bool _published;
+	IOString *_name;
 
+	bool _published;
+	bool _needsUnpublish;
+
+	kern_spinlock_t _publishLock;
 	kern_module_t *_kmod;
 
 	IODeclareClass(IOModule)
 };
 
-#define IOModuleRegister(class) \
+#define IORegisterModule(class) \
 	extern "C" { \
 		bool _kern_start(kern_module_t *kmod) \
 		{ \
@@ -64,7 +77,10 @@ private:
 		{ \
 			IOModule *module = (IOModule *)kmod->module; \
 			if(module) \
-				module->unpublish(); \
+			{ \
+				module->requestUnpublish(); \
+				return false; \
+			} \
 			return true; \
 		} \
 	} \

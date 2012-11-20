@@ -29,7 +29,8 @@ static spinlock_t __ioglued_lock = SPINLOCK_INIT_LOCKED;
 static array_t *__ioglued_modulesToStop = NULL;
 
 const char *ioglued_modules[] = {
-	"libtest.so"
+	"libPCI.so",
+	"libRTL8139.so"
 };
 
 void __ioglued_addReferencelessModule(io_module_t *module)

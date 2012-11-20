@@ -1,5 +1,5 @@
 //
-//  IOReturn.h
+//  IOInterruptEventSource.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,16 +16,36 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IORETURN_H_
-#define _IORETURN_H_
+#ifndef _IOINTERRUPTEVENTSOURCE_H_
+#define _IOINTERRUPTEVENTSOURCE_H_
 
-#include "IOTypes.h"
+#include "IOEventSource.h"
 
-typedef uint32_t IOReturn;
+class IOInterruptEventSource : public IOEventSource
+{
+public:
+	typedef void (*Action)(IOObject *owner, IOInterruptEventSource *source, uint32_t missed);
 
-#define kIOReturnSuccess 			0
-#define kIOReturnNoInterrupt 		1
-#define kIOReturnInterruptTaken 	2
-#define kIOReturnNoMemory 			3
+	IOInterruptEventSource *initWithInterrupt(uint32_t interrupt, bool exclusive=false);
+	IOInterruptEventSource *initWithInterrupt(uint32_t interrupt, IOObject *owner, IOInterruptEventSource::Action action, bool exclusive=false);
 
-#endif /* _IORETURN_H_ */
+	virtual void doWork();
+
+	uint32_t interrupt() { return _interrupt; }
+
+private:
+	virtual void free();
+
+	bool registerForInterrupt();
+	void handleInterrupt();
+
+	uint32_t _interrupt;
+	bool _exclusive;
+
+	uint32_t _count;
+	uint32_t _consumed;
+	
+	IODeclareClass(IOInterruptEventSource)
+};
+
+#endif /* _IOINTERRUPTEVENTSOURCE_H_ */

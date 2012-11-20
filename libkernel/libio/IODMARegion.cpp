@@ -1,6 +1,6 @@
 //
-//  interrupts.c
-//  libkernel
+//  IODMARegion.cpp
+//  libio
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,16 +16,50 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "interrupts.h"
+#include "IODMARegion.h"
 
-extern kern_return_t __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owner, void *target, void *context, kern_interrupt_handler_t callback);
+#ifdef super
+#undef super
+#endif
+#define super IOObject
 
-kern_return_t kern_setInterruptHandler(uint32_t interrupt, void *owner, void *context, kern_interrupt_handler_t callback)
+IORegisterClass(IODMARegion, super)
+
+IODMARegion *IODMARegion::initWithRequest(uint32_t request, size_t pages)
 {
-	return __IORegisterForInterrupt(interrupt, false, owner, owner, context, callback);
+	if(!super::init())
+		return 0;
+
+	_wrapped = dma_request(pages, request);
+	if(!_wrapped)
+	{
+		release();
+		return 0;
+	}
+
+	return this;
 }
 
-kern_return_t kern_setInterruptHandlerExclusive(uint32_t interrupt, void *owner, void *context, kern_interrupt_handler_t callback)
+void IODMARegion::free()
 {
-	return __IORegisterForInterrupt(interrupt, true, owner, owner, context, callback);
+	if(_wrapped)
+		dma_free(_wrapped);
+
+	super::free();
+}
+
+
+size_t IODMARegion::physicalRegionCount() const
+{
+	return _wrapped->pfragmentCount;
+}
+
+uintptr_t IODMARegion::physicalRegion(size_t index) const
+{
+	return _wrapped->pfragments[index];
+}
+
+vm_address_t IODMARegion::virtualRegion() const
+{
+	return _wrapped->vaddress;
 }

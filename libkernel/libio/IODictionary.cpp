@@ -25,7 +25,7 @@
 #ifdef super
 #undef super
 #endif
-#define super IOCollection
+#define super IOObject
 
 static uint32_t __IODictionaryCapacity[42] = 
 {
@@ -92,14 +92,29 @@ IORegisterClass(IODictionaryIterator, IOIterator);
 
 IODictionary *IODictionary::withCapacity(size_t capacity)
 {
-	IODictionary *dictionary = IODictionary::alloc();
-	if(!dictionary->initWithCapacity(capacity))
+	IODictionary *dictionary = IODictionary::alloc()->initWithCapacity(capacity);
+	return dictionary->autorelease();
+}
+
+IODictionary *IODictionary::withObjectsAndKeys(IOObject *object, IOObject *key, ...)
+{
+	IODictionary *dictionary = IODictionary::alloc()->init();
+
+	va_list args;
+	va_start(args, key);
+
+	while(object && key)
 	{
-		dictionary->release();
-		return 0;
+		dictionary->setObjectForKey(object, key);
+
+		object = va_arg(args, IOObject *);
+
+		if(object)
+			key = va_arg(args, IOObject *);
 	}
 
-	return (IODictionary *)dictionary->autorelease();
+	va_end(args);
+	return dictionary->autorelease();
 }
 
 IODictionary *IODictionary::init()
@@ -216,7 +231,6 @@ IODictionaryBucket *IODictionary::findBucket2(IOObject *key)
 	bucket->next = _buckets[index];
 
 	_buckets[index] = bucket;
-
 	return bucket;
 }
 
@@ -311,9 +325,6 @@ void IODictionary::setObjectForKey(IOObject *object, IOObject *key)
 	IODictionaryBucket *bucket = findBucket2(key);
 	if(bucket)
 	{
-		object->retain();
-		key->retain();
-
 		if(bucket->object)
 		{
 			bucket->object->release();
@@ -322,8 +333,8 @@ void IODictionary::setObjectForKey(IOObject *object, IOObject *key)
 			_count --;
 		}
 
-		bucket->object = object;
-		bucket->key    = key;
+		bucket->object = object->retain();
+		bucket->key    = key->retain();
 
 		_count ++;
 		expandIfNeeded();

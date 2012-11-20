@@ -37,7 +37,6 @@ void operator delete(void *addr)
 	kfree(addr);
 }
 
-
 void *operator new[](size_t size)
 {
 	if(size == 0) 

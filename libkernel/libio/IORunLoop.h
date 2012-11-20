@@ -23,22 +23,37 @@
 
 #include "IOObject.h"
 #include "IOArray.h"
+#include "IOEventSource.h"
 
 class IOThread;
 
 class IORunLoop : public IOObject
 {
 friend class IOThread;
+friend class IOEventSource;
 public:
 	static IORunLoop *currentRunLoop();	
 
-	void step();
+	bool isOnThread();
+
 	void run();
 	void stop();
 
+	void addEventSource(IOEventSource *eventSource);
+	void removeEventSource(IOEventSource *eventSource);
+
+protected:
+	void step();
+	void signalWorkAvailable();
+
 private:
-	virtual IORunLoop *init();
+	virtual IORunLoop *initWithThread(IOThread *thread);
 	virtual void free();
+
+	void processEventSources();
+
+	IOThread *_host;
+	IOArray *_eventSources;
 
 	bool _shouldStop;
 	kern_spinlock_t _lock;

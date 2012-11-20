@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libkernel/interrupts.h>
 #include "IOService.h"
 #include "IORuntime.h"
 #include "IODatabase.h"
@@ -23,23 +24,14 @@
 #ifdef super
 #undef super
 #endif
-#define super IOObject
+#define super IOProvider
 
 IORegisterClass(IOService, super);
-
-extern "C" IOReturn __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owner, void *target, void *context, IOService::InterruptAction callback);
 
 IOService *IOService::init()
 {
 	if(super::init())
 	{
-		_published = IOArray::alloc()->init();
-		if(!_published)
-		{
-			release();
-			return 0;
-		}
-
 		_provider = 0;
 	}
 
@@ -48,56 +40,32 @@ IOService *IOService::init()
 
 void IOService::free()
 {
-	if(_published)
-	{
-		for(size_t i=0; i<_published->count(); i++)
-		{
-			IOService *service = (IOService *)_published->objectAtIndex(i);
-			service->stop();
-			service->_provider = 0;
-
-			service->release();
-		}
-	}
-
 	super::free();
 }
 
 
 
-bool IOService::start()
+bool IOService::start(IOProvider *UNUSED(provider))
 {
 	return true;
 }
 
-void IOService::stop()
+void IOService::stop(IOProvider *UNUSED(provider))
 {
-	for(size_t i=0; i<_published->count();)
-	{
-		IOService *service = (IOService *)_published->objectAtIndex(i);
-		service->stop();
-		service->setProvider(0);
-
-		_published->removeObject(i);
-	}
+	unpublishAllServices();
 }
 
 
 
-void IOService::requestProbe()
+
+IOReturn IOService::registerInterrupt(uint32_t interrupt, InterruptAction handler, void *context)
 {
-}
-
-
-
-IOReturn IOService::registerInterrupt(uint32_t interrupt, IOObject *target, InterruptAction handler, void *context)
-{
-	return __IORegisterForInterrupt(interrupt, false, this, target, context, handler);
+	return kern_registerForInterrupt(interrupt, false, this, context, (kern_interrupt_handler_t)handler);
 }
 
 IOReturn IOService::unregisterInterrupt(uint32_t interrupt)
 {
-	return __IORegisterForInterrupt(interrupt, false, this, 0, 0, 0);
+	return kern_registerForInterrupt(interrupt, false, this, 0, 0);
 }
 
 
@@ -107,11 +75,6 @@ IOReturn IOService::registerService(IOSymbol *symbol, IODictionary *attributes)
 	if(!symbol->inheritsFrom(IOSymbol::withName("IOService")))
 	{
 		panic("IOService::registerService(), symbol doesn't inherit from IOService!");
-	}
-
-	if(!attributes->objectForKey(IOServiceAttributeIdentifier))
-	{
-		panic("IOService::registerService(), attributes without identifer!");
 	}
 
 	IODatabase *database = IODatabase::database();
@@ -124,35 +87,14 @@ IOReturn IOService::unregisterService(IOSymbol *symbol)
 	return database->unregisterService(symbol);
 }
 
-
-void IOService::setProvider(IOService *provider)
+IODictionary *IOService::createMatchingDictionary(IOString *family, IODictionary *properties)
 {
-	_provider = provider;
-}
+	IODictionary *dictionary = IODictionary::alloc()->init();
 
-IOService *IOService::findMatchingService(IODictionary *attributes)
-{
-	IODatabase *database = IODatabase::database();
-	return database->serviceMatchingAttributes(attributes);
-}
+	dictionary->setObjectForKey(family, IOServiceAttributeFamily);
 
-void IOService::publishService(IOService *service)
-{
-	bool result = service->start();
-	if(result)
-	{
-		service->setProvider(this);
-		_published->addObject(service);
-	}
-}
+	if(properties != 0)
+		dictionary->setObjectForKey(properties, IOServiceAttributeProperties);
 
-void IOService::unpublishService(IOService *service)
-{
-	if(_published->containsObject(service))
-	{
-		service->stop();
-		service->setProvider(0);
-		
-		_published->removeObject(service);
-	}
+	return dictionary->autorelease();
 }

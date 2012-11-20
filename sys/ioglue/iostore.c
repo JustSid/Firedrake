@@ -158,6 +158,32 @@ io_library_t *io_storeLibraryWithAddress(vm_address_t address)
 	return NULL;
 }
 
+io_library_t *__io_storeLibraryWithAddress(vm_address_t address)
+{
+	if(spinlock_tryLock(&__io_storeLock))
+	{
+		iterator_t *iterator = atree_iterator(__io_storeLibraries);
+		io_library_t *library;
+
+		while((library = iterator_nextObject(iterator)))
+		{
+			vm_address_t vlimit = library->vmemory + (library->pages * VM_PAGE_SIZE);
+			if(address >= library->vmemory && address <= vlimit)
+			{
+				iterator_destroy(iterator);
+				spinlock_unlock(&__io_storeLock);
+
+				return library;
+			}
+		}
+
+		iterator_destroy(iterator);
+		spinlock_unlock(&__io_storeLock);
+	}
+	
+	return NULL;
+}
+
 
 bool io_storeAddLibrary(io_library_t *library)
 {

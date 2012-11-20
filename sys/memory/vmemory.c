@@ -28,6 +28,7 @@
 #include "vmemory.h"
 #include "pmemory.h"
 #include "memory.h"
+#include "dma.h"
 
 extern uintptr_t kernelBegin; // Marks the beginning of the kernel (set by the linker)
 extern uintptr_t kernelEnd;	// Marks the end of the kernel (also set by the linker)
@@ -410,6 +411,28 @@ uint32_t __vm_getPagetableEntry(vm_page_directory_t pdirectory, vm_address_t vad
 
 	__vm_mapPage(__vm_kernelDirectory, 0x0, (vm_address_t)pageTable, 0);
 	return result;
+}
+
+// MARK: Private functions
+
+bool vm_fulfillDMARequest(dma_t *dma)
+{
+	spinlock_lock(&__vm_spinlock);
+
+	vm_address_t address = __vm_findFreeKernelPages(dma->pages, 0x0);
+	if(address)
+	{
+		dma->vaddress = address;
+
+		for(size_t i=0; i<dma->pfragmentCount; i++)
+		{
+			__vm_mapPageRange(__vm_kernelDirectory, dma->pfragments[i], address, dma->pfragmentPages[i], VM_FLAGS_KERNEL);
+			address += (VM_PAGE_SIZE * dma->pfragmentPages[i]);
+		}
+	}
+
+	spinlock_unlock(&__vm_spinlock);
+	return (address != 0);
 }
 
 // MARK: Public functions

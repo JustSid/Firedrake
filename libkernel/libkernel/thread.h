@@ -21,8 +21,8 @@
 
 #include "stdint.h"
 #include "base.h"
+#include "types.h"
 
-typedef uint32_t thread_t;
 typedef void (*thread_entry_t)(void *);
 
 kern_extern thread_t kern_threadCreate(thread_entry_t entry, void *arg);

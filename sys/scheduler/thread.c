@@ -58,25 +58,16 @@ uint32_t _thread_getUniqueID(process_t *process)
 	return uid;
 }
 
-thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
+thread_t *thread_createVoid()
 {
 	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
 	if(thread)
 	{
-		//size_t stackPages = 1; //MAX(1, stackSize / 4096);
-		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
-
-		if(!kernelStack)
-		{
-			hfree(NULL, thread);
-			return NULL;
-		}
-
 		// Setup general stuff
 		thread->id             = THREAD_NULL;
-		thread->entry          = entry;
 		thread->died           = false;
 		thread->hasBeenRunning = false;
+		thread->wasNice        = true;
 
 		// Debugging related
 		thread->name    = NULL;
@@ -89,16 +80,42 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 
 		thread->blocked = 0;
 		thread->blocks  = NULL;
-		thread->process = process;
 		thread->next 	= NULL;
 
-		// Create user and kernel stack
-		thread->userStack     = NULL;
-		thread->userStackVirt = NULL;
+		// Stack stuff
+		thread->userStackSize   = 0;
+		thread->userStack       = NULL;
+		thread->userStackVirt   = NULL;
+		thread->kernelStack     = NULL;
+		thread->kernelStackVirt = NULL;
 
-		thread->kernelStack = kernelStack;
+		// Sleeping related
+		thread->sleeping   = false;
+		thread->wakeupCall = 0;
+	}
 
-		// Map the user stack
+	return thread;
+}
+
+thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
+{
+	thread_t *thread = thread_createVoid();
+	if(thread)
+	{
+		//size_t stackPages = 1; //MAX(1, stackSize / 4096);
+		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
+
+		if(!kernelStack)
+		{
+			hfree(NULL, thread);
+			return NULL;
+		}
+
+		thread->entry   = entry;
+		thread->process = process;
+
+		// Create the kernel stack
+		thread->kernelStack     = kernelStack;
 		thread->kernelStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
 
 		uint32_t *stack = ((uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE)) - argCount;
@@ -175,7 +192,7 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 
 thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
 {
-	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
+	thread_t *thread = thread_createVoid();
 	if(thread)
 	{
 		size_t stackPages = 1; //MAX(1, stackSize / 4096);
@@ -196,26 +213,10 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 		}
 
 		// Setup general stuff
-		thread->id             = THREAD_NULL;
-		thread->entry          = entry;
-		thread->died           = false;
-		thread->hasBeenRunning = false;
-		
-		// Debugging related
-		thread->name    = NULL;
-		thread->watched = false;
-
-		// Priority and scheduling stuff
-		thread->maxTicks	= THREAD_MAX_TICKS;
-		thread->wantedTicks	= THREAD_WANTED_TICKS;
-		thread->usedTicks	= 0;
-
-		thread->blocked = 0;
-		thread->blocks  = NULL;
+		thread->entry   = entry;
 		thread->process = process;
-		thread->next 	= NULL;
 
-		// Create user and kernel stack
+		// User and kernel stack
 		thread->userStack   = userStack;
 		thread->kernelStack = kernelStack;
 
@@ -542,4 +543,26 @@ void thread_join(uint32_t id)
 	
 	if(thread)
 		thread_attachPredicate(thread, cthread, thread_predicateOnExit);
+}
+
+void thread_sleep(thread_t *thread, time_t time)
+{
+	if(!thread->sleeping)
+	{
+		thread->wakeupCall = time_getTimestamp();
+		thread->blocked ++;
+	}
+
+	thread->wakeupCall = timestamp_add(thread->wakeupCall, (timestamp_t)time);
+	thread->sleeping = true;
+}
+
+void thread_wakeup(thread_t *thread)
+{
+	if(thread->blocked)
+	{
+		thread->sleeping = false;
+		thread->wakeupCall = 0;
+		thread->blocked --;
+	}
 }

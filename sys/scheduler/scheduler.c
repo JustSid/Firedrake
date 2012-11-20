@@ -156,12 +156,25 @@ uint32_t sd_schedule(uint32_t esp)
 		}
 	}
 
-
 	// Update the thread
 	thread->usedTicks ++;
 	while(thread->usedTicks >= thread->wantedTicks || thread->blocked > 0 || thread->died)
 	{
 		thread->usedTicks = 0;
+
+		if(thread->sleeping)
+		{
+			timestamp_t timestamp = time_getTimestamp();
+
+			if(timestamp >= thread->wakeupCall)
+			{
+				thread->sleeping = false;
+				thread->blocked --;
+
+				if(thread->blocked == 0 && thread->died != false)
+					break;
+			}
+		}
 
 		// Update the scheduled thread
 		thread = thread->next ? thread->next : process->mainThread;

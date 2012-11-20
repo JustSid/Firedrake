@@ -22,8 +22,6 @@
 #include <system/elf.h>
 #include "iolibrary.h"
 
-typedef uint32_t IOReturn;
-
 io_library_t *io_kernelLibraryStub();
 elf_sym_t *io_findKernelSymbol(const char *name);
 

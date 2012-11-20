@@ -27,13 +27,14 @@
 
 static IODatabase *_database = 0;
 
-IOString *IOServiceAttributeIdentifier = 0;
 IOString *IOServiceAttributeFamily = 0;
 IOString *IOServiceAttributeProperties = 0;
 
 bool IODatabase::init()
 {
 	_lock = KERN_SPINLOCK_INIT;
+	_readLock = KERN_SPINLOCK_INIT;
+
 	_symbols = new __IOPointerDictionary;
 	_symbols->retainCount = 1;
 	_symbols->initWithCapacity(20);
@@ -63,16 +64,19 @@ IODatabase *IODatabase::database()
 
 IOSymbol *IODatabase::symbolWithName(IOString *name)
 {
-	kern_spinlock_lock(&_lock);
+	bool acquiredLock = kern_spinlock_tryLock(&_readLock);
+
 	IOSymbol *symbol = (IOSymbol *)_symbols->pointerForKey(name);
-	kern_spinlock_unlock(&_lock);
+	
+	if(acquiredLock)
+		kern_spinlock_unlock(&_readLock);
 
 	return symbol;
 }
 
 IOSymbol *IODatabase::symbolWithName(const char *name)
 {
-	IOString *string = IOString::withCString(name);
+	IOString *string = IOString::alloc()->initWithCString(name);
 	IOSymbol *symbol = symbolWithName(string);
 	string->release();
 
@@ -80,7 +84,7 @@ IOSymbol *IODatabase::symbolWithName(const char *name)
 }
 
 
-void IODatabase::fixSymbols(IOSymbol *stringSymbol)
+void IODatabase::fixSymbols(IOSymbol *symbol)
 {
 	// Tell all strings in the database that they are strings...
 	IODictionaryBucket **buckets = _symbols->_buckets;
@@ -92,7 +96,7 @@ void IODatabase::fixSymbols(IOSymbol *stringSymbol)
 			if(bucket->key)
 			{
 				IOString *key = (IOString *)bucket->key;
-				key->_symbol = stringSymbol;
+				key->_symbol = symbol;
 			}
 
 			bucket = bucket->next;
@@ -102,6 +106,7 @@ void IODatabase::fixSymbols(IOSymbol *stringSymbol)
 
 bool IODatabase::publishSymbol(IOSymbol *symbol)
 {
+	kern_spinlock_lock(&_readLock);
 	kern_spinlock_lock(&_lock);
 
 	IOString *key = (IOString *)symbol->name();
@@ -115,12 +120,17 @@ bool IODatabase::publishSymbol(IOSymbol *symbol)
 		if(strcmp(symbol->name()->CString(), "IOString") == 0)
 		{
 			fixSymbols(symbol);
+
+			_stringSymbol = symbol;
 			_symbolsFixed = true;
 
-			IOServiceAttributeIdentifier = IOString::alloc()->initWithCString("IOServiceAttributeIdentifier");
 			IOServiceAttributeFamily     = IOString::alloc()->initWithCString("IOServiceAttributeFamily");
 			IOServiceAttributeProperties = IOString::alloc()->initWithCString("IOServiceAttributeProperties");
 		}
+	}
+	else
+	{
+		key->_symbol = _stringSymbol;
 	}
 
 	if(!_dictionaryFixed)
@@ -133,6 +143,7 @@ bool IODatabase::publishSymbol(IOSymbol *symbol)
 	}
 
 	kern_spinlock_unlock(&_lock);
+	kern_spinlock_unlock(&_readLock);
 
 	return (exists == false);
 }
@@ -183,6 +194,33 @@ public:
 		return _attributes;
 	}
 
+	uint32_t scoreForAttributes(IODictionary *attributes)
+	{
+		uint32_t score = 1;
+
+		IODictionary *properties = (IODictionary *)attributes->objectForKey(IOServiceAttributeProperties);
+		IODictionary *_properties = (IODictionary *)_attributes->objectForKey(IOServiceAttributeProperties);
+
+		if(!properties || !_properties)
+			return score;
+
+		IOIterator *iterator = _properties->keyIterator();
+		IOObject *key;
+
+		while((key = iterator->nextObject()))
+		{
+			IOObject *object = properties->objectForKey(key);
+			IOObject *_object = _properties->objectForKey(key);
+
+			if(object && !object->isEqual(_object))
+				return 0;
+
+			score ++;
+		}
+
+		return score;
+	}
+
 	IODeclareClass(IODatabaseEntry)
 
 private:
@@ -192,93 +230,52 @@ private:
 
 IORegisterClass(IODatabaseEntry, IOObject);
 
-uint32_t IODatabase::scoreForEntryMatch(IODatabaseEntry *entry, IODictionary *attributes)
-{
-	IODictionary *entryAttributes = entry->getAttributes();
-
-	IOString *identifier = (IOString *)attributes->objectForKey(IOServiceAttributeIdentifier);
-	IOString *entryIdentifer = (IOString *)attributes->objectForKey(IOServiceAttributeIdentifier);
-
-	if(!identifier || identifier->isEqual(entryIdentifer))
-	{
-		IOString *family = (IOString *)attributes->objectForKey(IOServiceAttributeFamily);
-		if(family)
-		{
-			IOString *entryFamily = (IOString *)entryAttributes->objectForKey(IOServiceAttributeFamily);
-
-			if(!family->isEqual(entryFamily))
-				return 0;
-		}
-
-		IODictionary *properties = (IODictionary *)attributes->objectForKey(IOServiceAttributeProperties);
-		IODictionary *entryProperties = (IODictionary *)entryAttributes->objectForKey(IOServiceAttributeProperties);
-
-		if(!properties)
-			return 1;
-
-		if(!entryProperties)
-			return 0;
-
-		IOIterator *iterator = properties->keyIterator();
-		IOObject *key;
-
-		while((key = iterator->nextObject()))
-		{
-			IOObject *object = properties->objectForKey(key);
-			IOObject *entryObject = entryProperties->objectForKey(key);
-
-			if(!object->isEqual(entryObject))
-				return 0;
-		}
-
-		return entryProperties->count() - properties->count();
-	}
-
-	return 0;
-}
-
 IOService *IODatabase::serviceMatchingAttributes(IODictionary *attributes)
 {
 	if(!_services)
 		return 0;
 
-	IOSymbol *bestMatch = 0;
-	uint32_t bestScore  = 0;
+	kern_spinlock_lock(&_readLock);
 
-	IOAutoreleasePool *pool = IOAutoreleasePool::alloc();
-	pool->init();
+	IOObject *family = attributes->objectForKey(IOServiceAttributeFamily);
+	IOArray *services = (IOArray *)_services->objectForKey(family);
 
-	kern_spinlock_lock(&_lock);
-
-	IOIterator *iterator = _services->objectIterator();
-	IODatabaseEntry *entry;
-
-	while((entry = (IODatabaseEntry *)iterator->nextObject()))
+	if(services)
 	{
-		uint32_t score = scoreForEntryMatch(entry, attributes);
-		if(score > bestScore)
+		IOSymbol *bestMatch = 0;
+		uint32_t bestScore  = 0;
+
+		for(uint32_t i=0; i<services->count(); i++)
 		{
-			bestMatch = entry->symbol();
-			bestScore = score;
+			IODatabaseEntry *entry = (IODatabaseEntry *)services->objectAtIndex(i);
+
+			uint32_t score = entry->scoreForAttributes(attributes);
+			if(score > bestScore)
+			{
+				bestMatch = entry->getSymbol();
+				bestScore = score;
+			}
+		}
+
+		if(bestMatch)
+		{
+			IOService *service = (IOService *)bestMatch->alloc();
+			service->init();
+
+			kern_spinlock_unlock(&_readLock);
+			
+			return service->autorelease();
 		}
 	}
 
-	kern_spinlock_unlock(&_lock);
-	pool->release();
 
-	if(bestMatch)
-	{
-		IOService *service = (IOService *)bestMatch->alloc();
-		service->init();
-
-		return (IOService *)service->autorelease();
-	}
-
+	kern_spinlock_unlock(&_readLock);
 	return 0;
 }
 
 IOReturn IODatabase::registerService(IOSymbol *symbol, IODictionary *attributes)
 {
+	kern_spinlock_lock(&_readLock);
 	kern_spinlock_lock(&_lock);
 
 	if(!_services)
@@ -287,21 +284,22 @@ IOReturn IODatabase::registerService(IOSymbol *symbol, IODictionary *attributes)
 		_services->init();
 	}
 
-	IOString *identifier = (IOString *)attributes->objectForKey(IOServiceAttributeIdentifier);
-	IODatabaseEntry *entry = (IODatabaseEntry *)_services->objectForKey(identifier);
+	IOString *family = (IOString *)attributes->objectForKey(IOServiceAttributeFamily);
+	IOArray *familyServices = (IOArray *)_services->objectForKey(family);
 
-	if(entry)
+	if(!familyServices)
 	{
-		IOLog("IODatabase::registerService(), identifier %@ already taken!", identifier);
-		kern_spinlock_unlock(&_lock);
-
-		return kIOReturnNoMemory;
+		familyServices = IOArray::alloc()->init();
+		_services->setObjectForKey(familyServices, family);
+		familyServices->release();
 	}
 
-	entry = IODatabaseEntry::withSymbolAndAttributes(symbol, attributes);
-	_services->setObjectForKey(entry, identifier);
+	IODatabaseEntry *entry = IODatabaseEntry::withSymbolAndAttributes(symbol, attributes);
+	familyServices->addObject(entry);
 	
 	kern_spinlock_unlock(&_lock);
+	kern_spinlock_unlock(&_readLock);
+
 	return kIOReturnSuccess;
 }
 

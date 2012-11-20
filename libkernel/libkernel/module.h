@@ -43,9 +43,9 @@ typedef struct kern_module_s
 	kern_module_stop_t stop;
 } kern_module_t;
 
-kern_extern kern_module_t *kern_moduleWithName(const char *name);
+kern_extern kern_module_t *io_moduleWithName(const char *name);
 
-kern_extern void kern_moduleRetain(kern_module_t *module);
-kern_extern void kern_moduleRelease(kern_module_t *module);
+kern_extern void io_moduleRetain(kern_module_t *module);
+kern_extern void io_moduleRelease(kern_module_t *module);
 
 #endif /* _LIBKERNEL_MODULE_H_ */

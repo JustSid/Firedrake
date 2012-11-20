@@ -33,8 +33,9 @@
 #include "ioerror.h"
 
 spinlock_t __io_lazy_lock = SPINLOCK_INIT; // Shared spinlock for lazy allocation
+typedef void (*io_libio_callback_t)(void *owner, ...);
 
-void __IOPrimitiveLog(char *message, bool appendNewline)
+void __io_primitiveLog(char *message, bool appendNewline)
 {
 	const char *format = appendNewline ? "%s\n" : "%s";
 	syslog(LOG_INFO, format, message);
@@ -44,27 +45,33 @@ void __IOPrimitiveLog(char *message, bool appendNewline)
 // Thread management
 // ------
 
-uint32_t __IOPrimitiveThreadCreate(void *entry, void *arg1, void *arg2)
+void __io_threadEntry()
+{
+	thread_t *thread = thread_getCurrentThread();
+
+	io_libio_callback_t entry = (io_libio_callback_t)thread->arguments[0];
+	void *owner = thread->arguments[1];
+	void *arg = thread->arguments[2];
+
+	entry(owner, arg);
+	sd_threadExit();
+}
+
+uint32_t __io_threadCreate(void *entry, void *owner, void *arg)
 {
 	process_t *process = process_getCurrentProcess();
-	thread_t *thread = thread_create(process, (thread_entry_t)entry, 4096, 2, arg1, arg2);
+	thread_t *thread = thread_create(process, __io_threadEntry, 4096, 3, entry, owner, arg);
 
 	return thread->id;
 }
 
-uint32_t __IOPrimitiveThreadID()
+uint32_t __io_threadID()
 {
 	thread_t *thread = thread_getCurrentThread();
 	return thread->id;
 }
 
-void *__IOPrimitiveThreadAccessArgument(size_t index)
-{
-	thread_t *thread = thread_getCurrentThread();
-	return (void *)thread->arguments[index];
-}
-
-void __IOPrimitiveThreadSetName(uint32_t id, const char *name)
+void __io_threadSetName(uint32_t id, const char *name)
 {
 	process_t *process = process_getCurrentProcess();
 	thread_t *thread = process->mainThread;
@@ -80,9 +87,23 @@ void __IOPrimitiveThreadSetName(uint32_t id, const char *name)
 	}
 }
 
-void __IOPrimitiveThreadDied()
+void __io_threadSleep(uint32_t id, uint32_t time)
 {
-	sd_threadExit();
+	thread_t *thread = thread_getWithID(id);
+	if(thread)
+	{
+		thread_sleep(thread, time);
+		sd_yield();
+	}
+}
+
+void __io_threadWakeup(uint32_t id)
+{
+	thread_t *thread = thread_getWithID(id);
+	if(thread)
+	{
+		thread_wakeup(thread);
+	}
 }
 
 // ------
@@ -91,7 +112,7 @@ void __IOPrimitiveThreadDied()
 
 heap_t *__io_heap = NULL;
 
-void *IOMalloc(size_t size)
+void *kern_alloc(size_t size)
 {
 	spinlock_lock(&__io_lazy_lock);
 
@@ -108,7 +129,7 @@ void *IOMalloc(size_t size)
 	return mem;
 }
 
-void IOFree(void *mem)
+void kern_free(void *mem)
 {
 	hfree(__io_heap, mem);
 }
@@ -117,12 +138,10 @@ void IOFree(void *mem)
 // Interrupts
 // ------
 
-typedef void (*io_interrupt_handler_callback_t)(uint32_t interrupt, void *target, void *context);
 typedef struct
 {
-	io_interrupt_handler_callback_t callback;
+	io_libio_callback_t callback;
 	void *owner;
-	void *target;
 	void *context;
 } io_interrupt_handler_t;
 
@@ -135,9 +154,8 @@ typedef struct
 static spinlock_t __io_interrupt_lock = SPINLOCK_INIT;
 static io_interrupt_entry_t *__io_interruptEntries[IDT_ENTRIES];
 
-uint32_t io_dispatchInterrupt(uint32_t esp)
+void __io_dispatchInterrupt(cpu_state_t *state)
 {
-	cpu_state_t *state = (cpu_state_t *)esp;
 	io_interrupt_entry_t *entry = __io_interruptEntries[state->interrupt];
 
 	if(entry)
@@ -146,14 +164,50 @@ uint32_t io_dispatchInterrupt(uint32_t esp)
 		for(size_t i=0; i<array_count(allHandler); i++)
 		{
 			io_interrupt_handler_t *handler = array_objectAtIndex(allHandler, i);
-			handler->callback(state->interrupt, handler->target, handler->context);
+			handler->callback(handler->owner, handler->context, state->interrupt);
+		}
+	}
+}
+
+IOReturn kern_requestExclusiveInterrupt(void *owner, void *context, uint32_t *outInterrupt, io_libio_callback_t callback)
+{
+	spinlock_lock(&__io_interrupt_lock);
+
+	uint32_t limit = ir_interruptUpperLimit();
+	for(uint32_t i=0; i<limit; i++)
+	{
+		if(ir_isValidInterrupt(i, true))
+		{
+			io_interrupt_entry_t *entry = __io_interruptEntries[i];
+			if(entry)
+				continue;
+
+			entry = halloc(NULL, sizeof(io_interrupt_entry_t));
+			entry->exclusive = true;
+			entry->handler = array_create();
+
+			__io_interruptEntries[i] = entry;
+
+			io_interrupt_handler_t *handler = halloc(NULL, sizeof(io_interrupt_handler_t));
+			handler->owner = owner;
+			handler->context = context;
+			handler->callback = callback;
+
+			array_addObject(entry->handler, handler);
+			spinlock_unlock(&__io_interrupt_lock);
+
+			if(outInterrupt)
+				*outInterrupt = i;
+
+			return kIOReturnSuccess;
 		}
 	}
 
-	return esp;
+	spinlock_unlock(&__io_interrupt_lock);
+	return kIOReturnNoInterrupt;
 }
 
-IOReturn __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owner, void *target, void *context, io_interrupt_handler_callback_t callback)
+IOReturn kern_registerForInterrupt(uint32_t interrupt, bool exclusive, void *owner, void *context, io_libio_callback_t callback)
 {
 	spinlock_lock(&__io_interrupt_lock);
 
@@ -182,7 +236,7 @@ IOReturn __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owne
 		if(entry->exclusive || exclusive)
 		{
 			spinlock_unlock(&__io_interrupt_lock);
-			return kIOReturnInterruptTaken;
+			return kIOReturnNoExclusiveAccess;
 		}
 
 		handler = halloc(NULL, sizeof(io_interrupt_handler_t));
@@ -213,13 +267,12 @@ IOReturn __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owne
 		entry->handler = array_create();
 
 		__io_interruptEntries[interrupt] = entry;
-		ir_setInterruptHandler(io_dispatchInterrupt, interrupt);
+		ir_setInterruptCallback(__io_dispatchInterrupt, interrupt);
 	}
 
 	if(callback)
 	{
 		handler->owner = owner;
-		handler->target = target;
 		handler->context = context;
 		handler->callback = callback;
 
@@ -230,7 +283,7 @@ IOReturn __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owne
 	}
 
 	spinlock_unlock(&__io_interrupt_lock);
-	return kIOReturnNoInterrupt;
+	return kIOReturnError;
 }
 
 // Symbol lookup
@@ -239,19 +292,26 @@ IOReturn __IORegisterForInterrupt(uint32_t interrupt, bool exclusive, void *owne
 // The kernel will only allow libraries to link the symbols in this list
 const char *__io_exportedSymbolNames[] = {
 	"panic",
+	"__io_primitiveLog",
+	// Threads
 	"sd_yield",
-	"__IOPrimitiveLog",
-	"__IOPrimitiveThreadCreate",
-	"__IOPrimitiveThreadID",
-	"__IOPrimitiveThreadAccessArgument",
-	"__IOPrimitiveThreadSetName",
-	"__IOPrimitiveThreadDied",
-	"__IORegisterForInterrupt",
+	"__io_threadCreate",
+	"__io_threadID",
+	"__io_threadSetName",
+	"__io_threadSleep",
+	"__io_threadWakeup",
+	// Interrupts
+	"kern_requestExclusiveInterrupt",
+	"kern_registerForInterrupt",
+	// Kernel module handling
 	"io_moduleWithName",
 	"io_moduleRetain",
 	"io_moduleRelease",
-	"IOMalloc",
-	"IOFree"
+	// Memory
+	"kern_alloc",
+	"kern_free",
+	"dma_request",
+	"dma_free"
 };
 
 io_library_t *__io_kernelLibrary = NULL;

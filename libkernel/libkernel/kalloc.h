@@ -22,7 +22,10 @@
 #include "base.h"
 #include "stdint.h"
 
-kern_extern void *kalloc(size_t size);
-kern_extern void kfree(void *pointer);
+kern_extern void *kern_alloc(size_t size);
+kern_extern void kern_free(void *mem);
+
+#define kalloc kern_alloc
+#define kfree kern_free
 
 #endif /* _LIBKERNEL_KALLOC_H_ */

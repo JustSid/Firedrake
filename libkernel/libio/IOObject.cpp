@@ -45,6 +45,9 @@ void IOObject::prepareWithSymbol(IOSymbol *symbol)
 
 void IOObject::release()
 {
+	if(!this)
+		return;
+
 	if((-- retainCount) == 0)
 	{
 		free();
@@ -56,6 +59,9 @@ void IOObject::release()
 
 IOObject *IOObject::retain()
 {
+	if(!this)
+		return this;
+
 	retainCount ++;
 	return this;
 }
@@ -142,5 +148,5 @@ IOObject *IOObject::alloc()
 void __IOObject__load() __attribute__((constructor));
 void __IOObject__load()
 {
-	__IOObjectSymbol = new IOSymbol("IOObject", 0, sizeof(IOObject));
+	__IOObjectSymbol = new IOSymbol("IOObject", 0, sizeof(IOObject), &IOObject::alloc);
 }

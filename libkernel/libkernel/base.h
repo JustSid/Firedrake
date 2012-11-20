@@ -25,6 +25,8 @@
 	#define kern_extern extern
 #endif
 
+#define kern_inline static inline
+
 #define UNUSED(x) UNUSED_ ## x __attribute__((unused))
 
 #endif /* _LIBKERNEL_BASE_H_ */

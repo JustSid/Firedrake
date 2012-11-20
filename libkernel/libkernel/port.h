@@ -19,6 +19,7 @@
 #ifndef _LIBKERNEL_PORT_H_
 #define _LIBKERNEL_PORT_H_
 
+#include "base.h"
 #include "stdint.h"
 
 // Port In

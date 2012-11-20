@@ -1,6 +1,6 @@
 //
-//  module.c
-//  libkernel
+//  IOData.cpp
+//  libio
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,23 +16,79 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "module.h"
+#include <libkernel/kalloc.h>
+#include <libkernel/string.h>
+#include "IOData.h"
 
-extern kern_module_t *io_moduleWithName(const char *name);
-extern void io_moduleRetain(kern_module_t *module);
-extern void io_moduleRelease(kern_module_t *module);
+#ifdef super
+#undef super
+#endif
+#define super IOObject
 
-kern_module_t *kern_moduleWithName(const char *name)
+IORegisterClass(IOData, super)
+
+
+IOData *IOData::init()
 {
-	return io_moduleWithName(name);
+	if(!super::init())
+		return 0;
+
+	_buffer = 0;
+	_length = 0;
+
+	return this;
 }
 
-void kern_moduleRetain(kern_module_t *module)
+IOData *IOData::initWithBytes(uint8_t *bytes, size_t length)
 {
-	io_moduleRetain(module);
+	if(!super::init())
+		return 0;
+
+	_length = length;
+	_buffer = (uint8_t *)kalloc(length);
+
+	if(!_buffer)
+	{
+		release();
+		return 0;
+	}
+
+	memcpy(_buffer, bytes, length);
+	return this;
 }
 
-void kern_moduleRelease(kern_module_t *module)
+void IOData::free()
 {
-	io_moduleRelease(module);
+	if(_buffer)
+		kfree(_buffer);
+
+	super::free();
+}
+
+
+void IOData::appendBytes(uint8_t *bytes, size_t length)
+{
+	size_t nlength = _length + length;
+	uint8_t *nbuffer = (uint8_t *)kalloc(nlength);
+
+	if(nbuffer)
+	{
+		memcpy(nbuffer, _buffer, _length);
+		memcpy(&nbuffer[_length], bytes, length);
+
+		kfree(_buffer);
+
+		_buffer = nbuffer;
+		_length = length;
+	}
+}
+
+uint8_t *IOData::bytes() const
+{
+	return _buffer;
+}
+
+size_t IOData::length() const
+{
+	return _length;
 }

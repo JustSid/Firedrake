@@ -18,6 +18,7 @@
 
 #include <container/atree.h>
 #include <system/syslog.h>
+#include <system/assert.h>
 #include <libc/string.h>
 
 #include "iomodule.h"
@@ -56,6 +57,24 @@ int io_moduleAtreeLookup(void *key1, void *key2)
 
 
 
+bool __io_moduleStart(io_module_t *module)
+{
+	// Call the init functions
+	io_library_t *library = module->library;
+	for(size_t i=0; i<library->initArrayCount; i++)
+	{
+		uintptr_t ptr = (library->initArray[i]);
+		if(ptr == 0x0 || ptr == UINT32_MAX)
+			continue;
+
+		io_module_init_t init = (io_module_init_t)ptr;
+		init();
+	}
+	
+	// Call the kernel entry point
+	bool result = module->start(module);
+	return result;
+}
 
 io_module_t *__io_moduleCreateWithLibrary(io_library_t *library, bool retainLibrary)
 {
@@ -77,25 +96,6 @@ io_module_t *__io_moduleCreateWithLibrary(io_library_t *library, bool retainLibr
 			dbg("library %s doesn't provide kernel entry points!\n", library->name);
 			hfree(NULL, module);
 
-			return NULL;
-		}
-
-		// Call the init functions
-		for(size_t i=0; i<library->initArrayCount; i++)
-		{
-			uintptr_t ptr = (library->initArray[i]);
-			if(ptr == 0x0 || ptr == UINT32_MAX)
-				continue;
-
-			io_module_init_t init = (io_module_init_t)ptr;
-			init();
-		}
-
-		// Call the kernel entry point
-		bool result = module->start(module);
-		if(!result)
-		{
-			hfree(NULL, module);
 			return NULL;
 		}
 
@@ -127,16 +127,35 @@ io_module_t *io_moduleWithName(const char *name)
 		}
 
 		module = __io_moduleCreateWithLibrary(library, !createdLibrary);
+		spinlock_unlock(&__io_moduleLock);
+
 		if(module)
-			module->initialized = true;
+		{
+			module->initialized = __io_moduleStart(module);
+			if(!module->initialized)
+			{
+				io_libraryRelease(module->library);
+				hfree(NULL, module);
+
+				return NULL;
+			}
+		}
+	}
+	else
+	{
+		spinlock_unlock(&__io_moduleLock);
+		io_moduleRetain(module);
 	}
 
-	spinlock_unlock(&__io_moduleLock);
+	
 	return module;
 }
 
 void io_moduleRetain(io_module_t *module)
 {
+	if(!module)
+		return;
+
 	spinlock_lock(&module->lock);
 	module->references ++;
 	spinlock_unlock(&module->lock);
@@ -146,6 +165,9 @@ extern void __ioglued_addReferencelessModule(io_module_t *module);
 
 void io_moduleRelease(io_module_t *module)
 {
+	if(!module)
+		return;
+
 	spinlock_lock(&module->lock);
 
 	if((-- module->references) == 0)

@@ -120,7 +120,7 @@ const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary)
 	}
 	else
 	{
-		io_library_t *library = io_storeLibraryWithAddress(address);
+		io_library_t *library = __io_storeLibraryWithAddress(address);
 		if(library)
 		{	
 			symbol = io_librarySymbolWithAddress(library, (vm_address_t)address);
@@ -185,7 +185,7 @@ uintptr_t kern_resolveAddress(uintptr_t address)
 	}
 	else
 	{
-		io_library_t *library = io_storeLibraryWithAddress(address);
+		io_library_t *library = __io_storeLibraryWithAddress(address);
 		if(library)
 		{	
 			vm_address_t resolved = io_libraryResolveAddress(library, (vm_address_t)address);

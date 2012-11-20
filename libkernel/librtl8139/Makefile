@@ -4,10 +4,10 @@ include ../Makefile.rules
 SRCS = $(shell find $(CURDIR) -type f \( -name "*.c" -o -name "*.S" -o -name "*.cpp" \))
 OBJS = $(addsuffix .o, $(basename $(SRCS)))
 
-LDFLAGS += -L../libkernel/
+LDFLAGS += -L../libio/ -L../libkernel/ -L../libPCI/
 
-libtest.so: $(OBJS)
-	$(LD) $(LDFLAGS) -o $@ $^ -lkernel
+libRTL8139.so: $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $^ -lkernel -lio -lPCI
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $^ 

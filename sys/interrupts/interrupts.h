@@ -20,6 +20,7 @@
 #define _INTERRUPTS_H_
 
 #include <types.h>
+#include <system/cpu.h>
 
 #define IDT_FLAG_INTERRUPT_GATE 	0xE
 #define IDT_FLAG_PRESENT 			0x80
@@ -70,13 +71,62 @@ extern void idt_interrupt_0x30();
 extern void idt_interrupt_0x31();
 extern void idt_interrupt_0x80();
 
-typedef uint32_t (*ir_interrupt_handler_t)(uint32_t);
+extern void idt_interrupt_0x81();
+extern void idt_interrupt_0x82();
+extern void idt_interrupt_0x83();
+extern void idt_interrupt_0x84();
+extern void idt_interrupt_0x85();
+extern void idt_interrupt_0x86();
+extern void idt_interrupt_0x87();
+extern void idt_interrupt_0x88();
+extern void idt_interrupt_0x89();
+extern void idt_interrupt_0x8A();
+extern void idt_interrupt_0x8B();
+extern void idt_interrupt_0x8C();
+extern void idt_interrupt_0x8D();
+extern void idt_interrupt_0x8E();
+extern void idt_interrupt_0x8F();
+extern void idt_interrupt_0x90();
+extern void idt_interrupt_0x91();
+extern void idt_interrupt_0x92();
+extern void idt_interrupt_0x93();
+extern void idt_interrupt_0x94();
+extern void idt_interrupt_0x95();
+extern void idt_interrupt_0x96();
+extern void idt_interrupt_0x97();
+extern void idt_interrupt_0x98();
+extern void idt_interrupt_0x99();
+extern void idt_interrupt_0x9A();
+extern void idt_interrupt_0x9B();
+extern void idt_interrupt_0x9C();
+extern void idt_interrupt_0x9D();
+extern void idt_interrupt_0x9E();
+extern void idt_interrupt_0x9F();
 
+typedef uint32_t (*ir_interrupt_handler_t)(uint32_t);
+typedef void (*ir_interrupt_callback_t)(cpu_state_t *);
+
+static inline bool ir_isValidInterrupt(uint32_t interrupt, bool publicOnly)
+{
+	if(!publicOnly && (interrupt <= 0x31 || interrupt == 0x80))
+		return true;
+
+	if(interrupt > 0x80 && interrupt <= 0x9F)
+		return true;
+
+	return false;
+}
+
+static inline uint32_t ir_interruptUpperLimit()
+{
+	return 0x9F;
+}
 
 void ir_disableInterrupts(bool disableNMI);
 void ir_enableInterrupts(bool enableNMI);
 
 void ir_setInterruptHandler(ir_interrupt_handler_t handler, uint32_t interrupt);
+void ir_setInterruptCallback(ir_interrupt_callback_t callback, uint32_t interrupt);
 
 bool ir_isInsideInterruptHandler();
 uint32_t ir_lastInterruptESP();

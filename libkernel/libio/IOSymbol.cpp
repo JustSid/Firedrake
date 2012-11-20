@@ -27,7 +27,7 @@
 
 // Constructor
 
-IOSymbol::IOSymbol(const char *name, const char *super, size_t size)
+IOSymbol::IOSymbol(const char *name, const char *super, size_t size, AllocCallback callback)
 {
 	_size = size;
 
@@ -35,6 +35,7 @@ IOSymbol::IOSymbol(const char *name, const char *super, size_t size)
 	_name->prepareWithSymbol(0);
 	_name->initWithCString(name);
 
+	_allocCallback = callback;
 	_superName = super;
 	_super = 0;
 
@@ -81,10 +82,7 @@ size_t IOSymbol::size() const
 
 IOObject *IOSymbol::alloc()
 {
-	IOObject *object = (IOObject *)kalloc(_size);
-	object->prepareWithSymbol(this);
-
-	return object;
+	return _allocCallback();
 }
 
 IOSymbol *IOSymbol::super()

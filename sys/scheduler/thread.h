@@ -21,6 +21,7 @@
 
 #include <types.h>
 #include <system/cpu.h>
+#include <system/time.h>
 
 struct process_s;
 struct thread_block_s;
@@ -56,14 +57,19 @@ typedef struct thread_s
 
 	// Debugging related
 	const char *name;
-	bool watched; // Watchdog
+	bool watched;
 
 	// Blocking
 	struct thread_block_s *blocks;
 	uint32_t blocked;
 
+	// Sleeping
+	bool sleeping;
+	uint64_t wakeupCall;
+
 	struct process_s 	*process;
 	struct thread_s 	*next;
+	struct thread_s 	*sleepingNext;
 } thread_t;
 
 typedef enum
@@ -90,6 +96,8 @@ thread_t *thread_getCollectableThreads(); // Defined in scheduler.c
 thread_t *thread_getWithID(uint32_t id);
 
 void thread_join(uint32_t id); // Don't forget to force a reschedule
+void thread_sleep(thread_t *thread, time_t time);
+void thread_wakeup(thread_t *thread);
 // If this is called using the appropriate syscall, the rescheduling is done automatically
 
 void thread_predicateBecameTrue(struct thread_s *thread, thread_predicate_t predicate);

@@ -7,7 +7,7 @@ OBJS = $(addsuffix .o, $(basename $(SRCS)))
 LDFLAGS += -L../libio/ -L../libkernel/
 
 {PROJECT_NAME}.so: $(OBJS)
-	$(LD) $(LDFLAGS) -o $@ $^ -kernel -lio
+	$(LD) $(LDFLAGS) -o $@ $^ -lkernel -lio
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $^ 

@@ -32,4 +32,36 @@ void operator delete(void *addr);
 void *operator new[](size_t size);
 void operator delete[](void *ptr);
 
+typedef void (*function_ptr_t)(void);
+class IOObject;
+
+static inline function_ptr_t __IOObject_memberFunctionToPointer(const IOObject *object, void (IOObject::*func)(void))
+{
+	union {
+		void (IOObject::*fIn)(void);
+		uintptr_t fVTOffset;
+		function_ptr_t fPFN;
+	} map;
+
+	map.fIn = func;
+
+	if(map.fVTOffset & 0x1) 
+	{
+		// virtual function
+		union {
+			const IOObject *fObj;
+			function_ptr_t **vtablep;
+		} u;
+		u.fObj = object;
+
+		return *(function_ptr_t *)(((uintptr_t)*u.vtablep) + map.fVTOffset - 1);
+	} 
+
+	// Normal member function
+	return map.fPFN;
+}
+
+#define IOMemberFunctionCast(type, object, func) \
+	(type)__IOObject_memberFunctionToPointer(object, (void (IOObject::*)(void))func)
+
 #endif /* _IORUNTIME_H_ */

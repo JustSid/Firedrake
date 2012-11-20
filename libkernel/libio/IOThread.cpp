@@ -17,6 +17,7 @@
 //
 
 #include "IOThread.h"
+#include "IOAutoreleasePool.h"
 #include "IORunLoop.h"
 #include "IODictionary.h"
 #include "IORuntime.h"
@@ -32,11 +33,12 @@ IORegisterClass(IOThread, super);
 
 extern "C"
 {
-	uint32_t __IOPrimitiveThreadCreate(void *entry, void *arg1, void *arg2);
-	uint32_t __IOPrimitiveThreadID();
-	void __IOPrimitiveThreadSetName(uint32_t id, const char *name);
-	void *__IOPrimitiveThreadAccessArgument(size_t index);
-	void __IOPrimitiveThreadDied();
+	thread_t __io_threadCreate(void *entry, void *owner, void *arg);
+	thread_t __io_threadID();
+	void __io_threadSetName(thread_t id, const char *name);
+	void __io_threadSleep(thread_t id, uint32_t time);
+	void __io_threadWakeup(thread_t id);
+	void sd_yield();
 }
 
 static kern_spinlock_t __IOThreadLock = KERN_SPINLOCK_INIT;
@@ -47,10 +49,6 @@ IOThread *IOThread::initWithFunction(IOThread::Function function)
 {
 	if(super::init())
 	{
-		_topPool = 0;
-		_runLoop = 0;
-		_properties = 0;
-
 		_detached = false;
 		_entry    = function;
 		_lock     = KERN_SPINLOCK_INIT;
@@ -61,8 +59,9 @@ IOThread *IOThread::initWithFunction(IOThread::Function function)
 
 void IOThread::free()
 {
-	if(_properties)
-		_properties->release();
+	_properties->release();
+	_topPool->release();
+	_name->release();
 
 	super::free();
 }
@@ -82,23 +81,28 @@ IOThread *IOThread::withFunction(IOThread::Function function)
 IOThread *IOThread::currentThread()
 {
 	IOThread *thread = 0;
-	IONumber *threadID = IONumber::alloc()->initWithUInt32(__IOPrimitiveThreadID());
+	IONumber *threadID = IONumber::alloc()->initWithUInt32(__io_threadID());
 
 	kern_spinlock_lock(&__IOThreadLock);
-	thread = (IOThread *)__IOThreadDictionary->objectForKey(threadID);
+	if(__IOThreadDictionary)
+		thread = (IOThread *)__IOThreadDictionary->objectForKey(threadID);
 	kern_spinlock_unlock(&__IOThreadLock);
 
 	threadID->release();
 	return thread;
 }
 
-
-void IOThread::__threadEntry()
+void IOThread::yield()
 {
-	IOThread *thread = (IOThread *)__IOPrimitiveThreadAccessArgument(0);
-	IONumber *threadID = IONumber::alloc()->initWithUInt32(thread->_id);
+	sd_yield();
+}
 
-	kern_spinlock_lock(&thread->_lock);
+
+void IOThread::threadEntry()
+{
+	IONumber *threadID = IONumber::alloc()->initWithUInt32(_id);
+
+	kern_spinlock_lock(&_lock);
 	kern_spinlock_lock(&__IOThreadLock);
 	{
 		if(!__IOThreadDictionary)
@@ -108,26 +112,34 @@ void IOThread::__threadEntry()
 				panic("Couldn't create __IOThreadDictionary!");
 		}
 		
-		__IOThreadDictionary->setObjectForKey(thread, threadID);
+		__IOThreadDictionary->setObjectForKey(this, threadID);
 	}
 	kern_spinlock_unlock(&__IOThreadLock);
-	kern_spinlock_unlock(&thread->_lock);
+	kern_spinlock_unlock(&_lock);
 
 	// Create a run loop for the thread
-	thread->_runLoop = IORunLoop::alloc()->init();
-	thread->_entry(thread);
-	thread->_runLoop->release();
+	_runLoop = IORunLoop::alloc()->initWithThread(this);
+	_entry(this);
+	_runLoop->release();
 
-
+	kern_spinlock_lock(&_lock);
 	kern_spinlock_lock(&__IOThreadLock);
 	{
 		__IOThreadDictionary->removeObjectForKey(threadID);
 		threadID->release();
 	}
 	kern_spinlock_unlock(&__IOThreadLock);
+	release();
+}
 
-	thread->release();
-	__IOPrimitiveThreadDied();
+void IOThread::sleep(uint32_t time)
+{
+	__io_threadSleep(_id, time);
+}
+
+void IOThread::wakeup()
+{
+	__io_threadWakeup(_id);
 }
 
 void IOThread::detach()
@@ -139,20 +151,21 @@ void IOThread::detach()
 		retain();
 
 		_detached = true;
-		_id = __IOPrimitiveThreadCreate((void *)&IOThread::__threadEntry, this, 0);
+		_id = __io_threadCreate(IOMemberFunctionCast(void *, this, &IOThread::threadEntry), this, 0);
 	}
 
 	kern_spinlock_unlock(&_lock);
 }
 
-IORunLoop *IOThread::getRunLoop()
-{
-	return _runLoop;
-}
-
 void IOThread::setName(IOString *name)
 {
-	__IOPrimitiveThreadSetName(_id, name->CString());
+	kern_spinlock_lock(&_lock);
+
+	__io_threadSetName(_id, name->CString());
+	_name->release();
+	_name = name->retain();
+
+	kern_spinlock_unlock(&_lock);
 }
 
 void IOThread::setPropertyForKey(IOObject *property, IOObject *key)
@@ -168,6 +181,31 @@ void IOThread::setPropertyForKey(IOObject *property, IOObject *key)
 	}
 
 	kern_spinlock_unlock(&_lock);
+}
+
+
+
+IOString *IOThread::name()
+{
+	kern_spinlock_lock(&_lock);
+
+	IOString *copy = 0;
+	if(_name)
+		copy = IOString::alloc()->initWithString(_name);
+
+	kern_spinlock_unlock(&_lock);
+
+	return copy->autorelease();
+}
+
+IORunLoop *IOThread::runLoop() const
+{
+	return _runLoop;
+}
+
+IOAutoreleasePool *IOThread::autoreleasePool() const
+{
+	return _topPool;
 }
 
 IOObject *IOThread::propertyForKey(IOObject *key)
