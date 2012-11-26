@@ -5,7 +5,7 @@ runobjdump=true
 ## Arrays
 programs=(hellostatic)
 libraries=()
-drivers=(libkernel libio libPCI librtl8139)
+drivers=(libkernel libio libPCI libRTL8139)
 
 ## Misc
 grubpath="$BASEDIR/image/boot/grub/grub.cfg"
