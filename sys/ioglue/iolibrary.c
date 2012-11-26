@@ -134,7 +134,7 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 				symbol = io_storeLookupSymbol(library, symnum, &container);
 				if(!symbol)
 				{
-					dbg("Couldn't find symbol %s for %s!\n", name, library->name);
+					warn("Couldn't find symbol %s for %s!\n", name, library->name);
 					return false;
 				}
 
@@ -146,7 +146,7 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 				symbol = io_storeLookupSymbol(library, symnum, &container);
 				if(!symbol)
 				{
-					dbg("Couldn't find symbol %s for %s!\n", name, library->name);
+					warn("Couldn't find symbol %s for %s!\n", name, library->name);
 					return false;
 				}
 
@@ -159,7 +159,7 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 				break;
 
 			default:
-				dbg("Relocation type: %i\n", type);
+				warn("Relocation type: %i\n", type);
 				break;
 		}
 	}
@@ -188,7 +188,7 @@ bool io_libraryRelocatePLT(io_library_t *library)
 		symbol = io_storeLookupSymbol(library, symnum, &container);
 		if(!symbol)
 		{
-			dbg("Couldn't find symbol %s for %s!\n", name, library->name);
+			warn("Couldn't find symbol %s for %s!\n", name, library->name);
 			return false;
 		}
 
@@ -326,7 +326,7 @@ void io_libraryResolveDependencies(io_library_t *library)
 		io_library_t *other = io_storeLibraryWithName(name);
 
 		if(!other)
-			panic("Could not find dependency %s for %s\n", name, library->name);
+			panic("Could not find dependency %s for %s", name, library->name);
 
 		dependency->library = other;
 		dependency = dependency->next;

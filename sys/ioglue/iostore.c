@@ -66,7 +66,7 @@ elf_sym_t *io_storeLookupSymbol(io_library_t *library, uint32_t symNum, io_libra
 			while(dependency)
 			{
 				symbol = io_librarySymbolWithName(dependency->library, name, hash);
-				if(symbol)
+				if(symbol  && symbol->st_value != 0x0)
 				{
 					*outLib = dependency->library;
 					array_destroy(dependencyTree);
@@ -84,7 +84,7 @@ elf_sym_t *io_storeLookupSymbol(io_library_t *library, uint32_t symNum, io_libra
 
 		// Look it up in the library
 		symbol = io_librarySymbolWithName(library, name, hash);
-		if(symbol)
+		if(symbol && symbol->st_value != 0x0)
 		{
 			*outLib = library;
 			return symbol;
