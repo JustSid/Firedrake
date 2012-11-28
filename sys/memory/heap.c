@@ -22,6 +22,8 @@
 #include <system/syslog.h>
 #include "memory.h"
 
+#define kHeapAllocationExtraPadding 16 // Extra padding bytes per allocation
+
 #define kZoneAllocationTypeFree   0
 #define kZoneAllocationTypeUsed   1
 #define kZoneAllocationTypeUnused 2
@@ -199,7 +201,7 @@ void __heap_destroyZone(heap_t *heap, heap_zone_t *zone)
 		zone->prev->next = zone->next;
 
 	if(zone->next)
-		zone->next->prev = zone;
+		zone->next->prev = zone->prev;
 
 	if(zone == heap->firstZone)
 		heap->firstZone = zone->next;
@@ -217,6 +219,7 @@ heap_zone_t *__heap_zoneForSize(heap_t *heap, size_t size, void **outAllocation)
 	if(type != heap_zone_typeLarge)
 	{	
 		size_t padding = (heap->flags & kHeapFlagAligned) ? size % 4 : 0;
+		size_t required = size + padding + kHeapAllocationExtraPadding;
 		
 		while(zone)
 		{
@@ -227,7 +230,7 @@ heap_zone_t *__heap_zoneForSize(heap_t *heap, size_t size, void **outAllocation)
 					zone_tiny_allocation_t *allocation = zone->firstAllocation;
 					for(; allocation < (zone_tiny_allocation_t *)zone->lastAllocation; allocation ++)
 					{
-						if(allocation->type == kZoneAllocationTypeFree && allocation->size >= size + padding)
+						if(allocation->type == kZoneAllocationTypeFree && allocation->size >= required)
 						{
 							if(outAllocation)
 								*outAllocation = allocation;
@@ -241,7 +244,7 @@ heap_zone_t *__heap_zoneForSize(heap_t *heap, size_t size, void **outAllocation)
 					zone_allocation_t *allocation = zone->firstAllocation;
 					for(; allocation < (zone_allocation_t *)zone->lastAllocation; allocation ++)
 					{
-						if(allocation->type == kZoneAllocationTypeFree && allocation->size >= size + padding)
+						if(allocation->type == kZoneAllocationTypeFree && allocation->size >= required)
 						{
 							if(outAllocation)
 								*outAllocation = allocation;
@@ -406,22 +409,23 @@ static inline void __heap_zoneDefragment(heap_zone_t *zone)
 static inline void *__heap_useAllocation(heap_t *heap, heap_zone_t *zone, void *allocationPtr, size_t size)
 {
 	size_t padding = (heap->flags & kHeapFlagAligned) ? size % 4 : 0;
+	size_t required = size + padding + kHeapAllocationExtraPadding;
 
 	if(zone->type == heap_zone_typeTiny)
 	{
 		zone_tiny_allocation_t *allocation = allocationPtr;
 		allocation->type = kZoneAllocationTypeUsed;
 
-		if(allocation->size > size + padding)
+		if(allocation->size > required)
 		{
 			zone_tiny_allocation_t *unused = __heap_zoneGetUnusedAllocation(zone);
 			if(unused)
 			{
-				unused->size = allocation->size - (size + padding);
-				unused->offset = allocation->offset + size + padding;
+				unused->size = allocation->size - required;
+				unused->offset = allocation->offset + required;
 				unused->type = kZoneAllocationTypeFree;
 
-				allocation->size = size + padding;
+				allocation->size = required;
 
 				zone->freeAllocations ++;
 				zone->allocations ++;
@@ -436,16 +440,16 @@ static inline void *__heap_useAllocation(heap_t *heap, heap_zone_t *zone, void *
 		zone_allocation_t *allocation = allocationPtr;
 		allocation->type = kZoneAllocationTypeUsed;
 
-		if(allocation->size > size + padding)
+		if(allocation->size > required)
 		{
 			zone_allocation_t *unused = __heap_zoneGetUnusedAllocation(zone);
 			if(unused)
 			{
-				unused->size = allocation->size - (size + padding);
-				unused->pointer = allocation->pointer + size + padding;
+				unused->size = allocation->size - required;
+				unused->pointer = allocation->pointer + required;
 				unused->type = kZoneAllocationTypeFree;
 
-				allocation->size = size + padding;
+				allocation->size = required;
 
 				zone->freeAllocations ++;
 				zone->allocations ++;
@@ -487,7 +491,7 @@ void *halloc(heap_t *heap, size_t size)
 	if(!heap)
 		heap = _mm_kernelHeap;
 
-	/*spinlock_lock(&heap->lock);
+	spinlock_lock(&heap->lock);
 
 	heap_zone_t *zone;
 	void *allocation = NULL;
@@ -504,10 +508,6 @@ void *halloc(heap_t *heap, size_t size)
 	if(heap->flags & kHeapFlagSecure)
 		memset(pointer, 0, size);
 
-	return pointer;*/
-
-	void *pointer = mm_alloc(vm_getKernelDirectory(), pageCount(size), VM_FLAGS_KERNEL);
-	memset(pointer, 0, size);
 	return pointer;
 }
 
@@ -516,7 +516,7 @@ void hfree(heap_t *heap, void *ptr)
 	if(!heap)
 		heap = _mm_kernelHeap;
 
-	/*spinlock_lock(&heap->lock);
+	spinlock_lock(&heap->lock);
 
 	void *allocationPtr = NULL;
 	heap_zone_t *zone = __heap_findZoneWithAllocation(heap, (uintptr_t)ptr, &allocationPtr);
@@ -535,9 +535,7 @@ void hfree(heap_t *heap, void *ptr)
 	__heap_freeAllocation(zone, allocationPtr);
 	__heap_zoneDefragment(zone);
 
-	spinlock_unlock(&heap->lock);*/
-
-	mm_free(ptr, vm_getKernelDirectory(), 1);
+	spinlock_unlock(&heap->lock);
 }
 
 
