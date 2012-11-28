@@ -288,7 +288,7 @@ vm_address_t __vm_findFreeKernelPages(size_t pages, vm_address_t limit)
 	}
 	
 	if(freePages == 0)
-		panic("Could not find enough free kernel pages. Requested %i pages.\n", pages);
+		panic("Could not find enough free kernel pages. Requested %i pages.", pages);
 	
 	return (vm_address_t)((directoryIndex << 22) + (tableIndex << VM_SHIFT));
 }
