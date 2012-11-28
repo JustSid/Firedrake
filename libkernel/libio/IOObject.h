@@ -19,6 +19,7 @@
 #ifndef _IOOBJECT_H_
 #define _IOOBJECT_H_
 
+#include <libkernel/libkernel.h>
 #include "IOTypes.h"
 #include "IOSymbol.h"
 #include "IORuntime.h"
@@ -55,7 +56,8 @@ protected:
 
 private:
 	IOSymbol *_symbol;
-	uint32_t retainCount;
+	uint32_t _retainCount;
+	kern_spinlock_t _lock;
 };
 
 #define __IOTokenExpand(tok) #tok

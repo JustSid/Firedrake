@@ -37,7 +37,8 @@ void IOObject::free()
 void IOObject::prepareWithSymbol(IOSymbol *symbol)
 {
 	_symbol = symbol;
-	retainCount = 1;
+	_retainCount = 1;
+	_lock = KERN_SPINLOCK_INIT;
 }
 
 
@@ -48,13 +49,17 @@ void IOObject::release()
 	if(!this)
 		return;
 
-	if((-- retainCount) == 0)
+	kern_spinlock_lock(&_lock);
+
+	if((-- _retainCount) == 0)
 	{
 		free();
 		kfree(this);
 
 		return;
 	}
+
+	kern_spinlock_unlock(&_lock);
 }
 
 IOObject *IOObject::retain()
@@ -62,7 +67,10 @@ IOObject *IOObject::retain()
 	if(!this)
 		return this;
 
-	retainCount ++;
+	kern_spinlock_lock(&_lock);
+	_retainCount ++;
+	kern_spinlock_unlock(&_lock);
+	
 	return this;
 }
 

@@ -36,7 +36,7 @@ bool IODatabase::init()
 	_readLock = KERN_SPINLOCK_INIT;
 
 	_symbols = new __IOPointerDictionary;
-	_symbols->retainCount = 1;
+	_symbols->_retainCount = 1;
 	_symbols->initWithCapacity(20);
 
 	_services = 0;
