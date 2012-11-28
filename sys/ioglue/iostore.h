@@ -33,6 +33,8 @@ elf_sym_t *io_storeLookupSymbol(io_library_t *library, uint32_t symbol, io_libra
 io_library_t *io_storeLibraryWithAddress(vm_address_t address);
 io_library_t *io_storeLibraryWithName(const char *name);
 
+io_library_t *__io_storeLibraryWithAddress(vm_address_t address); // Non-blocking version of io_storeLibraryWithAddress()
+
 bool io_storeAddLibrary(io_library_t *library);
 void io_storeRemoveLibrary(io_library_t *library);
 

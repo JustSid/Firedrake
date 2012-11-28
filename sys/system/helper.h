@@ -25,6 +25,9 @@
 const char *sys_unitForSize(size_t size, size_t *result);
 const char *sys_fileWithoutPath(const char *path);
 
+bool isCPPName(const char *name);
+void demangleCPPName(const char *name, char *buffer);
+
 struct multiboot_module_s *sys_multibootModuleWithName(const char *name);
 
 #endif /* _HELPER_H_ */

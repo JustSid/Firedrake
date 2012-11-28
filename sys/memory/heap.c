@@ -20,246 +20,471 @@
 #include <libc/string.h>
 #include <system/assert.h>
 #include <system/syslog.h>
-#include <system/panic.h>
 #include "memory.h"
+
+#define kHeapAllocationExtraPadding 16 // Extra padding bytes per allocation
+
+#define kZoneAllocationTypeFree   0
+#define kZoneAllocationTypeUsed   1
+#define kZoneAllocationTypeUnused 2
+
+typedef struct
+{
+	uint8_t type;
+	uint8_t size;
+	uint16_t offset;
+} zone_tiny_allocation_t;
+
+typedef struct
+{
+	uint8_t type;
+	size_t size;
+	uintptr_t pointer;
+} zone_allocation_t;
 
 static heap_t *_mm_kernelHeap = NULL;
 
-bool heap_createSubheap(heap_t *heap, struct heap_subheap_s *subheap)
+heap_t *heap_create(uint32_t flags)
 {
-	uintptr_t pmemory = pm_alloc(heap->pages);
-	if(!pmemory)
-		return false;
-
-	vm_address_t vmemory = vm_alloc(heap->directory, pmemory, heap->pages, VM_FLAGS_KERNEL);
-	if(!vmemory)
+	heap_t *heap = mm_alloc(vm_getKernelDirectory(), 1, VM_FLAGS_KERNEL);
+	if(heap)
 	{
-		pm_free(pmemory, heap->pages);
-		return false;
+		heap->flags = flags;
+		heap->lock = SPINLOCK_INIT;
+
+		heap->firstZone = NULL;
 	}
 
-	subheap->changes = 0;
-	subheap->initialized = true;
-
-	subheap->pmemory = pmemory;
-	subheap->vmemory = vmemory;
-
-	subheap->pages = heap->pages;
-	subheap->size  = (subheap->pages * VM_PAGE_SIZE);
-
-	subheap->freeSize    = (subheap->pages * VM_PAGE_SIZE);
-	subheap->allocations = 1;
-
-	subheap->firstAllocation = (struct heap_allocation_s *)vmemory;
-	subheap->firstAllocation->size = subheap->freeSize;
-	subheap->firstAllocation->type = kHeapAllocationTypeFree;
-	subheap->firstAllocation->ptr  = vmemory + sizeof(struct heap_allocation_s);
-
-	subheap->firstAllocation->next    = NULL;
-	subheap->firstAllocation->subheap = subheap;
-
-	return true;
-}
-
-void heap_destroySubheap(heap_t *heap, struct heap_subheap_s *subheap)
-{
-	if(!subheap->initialized)
-		return;
-
-	subheap->firstAllocation = NULL;
-	subheap->initialized = false;
-
-	pm_free(subheap->pmemory, subheap->pages);
-	vm_free(heap->directory, subheap->vmemory, subheap->pages);
-}
-
-
-
-heap_t *heap_create(size_t bytes, vm_page_directory_t directory, uint32_t flags)
-{
-	uintptr_t pmemory = pm_alloc(1);
-	if(!pmemory)
-		return NULL;
-	
-	vm_address_t vmemory = vm_alloc(directory, pmemory, 1, VM_FLAGS_KERNEL);
-	if(!vmemory)
-	{
-		pm_free(pmemory, 1);
-		return NULL;
-	}
-
-	heap_t *heap = (heap_t *)vmemory;
-	memset(heap, 0, VM_PAGE_SIZE);
-
-	heap->flags 	= flags;
-	heap->directory = directory;
-	heap->lock      = SPINLOCK_INIT;
-
-	heap->pages    = pageCount(bytes);
-	heap->size     = heap->pages * VM_PAGE_SIZE;
-	heap->maxHeaps = (VM_PAGE_SIZE - sizeof(heap_t)) / sizeof(struct heap_subheap_s);
-	heap->subheaps = (struct heap_subheap_s *)(vmemory + sizeof(heap_t));
-
-	// Get the first subheap ready
-	bool result = heap_createSubheap(heap, &heap->subheaps[0]);
-	if(!result)
-	{
-		pm_free(pmemory, 1);
-		vm_free(directory, vmemory, 1);
-
-		return NULL;
-	}
-	
 	return heap;
-}
-
-heap_t *heap_kernelHeap()
-{
-	return _mm_kernelHeap;
 }
 
 void heap_destroy(heap_t *heap)
 {
-	assert(heap);
-
-	for(size_t i=0; i<heap->maxHeaps; i++)
+	heap_zone_t *zone = heap->firstZone;
+	while(zone)
 	{
-		heap_destroySubheap(heap, &heap->subheaps[i]);
+		heap_zone_t *next = zone->next;
+
+		mm_free(zone, vm_getKernelDirectory(), zone->pages);
+
+		zone = next;
 	}
 
-	vm_address_t vmemory = (vm_address_t)heap;
-	vm_page_directory_t directory = heap->directory;
-
-	uintptr_t pmemory = vm_resolveVirtualAddress(directory, vmemory);
-
-	pm_free(pmemory, 1);
-	vm_free(directory, vmemory, 1);
+	mm_free(heap, vm_getKernelDirectory(), 1);
 }
 
+// ------------------------------
+// Zone management
+// ------------------------------
 
-
-// Helper functions to divied and merge the heap
-static inline bool heap_mergeAllocation(struct heap_allocation_s *allocation)
+static inline heap_zone_type_t __heap_zoneTypeForSize(size_t size)
 {
-	if(allocation->next && allocation->next->type == kHeapAllocationTypeFree)
+	if(size > 2048)
+		return heap_zone_typeLarge;
+
+	if(size > 256)
+		return heap_zone_typeMedium;
+
+	if(size > 64)
+		return heap_zone_typeSmall;
+
+	return heap_zone_typeTiny;
+}
+
+heap_zone_t *__heap_createZoneForSize(heap_t *heap, size_t size)
+{
+	heap_zone_type_t type = __heap_zoneTypeForSize(size);
+	size_t pages = 0;
+
+	switch(type)
 	{
-		struct heap_allocation_s *next = allocation->next;
+		case heap_zone_typeTiny:
+			pages = 1;
+			break;
 
-		allocation->size = allocation->size + next->size;
-		allocation->next = next->next;
+		case heap_zone_typeSmall:
+			pages = 5;
+			break;
 
-		return true;
+		case heap_zone_typeMedium:
+			pages = 20;
+			break;
+
+		case heap_zone_typeLarge:
+			pages = pageCount(size);
+			break;
 	}
 
-	return false;
-}
+	heap_zone_t *zone = mm_alloc(vm_getKernelDirectory(), pages + 1, VM_FLAGS_KERNEL);
+	assert(zone);
 
-static inline void heap_divideAllocation(struct heap_allocation_s *allocation, size_t bytes)
-{
-	struct heap_allocation_s *next = (struct heap_allocation_s *)(allocation->ptr + bytes);
-	size_t psize = allocation->size;
+	uintptr_t address = (uintptr_t)zone;
+	size_t allocationSize = (type == heap_zone_typeTiny) ? sizeof(zone_tiny_allocation_t) : sizeof(zone_allocation_t);
 
-	allocation->size = bytes + sizeof(struct heap_allocation_s);
+	zone->type = type;
+	zone->changes = 0;
 
-	next->size = psize - allocation->size;
-	next->ptr  = (uintptr_t)(next + 1);
-	next->type = kHeapAllocationTypeFree;
-	next->next = allocation->next;
-	next->subheap = allocation->subheap;
+	zone->begin = address + VM_PAGE_SIZE;
+	zone->end   = address + (pages * VM_PAGE_SIZE) + VM_PAGE_SIZE;
 
-	allocation->next = next;
-}
+	zone->pages = pages + 1;
+	zone->freeSize = (pages * VM_PAGE_SIZE);
 
-static inline struct heap_allocation_s *heap_allocationWithPtr(heap_t *heap, void *ptr)
-{
-	if(!ptr)
-		return NULL;
+	zone->maxAllocations  = (VM_PAGE_SIZE - sizeof(heap_zone_t)) / allocationSize;
+	zone->allocations     = 0;
+	zone->freeAllocations = 0;
 
-	if(heap->flags & kHeapFlagUntrusted)
+	zone->firstAllocation = (void *)(address + sizeof(heap_zone_t));
+	zone->lastAllocation  = (void *)(address + (zone->maxAllocations * allocationSize));
+
+	zone->prev = NULL;
+	zone->next = heap->firstZone;
+
+	if(heap->firstZone)
+		heap->firstZone->prev = zone;
+
+	heap->firstZone = zone;
+
+	if(type == heap_zone_typeTiny)
 	{
-		uintptr_t address = (uintptr_t)ptr;
+		size_t sizeLeft = zone->freeSize;
+		uint16_t offset = 0;
 
-		for(size_t i=0; i<heap->maxHeaps; i++)
+		zone_tiny_allocation_t *allocation = zone->firstAllocation;
+
+		for(; allocation < (zone_tiny_allocation_t *)zone->lastAllocation; allocation ++)
 		{
-			struct heap_subheap_s *subheap = &heap->subheaps[i];
-			if(address >= subheap->vmemory && address < subheap->vmemory + subheap->size)
+			if(sizeLeft > 0)
 			{
-				struct heap_allocation_s *allocation = subheap->firstAllocation;
-				while(allocation)
-				{
-					if(allocation->ptr == address)
-						return allocation;
+				allocation->size = MIN(sizeLeft, UINT8_MAX);
+				allocation->offset = offset;
+				allocation->type = kZoneAllocationTypeFree;
 
-					allocation = allocation->next;
-				}
+				offset += allocation->size;
+				sizeLeft -= allocation->size;
 
-				break;
+				zone->allocations ++;
+				zone->freeAllocations ++;
+			}
+			else
+			{
+				allocation->type = kZoneAllocationTypeUnused;
+				allocation->offset = UINT16_MAX;
 			}
 		}
 	}
 	else
 	{
-		uintptr_t tptr = (uintptr_t)ptr;
-		return (struct heap_allocation_s *)(tptr - sizeof(struct heap_allocation_s));
+		zone_allocation_t *allocation = zone->firstAllocation;
+
+		zone->allocations     = 1;
+		zone->freeAllocations = 1;
+
+		allocation->type = kZoneAllocationTypeFree;
+		allocation->size = zone->freeSize;
+		allocation->pointer = zone->begin;
+
+		for(allocation ++; allocation < (zone_allocation_t *)zone->lastAllocation; allocation ++)
+		{
+			allocation->pointer = 0;
+			allocation->type = kZoneAllocationTypeUnused;
+		}
+	}
+
+	return zone;
+}
+
+void __heap_destroyZone(heap_t *heap, heap_zone_t *zone)
+{
+	// Fix the linked list
+	if(zone->prev)
+		zone->prev->next = zone->next;
+
+	if(zone->next)
+		zone->next->prev = zone->prev;
+
+	if(zone == heap->firstZone)
+		heap->firstZone = zone->next;
+
+	// Get rid of the zone
+	mm_free(zone, vm_getKernelDirectory(), zone->pages);
+}
+
+
+heap_zone_t *__heap_zoneForSize(heap_t *heap, size_t size, void **outAllocation)
+{
+	heap_zone_type_t type = __heap_zoneTypeForSize(size);
+	heap_zone_t *zone = heap->firstZone;
+
+	if(type != heap_zone_typeLarge)
+	{	
+		size_t padding = (heap->flags & kHeapFlagAligned) ? size % 4 : 0;
+		size_t required = size + padding + kHeapAllocationExtraPadding;
+		
+		while(zone)
+		{
+			if(zone->type == type && zone->freeSize >= size && zone->allocations < zone->maxAllocations)
+			{
+				if(zone->type == heap_zone_typeTiny)
+				{
+					zone_tiny_allocation_t *allocation = zone->firstAllocation;
+					for(; allocation < (zone_tiny_allocation_t *)zone->lastAllocation; allocation ++)
+					{
+						if(allocation->type == kZoneAllocationTypeFree && allocation->size >= required)
+						{
+							if(outAllocation)
+								*outAllocation = allocation;
+
+							return zone;
+						}
+					}
+				}
+				else
+				{
+					zone_allocation_t *allocation = zone->firstAllocation;
+					for(; allocation < (zone_allocation_t *)zone->lastAllocation; allocation ++)
+					{
+						if(allocation->type == kZoneAllocationTypeFree && allocation->size >= required)
+						{
+							if(outAllocation)
+								*outAllocation = allocation;
+							
+							return zone;
+						}
+					}
+				}
+			}
+
+			zone = zone->next;
+		}
+	}
+
+	// We couldn't find a zone with enough free space, so let's create a fresh one
+	zone = __heap_createZoneForSize(heap, size);
+
+	if(outAllocation)
+		*outAllocation = zone->firstAllocation;
+
+	return zone;
+}
+
+static inline void *__heap_zoneFindAllocationWithPointer(heap_zone_t *zone, uintptr_t pointer)
+{
+	if(zone->type == heap_zone_typeTiny)
+	{
+		zone_tiny_allocation_t *allocation = zone->firstAllocation;
+		for(; allocation < (zone_tiny_allocation_t *)zone->lastAllocation; allocation ++)
+		{
+			if(pointer == zone->begin + allocation->offset && allocation->type == kZoneAllocationTypeUsed)
+			{
+				return allocation;
+			}
+		}
+	}
+	else
+	{
+		zone_allocation_t *allocation = zone->firstAllocation;
+		for(; allocation < (zone_allocation_t *)zone->lastAllocation; allocation ++)
+		{
+			if(allocation->pointer == pointer && allocation->type == kZoneAllocationTypeUsed)
+			{
+				return allocation;
+			}
+		}
 	}
 
 	return NULL;
 }
 
-
-
-void heap_defragSubheap(struct heap_subheap_s *subheap)
+heap_zone_t *__heap_findZoneWithAllocation(heap_t *heap, uintptr_t pointer, void **outAllocation)
 {
-	struct heap_allocation_s *allocation = subheap->firstAllocation;
-	while(allocation)
+	heap_zone_t *zone = heap->firstZone;
+	while(zone)
 	{
-		if(allocation->type == kHeapAllocationTypeFree)
+		if(pointer >= zone->begin && pointer < zone->end)
 		{
-			while(heap_mergeAllocation(allocation)) 
-			{}
+			void *allocation = __heap_zoneFindAllocationWithPointer(zone, pointer);
+			if(allocation)
+			{
+				if(outAllocation)
+					*outAllocation = allocation;
+
+				return zone;
+			}
+
+			break;
 		}
 
-		allocation = allocation->next;
-	}
-
-	subheap->changes = 0;
-}
-
-void heap_defrag(heap_t *heap)
-{
-	for(size_t i=0; i<heap->maxHeaps; i++)
-	{
-		struct heap_subheap_s *subheap = &heap->subheaps[i];
-		if(subheap->initialized)
-		{
-			heap_defragSubheap(subheap);
-		}
-	}
-}
-
-
-struct heap_allocation_s *heap_allocateInSubheap(struct heap_subheap_s *subheap, size_t size)
-{
-	struct heap_allocation_s *allocation = subheap->firstAllocation;
-	while(allocation)
-	{
-		if(allocation->type == kHeapAllocationTypeFree && allocation->size >= size)
-		{
-			if(allocation->size >= size + 128)
-				heap_divideAllocation(allocation, size);
-
-			allocation->type = kHeapAllocationTypeUsed;
-			subheap->changes ++;
-			subheap->freeSize -= allocation->size;
-
-			return allocation;
-		}
-
-		allocation = allocation->next;
+		zone = zone->next;
 	}
 
 	return NULL;
 }
+
+static inline void *__heap_zoneGetUnusedAllocation(heap_zone_t *zone)
+{
+	if(zone->type == heap_zone_typeTiny)
+	{
+		zone_tiny_allocation_t *allocation = zone->firstAllocation;
+		for(; allocation < (zone_tiny_allocation_t *)zone->lastAllocation; allocation ++)
+		{
+			if(allocation->type == kZoneAllocationTypeUnused)
+				return allocation;
+		}
+	}	
+	else
+	{
+		zone_allocation_t *allocation = zone->firstAllocation;
+		for(; allocation < (zone_allocation_t *)zone->lastAllocation; allocation ++)
+		{
+			if(allocation->type == kZoneAllocationTypeUnused)
+				return allocation;
+		}
+	}
+
+	return NULL;
+}
+
+static inline void __heap_zoneDefragment(heap_zone_t *zone)
+{
+	size_t changeThreshold = (zone->type == heap_zone_typeTiny) ? 100 : 20;
+
+	if(zone->changes >= changeThreshold && zone->freeAllocations >= 2)
+	{
+		if(zone->type == heap_zone_typeTiny)
+		{
+			zone_tiny_allocation_t *allocation = zone->firstAllocation;
+			for(; allocation < (zone_tiny_allocation_t *)zone->lastAllocation; allocation ++)
+			{
+				while(allocation->type == kZoneAllocationTypeFree)
+				{
+					zone_tiny_allocation_t *next = __heap_zoneFindAllocationWithPointer(zone, zone->begin + allocation->offset + allocation->size);
+					if(!next || next->type != kZoneAllocationTypeFree)
+						break;
+
+					uint32_t size = allocation->size;
+					if(size + next->size > UINT8_MAX)
+						break;
+
+					allocation->size += next->size;
+
+					next->type = kZoneAllocationTypeUnused;
+					next->offset = 0;
+
+					zone->allocations --;
+					zone->freeAllocations --;
+				}
+			}
+		}
+		else
+		{
+			zone_allocation_t *allocation = zone->firstAllocation;
+			for(; allocation < (zone_allocation_t *)zone->lastAllocation; allocation ++)
+			{
+				while(allocation->type == kZoneAllocationTypeFree)
+				{
+					zone_allocation_t *next = __heap_zoneFindAllocationWithPointer(zone, allocation->pointer + allocation->size);
+					if(!next || next->type != kZoneAllocationTypeFree)
+						break;
+
+					allocation->size += next->size;
+
+					next->type = kZoneAllocationTypeUnused;
+					next->pointer = 0;
+
+					zone->allocations --;
+					zone->freeAllocations --;
+				}
+			}
+		}
+
+		zone->changes = 0;
+	}
+}
+
+// ------------------------------
+// Allocation management
+// ------------------------------
+
+static inline void *__heap_useAllocation(heap_t *heap, heap_zone_t *zone, void *allocationPtr, size_t size)
+{
+	size_t padding = (heap->flags & kHeapFlagAligned) ? size % 4 : 0;
+	size_t required = size + padding + kHeapAllocationExtraPadding;
+
+	if(zone->type == heap_zone_typeTiny)
+	{
+		zone_tiny_allocation_t *allocation = allocationPtr;
+		allocation->type = kZoneAllocationTypeUsed;
+
+		if(allocation->size > required)
+		{
+			zone_tiny_allocation_t *unused = __heap_zoneGetUnusedAllocation(zone);
+			if(unused)
+			{
+				unused->size = allocation->size - required;
+				unused->offset = allocation->offset + required;
+				unused->type = kZoneAllocationTypeFree;
+
+				allocation->size = required;
+
+				zone->freeAllocations ++;
+				zone->allocations ++;
+			}
+		}
+
+		zone->freeAllocations --;
+		return (void *)(zone->begin + allocation->offset);
+	}
+	else
+	{
+		zone_allocation_t *allocation = allocationPtr;
+		allocation->type = kZoneAllocationTypeUsed;
+
+		if(allocation->size > required)
+		{
+			zone_allocation_t *unused = __heap_zoneGetUnusedAllocation(zone);
+			if(unused)
+			{
+				unused->size = allocation->size - required;
+				unused->pointer = allocation->pointer + required;
+				unused->type = kZoneAllocationTypeFree;
+
+				allocation->size = required;
+
+				zone->freeAllocations ++;
+				zone->allocations ++;
+			}
+		}
+		
+		zone->freeAllocations --;
+		return (void *)(allocation->pointer);
+	}
+
+	return NULL;
+}
+
+static inline void __heap_freeAllocation(heap_zone_t *zone, void *allocationPtr)
+{
+	if(zone->type == heap_zone_typeTiny)
+	{
+		zone_tiny_allocation_t *allocation = allocationPtr;
+
+		allocation->type = kZoneAllocationTypeFree;
+		zone->freeSize += allocation->size;
+	}
+	else
+	{
+		zone_allocation_t *allocation = allocationPtr;
+
+		allocation->type = kZoneAllocationTypeFree;
+		zone->freeSize += allocation->size;
+	}
+
+	zone->freeAllocations ++;
+	zone->changes ++;
+}
+
+//
 
 void *halloc(heap_t *heap, size_t size)
 {
@@ -268,66 +493,22 @@ void *halloc(heap_t *heap, size_t size)
 
 	spinlock_lock(&heap->lock);
 
-	size = size + sizeof(struct heap_allocation_s);
+	heap_zone_t *zone;
+	void *allocation = NULL;
+	void *pointer = NULL;
 
-	size_t padding = 4 - (size % 4);
-	size_t asize = size + padding;
+	zone = __heap_zoneForSize(heap, size, &allocation);
+	assert(zone);
 
-	if(asize >= heap->size)
-	{
-		spinlock_unlock(&heap->lock);
-		return NULL;
-	}
-
-	// Look for a large enough subheap, and if none is found, create a new one
-	struct heap_subheap_s *emptyHeap = NULL;
-
-	for(size_t i=0; i<heap->maxHeaps; i++)
-	{
-		struct heap_subheap_s *subheap = &heap->subheaps[i];
-		if(!subheap->initialized)
-		{
-			if(!emptyHeap)
-				emptyHeap = subheap;
-
-			continue;
-		}
-
-		if(subheap->initialized && subheap->freeSize >= asize)
-		{
-			struct heap_allocation_s *allocation = heap_allocateInSubheap(subheap, asize);
-			assert(allocation);
-
-			spinlock_unlock(&heap->lock);
-
-			void *ptr = (void *)allocation->ptr;
-			if(heap->flags & kHeapFlagSecure)
-				memset(ptr, 0, size);
-
-			return ptr;
-		}
-	}
-
-	if(emptyHeap != NULL)
-	{
-		bool result = heap_createSubheap(heap, emptyHeap);
-		if(result)
-		{
-			struct heap_allocation_s *allocation = heap_allocateInSubheap(emptyHeap, asize);
-			assert(allocation);
-
-			spinlock_unlock(&heap->lock);
-
-			void *ptr = (void *)allocation->ptr;
-			if(heap->flags & kHeapFlagSecure)
-				memset(ptr, 0, size);
-
-			return ptr;
-		}
-	}
+	pointer = __heap_useAllocation(heap, zone, allocation, size);
+	assert(pointer);
 
 	spinlock_unlock(&heap->lock);
-	return NULL;
+
+	if(heap->flags & kHeapFlagSecure)
+		memset(pointer, 0, size);
+
+	return pointer;
 }
 
 void hfree(heap_t *heap, void *ptr)
@@ -337,34 +518,29 @@ void hfree(heap_t *heap, void *ptr)
 
 	spinlock_lock(&heap->lock);
 
-	struct heap_allocation_s *allocation = heap_allocationWithPtr(heap, ptr);
-	if(allocation)
+	void *allocationPtr = NULL;
+	heap_zone_t *zone = __heap_findZoneWithAllocation(heap, (uintptr_t)ptr, &allocationPtr);
+
+	if(!zone)
+		panic("hfree() unknown pointer %p!", ptr);
+
+	if(zone->allocations == zone->freeAllocations + 1)
 	{
-		struct heap_subheap_s *subheap = allocation->subheap;
-
-		allocation->type = kHeapAllocationTypeFree;
-
-		subheap->freeSize += allocation->size;
-		subheap->changes ++;
-
-		if(subheap->changes > kHeapChangesThreshold)
-			heap_defragSubheap(subheap);
+		__heap_destroyZone(heap, zone);
 
 		spinlock_unlock(&heap->lock);
 		return;
 	}
+	
+	__heap_freeAllocation(zone, allocationPtr);
+	__heap_zoneDefragment(zone);
 
-	dbg("hfree(%p), unknown pointer!\n", ptr);
 	spinlock_unlock(&heap->lock);
 }
 
 
-
-
 bool heap_init(void *UNUSED(unused))
 {
-	size_t oneMb = 1024 * 1024;
-	_mm_kernelHeap = heap_create(oneMb * 5, vm_getKernelDirectory(), 0);
-
+	_mm_kernelHeap = heap_create(kHeapFlagAligned);
 	return (_mm_kernelHeap != NULL);
 }

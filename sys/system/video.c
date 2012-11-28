@@ -26,6 +26,8 @@ static uint32_t _vd_width  = 80;
 static uint32_t _vd_height = 25;
 static uint32_t _vd_cursorX = 0;
 static uint32_t _vd_cursorY = 0;
+static vd_color_t _vd_foreground = vd_color_white;
+static vd_color_t _vd_background = vd_color_black;
 
 // Mark: Private inlined functions
 static inline void __vd_setColor(uint32_t x, uint32_t y, bool foreground, vd_color_t color)
@@ -99,28 +101,21 @@ void vd_scrollLines(uint32_t lines)
 	__vd_setCursor(_vd_cursorX, _vd_cursorY); // Update the cursor so that it gets it gray color again.
 }
 
-void vd_setColor(uint32_t x, uint32_t y, bool foreground, vd_color_t color, size_t size)
+void vd_setColor(vd_color_t color, bool foreground)
 {
-	uint32_t index = (y * _vd_width + x) * 2; 
-	size *= 2; // Remember that each character takes up 16 bytes
-
-	for(size_t i=0; i<size; i+=2)
-	{
-		uint8_t otherColor = _vd_address[index + i + 1];
-		uint8_t result;
-		
-		otherColor 	= foreground ? otherColor >> 4 : otherColor & 0x0F; // Grab the other color, eg. if we were to change the foreground color we would grab the background color
-		result 		= foreground ? (otherColor << 4) | (color & 0x0F) : (color << 4) | (otherColor & 0x0F); // Calculate the new color, this is, the otherColor and the new color.
-		
-		_vd_address[index + i + 1] = result;
-	}
+	if(foreground)
+		_vd_foreground = color;
+	else
+		_vd_background = color;
 }
 
-void vd_printString(const char *string, vd_color_t color)
+void vd_writeString(const char *string)
 {
 	while(*string != '\0')
 	{
-		if(*string == '\n')
+		char character = *string;
+
+		if(character == '\n')
 		{
 			_vd_cursorX = 0;
 			_vd_cursorY ++;
@@ -132,8 +127,31 @@ void vd_printString(const char *string, vd_color_t color)
 			continue;
 		}
 
-		__vd_setCharacter(_vd_cursorX, _vd_cursorY, *string);
-		__vd_setColor(_vd_cursorX, _vd_cursorY, true, color);
+		if(character <= 31)
+		{
+			if(character == 14 || character == 15)
+			{
+				bool foreground = (character == 14);
+				character = *(++ string);
+
+				if(character >= 16 && character <= 31)
+				{
+					vd_color_t color = (vd_color_t)(character - 16);
+
+					if(foreground)
+						_vd_foreground = color;
+					else
+						_vd_background = color;
+				}
+			}
+
+			string ++;
+			continue;
+		}
+
+		__vd_setCharacter(_vd_cursorX, _vd_cursorY, character);
+		__vd_setColor(_vd_cursorX, _vd_cursorY, true, _vd_foreground);
+		__vd_setColor(_vd_cursorX, _vd_cursorY, false, _vd_background);
 
 		_vd_cursorX ++;
 		if(_vd_cursorX >= _vd_width)

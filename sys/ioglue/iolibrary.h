@@ -27,6 +27,7 @@
 
 typedef struct io_library_s
 {
+	char *name;
 	char *path;
 
 	// Dynamic section content
@@ -52,15 +53,16 @@ typedef struct io_library_s
 	// Binary content and info
 	offset_t relocBase;
 
-	uintptr_t 		pmemory;
-	vm_address_t 	vmemory;
 	size_t pages;
+	uintptr_t    pmemory;
+	vm_address_t vmemory;
 
 	// Init array
 	uintptr_t *initArray;
 	size_t initArrayCount;
 
 	// Misc
+	spinlock_t lock;
 	uint32_t refCount;
 } io_library_t;
 
@@ -73,14 +75,16 @@ struct io_dependency_s
 	struct io_dependency_s *prev;
 };
 
-
 io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t length);
 io_library_t *io_libraryCreateWithFile(const char *file);
 
+void io_libraryRetain(io_library_t *library);
 void io_libraryRelease(io_library_t *library);
 
 bool io_libraryRelocateNonPLT(io_library_t *library);
 bool io_libraryRelocatePLT(io_library_t *library);
+
+void io_libraryResolveDependencies(io_library_t *library);
 
 vm_address_t io_libraryResolveAddress(io_library_t *library, vm_address_t address);
 

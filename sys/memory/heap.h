@@ -16,11 +16,6 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-/**
- * Overview:
- * Provides a memory allocator which is better in handling non page sized allocations
- * and thus should be preferred over kalloc()!
- **/
 #ifndef _HEAP_H_
 #define _HEAP_H_
 
@@ -28,59 +23,50 @@
 #include <system/lock.h>
 #include "vmemory.h"
 
-#define kHeapChangesThreshold 5
-
-#define kHeapAllocationTypeFree 0
-#define kHeapAllocationTypeUsed 1
-
-#define kHeapFlagSecure 	(1 << 0) // The heap will initialize all memory with zeroes
-#define kHeapFlagUntrusted 	(1 << 1) // The heap won't trust any pointer you give to it
-
-struct heap_subheap_s;
-struct heap_allocation_s
+typedef enum
 {
-	size_t size; // Size includes the size of the allocation itself as well!
-	uint32_t type;
+	heap_zone_typeTiny, // Max 64 bytes per entry
+	heap_zone_typeSmall, // Max 256 bytes per entry
+	heap_zone_typeMedium, // Max 2048 bytes per entry
+	heap_zone_typeLarge // Entries spanning over more than one page
+} heap_zone_type_t;
 
-	uintptr_t ptr;
-	struct heap_allocation_s *next;
-	struct heap_subheap_s *subheap;
-};
-
-struct heap_subheap_s
+typedef struct heap_zone_s
 {
-	uint8_t changes;
-	bool initialized;
+	heap_zone_type_t type;
+	uint32_t changes;
 
-	uintptr_t pmemory;
-	vm_address_t vmemory;
-	size_t size;
-	size_t pages;
+	uintptr_t begin;
+	uintptr_t end;
 
 	size_t freeSize;
+	size_t pages;
+
+	size_t maxAllocations;
+	size_t freeAllocations;
 	size_t allocations;
 
-	struct heap_allocation_s *firstAllocation;
-};
+	void *firstAllocation;
+	void *lastAllocation;
+
+	struct heap_zone_s *prev;
+	struct heap_zone_s *next;
+} heap_zone_t;
+
+
+#define kHeapFlagSecure  (1 << 0)
+#define kHeapFlagAligned (1 << 1)
 
 typedef struct
 {
-	uint8_t flags;
-
+	uint32_t flags;
 	spinlock_t lock;
-	vm_page_directory_t directory;
 
-	size_t size; // Size of one subheap
-	size_t pages; // Pages used by one subheap
-
-	struct heap_subheap_s *subheaps;
-	size_t maxHeaps; // Max number of subheaps
+	heap_zone_t *firstZone;
 } heap_t;
 
 
-heap_t *heap_create(size_t bytes, vm_page_directory_t directory, uint32_t flags);
-heap_t *heap_kernelHeap(); // Returns the main kernel heap
-
+heap_t *heap_create(uint32_t flags);
 void heap_destroy(heap_t *heap);
 
 void *halloc(heap_t *heap, size_t size);

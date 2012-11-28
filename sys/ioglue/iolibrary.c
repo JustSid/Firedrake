@@ -121,6 +121,9 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 		uint32_t symnum = ELF32_R_SYM(rel->r_info);
 		uint32_t type = ELF32_R_TYPE(rel->r_info);
 
+		elf_sym_t *lookup = library->symtab + symnum;
+		const char *name  = library->strtab + lookup->st_name;
+
 		switch(type)
 		{	
 			case R_386_NONE:
@@ -130,7 +133,10 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 			case R_386_GLOB_DAT:
 				symbol = io_storeLookupSymbol(library, symnum, &container);
 				if(!symbol)
+				{
+					warn("Couldn't find symbol %s for %s!\n", name, library->name);
 					return false;
+				}
 
 				target = (elf32_address_t)(container->relocBase + symbol->st_value);
 				*address = target + *address;
@@ -139,7 +145,10 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 			case R_386_PC32:
 				symbol = io_storeLookupSymbol(library, symnum, &container);
 				if(!symbol)
+				{
+					warn("Couldn't find symbol %s for %s!\n", name, library->name);
 					return false;
+				}
 
 				target = (elf32_address_t)(container->relocBase + symbol->st_value);
 				*address += target - (elf32_address_t)address;
@@ -150,7 +159,7 @@ bool io_libraryRelocateNonPLT(io_library_t *library)
 				break;
 
 			default:
-				dbg("Relocation type: %i\n", type);
+				warn("Relocation type: %i\n", type);
 				break;
 		}
 	}
@@ -168,11 +177,20 @@ bool io_libraryRelocatePLT(io_library_t *library)
 		elf_sym_t *symbol;
 		io_library_t *container;
 
-		assert(ELF32_R_TYPE(rel->r_info) == R_386_JMP_SLOT);
+		uint32_t symnum = ELF32_R_SYM(rel->r_info);
+		uint32_t type = ELF32_R_TYPE(rel->r_info);
 
-		symbol = io_storeLookupSymbol(library, ELF32_R_SYM(rel->r_info), &container);
+		assert(type == R_386_JMP_SLOT);
+
+		elf_sym_t *lookup = library->symtab + symnum;
+		const char *name  = library->strtab + lookup->st_name;
+
+		symbol = io_storeLookupSymbol(library, symnum, &container);
 		if(!symbol)
+		{
+			warn("Couldn't find symbol %s for %s!\n", name, library->name);
 			return false;
+		}
 
 		target = (elf32_address_t)(container->relocBase + symbol->st_value);
 		*address = target;
@@ -283,17 +301,6 @@ void io_libraryDigestDynamic(io_library_t *library)
 		}
 	}
 
-	// Resolve dependencies
-	struct io_dependency_s *dependency = list_first(library->dependencies);
-	while(dependency)
-	{
-		const char *name = library->strtab + dependency->name;
-		io_library_t *other = io_storeLibraryWithName(name);
-
-		dependency->library = other;
-		dependency = dependency->next;
-	}
-
 	// Relocation
 	library->rellimit  = (elf_rel_t *)((uint8_t *)library->rel + relSize);
 	library->relalimit = (elf_rela_t *)((uint8_t *)library->rela + relaSize);
@@ -310,6 +317,24 @@ void io_libraryDigestDynamic(io_library_t *library)
 	}
 }
 
+void io_libraryResolveDependencies(io_library_t *library)
+{
+	struct io_dependency_s *dependency = list_first(library->dependencies);
+	while(dependency)
+	{
+		const char *name = library->strtab + dependency->name;
+		io_library_t *other = io_storeLibraryWithName(name);
+
+		if(!other)
+			panic("Could not find dependency %s for %s", name, library->name);
+
+		dependency->library = other;
+		dependency = dependency->next;
+
+		io_libraryRetain(other);
+	}
+}
+
 
 // -----------
 // Creation / Deletion
@@ -323,7 +348,9 @@ io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t UNUSED(
 		// Setup the library
 		memset(library, 0, sizeof(io_library_t));
 
+		library->lock = SPINLOCK_INIT;
 		library->refCount = 1;
+
 		library->path = halloc(NULL, strlen(path) + 1);
 		library->dependencies = list_create(sizeof(struct io_dependency_s), offsetof(struct io_dependency_s, next), offsetof(struct io_dependency_s, prev));
 
@@ -340,6 +367,7 @@ io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t UNUSED(
 		}
 
 		strcpy(library->path, path);
+		library->name = (char *)sys_fileWithoutPath(library->path);
 
 
 		// Get the basic ELF info
@@ -437,10 +465,28 @@ io_library_t *io_libraryCreateWithFile(const char *file)
 	return NULL;
 }
 
+void io_libraryRetain(io_library_t *library)
+{
+	spinlock_lock(&library->lock);
+	library->refCount ++;
+	spinlock_unlock(&library->lock);
+}
+
 void io_libraryRelease(io_library_t *library)
 {
+	spinlock_lock(&library->lock);
+
 	if((-- library->refCount) == 0)
 	{
+		struct io_dependency_s *dependency = list_first(library->dependencies);
+		while(dependency)
+		{
+			io_libraryRelease(dependency->library);
+			dependency = dependency->next;
+		}
+
+		io_storeRemoveLibrary(library);
+
 		if(library->vmemory)
 			vm_free(vm_getKernelDirectory(), library->vmemory, library->pages);
 
@@ -449,7 +495,8 @@ void io_libraryRelease(io_library_t *library)
 
 		hfree(NULL, library->path);
 		list_destroy(library->dependencies);
-
-		io_storeRemoveLibrary(library);
+		return;
 	}
+
+	spinlock_unlock(&library->lock);
 }

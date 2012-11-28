@@ -24,14 +24,33 @@
 #include "vmemory.h"
 #include "heap.h"
 
-// Some more high-level allocation system
-void *kalloc(size_t bytes); // Kernel
-void *ualloc(size_t bytes); // Userland
-void kfree(void *ptr);
+#define round4kDown(x) ((x) & ~(VM_PAGE_SIZE - 1)) // Rounds down to the previous 4k aligned value
+#define round4kUp(x)   round4kDown((x) + VM_PAGE_SIZE - 1) // Rounds up to the next 4k aligned value
 
-#define round4kDown(x)	((x) & ~(VM_PAGE_SIZE - 1)) // Rounds down to the previous 4k aligned value
-#define round4kUp(x)	round4kDown((x) + VM_PAGE_SIZE - 1) // Rounds up to the next 4k aligned value
+#define pageCount(x) ((((x) % VM_PAGE_SIZE) == 0) ? (x) / VM_PAGE_SIZE : ((x) / VM_PAGE_SIZE) + 1)
 
-#define pageCount(x)	((((x) % VM_PAGE_SIZE) == 0) ? (x) / VM_PAGE_SIZE : ((x) / VM_PAGE_SIZE) + 1)
+static inline void *mm_alloc(vm_page_directory_t directory, size_t pages, uint32_t flags)
+{
+	uintptr_t pmemory = pm_alloc(pages);
+	if(pmemory)
+	{
+		vm_address_t vmemory = vm_alloc(directory, pmemory, pages, flags);
+		if(vmemory)
+			return (void *)vmemory;
+		
+		pm_free(pmemory, pages);
+	}
+
+	return NULL;
+}
+
+static inline void mm_free(void *address, vm_page_directory_t directory, size_t pages)
+{
+	vm_address_t vmemory = (vm_address_t)address;
+	uintptr_t pmemory = vm_resolveVirtualAddress(directory, vmemory);
+
+	vm_free(directory, vmemory, pages);
+	pm_free(pmemory, pages);
+}
 
 #endif /* _MEMORY_H_ */

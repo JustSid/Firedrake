@@ -22,23 +22,32 @@
 #include <types.h>
 #include "iolibrary.h"
 
+struct io_module_s;
+
 typedef void (*io_module_init_t)();
 
-typedef void *(*io_module_publish_t)();
-typedef void (*io_module_unpublish_t)(void *);
+typedef bool (*io_module_start_t)(struct io_module_s *module);
+typedef bool (*io_module_stop_t)(struct io_module_s *module);
 
-typedef struct
+typedef struct io_module_s
 {
 	io_library_t *library;
+	char *name;
+	spinlock_t lock;
 
+	bool initialized;
 	void *module;
+	uint32_t references;
 
-	io_module_publish_t publish;
-	io_module_unpublish_t unpublish;
-	
+	io_module_start_t start;
+	io_module_stop_t stop;
 } io_module_t;
 
-io_module_t *io_moduleCreateWithLibrary(io_library_t *library);
-void io_moduleDelete(io_module_t *module);
+io_module_t *io_moduleWithName(const char *name);
+
+void io_moduleRetain(io_module_t *module);
+void io_moduleRelease(io_module_t *module);
+
+void io_moduleStop(io_module_t *module);
 
 #endif /* _IOMODULE_H_ */

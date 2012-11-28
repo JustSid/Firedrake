@@ -16,41 +16,69 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "IOMemory.h"
+#include <libkernel/kalloc.h>
+
 #include "IORuntime.h"
 #include "IOLog.h"
+#include "IOThread.h"
+#include "IOAutoreleasePool.h"
+#include "IONumber.h"
+
+extern "C" void sd_yield();
 
 void *operator new(size_t size)
 {
-	void *result = IOMalloc(size);
+	void *result = kalloc(size);
 	return result;
 }
 
 void operator delete(void *addr)
 {
-	IOFree(addr);
+	kfree(addr);
 }
-
 
 void *operator new[](size_t size)
 {
 	if(size == 0) 
 		size = 1;
 
-	return IOMalloc(size);
+	return kalloc(size);
 }
 
 void operator delete[](void *ptr)
 {
 	if(ptr)
-		IOFree(ptr);
+		kfree(ptr);
 }
 
+void libio_worker(IOThread *thread)
+{
+	IOAutoreleasePool *pool = IOAutoreleasePool::alloc()->init();
+
+	thread->setName(IOString::withCString("libio worker"));
+
+	pool->release();
+
+	while(1)
+	{
+		//pool->release();
+		//pool = IOAutoreleasePool::alloc()->init();
+
+		sd_yield();
+	}
+}
 
 extern "C"
 {
 	bool libio_init()
 	{
-		return true;
+		IOThread *worker = IOThread::alloc()->initWithFunction(libio_worker);
+		if(worker)
+		{
+			worker->detach();
+			return true;
+		}
+
+		return false;
 	}
 }

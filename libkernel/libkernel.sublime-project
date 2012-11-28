@@ -4,6 +4,7 @@
 		{
 			"name": "libkernel",
 			"path": "./",
+			"folder_exclude_patterns": ["templates"],
 			"file_exclude_patterns": ["*.sublime-workspace", "*.sublime-project"]
 		}
 	],
@@ -13,12 +14,12 @@
 		"sublimeclang_options":
 		[
 			"-I${folder:${project_path:libkernel.sublime-project}}/.",
-			"-I${folder:${project_path:libkernel.sublime-project}}/libio/.",
-			"-I${folder:${project_path:libkernel.sublime-project}}/libps2/.",
 			"-m32",
 			"-std=c++11",
+			"-DSUBLIME_TEXT=1",
 			"-Wall",
 			"-Wextra",
+			"-Wno-overloaded-virtual",
 			"-pedantic",
 			"-nostdlib",
 			"-nostdinc",
@@ -41,12 +42,12 @@
 			[
 				{
 					"name": "Run",
-					"cmd": ["qemu -d cpu_reset ${project_path}/../boot/Firedrake.iso"]
+					"cmd": ["exec ./../executeqemu.sh"]
 				},
 				{
 					"name": "Instrument",
-					"cmd": ["qemu -d int,cpu_reset -no-reboot -no-shutdown ${project_path}/../boot/Firedrake.iso"]
-				},
+					"cmd": ["exec ./../executeqemu.sh --debug"]
+					},
 				{
 					"name": "Clean",
 					"cmd": ["exec ./../remotebuild.sh --clean"]

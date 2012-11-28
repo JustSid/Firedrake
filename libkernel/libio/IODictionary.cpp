@@ -16,14 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libkernel/base.h>
+#include <libkernel/kalloc.h>
+
 #include "IODictionary.h"
-#include "IOMemory.h"
 #include "IORuntime.h"
 
 #ifdef super
 #undef super
 #endif
-#define super IOCollection
+#define super IOObject
 
 static uint32_t __IODictionaryCapacity[42] = 
 {
@@ -42,58 +44,121 @@ static uint32_t __IODictionaryMaxCount[42] =
 }; 
 
 
-// Constructor
+class IODictionaryIterator : public IOIterator
+{
+public:
+	virtual IODictionaryIterator *initWithDictionary(IODictionary *dictionary, bool keyIterator)
+	{
+		if(IOIterator::init())
+		{		
+			_dictionary = dictionary;
+			_keyIterator = keyIterator;
+			_index  = 0;
+			_bucket = 0;
+		}
 
-IORegisterClass(IODictionary, super)
+		return this;
+	}
+
+	virtual IOObject *nextObject()
+	{
+		while(!_bucket)
+		{
+			if(_index >= _dictionary->_capacity)
+				return 0;
+
+			_bucket = _dictionary->_buckets[_index ++];
+		}
+
+		IOObject *object = (_keyIterator) ? _bucket->key : _bucket->object;
+		_bucket = _bucket->next;
+
+		return object;
+	}
+
+private:
+	IODictionary *_dictionary;
+	IODictionaryBucket *_bucket;
+	uint32_t _index;
+	bool _keyIterator;
+
+	IODeclareClass(IODictionaryIterator)
+};
+
+IORegisterClass(IODictionary, super);
+IORegisterClass(IODictionaryIterator, IOIterator);
+
+// Constructor
 
 IODictionary *IODictionary::withCapacity(size_t capacity)
 {
-	IODictionary *dictionary = IODictionary::alloc();
-	if(!dictionary->initWithCapacity(capacity))
+	IODictionary *dictionary = IODictionary::alloc()->initWithCapacity(capacity);
+	return dictionary->autorelease();
+}
+
+IODictionary *IODictionary::withObjectsAndKeys(IOObject *object, IOObject *key, ...)
+{
+	IODictionary *dictionary = IODictionary::alloc()->init();
+
+	va_list args;
+	va_start(args, key);
+
+	while(object && key)
 	{
-		dictionary->release();
-		return 0;
+		dictionary->setObjectForKey(object, key);
+
+		object = va_arg(args, IOObject *);
+
+		if(object)
+			key = va_arg(args, IOObject *);
 	}
 
-	return dictionary;
+	va_end(args);
+	return dictionary->autorelease();
 }
 
-bool IODictionary::init()
+IODictionary *IODictionary::init()
 {
-	if(!super::init())
-		return false;
-
-	_capacity = __IODictionaryCapacity[0];
-	_count = 0;
-
-	_buckets = (IODictionaryBucket **)IOMalloc(_capacity * sizeof(IODictionaryBucket **));
-	if(_buckets == 0)
-		return false;
-
-	return true;
-}
-
-bool IODictionary::initWithCapacity(size_t capacity)
-{
-	if(!super::init())
-		return false;
-
-	for(int i=1; i<42; i++)
+	if(super::init())
 	{
-		if(__IODictionaryCapacity[i] > capacity || i == 41)
+		_capacity = __IODictionaryCapacity[0];
+		_count = 0;
+
+		_buckets = (IODictionaryBucket **)kalloc(_capacity * sizeof(IODictionaryBucket **));
+		if(_buckets == 0)
 		{
-			_capacity = __IODictionaryCapacity[i - 1];
-			break;
+			release();
+			return 0;
 		}
 	}
 
-	_count = 0;
+	return this;
+}
 
-	_buckets = (IODictionaryBucket **)IOMalloc(_capacity * sizeof(IODictionaryBucket **));
-	if(!_buckets)
-		return false;
+IODictionary *IODictionary::initWithCapacity(size_t capacity)
+{
+	if(super::init())
+	{
+		for(int i=1; i<42; i++)
+		{
+			if(__IODictionaryCapacity[i] > capacity || i == 41)
+			{
+				_capacity = __IODictionaryCapacity[i - 1];
+				break;
+			}
+		}
 
-	return true;
+		_count = 0;
+
+		_buckets = (IODictionaryBucket **)kalloc(_capacity * sizeof(IODictionaryBucket **));
+		if(!_buckets)
+		{
+			release();
+			return 0;
+		}
+	}
+
+	return this;
 }
 
 void IODictionary::free()
@@ -118,7 +183,7 @@ void IODictionary::free()
 			}
 		}
 
-		IOFree(_buckets);
+		kfree(_buckets);
 	}
 
 	super::free();
@@ -166,7 +231,6 @@ IODictionaryBucket *IODictionary::findBucket2(IOObject *key)
 	bucket->next = _buckets[index];
 
 	_buckets[index] = bucket;
-
 	return bucket;
 }
 
@@ -178,7 +242,7 @@ void IODictionary::rehash(size_t capacity)
 	size_t cCapacity = _capacity;
 
 	_capacity = capacity;
-	_buckets  = (IODictionaryBucket **)IOMalloc(_capacity * sizeof(IODictionaryBucket **));
+	_buckets  = (IODictionaryBucket **)kalloc(_capacity * sizeof(IODictionaryBucket **));
 
 	if(!_buckets)
 	{
@@ -213,7 +277,7 @@ void IODictionary::rehash(size_t capacity)
 		}
 	}
 
-	IOFree(buckets);
+	kfree(buckets);
 }
 
 void IODictionary::expandIfNeeded()
@@ -261,9 +325,6 @@ void IODictionary::setObjectForKey(IOObject *object, IOObject *key)
 	IODictionaryBucket *bucket = findBucket2(key);
 	if(bucket)
 	{
-		object->retain();
-		key->retain();
-
 		if(bucket->object)
 		{
 			bucket->object->release();
@@ -272,8 +333,8 @@ void IODictionary::setObjectForKey(IOObject *object, IOObject *key)
 			_count --;
 		}
 
-		bucket->object = object;
-		bucket->key    = key;
+		bucket->object = object->retain();
+		bucket->key    = key->retain();
 
 		_count ++;
 		expandIfNeeded();
@@ -311,11 +372,27 @@ size_t IODictionary::capacity()
 	return _capacity;
 }
 
+IOIterator *IODictionary::objectIterator()
+{
+	IODictionaryIterator *iterator = IODictionaryIterator::alloc();
+	iterator->initWithDictionary(this, false);
+
+	return iterator->autorelease();
+}
+
+IOIterator *IODictionary::keyIterator()
+{
+	IODictionaryIterator *iterator = IODictionaryIterator::alloc();
+	iterator->initWithDictionary(this, true);
+
+	return iterator->autorelease();
+}
+
 // --------
 // __IOPointerDictionary
 // --------
 
-IORegisterClass(__IOPointerDictionary, IODictionary)
+IORegisterClass(__IOPointerDictionary, IODictionary);
 
 void __IOPointerDictionary::free()
 {
@@ -336,7 +413,7 @@ void __IOPointerDictionary::free()
 			}
 		}
 
-		IOFree(_buckets);
+		kfree(_buckets);
 	}
 
 	super::free();

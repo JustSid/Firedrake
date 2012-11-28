@@ -289,6 +289,7 @@ typedef struct
 
 	size_t top;
 	int direction;
+	bool first;
 } atree_iterator_t;
 
 size_t atree_iteratorNextObject(iterator_t *iterator, size_t maxObjects)
@@ -298,6 +299,12 @@ size_t atree_iteratorNextObject(iterator_t *iterator, size_t maxObjects)
 	{
 		atree_iterator_t *aiterator = iterator->data;
 		atree_node_t *nil = aiterator->tree->nil;
+
+		if(aiterator->first && aiterator->node != nil)
+		{
+			iterator->objects[gathered ++] = aiterator->node->data;
+			aiterator->first = false;
+		}
 
 		if(aiterator->node->link[aiterator->direction] != nil)
 		{
@@ -352,6 +359,7 @@ iterator_t *atree_iterator(atree_t *tree)
 		aiterator->tree = tree;
 		aiterator->node = tree->root;
 		aiterator->top  = 0;
+		aiterator->first = true;
 		aiterator->direction = 1;
 
 		if(aiterator->node != tree->nil)

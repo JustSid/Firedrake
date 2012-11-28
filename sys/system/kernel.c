@@ -120,7 +120,7 @@ const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary)
 	}
 	else
 	{
-		io_library_t *library = io_storeLibraryWithAddress(address);
+		io_library_t *library = __io_storeLibraryWithAddress(address);
 		if(library)
 		{	
 			symbol = io_librarySymbolWithAddress(library, (vm_address_t)address);
@@ -185,7 +185,7 @@ uintptr_t kern_resolveAddress(uintptr_t address)
 	}
 	else
 	{
-		io_library_t *library = io_storeLibraryWithAddress(address);
+		io_library_t *library = __io_storeLibraryWithAddress(address);
 		if(library)
 		{	
 			vm_address_t resolved = io_libraryResolveAddress(library, (vm_address_t)address);
@@ -212,7 +212,7 @@ void kern_printBacktraceForThread(thread_t *thread, long depth)
 	void *addresses[depth];
 	size_t size;
 
-	if(thread != thread_getCurrentThread())
+	if(thread && thread != thread_getCurrentThread())
 	{
 		cpu_state_t *state = (cpu_state_t *)thread->esp;
 
@@ -233,35 +233,32 @@ void kern_printBacktraceForThread(thread_t *thread, long depth)
 
 		io_library_t *library = NULL;
 		const char *name = kern_nameForAddress(address, &library);
+		char buffer[256];
+
+		if(isCPPName(name))
+		{
+			demangleCPPName(name, buffer);
+			name = (const char *)buffer;
+		}
 
 		if(!library)
 		{
-			dbg("(%2i) %08x: ", level, address);
+			dbg("(%2i) %08x: ", level, uaddress);
 			info("%s\n", name);
 		}
 		else
 		{
-			dbg("(%2i) %08x: ", level, address - library->relocBase);
-			info("%s (%s + %p)\n", name, library->path, library->relocBase);
+			dbg("(%2i) %08x: ", level, uaddress - library->relocBase);
+			info("%s (%s)\n", name, library->name);
 		}
 	}
 }
-
 
 void kern_printBacktrace(long depth)
 {
 	kern_printBacktraceForThread(thread_getCurrentThread(), depth);
 }
 
-
-
-
-// Spinlock helper
-void kern_dumpSpinlock(spinlock_t *spinlock)
-{
-	dbg("\n\nWaiting on spinlock: %p. Backtrace:\n", spinlock);
-	kern_printBacktrace(20);
-}
 
 void kern_setWatchpoint(uint8_t reg, bool global, uintptr_t address, kern_breakCondition condition, kern_watchBytes bytes)
 {

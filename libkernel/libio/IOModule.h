@@ -18,57 +18,71 @@
 
 #ifndef _IOMODULE_H_
 #define _IOMODULE_H_
-/*
+
+#include <libkernel/entry.h>
+#include <libkernel/module.h>
+
 #include "IOObject.h"
+#include "IOProvider.h"
 #include "IOArray.h"
 #include "IOService.h"
+#include "IOThread.h"
 
-class IOModule : public IOObject
+class IOModule : public IOProvider
 {
 public:
-	virtual bool initWithIdentifier(const char *identifier);
-
-	virtual bool publish();
-	virtual bool willUnpublish();
-
-	bool unpublish();
-
-	bool publishService(IOService *service);
-	bool unpublishService(IOService *service);
-
-private:
-	virtual bool init();
+	virtual IOModule *initWithKmod(kern_module_t *kmod);
 	virtual void free();
 
-	IOArray *services;
-	const char *identifier;
+	static IOModule *withName(const char *name);
+	static IOModule *withName(IOString *name);
+
+	virtual bool publish();
+	virtual void unpublish();
+
+	bool requestUnpublish();
+	bool isPublished();
+
+	bool isOnThread();
+	void waitForPublish();
+
+	IOThread *getThread() { return _thread; }
+	kern_module_t *getKernelModule() { return _kmod; }
+
+private:
+	static void finalizePublish(IOThread *thread);
+	void preparePublishing();
+
+	IOThread *_thread;
+	IOString *_name;
+
+	bool _published;
+	bool _needsUnpublish;
+
+	kern_spinlock_t _publishLock;
+	kern_module_t *_kmod;
+
+	IODeclareClass(IOModule)
 };
 
-#define IOModuleEstablishInit(cls, ident) \
+#define IORegisterModule(class) \
 	extern "C" { \
-		IOModule *IOModulePublish() \
+		bool _kern_start(kern_module_t *kmod) \
 		{ \
-			IOModule *module = new cls; \
+			IOModule *module = class::alloc()->initWithKmod(kmod); \
+			kmod->module = (void *)module; \
+			return (module != 0); \
+		} \
+		bool _kern_stop(kern_module_t *kmod) \
+		{ \
+			IOModule *module = (IOModule *)kmod->module; \
 			if(module) \
 			{ \
-				bool result; \
-				result = module->initWithIdentifier(ident); \
-				if(!result) \
-				{ \
-					module->release(); \
-					return 0; \
-				} \
-				result = module->publish(); \
-				if(!result) \
-				{ \
-					module->release(); \
-					return 0; \
-				} \
-				return module; \
+				module->requestUnpublish(); \
+				return false; \
 			} \
-			return 0; \
+			return true; \
 		} \
-	}
-*/
+	} \
 	
 #endif /* _IOMODULE_H_ */

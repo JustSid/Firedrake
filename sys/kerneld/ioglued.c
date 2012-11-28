@@ -16,6 +16,8 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <container/array.h>
+#include <system/lock.h>
 #include <system/syslog.h>
 #include <ioglue/iostore.h>
 #include <ioglue/iomodule.h>
@@ -23,44 +25,71 @@
 
 #include "ioglued.h"
 
+static spinlock_t __ioglued_lock = SPINLOCK_INIT_LOCKED;
+static array_t *__ioglued_modulesToStop = NULL;
+
 const char *ioglued_modules[] = {
-	"libps2.so"
+	"libPCI.so",
+	"libRTL8139.so"
 };
 
-bool ioglued_loadModule(const char *name)
+void __ioglued_addReferencelessModule(io_module_t *module)
 {
-	io_library_t *library = io_libraryCreateWithFile(name);
-	if(!library)
-		return false;
+	spinlock_lock(&__ioglued_lock);
 
-	bool result = io_storeAddLibrary(library);
-	if(!result)
-		return false;
+	array_addObject(__ioglued_modulesToStop, module);
 
-	io_module_t *module = io_moduleCreateWithLibrary(library);
-	if(!module)
-		return false;
-
-	return true;
+	spinlock_unlock(&__ioglued_lock);
 }
-
 
 void ioglued()
 {
-	size_t size = sizeof(ioglued_modules) / sizeof(char *);
+	thread_setName(thread_getCurrentThread(), "ioglued");
+
+	__ioglued_modulesToStop = array_create();
+	spinlock_unlock(&__ioglued_lock);
+
+	size_t size = sizeof(ioglued_modules) / sizeof(const char *);
 	for(size_t i=0; i<size; i++)
 	{
-		bool result = ioglued_loadModule(ioglued_modules[i]);
-		if(!result)
-			dbg("ioglued: Failed to publish \"%s\"\n", ioglued_modules[i]);
+		const char *name = ioglued_modules[i];
+		io_module_t *module = io_moduleWithName(name);
+
+		if(!module)
+			dbg("ioglued: Failed to publish \"%s\"\n", name);
 	}
 
-	uint32_t workload;
 	while(1) 
 	{
-		workload = 0;
+		spinlock_lock(&__ioglued_lock);
+		if(array_count(__ioglued_modulesToStop) > 0)
+		{
+			array_t *copy = array_copy(__ioglued_modulesToStop);
+			array_removeAllObjects(__ioglued_modulesToStop);
 
-		if(workload == 0)
-			sd_yield();
+			spinlock_unlock(&__ioglued_lock);
+
+			for(size_t i=0; i<array_count(copy); i++)
+			{
+				io_module_t *module = array_objectAtIndex(copy, i);
+
+				spinlock_lock(&module->lock);
+				if(!module->initialized)
+				{
+					__ioglued_addReferencelessModule(module);
+					spinlock_unlock(&module->lock);
+					continue;
+				}
+				
+				spinlock_unlock(&module->lock);
+				io_moduleStop(module);
+			}
+
+			array_destroy(copy);
+		}
+		else
+			spinlock_unlock(&__ioglued_lock);
+
+		sd_yield();
 	}
 }

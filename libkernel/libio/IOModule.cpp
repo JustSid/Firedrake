@@ -16,120 +16,180 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/string.h>
-#include "IOMemory.h"
 #include "IOModule.h"
-#include "IODatabase.h"
-#include "IOLog.h"
-/*
+#include "IOAutoreleasePool.h"
+
 #ifdef super
 #undef super
 #endif
-#define super IOObject
+#define super IOProvider
 
-bool IOModule::init()
+IORegisterClass(IOModule, super);
+
+static kern_spinlock_t __moduleLock = KERN_SPINLOCK_INIT;
+static IODictionary *__moduleDictionary = 0;
+
+IOModule *IOModule::initWithKmod(kern_module_t *kmod)
 {
-	if(!super::init())
-		return false;
-	
-	services = IOArray::withCapacity(1);
-	identifier = 0;
-	
-	return (services != 0);
-}
-
-bool IOModule::initWithIdentifier(const char *tidentifier)
-{
-	if(!init())
-		return false;
-	
-	size_t length = strlen(tidentifier) + 1;
-	identifier = (const char *)IOMalloc(length * sizeof(char));
-	
-	if(!identifier)
-		return false;
-	
-	strlcpy((char *)identifier, tidentifier, length);
-	return true;
-}
-
-
-
-bool IOModule::publishService(IOService *service)
-{
-	if(service->isRunning())
-		return false;
-	
-	bool result = service->start();
-	if(result)
+	if(super::init())
 	{
-		services->addObject(service);
-		return true;
+		_published = false;
+		_needsUnpublish = false;
+
+		_publishLock = KERN_SPINLOCK_INIT_LOCKED;
+		_kmod = kmod;
+		_name = IOString::alloc()->initWithCString(kmod->name);
+
+		kern_spinlock_lock(&__moduleLock);
+
+		if(!__moduleDictionary)
+			__moduleDictionary = IODictionary::alloc()->init();
+
+		__moduleDictionary->setObjectForKey(this, _name);
+
+		kern_spinlock_unlock(&__moduleLock);
+		preparePublishing();
 	}
 
-	return false;
+	return this;
 }
 
-bool IOModule::unpublishService(IOService *service)
+void IOModule::free()
 {
-	uint32_t index = services->indexOfObject(service);
-	if(index != IONotFound)
-	{
-		if(service->willStop())
-		{
-			service->stop();
-			services->removeObject(index);
-			
-			return true;
-		}
-	}
+	_name->release();
+	super::free();
+}
+
+
+
+IOModule *IOModule::withName(const char *name)
+{
+	IOString *string = IOString::alloc()->initWithCString(name);
+	IOModule *module = IOModule::withName(string);
+
+	string->release();
+	return module;
+}
+
+IOModule *IOModule::withName(IOString *name)
+{
+	IOModule *result = 0;
+	kern_spinlock_lock(&__moduleLock);
 	
-	return false;
+	if(__moduleDictionary)
+		result = (IOModule *)__moduleDictionary->objectForKey(name);
+
+	kern_spinlock_unlock(&__moduleLock);
+
+	if(!result)
+	{
+		kern_module_t *kmod = io_moduleWithName(name->CString());
+		if(kmod)
+			result = (IOModule *)kmod->module;
+	}
+
+	return result;
+}
+
+
+bool IOModule::isOnThread()
+{
+	return (_thread == IOThread::currentThread());
+}
+
+bool IOModule::isPublished()
+{
+	return _published;
+}
+
+void IOModule::waitForPublish()
+{
+	kern_spinlock_lock(&_publishLock);
+	kern_spinlock_unlock(&_publishLock);
 }
 
 
 
 bool IOModule::publish()
 {
-	this->retain();
+	_runLoop = IORunLoop::currentRunLoop();
 	return true;
 }
 
-bool IOModule::willUnpublish()
+void IOModule::unpublish()
 {
-	return true;
+	__moduleDictionary->removeObjectForKey(_name);
+
+	_published = false;
+	_kmod->module = 0;
 }
 
 
-bool IOModule::unpublish()
+
+void IOModule::finalizePublish(IOThread *thread)
 {
-	if(!willUnpublish())
+	IOAutoreleasePool *pool = IOAutoreleasePool::alloc()->init();
+
+	IOModule *module = (IOModule *)thread->propertyForKey(IOString::withCString("Owner"));
+	kern_module_t *kmod = module->_kmod;
+
+	module->_published = module->publish();
+	pool->release();
+
+	if(!module->_published)
+	{
+		kern_spinlock_lock(&__moduleLock);
+		__moduleDictionary->removeObjectForKey(module->_name);
+		kern_spinlock_unlock(&__moduleLock);
+
+		module->_kmod = 0;
+		module->release();
+
+		io_moduleRelease(kmod);
+		return;
+	}
+
+	pool = IOAutoreleasePool::alloc()->init();
+	module->requestProbe();
+	pool->release();
+
+	kern_spinlock_unlock(&module->_publishLock);
+
+	while(!module->_needsUnpublish)
+		thread->runLoop()->run();
+
+	pool = IOAutoreleasePool::alloc()->init();
+
+	module->unpublish();
+	module->release();
+	
+	pool->release();
+	io_moduleRelease(kmod);
+}
+
+void IOModule::preparePublishing()
+{
+	IOString *key = IOString::alloc()->initWithCString("Owner");
+
+	_thread = IOThread::alloc();
+	_thread->initWithFunction(&IOModule::finalizePublish);
+	_thread->setPropertyForKey(this, key);
+	_thread->detach();
+	_thread->release();
+
+	key->release();
+}
+
+bool IOModule::requestUnpublish()
+{
+	if(_published)
+	{
+		_needsUnpublish = true;
+		_thread->runLoop()->stop();
+
 		return false;
-	
-	// Try to unpublish all services
-	bool unpublishedServices = true;
-	for(uint32_t i=0; i<services->getCount(); i++)
-	{
-		IOService *service = (IOService *)services->objectAtIndex(i);
-		if(service->willStop())
-		{
-			service->stop();
-			services->removeObject(i);
-			
-			i --;
-		}
-		else
-		{
-			unpublishedServices = false;
-		}
 	}
 	
-	if(unpublishedServices)
-	{
-		this->release();
-		return true;
-	}
-	
-	return false;
-}*/
+	return true;
+}
 

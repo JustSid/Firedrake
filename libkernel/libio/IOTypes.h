@@ -19,75 +19,13 @@
 #ifndef _IOTYPES_H_
 #define _IOTYPES_H_
 
-#define NULL (void *)0
-
-#define	bool int
-
-#define	false	0
-#define	true	1
-
-// MARK: Variadic function helpers
-typedef __builtin_va_list	va_list;
-
-#define va_start(v, l)	__builtin_va_start(v,l)
-#define va_end(v)		__builtin_va_end(v)
-#define va_arg(v, l)	__builtin_va_arg(v,l)
-#define va_copy(d, s)	__builtin_va_copy(d,s)
-
-// MARK: Fixed size integers
-typedef signed char 	int8_t;
-typedef short 			int16_t;
-typedef int 			int32_t;
-typedef long long 		int64_t;
-
-typedef unsigned char 		uint8_t;
-typedef unsigned short 		uint16_t;
-typedef unsigned int 		uint32_t;
-typedef unsigned long long 	uint64_t;
-
-#ifndef	_SIZE_T
-#define	_SIZE_T
-typedef uint32_t size_t;
-#endif
-typedef int32_t  intptr_t;
-typedef uint32_t uintptr_t;
+#include <libkernel/stdint.h>
+#include <libkernel/stdarg.h>
+#include <libkernel/types.h>
+#include <libkernel/error.h>
 
 typedef uint32_t hash_t;
 
-#define UNUSED(x) UNUSED_ ## x __attribute__((unused))
-
-// MARK: Fixed size integer constraints
-#define INT8_C(v)   (v)
-#define INT16_C(v)  (v)
-#define INT32_C(v)  (v)
-#define INT64_C(v)  (v ## LL)
-
-#define UINT8_C(v)   	(v ## U)
-#define UINT16_C(v) 	(v ## U)
-#define UINT32_C(v)		(v ## U)
-#define UINT64_C(v)		(v ## ULL)
-
-#define INTMAX_C(v)  	(v ## LL)
-#define UINTMAX_C(v) 	(v ## ULL)
-
-
-#define INT8_MAX       INT8_C(127)
-#define INT16_MAX      INT16_C(32767)
-#define INT32_MAX      INT32_C(2147483647)
-#define INT64_MAX      INT64_C(9223372036854775807)
-
-#define INT8_MIN       INT8_C(-128)
-#define INT16_MIN      INT16_C(-32768)
-#define INT32_MIN      INT32_C((-INT32_MAX-1))
-#define INT64_MIN      INT64_C((-INT64_MAX-1))
-
-#define UINT8_MAX      UINT8_C(255)
-#define UINT16_MAX     UINT16_C(65535)
-#define UINT32_MAX     UINT32_C(4294967295)
-#define UINT64_MAX     UINT64_C(18446744073709551615)
-
 #define IONotFound ((uint32_t)-1)
-
-#include "IOReturn.h"
 
 #endif /* _IOTYPES_H_ */

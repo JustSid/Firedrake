@@ -28,16 +28,11 @@ static syscall_callback_t _sc_syscalls[_SYS_MAXCALLS];
 static syscall_callback_t _sc_syscalls_inKernel[_SYS_MAXCALLS];
 
 // Mark: Implementation
-uint32_t _sc_print(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
+uint32_t _sc_print(uint32_t *UNUSED(esp), uint32_t *uesp, int *UNUSED(errno))
 {
-	cpu_state_t *state = (cpu_state_t *)esp;
 	process_t *process = process_getCurrentProcess();
 
 	const char *string = *(const char **)(uesp);
-	vd_color_t color   = vd_color_lightGray;
-
-	if(state->eax == SYS_PRINTCOLOR)
-		color = *((vd_color_t *)(uesp + 1));
 
 	// Map the string
 	vm_address_t virtual = round4kDown((vm_address_t)string);
@@ -45,7 +40,7 @@ uint32_t _sc_print(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
 	uintptr_t physical = vm_resolveVirtualAddress(process->pdirectory, virtual);
 
 	virtual = vm_alloc(vm_getKernelDirectory(), physical, 2, VM_FLAGS_KERNEL); // TODO: Look if it really spans over two pages, not just assume anything
-	vd_printString((char *)(virtual + offset), color);
+	vd_writeString((char *)(virtual + offset));
 
 	vm_free(vm_getKernelDirectory(), virtual, 2);
 	return 0;

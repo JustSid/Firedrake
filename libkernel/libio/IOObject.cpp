@@ -16,16 +16,18 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libkernel/kalloc.h>
 #include "IOObject.h"
-#include "IOMemory.h"
 #include "IOString.h"
 #include "IOSymbol.h"
+#include "IOThread.h"
+#include "IOAutoreleasePool.h"
 #include "IORuntime.h"
 #include "IOLog.h"
 
-bool IOObject::init()
+IOObject *IOObject::init()
 {
-	return true;
+	return this;
 }
 
 void IOObject::free()
@@ -35,7 +37,8 @@ void IOObject::free()
 void IOObject::prepareWithSymbol(IOSymbol *symbol)
 {
 	_symbol = symbol;
-	retainCount = 1;
+	_retainCount = 1;
+	_lock = KERN_SPINLOCK_INIT;
 }
 
 
@@ -43,18 +46,48 @@ void IOObject::prepareWithSymbol(IOSymbol *symbol)
 
 void IOObject::release()
 {
-	if((-- retainCount) == 0)
+	if(!this)
+		return;
+
+	kern_spinlock_lock(&_lock);
+
+	if((-- _retainCount) == 0)
 	{
 		free();
-		IOFree(this);
+		kfree(this);
 
 		return;
 	}
+
+	kern_spinlock_unlock(&_lock);
 }
 
-void IOObject::retain()
+IOObject *IOObject::retain()
 {
-	retainCount ++;
+	if(!this)
+		return this;
+
+	kern_spinlock_lock(&_lock);
+	_retainCount ++;
+	kern_spinlock_unlock(&_lock);
+	
+	return this;
+}
+
+IOObject *IOObject::autorelease()
+{
+	if(!this)
+		return this;
+
+	IOThread *thread = IOThread::currentThread();
+	if(!thread->_topPool)
+	{
+		IOLog("%s::autorelease() with no pool in place, leaking.", _symbol->name()->CString());
+		return this;
+	}
+
+	thread->_topPool->addObject(this);
+	return this;
 }
 
 
@@ -95,7 +128,9 @@ bool IOObject::isSubclassOf(IOSymbol *symbol) const
 	if(_symbol == symbol)
 		return true;
 
-	IOLog("IOObject::isSubclassOf()");
+	if(!_symbol)
+		return false;
+
 	return _symbol->inheritsFrom(symbol);
 }
 
@@ -121,5 +156,5 @@ IOObject *IOObject::alloc()
 void __IOObject__load() __attribute__((constructor));
 void __IOObject__load()
 {
-	__IOObjectSymbol = new IOSymbol("IOObject", 0, sizeof(IOObject));
+	__IOObjectSymbol = new IOSymbol("IOObject", 0, sizeof(IOObject), &IOObject::alloc);
 }

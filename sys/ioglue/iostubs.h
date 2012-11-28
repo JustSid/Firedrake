@@ -22,14 +22,7 @@
 #include <system/elf.h>
 #include "iolibrary.h"
 
-typedef uint32_t IOReturn;
-
-#define kIOReturnSuccess 0
-#define kIOReturnInterruptTaken 1
-
 io_library_t *io_kernelLibraryStub();
 elf_sym_t *io_findKernelSymbol(const char *name);
-
-bool io_initStubs();
 
 #endif /* _IOSTUBS_H_ */

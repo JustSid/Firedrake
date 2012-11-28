@@ -20,6 +20,7 @@
 #include <system/panic.h>
 #include <system/syslog.h>
 #include <system/kernel.h>
+#include <system/helper.h>
 #include <scheduler/scheduler.h>
 #include "interrupts.h"
 
@@ -63,7 +64,19 @@ uint32_t __ir_handleException(uint32_t esp)
 						break;
 				}
 
-				warn("Watchpoint #%i triggered. Address: %p\n", i, address);
+				io_library_t *library = NULL;
+				const char *name = kern_nameForAddress(kern_resolveAddress(state->eip), &library);
+
+				char buffer[255];
+				if(isCPPName(name))
+				{
+					demangleCPPName(name, buffer);
+					name = (const char *)buffer;
+				}
+
+				uint32_t eip = library ? state->eip - library->relocBase : state->eip;
+
+				warn("Watchpoint #%i triggered. Address: %p. eip: %p (%s)\n", i, address, eip, name);
 				kern_printBacktrace(20);
 			}
 		}
@@ -103,10 +116,9 @@ uint32_t __ir_handleException(uint32_t esp)
 		process_t *process = process_getCurrentProcess();
 		if(process->pid == 0)
 		{
-			panic("Page Fault exception; %s while %s in %s.\nVirtual address: %p. EIP: %p", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), // Panic with the type of the error
+			panic("%s (%p) while %s in %s.", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), address, // Panic with the type of the error
 				__ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), // Why it occured
-				__ir_exception_pageFaultTranslateBit(3, error & (1 << 2)), // And in which mode it occured.
-				address, state->eip);
+				__ir_exception_pageFaultTranslateBit(3, error & (1 << 2))); // And in which mode it occured.
 		}
 		else
 		{

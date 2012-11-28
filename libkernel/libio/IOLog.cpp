@@ -16,14 +16,245 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/stdio.h>
+#include <libkernel/ctype.h>
+#include <libkernel/stdlib.h>
+#include <libkernel/string.h>
 
 #include "IOLog.h"
-#include "IOTypes.h"
+#include "IOObject.h"
+#include "IOString.h"
+
+#define kVsnprintfFlagRightAlign (1 << 0) // '-'
+#define kVsnprintfFlagForceSign  (1 << 1) // '+'
+#define kVsnprintfZeroPad		 (1 << 2) // '0'
+
+int __IOvsnprintf(char *buffer, size_t size, const char *format, va_list arg)
+{
+	size_t written = 0;
+	size_t total = 0;
+
+	uint32_t index = 0;
+	bool keepWriting = true;
+	
+	while(format[index] != '\0')
+	{
+		if(written >= size)
+			keepWriting = false;
+
+		if(format[index] == '%')
+		{
+			index ++;
+
+			// Fetch flags
+			long flags = 0;
+			while(1)
+			{
+				if(format[index] == '0')
+				{
+					if(flags != 0)
+						break;
+
+
+					flags |= kVsnprintfZeroPad;
+					index ++;
+					continue;
+				}
+
+				if(format[index] == '-')
+				{
+					flags |= kVsnprintfFlagRightAlign;
+					index ++;
+					continue;
+				}
+
+				if(format[index] == '+')
+				{
+					flags |= kVsnprintfFlagForceSign;
+					index ++;
+					continue;
+				}
+
+				break;
+			}
+
+			// Get the width, if supplied
+			long width = 0;
+			while(isdigit(format[index]))
+			{
+				int value = format[index] - '0';
+				width = (width * 10) + value;
+
+				index ++;
+			}
+			
+
+			switch(format[index])
+			{
+				case 'c':
+				{
+					if(keepWriting)
+					{
+						char character = (char)va_arg(arg, int);
+						buffer[written ++] = (char)character;
+					}
+
+					total ++;
+					break;
+				}
+				
+				case 's':
+				{
+					char *string = va_arg(arg, char *);
+					if(!string)
+						string = (char *)"(null)";
+					
+					while(*string != '\0')
+					{
+						if(keepWriting && written < size)
+						{
+							buffer[written ++] = *string;
+						}
+
+						total ++;
+						string ++;
+					}
+					
+					break;
+				}
+					
+				case 'i':
+				case 'd':
+				case 'p':
+				case 'x':
+				case 'X':
+				case 'u':
+				{
+					int  base = (format[index] == 'i' || format[index] == 'd') ? 10 : 16;
+					bool pointer = (format[index] == 'p');
+					bool isUint = (format[index] == 'p' || format[index] == 'u' || format[index] == 'x');
+					
+					const char *prefix = (pointer) ? "0x" : "\0";
+					char string[STDLIBBUFFERLENGTH];
+					
+					if(isUint)
+					{
+						unsigned long value = va_arg(arg, unsigned long);
+						_uitostr(value, base, string, (format[index] == 'x'));
+					}
+					else 
+					{
+						long value = va_arg(arg, long);
+						_itostr(value, base, string, (format[index] == 'x'));
+					}
+
+				
+					
+					while(*prefix != '\0')
+					{
+						if(keepWriting && written < size)
+							buffer[written ++] = *prefix;
+
+						total ++;
+						prefix ++;
+					}
+
+					// Left pad
+					if(!(flags & kVsnprintfFlagRightAlign))
+					{
+						width -=  strlen(string);
+
+						while(width > 0)
+						{
+							if(keepWriting && written < size)
+								buffer[written ++] = (flags & kVsnprintfZeroPad) ? '0' : ' ';
+
+							width --;
+							total ++;
+						}
+					}
+					
+					// Print the actual string
+					char *printString = (char *)string;
+					while(*printString != '\0')
+					{
+						if(keepWriting && written < size)
+							buffer[written ++] = *printString;
+
+						total ++;
+						printString ++;
+					}
+
+					// Right pad
+					if((flags & kVsnprintfFlagRightAlign))
+					{
+						width -=  strlen(string);
+
+						while(width > 0)
+						{
+							if(keepWriting && written < size)
+								buffer[written ++] = ' ';
+
+							total ++;
+							width --;
+						}
+					}
+					
+					
+					break;
+				}
+
+				case '@':
+				{
+					IOObject *object = va_arg(arg, IOObject *);
+
+					const char *printString = (object != 0) ? object->description()->CString() : "(null)";
+					while(*printString != '\0')
+					{
+						if(keepWriting && written < size)
+							buffer[written ++] = *printString;
+
+						total ++;
+						printString ++;
+					}
+
+					break;
+				}
+					
+				case '%':
+				{
+					if(keepWriting)
+						buffer[written ++] = '%';		
+
+					total ++;
+					break;
+				}
+					
+				default:
+					break;
+			}
+		}
+		else
+		{
+			if(keepWriting)
+				buffer[written ++] = format[index];
+
+			total ++;
+		}
+		
+		index ++;
+	}
+	
+	if(buffer)
+	{
+		index = (written >= size) ? written - 1 : written;
+		buffer[index] = '\0';
+	}
+	
+	return (int)total;
+}
 
 #define IOLOG_BUFFER_SIZE 1024
-
-extern "C" void __IOPrimitiveLog(const char *message);
+extern "C" void __io_primitiveLog(const char *message, bool appendNewline);
 
 void IOLog(const char *message, ...)
 {
@@ -32,8 +263,8 @@ void IOLog(const char *message, ...)
 	va_list arguments;
 	va_start(arguments, message);
 	
-	vsnprintf(buffer, IOLOG_BUFFER_SIZE, message, arguments);
-	__IOPrimitiveLog(buffer);
+	__IOvsnprintf(buffer, IOLOG_BUFFER_SIZE, message, arguments);
+	__io_primitiveLog(buffer, true);
 
 	va_end(arguments);
 }

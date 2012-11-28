@@ -20,16 +20,20 @@
 #define _IOARRAY_H_
 
 #include "IOObject.h"
-#include "IOCollection.h"
+#include "IOIterator.h"
 
-class IOArray : public IOCollection
+class IOArray : public IOObject
 {
 public:
+	virtual IOArray *init();
+	virtual IOArray *initWithCapacity(size_t capacity);
+	
 	static IOArray *withCapacity(uint32_t capacity);
 
 	void addObject(IOObject *object);
 	void removeObject(IOObject *object);
 	void removeObject(uint32_t index);
+	void removeAllObjects();
 
 	uint32_t indexOfObject(IOObject *object);
 	bool containsObject(IOObject *object);
@@ -39,13 +43,10 @@ public:
 	void setChangeSize(uint32_t changeSize);
 	uint32_t changeSize();
 
-	virtual uint32_t count();
-	virtual uint32_t capacity();
+	virtual size_t count();
+	virtual size_t capacity();
 
 private:
-	virtual bool init();
-	virtual bool initWithCapacity(uint32_t capacity);
-
 	virtual void free();
 
 	IOObject **_objects;

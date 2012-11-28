@@ -134,7 +134,7 @@ void kunit_test_suiteRun(kunit_test_suite_t *suite)
 	}
 
 	suite->finished = time_getTimestamp();
-	timestamp_t diff = timestamp_getDifference(suite->finished, suite->started);
+	timestamp_t diff = timestamp_subtract(suite->finished, suite->started);
 
 	uint32_t seconds = timestamp_getSeconds(diff);
 	uint32_t millisecs = timestamp_getMilliseconds(diff);

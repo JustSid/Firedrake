@@ -156,12 +156,25 @@ uint32_t sd_schedule(uint32_t esp)
 		}
 	}
 
-
 	// Update the thread
 	thread->usedTicks ++;
 	while(thread->usedTicks >= thread->wantedTicks || thread->blocked > 0 || thread->died)
 	{
 		thread->usedTicks = 0;
+
+		if(thread->sleeping)
+		{
+			timestamp_t timestamp = time_getTimestamp();
+
+			if(timestamp >= thread->wakeupCall)
+			{
+				thread->sleeping = false;
+				thread->blocked --;
+
+				if(thread->blocked == 0 && thread->died != false)
+					break;
+			}
+		}
 
 		// Update the scheduled thread
 		thread = thread->next ? thread->next : process->mainThread;
@@ -224,18 +237,23 @@ void sd_threadExit()
 }
 
 
+extern uintptr_t spinlock_wait;
+
 void sd_disableScheduler()
 {
-	spinlock_lock(&_sd_lock); // This effectively disables the scheduler
-}
+	spinlock_lock(&_sd_lock);
 
-// MARK: Init
-extern uintptr_t spinlock_wait;
+	// Also, since there is no rescheduling possible anymore, let's reinsert those nops back into the spinlock code
+	uint8_t *buffer = (uint8_t *)&spinlock_wait;
+	*(buffer ++) = 0x90;
+	*(buffer ++) = 0x90;
+}
 
 bool sd_init(void *UNUSED(ingored))
 {
 	process_t *process = process_createKernel();
 	thread_t *thread = process->mainThread;
+	thread_setName(thread, "kerneld");
 
 	// Prepare everything for the kernel task
 	ir_trampoline_map->pagedir  = process->pdirectory;

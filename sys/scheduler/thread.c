@@ -18,7 +18,6 @@
 
 #include <libc/math.h>
 #include <libc/string.h>
-#include <kerneld/watchdogd.h>
 #include <system/assert.h>
 #include <system/panic.h>
 #include <system/syslog.h>
@@ -59,9 +58,48 @@ uint32_t _thread_getUniqueID(process_t *process)
 	return uid;
 }
 
-thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
+thread_t *thread_createVoid()
 {
 	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
+	if(thread)
+	{
+		// Setup general stuff
+		thread->id             = THREAD_NULL;
+		thread->died           = false;
+		thread->hasBeenRunning = false;
+		thread->wasNice        = true;
+
+		// Debugging related
+		thread->name    = NULL;
+		thread->watched = false;
+
+		// Priority and scheduling stuff
+		thread->maxTicks	= THREAD_MAX_TICKS;
+		thread->wantedTicks	= THREAD_WANTED_TICKS;
+		thread->usedTicks	= 0;
+
+		thread->blocked = 0;
+		thread->blocks  = NULL;
+		thread->next 	= NULL;
+
+		// Stack stuff
+		thread->userStackSize   = 0;
+		thread->userStack       = NULL;
+		thread->userStackVirt   = NULL;
+		thread->kernelStack     = NULL;
+		thread->kernelStackVirt = NULL;
+
+		// Sleeping related
+		thread->sleeping   = false;
+		thread->wakeupCall = 0;
+	}
+
+	return thread;
+}
+
+thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
+{
+	thread_t *thread = thread_createVoid();
 	if(thread)
 	{
 		//size_t stackPages = 1; //MAX(1, stackSize / 4096);
@@ -73,29 +111,11 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 			return NULL;
 		}
 
-		// Setup general stuff
-		thread->id             = THREAD_NULL;
-		thread->entry          = entry;
-		thread->died           = false;
-		thread->hasBeenRunning = false;
-
-		// Priority and scheduling stuff
-		thread->maxTicks	= THREAD_MAX_TICKS;
-		thread->wantedTicks	= THREAD_WANTED_TICKS;
-		thread->usedTicks	= 0;
-
-		thread->blocked = 0;
-		thread->blocks  = NULL;
+		thread->entry   = entry;
 		thread->process = process;
-		thread->next 	= NULL;
 
-		// Create user and kernel stack
-		thread->userStack     = NULL;
-		thread->userStackVirt = NULL;
-
-		thread->kernelStack = kernelStack;
-
-		// Map the user stack
+		// Create the kernel stack
+		thread->kernelStack     = kernelStack;
 		thread->kernelStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
 
 		uint32_t *stack = ((uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE)) - argCount;
@@ -164,9 +184,6 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 			process->scheduledThread 	= thread;
 		}
 
-		if(process->pid == 0)
-			watchdogd_addThread(thread); // Watchdogd is automatically attached to kernel threads!
-
 		spinlock_unlock(&process->threadLock);
 	}
 
@@ -175,7 +192,7 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 
 thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
 {
-	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
+	thread_t *thread = thread_createVoid();
 	if(thread)
 	{
 		size_t stackPages = 1; //MAX(1, stackSize / 4096);
@@ -196,22 +213,10 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 		}
 
 		// Setup general stuff
-		thread->id             = THREAD_NULL;
-		thread->entry          = entry;
-		thread->died           = false;
-		thread->hasBeenRunning = false;
-
-		// Priority and scheduling stuff
-		thread->maxTicks	= THREAD_MAX_TICKS;
-		thread->wantedTicks	= THREAD_WANTED_TICKS;
-		thread->usedTicks	= 0;
-
-		thread->blocked = 0;
-		thread->blocks  = NULL;
+		thread->entry   = entry;
 		thread->process = process;
-		thread->next 	= NULL;
 
-		// Create user and kernel stack
+		// User and kernel stack
 		thread->userStack   = userStack;
 		thread->kernelStack = kernelStack;
 
@@ -221,6 +226,8 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 
 		uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
 		memset(ustack, 0, 1 * VM_PAGE_SIZE);
+
+		thread->arguments = NULL; // Only for kernel threads
 
 		// Push the arguments for the thread on its stack
 		if(argCount > 0)
@@ -288,9 +295,6 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 			process->mainThread 		= thread;
 			process->scheduledThread 	= thread;
 		}
-
-		if(process->pid == 0)
-			watchdogd_addThread(thread); // Watchdogd is automatically attached to kernel threads!
 
 		spinlock_unlock(&process->threadLock);
 	}
@@ -410,7 +414,6 @@ thread_t *thread_copy(struct process_s *process, thread_t *source)
 void thread_destroy(struct thread_s *thread)
 {
 	process_t *process = thread->process;
-
 	thread_predicateBecameTrue(thread, thread_predicateOnExit);
 
 	if(thread->userStackVirt)
@@ -419,6 +422,18 @@ void thread_destroy(struct thread_s *thread)
 		pm_free((uintptr_t)thread->userStack, thread->userStackSize);
 	}
 	
+	if(thread->arguments)
+	{
+		hfree(NULL, thread->arguments);
+		thread->arguments = NULL;
+	}
+
+	if(thread->name)
+	{
+		hfree(NULL, (void *)thread->name);
+		thread->name = NULL;
+	}
+
 	vm_free(process->pdirectory, (vm_address_t)thread->kernelStackVirt, 1);
 	vm_free(vm_getKernelDirectory(), (vm_address_t)thread->kernelStackVirt, 1);
 	
@@ -500,6 +515,27 @@ void thread_attachPredicate(struct thread_s *thread, struct thread_s *blockThrea
 	}
 }
 
+void thread_setName(struct thread_s *thread, const char *name)
+{
+	if(thread->name)
+	{
+		hfree(NULL, (void *)thread->name);
+		thread->name = NULL;
+	}
+
+	if(name)
+	{
+		size_t length = strlen(name) + 1;
+		char *copy = halloc(NULL, length);
+
+		if(copy)
+		{
+			strcpy(copy, name);
+			thread->name = (const char *)copy;
+		}
+	}
+}
+
 void thread_join(uint32_t id)
 {
 	thread_t *thread  = thread_getWithID(id);
@@ -507,4 +543,26 @@ void thread_join(uint32_t id)
 	
 	if(thread)
 		thread_attachPredicate(thread, cthread, thread_predicateOnExit);
+}
+
+void thread_sleep(thread_t *thread, time_t time)
+{
+	if(!thread->sleeping)
+	{
+		thread->wakeupCall = time_getTimestamp();
+		thread->blocked ++;
+	}
+
+	thread->wakeupCall = timestamp_add(thread->wakeupCall, (timestamp_t)time);
+	thread->sleeping = true;
+}
+
+void thread_wakeup(thread_t *thread)
+{
+	if(thread->blocked)
+	{
+		thread->sleeping = false;
+		thread->wakeupCall = 0;
+		thread->blocked --;
+	}
 }

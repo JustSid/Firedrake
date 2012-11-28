@@ -32,7 +32,8 @@ time_t time_getMilliSeconds();
 timestamp_t time_getTimestamp();
 timestamp_t time_getTimestampSinceBoot();
 
-timestamp_t timestamp_getDifference(timestamp_t timestamp1, timestamp_t timestamp2);
+timestamp_t timestamp_add(timestamp_t timestamp1, timestamp_t timestamp2);
+timestamp_t timestamp_subtract(timestamp_t timestamp1, timestamp_t timestamp2);
 
 static inline uint32_t timestamp_getSeconds(timestamp_t timestamp)
 {

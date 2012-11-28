@@ -53,7 +53,22 @@ timestamp_t time_getTimestampSinceBoot()
 	return timestamp;
 }
 
-timestamp_t timestamp_getDifference(timestamp_t timestamp1, timestamp_t timestamp2)
+timestamp_t timestamp_add(timestamp_t timestamp1, timestamp_t timestamp2)
+{
+	uint32_t seconds = timestamp_getSeconds(timestamp1) + timestamp_getSeconds(timestamp2);
+	uint32_t msecs = timestamp_getMilliseconds(timestamp1) + timestamp_getMilliseconds(timestamp2);
+
+	while(msecs >= 1000)
+	{
+		seconds ++;
+		msecs -= 1000;
+	}
+
+	timestamp_t timestamp = ((timestamp_t)seconds << 32) | msecs;
+	return timestamp; 
+}
+
+timestamp_t timestamp_subtract(timestamp_t timestamp1, timestamp_t timestamp2)
 {
 	uint32_t secs1 = timestamp_getSeconds(timestamp1);
 	uint32_t secs2 = timestamp_getSeconds(timestamp2);

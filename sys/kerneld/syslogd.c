@@ -16,24 +16,20 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <system/video.h>
-#include <container/list.h>
 #include <memory/memory.h>
+#include <container/ringbuffer.h>
 #include <scheduler/scheduler.h>
+#include <system/lock.h>
+#include <system/panic.h>
+#include <system/video.h>
 #include <libc/string.h>
+
 #include "syslogd.h"
+#include <system/syslog.h>
 
-typedef struct syslogd_message_s
-{
-	char *message;
-	syslog_level_t level;
-
-	struct syslogd_message_s *next;
-	struct syslogd_message_s *prev;
-} syslogd_message_t;
-
+static spinlock_t syslogd_lock = SPINLOCK_INIT;
+static ringbuffer_t *syslogd_buffer = NULL;
 static bool syslogd_running = false;
-static list_t *syslogd_queue = NULL;
 
 static syslog_level_t __syslog_level = LOG_WARNING;
 static vd_color_t __sylog_color_table[] = {
@@ -45,99 +41,87 @@ static vd_color_t __sylog_color_table[] = {
 	vd_color_lightBlue 		// LOG_DEBUG
 };
 
+
 void syslogd_queueMessage(syslog_level_t level, const char *message)
 {
+	if(level > __syslog_level)
+		return;
+
+	spinlock_lock(&syslogd_lock);
+
 	if(!syslogd_running)
 	{
-		if(level > __syslog_level)
-			return;
+		vd_setColor(__sylog_color_table[level], true);
+		vd_writeString(message);
 
-		vd_printString(message, __sylog_color_table[(int)level]);
+		spinlock_unlock(&syslogd_lock);
 		return;
 	}
-
 
 	size_t length = strlen(message);
-	char *copy    = halloc(NULL, length + 1);
-	if(!copy)
-		return;
+	uint8_t colorbuffer[2] = { 14, vd_translateColor(__sylog_color_table[level]) };
 
-	strcpy(copy, message);
+	ringbuffer_write(syslogd_buffer, colorbuffer, 2);
+	ringbuffer_write(syslogd_buffer, (uint8_t *)message, length);
 
-
-	list_lock(syslogd_queue);
-	{
-		syslogd_message_t *entry = list_addBack(syslogd_queue);
-		entry->message = copy;
-		entry->level = level;
-	}
-	list_unlock(syslogd_queue);
+	spinlock_unlock(&syslogd_lock);
 }
 
 void syslogd_setLogLevel(syslog_level_t level)
 {
-	__syslog_level = level;	
+	__syslog_level = level;
 }
 
+
+
+void __syslogd_flush()
+{
+	while(ringbuffer_length(syslogd_buffer) > 0)
+	{
+		char buffer[256];
+		size_t read = ringbuffer_read(syslogd_buffer, (uint8_t *)buffer, 255);
+		
+		buffer[read] = '\0';
+
+		vd_writeString(buffer);
+	}
+}
 
 void syslogd_flush()
 {
 	if(!syslogd_running)
 		return;
 
-	list_lock(syslogd_queue);
+	spinlock_lock(&syslogd_lock);
 
-	syslogd_message_t *entry = list_first(syslogd_queue);
-	while(entry)
-	{
-		if(entry->level <= __syslog_level)
-			vd_printString(entry->message, __sylog_color_table[(int)entry->level]);
-		
-		syslogd_message_t *next = entry->next;
+	__syslogd_flush();
 
-		hfree(NULL, entry->message);
-		list_remove(syslogd_queue, entry);
-
-		entry = next;
-	}
-
-	list_unlock(syslogd_queue);
+	spinlock_unlock(&syslogd_lock);
 }
 
-// This function is evil!!
-// Only use it from panic as it will force flush the current message queue and create a new one that is definitely unlocked!
-// Afterwards none of the previously running syslogd function is re-entrant anymore, make sure no calling process gets CPU time!
+// Evil as fuck in case the lock is currently held by someone...
 void syslogd_forceFlush()
 {
 	if(!syslogd_running)
 		return;
 
-	bool result = spinlock_tryLock(&syslogd_queue->lock);
-	if(result)
-	{
-		spinlock_unlock(&syslogd_queue->lock);
-		syslogd_flush();
+	spinlock_unlock(&syslogd_lock);
+	syslogd_flush();
 
-		return;
-	}
-
-	syslogd_message_t *entry = list_first(syslogd_queue);
-	while(entry)
-	{
-		if(entry->message && entry->level <= __syslog_level)
-			vd_printString(entry->message, __sylog_color_table[(int)entry->level]);
-		
-		entry = entry->next;
-	}
-
-	// Create a new queue
-	syslogd_queue = list_create(sizeof(syslogd_message_t), offsetof(syslogd_message_t, next), offsetof(syslogd_message_t, prev));
+	syslogd_running = false;
 }
 
 void syslogd()
 {
-	syslogd_queue = list_create(sizeof(syslogd_message_t), offsetof(syslogd_message_t, next), offsetof(syslogd_message_t, prev));
+	thread_setName(thread_getCurrentThread(), "syslogd");
+
+	syslogd_buffer = ringbuffer_create(80 * 25);
+	if(!syslogd_buffer)
+		panic("Couldn't allocate buffer for syslogd!");
+
+	spinlock_lock(&syslogd_lock);
 	syslogd_running = true;
+	spinlock_unlock(&syslogd_lock);
 
 	while(1)
 	{

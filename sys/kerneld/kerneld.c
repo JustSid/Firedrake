@@ -26,7 +26,6 @@
 #include <libc/stdio.h>
 #include <tests/unittests.h>
 
-#include "watchdogd.h"
 #include "syslogd.h"
 #include "ioglued.h"
 
@@ -42,7 +41,6 @@ void kerneld_main()
 
 	// Create system threads
 	process_t *self = process_getCurrentProcess();
-	thread_create(self, watchdogd, 4096, 0);
 	thread_create(self, syslogd, 4096, 0);
 	thread_create(self, ioglued, 4096, 0);
 	thread_create(self, kerneld_unitTests, 4096, 0);
@@ -69,9 +67,6 @@ void kerneld_main()
 		thread_t *thread = thread_getCollectableThreads();
 		while(thread)
 		{
-			if(thread->process == self)
-				watchdogd_removeThread(thread); // Watchdogd get's attached to all kernel threads, so we have to remove it
-
 			thread_t *temp = thread;
 			thread = thread->next;
 			
@@ -86,11 +81,11 @@ void kerneld_main()
 // Unit Tests
 void kerneld_unitTests()
 {
-#ifdef CONF_RUNKUNIT
+#if CONF_RUNKUNIT
 	runUnitTests();
 
-#ifdef CONF_KUNITEXIT
 	watchdogd_printSamplingResults(thread_getCurrentThread());
+#ifdef CONF_KUNITEXIT
 	info("Ran all unit tests, idling now\n");
 
 	ir_disableInterrupts(true);

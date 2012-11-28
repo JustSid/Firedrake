@@ -16,24 +16,26 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libkernel/kalloc.h>
+
 #include "IOSymbol.h"
 #include "IOObject.h"
 #include "IOString.h"
 #include "IORuntime.h"
-#include "IOMemory.h"
 #include "IODatabase.h"
 #include "IOLog.h"
 
 // Constructor
 
-IOSymbol::IOSymbol(const char *name, const char *super, size_t size)
+IOSymbol::IOSymbol(const char *name, const char *super, size_t size, AllocCallback callback)
 {
 	_size = size;
-	_name = new IOString;
 
+	_name = new IOString;
 	_name->prepareWithSymbol(0);
 	_name->initWithCString(name);
 
+	_allocCallback = callback;
 	_superName = super;
 	_super = 0;
 
@@ -80,10 +82,7 @@ size_t IOSymbol::size() const
 
 IOObject *IOSymbol::alloc()
 {
-	IOObject *object = (IOObject *)IOMalloc(_size);
-	object->prepareWithSymbol(this);
-
-	return object;
+	return _allocCallback();
 }
 
 IOSymbol *IOSymbol::super()

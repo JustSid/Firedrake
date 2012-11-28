@@ -19,15 +19,22 @@
 #ifndef _IODATABASE_H_
 #define _IODATABASE_H_
 
+#include <libkernel/spinlock.h>
+
 #include "IOObject.h"
-#include "IOSpinlock.h"
 #include "IODictionary.h"
 #include "IOString.h"
 #include "IOSymbol.h"
 
+class IOService;
+class IOProvider;
+class IODatabaseEntry;
+
 class IODatabase
 {
 friend class IOSymbol;
+friend class IOService;
+friend class IOProvider;
 public:
 	static IODatabase *database();
 
@@ -42,11 +49,22 @@ private:
 	bool publishSymbol(IOSymbol *symbol);
 	void unpublishSymbol(IOSymbol *symbol);
 
+	IOReturn registerService(IOSymbol *symbol, IODictionary *attributes);
+	IOReturn unregisterService(IOSymbol *symbol);
+
+	uint32_t scoreForEntryMatch(IODatabaseEntry *entry, IODictionary *attributes);
+	IOService *serviceMatchingAttributes(IODictionary *attributes);
+
 	bool _symbolsFixed;
 	bool _dictionaryFixed;
 
-	IOSpinlock _lock;
+	kern_spinlock_t _lock;
+	kern_spinlock_t _readLock;
+
+	IOSymbol *_stringSymbol;
+
 	__IOPointerDictionary *_symbols;
+	IODictionary *_services;
 };
 
 #endif /* _IODATABASE_H_ */
