@@ -148,13 +148,16 @@ void demangleCPPName(const char *name, char *buffer)
 
 struct multiboot_module_s *sys_multibootModuleWithName(const char *name)
 {
-	struct multiboot_module_s *modules = (struct multiboot_module_s *)bootinfo->mods_addr;
-	for(uint32_t i=0; i<bootinfo->mods_count; i++)
+	if(bootinfo->flags & kMultibootFlagModules)
 	{
-		struct multiboot_module_s *module = &modules[i];
+		struct multiboot_module_s *modules = (struct multiboot_module_s *)bootinfo->mods_addr;
+		for(uint32_t i=0; i<bootinfo->mods_count; i++)
+		{
+			struct multiboot_module_s *module = &modules[i];
 
-		if(strcmp(module->name, name) == 0)
-			return module;
+			if(strcmp(module->name, name) == 0)
+				return module;
+		}
 	}
 
 	return NULL;

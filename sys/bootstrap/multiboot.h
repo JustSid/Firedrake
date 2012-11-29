@@ -21,38 +21,82 @@
 
 #include <types.h>
 
+// http://www.gnu.org/software/grub/manual/multiboot/multiboot.html
+
+#define kMultibootFlagMemory 		(1 << 0)
+#define kMultibootFlagBootDevice 	(1 << 1)
+#define kMultibootFlagCommandLine 	(1 << 2)
+#define kMultibootFlagModules 		(1 << 3)
+
+#define kMultibootFlagMmap 			(1 << 6)
+#define kMultibootFlagDrives 		(1 << 7)
+#define kMultibootFlagConfigTable 	(1 << 8)
+#define kMultibootFlagBootLoader 	(1 << 9)
+#define kMultibootFlagAPM 			(1 << 10)
+
 struct multiboot_s
 {
-	uint32_t    flags;
-	uint32_t    mem_lower;
-	uint32_t    mem_upper;
-	
-	uint32_t    bootdevice;
-	uint32_t    cmdline;
-	
-	uint32_t    mods_count;
-	void		*mods_addr;
-	
-	uint32_t    syms[4];
-	
-	uint32_t    mmap_length;
-	void		*mmap_addr;
-} __attribute__((packed));
+	uint32_t flags;
 
-struct multiboot_mmap_s
-{
-	uint32_t    entry_size;
-	uint64_t    base;
-	uint64_t    length;
-	uint32_t    type;
+	// kMultibootFlagMemory
+	uint32_t mem_lower;
+	uint32_t mem_upper;
+	
+	// kMultibootFlagBootDevice
+	uint32_t bootdevice;
+
+	// kMultibootFlagCommandLine
+	void *cmdline;
+	
+	// kMultibootFlagModules
+	uint32_t mods_count;
+	void *mods_addr;
+	
+	uint32_t syms[4];
+	
+	// kMultibootFlagMmap
+	uint32_t mmap_length;
+	void *mmap_addr;
+
+	// kMultibootFlagDrives
+	uint32_t drives_length;
+	void *drives_addr;
+
+	// kMultibootFlagConfigTable
+	void *config_table;
+
+	// kMultibootFlagBootLoader
+	void *boot_loader_name;
+
+	// kMultibootFlagAPM
+	void *apm_table;
 } __attribute__((packed));
 
 struct multiboot_module_s
 {
-	void		*start;
-	void		*end;
-	void		*name;
-	uint32_t	reserved;
+	void *start;
+	void *end;
+	void *name;
+	uint32_t reserved;
+} __attribute__((packed));
+
+struct multiboot_drive_s
+{
+	uint32_t size;
+	uint32_t drive_number;
+	char drive_mode;
+	char drive_cylinders;
+	char drive_heads;
+	char drive_sectors;
+	uint16_t drive_port0; // First port, there might be more! Last port in the list is 0
+} __attribute__((packed));
+
+struct multiboot_mmap_s
+{
+	uint32_t size;
+	uint64_t base;
+	uint64_t length;
+	uint32_t type;
 } __attribute__((packed));
 
 extern struct multiboot_s *bootinfo;

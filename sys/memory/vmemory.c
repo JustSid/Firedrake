@@ -687,15 +687,43 @@ void vm_mapMultibootModule(struct multiboot_module_s *module)
 
 void vm_mapMultiboot(struct multiboot_s *info)
 {
-	struct multiboot_module_s *modules = (struct multiboot_module_s *)info->mods_addr;
-
 	uintptr_t infostart = round4kDown((uintptr_t)info);
 	__vm_mapPage(__vm_kernelDirectory, infostart, infostart, VM_FLAGS_KERNEL);
 
-	for(uint32_t i=0; i<info->mods_count; i++)
+	if(info->flags & kMultibootFlagCommandLine)
 	{
-		struct multiboot_module_s *module = &modules[i];
-		vm_mapMultibootModule(module);
+		uintptr_t address = round4kDown((uintptr_t)info->cmdline);
+		__vm_mapPage(__vm_kernelDirectory, address, address, VM_FLAGS_KERNEL);
+	}
+
+	if(info->flags & kMultibootFlagModules)
+	{
+		struct multiboot_module_s *module = (struct multiboot_module_s *)info->mods_addr;
+
+		for(uint32_t i=0; i<info->mods_count; i++, module++)
+		{
+			vm_mapMultibootModule(module);
+		}
+	}
+
+	if(info->flags & kMultibootFlagDrives)
+	{
+		uint8_t *drivesPtr = info->drives_addr;
+		uint8_t *drivesEnd = drivesPtr + info->drives_length;
+
+		while(drivesPtr < drivesEnd)
+		{
+			struct multiboot_drive_s *drive = (struct multiboot_drive_s *)drivesPtr;
+			__vm_mapPageRange(__vm_kernelDirectory, (uintptr_t)drive, (vm_address_t)drive, pageCount(drive->size), VM_FLAGS_KERNEL); 
+
+			drivesPtr += drive->size;
+		}
+	}
+
+	if(info->flags & kMultibootFlagBootLoader)
+	{
+		uintptr_t address = round4kDown((uintptr_t)info->boot_loader_name);
+		__vm_mapPage(__vm_kernelDirectory, address, address, VM_FLAGS_KERNEL);
 	}
 }
 

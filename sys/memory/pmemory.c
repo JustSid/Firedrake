@@ -175,29 +175,61 @@ void pm_markMultibootModule(struct multiboot_module_s *module)
 	}
 
 	// Mark the name of the module
-	uintptr_t name = round4kDown((uintptr_t)module->name);
-	pages = pageCount(strlen((const char *)name));
+	start = round4kDown((uintptr_t)module->name);
+	pages = pageCount(strlen((const char *)start));
 
 	for(size_t i=0; i<pages; i++)
 	{
-		__pm_markUsed(name);
-		name += PM_PAGE_SIZE;
+		__pm_markUsed(start);
+		start += PM_PAGE_SIZE;
 	}
 }
 
 void pm_markMultiboot(struct multiboot_s *info)
 {
-	struct multiboot_module_s *modules = (struct multiboot_module_s *)info->mods_addr;
+	__pm_markUsed(round4kDown((uintptr_t)info));
 
-	uintptr_t infostart = round4kDown((uintptr_t)info);
-	__pm_markUsed(infostart);
-
-	for(uint32_t i=0; i<info->mods_count; i++)
+	if(info->flags & kMultibootFlagCommandLine)
 	{
-		struct multiboot_module_s *module = &modules[i];
-		pm_markMultibootModule(module);
+		__pm_markUsed(round4kDown((uintptr_t)info->cmdline));
 	}
 
+	if(info->flags & kMultibootFlagModules)
+	{
+		struct multiboot_module_s *module = (struct multiboot_module_s *)info->mods_addr;
+
+		for(uint32_t i=0; i<info->mods_count; i++, module++)
+		{
+			pm_markMultibootModule(module);
+		}
+	}
+
+	if(info->flags & kMultibootFlagDrives)
+	{
+		uint8_t *drivesPtr = info->drives_addr;
+		uint8_t *drivesEnd = drivesPtr + info->drives_length;
+
+		while(drivesPtr < drivesEnd)
+		{
+			struct multiboot_drive_s *drive = (struct multiboot_drive_s *)drivesPtr;
+
+			uintptr_t page = (uintptr_t)drive;
+			size_t pages = pageCount(drive->size);
+
+			for(size_t i=0; i<pages; i++)
+			{
+				__pm_markUsed(page);
+				page += PM_PAGE_SIZE;
+			}
+
+			drivesPtr += drive->size;
+		}
+	}
+
+	if(info->flags & kMultibootFlagBootLoader)
+	{
+		__pm_markUsed(round4kDown((uintptr_t)info->boot_loader_name));
+	}
 }
 
 bool pm_init(void *data)
@@ -206,36 +238,39 @@ bool pm_init(void *data)
 
 	// Grab the information about the physical memory provided by GRUB.
 	struct multiboot_s *info = (struct multiboot_s *)data;
-	struct multiboot_mmap_s *mmap = info->mmap_addr;
-	struct multiboot_mmap_s *mmapEnd = (void *)((uintptr_t)info->mmap_addr + info->mmap_length);
-	
-	size_t memoryTotal = 0; // The total amount of free memory in bytes.
-	const char *suffix; // The data suffix. Eg. b, kB, Mb etc...
+	size_t memoryTotal = 0;
 
-	
-	// Initialize the heap map and memory mutex
-	// The heap is initialized as everything allocated.
-	memset(&__pm_heap, 0, PM_HEAPSIZE * sizeof(uint32_t));
-	
-	// Iterate through every memory map and mark every available memory address as free
-	while(mmap < mmapEnd) 
+	if(info->flags & kMultibootFlagMmap)
 	{
-		if(mmap->type == 1) // A available memory map
-		{
-			uintptr_t address = mmap->base;
-			uintptr_t addressEnd = address + mmap->length;
-			
-			// Mark the range as free
-			while(address < addressEnd) 
-			{
-				__pm_markFree(address);
-				
-				address		+= PM_PAGE_SIZE;
-				memoryTotal += PM_PAGE_SIZE;
-			}
-		}
+		uint8_t *mmapPtr = info->mmap_addr;
+		uint8_t *mmapEnd = mmapPtr + info->mmap_length;
 		
-		mmap ++;
+		// Iterate through every memory map and mark every available memory address as free
+		while(mmapPtr < mmapEnd)
+		{
+			struct multiboot_mmap_s *mmap = (struct multiboot_mmap_s *)mmapPtr;
+			
+			if(mmap->type == 1)
+			{
+				uintptr_t address = mmap->base;
+				uintptr_t addressEnd = address + mmap->length;
+				
+				// Mark the range as free
+				while(address < addressEnd) 
+				{
+					__pm_markFree(address);
+					
+					address		+= PM_PAGE_SIZE;
+					memoryTotal += PM_PAGE_SIZE;
+				}
+			}
+			
+			mmapPtr += mmap->size + 4;
+		}
+	}
+	else
+	{
+		panic("No MMAP information found inside the multiboot header!");
 	}
 	
 	// Mark the kernel as allocated
@@ -250,11 +285,8 @@ bool pm_init(void *data)
 	}
 
 	// Mark the kernel stack as allocated
-	uintptr_t _stack_bottom = (uintptr_t)&stack_bottom;
-	uintptr_t _stack_top    = (uintptr_t)&stack_top;
-
-	_stack_bottom = round4kDown(_stack_bottom);
-	_stack_top = round4kUp(_stack_top);
+	uintptr_t _stack_bottom = round4kDown((uintptr_t)&stack_bottom);
+	uintptr_t _stack_top    = round4kUp((uintptr_t)&stack_top);
 
 	while(_stack_bottom < _stack_top)
 	{
@@ -269,7 +301,7 @@ bool pm_init(void *data)
 	uintptr_t directory = pm_allocLimit(VM_KERNEL_DIRECTORY_ADDRESS, 1);
 	if(directory != VM_KERNEL_DIRECTORY_ADDRESS)
 	{
-		dbg("No kernel page directory space! But found space at %p", directory);
+		err("No kernel page directory space! But found space at %p", directory);
 		return false;
 	}
 
@@ -277,12 +309,12 @@ bool pm_init(void *data)
 	uintptr_t trampolines = pm_allocLimit(IR_TRAMPOLINE_PHYSICAL, IR_TRAMPOLINE_PAGES);
 	if(trampolines != IR_TRAMPOLINE_PHYSICAL)
 	{
-		dbg("No trampoline space! But found space at %p", trampolines);
+		err("No trampoline space! But found space at %p", trampolines);
 		return false;
 	}
 
 	// Print some pretty debug info
-	suffix = sys_unitForSize(memoryTotal, &memoryTotal); // Calculate the largest integer quantity of the memory
+	const char *suffix = sys_unitForSize(memoryTotal, &memoryTotal); // Calculate the largest integer quantity of the memory
 	syslog(LOG_DEBUG, "%i %s RAM", memoryTotal, suffix); // And print how much RAM is available.
 
 	return true;
