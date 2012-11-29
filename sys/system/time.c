@@ -143,13 +143,8 @@ void time_readCMOS()
 
 void time_waitForBootTime()
 {
-	if(!time_gotBootTime)
-	{
-		dbg("\nWaiting for boot time to become available...\n");
-
-		while(!time_gotBootTime)
-			__asm__ volatile ("hlt;");
-	}
+	while(!time_gotBootTime)
+		__asm__ volatile ("hlt;");
 
 	// Fix the start time of the current processes
 	process_t *process = process_getFirstProcess();
@@ -158,8 +153,6 @@ void time_waitForBootTime()
 		process->startTime = time_bootTime;
 		process = process->next;
 	}
-
-	dbg("Boot time is %i\n", (int)(time_bootTime >> 32));
 }
 
 uint32_t time_tick(uint32_t esp)

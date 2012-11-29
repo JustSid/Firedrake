@@ -8,6 +8,7 @@ libraries=()
 drivers=(libkernel libio libPCI libRTL8139)
 
 ## Misc
+cmdline="--debug --dumpgrub"
 grubpath="$BASEDIR/image/boot/grub/grub.cfg"
 
 ## Setup the image folder
@@ -18,7 +19,7 @@ mkdir -p "$BASEDIR/image/boot/grub/i386-pc"
 mkdir -p "$BASEDIR/image/modules"
 
 ## Create the grub.cfg
-echo -e -n "GRUB_DEFAULT=0\nGRUB_TIMEOUT=1\n\nmenuentry \"Firedrake\" {\n\tmultiboot /boot/firedrake\n\tmodule /boot/firedrake firedrake\n" > $grubpath
+echo -e -n "GRUB_DEFAULT=0\nGRUB_TIMEOUT=1\n\nmenuentry \"Firedrake\" {\n\tmultiboot /boot/firedrake $cmdline\n\tmodule /boot/firedrake firedrake\n" > $grubpath
 
 ## Copy programs
 for i in ${programs[@]}; do

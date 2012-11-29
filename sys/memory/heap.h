@@ -28,7 +28,7 @@ typedef enum
 	heap_zone_typeTiny, // Max 64 bytes per entry
 	heap_zone_typeSmall, // Max 256 bytes per entry
 	heap_zone_typeMedium, // Max 2048 bytes per entry
-	heap_zone_typeLarge // Entries spanning over more than one page
+	heap_zone_typeLarge // Everything else
 } heap_zone_type_t;
 
 typedef struct heap_zone_s

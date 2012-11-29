@@ -24,6 +24,7 @@
 #include <kerneld/syslogd.h>
 #include <system/syslog.h>
 #include <system/panic.h>
+#include <system/helper.h>
 #include <system/video.h>
 #include <system/kernel.h>
 
@@ -64,12 +65,9 @@ void sys_boot(struct multiboot_s *info)
 {	
 	bootinfo = info;
 	_vd_init();
-	
-#ifndef CONF_RELEASE
-	syslogd_setLogLevel(LOG_DEBUG);
-#else
-	syslogd_setLogLevel(LOG_INFO);
-#endif
+
+	syslog_level_t loglevel = (sys_checkCommandline("--debug", NULL)) ? LOG_DEBUG : LOG_INFO;
+	syslogd_setLogLevel(loglevel);
 	
 	syslog(LOG_INFO, "\16\24Firedrake\16\27 v%i.%i.%i:%i%s (%s)\n", VersionMajor, VersionMinor, VersionPatch, VersionCurrent, versionAppendix, versionBeast);
 	syslog(LOG_INFO, "Kernel compiled on %s %s\n", __DATE__, __TIME__);
@@ -87,6 +85,11 @@ void sys_boot(struct multiboot_s *info)
 
 	dbg("\n");
 	time_waitForBootTime(); // Wait until we have time ready
+
+	if(sys_checkCommandline("--dumpgrub", NULL))
+	{
+		sys_dumpgrub();
+	}
 
 #ifndef CONF_RELEASE
 	info("--------------------------------------------------------------------------------\n\n");
