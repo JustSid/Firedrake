@@ -173,8 +173,8 @@ IOReturn kern_requestExclusiveInterrupt(void *owner, void *context, uint32_t *ou
 {
 	spinlock_lock(&__io_interrupt_lock);
 
-	uint32_t limit = ir_interruptUpperLimit();
-	for(uint32_t i=0; i<limit; i++)
+	uint32_t limit = ir_interruptPublicEnd();
+	for(uint32_t i=ir_interruptPublicBegin(); i<limit; i++)
 	{
 		if(ir_isValidInterrupt(i, true))
 		{

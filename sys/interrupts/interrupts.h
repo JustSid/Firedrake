@@ -67,10 +67,11 @@ extern void idt_interrupt_0x2C();
 extern void idt_interrupt_0x2D();
 extern void idt_interrupt_0x2E();
 extern void idt_interrupt_0x2F();
-extern void idt_interrupt_0x30();
-extern void idt_interrupt_0x31();
-extern void idt_interrupt_0x80();
 
+extern void idt_interrupt_0x31(); // Forced reshedule
+extern void idt_interrupt_0x80(); // Syscall
+
+// Interrupts that are free to use (ie have no special purpose)
 extern void idt_interrupt_0x81();
 extern void idt_interrupt_0x82();
 extern void idt_interrupt_0x83();
@@ -106,21 +107,9 @@ extern void idt_interrupt_0x9F();
 typedef uint32_t (*ir_interrupt_handler_t)(uint32_t);
 typedef void (*ir_interrupt_callback_t)(cpu_state_t *);
 
-static inline bool ir_isValidInterrupt(uint32_t interrupt, bool publicOnly)
-{
-	if(!publicOnly && (interrupt <= 0x31 || interrupt == 0x80))
-		return true;
-
-	if(interrupt > 0x80 && interrupt <= 0x9F)
-		return true;
-
-	return false;
-}
-
-static inline uint32_t ir_interruptUpperLimit()
-{
-	return 0x9F;
-}
+bool ir_isValidInterrupt(uint32_t interrupt, bool publicOnly);
+uint32_t ir_interruptPublicBegin();
+uint32_t ir_interruptPublicEnd();
 
 void ir_disableInterrupts(bool disableNMI);
 void ir_enableInterrupts(bool enableNMI);
