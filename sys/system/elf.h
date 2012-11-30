@@ -313,6 +313,27 @@ typedef struct
 #define DT_HIPROC	0x7fffffff	/* End of processor-specific */
 #define	DT_PROCNUM	DT_MIPS_NUM	/* Most used by any processor */
 
-uint32_t elf_hash(const char *name);
+static inline uint32_t elf_hash(const char *name)
+{
+	uint8_t *buffer = (uint8_t *)name;
+	uint32_t h = 0;
+	uint32_t g;
+
+	while(*buffer != '\0')
+	{
+		uint32_t c = *buffer;
+		h = (h << 4) + c;
+
+		if((g = h & 0xf0000000) != 0) 
+		{
+			h ^= g;
+			h ^= g >> 24;
+		}
+
+		buffer ++;
+	}
+
+	return h;
+}
 
 #endif /* _ELF_H_ */

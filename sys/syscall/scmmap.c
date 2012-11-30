@@ -16,7 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <system/assert.h>
+#include <libc/assert.h>
 #include <system/syslog.h>
 #include <libc/string.h>
 

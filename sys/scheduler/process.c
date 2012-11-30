@@ -18,7 +18,7 @@
 
 #include <memory/memory.h>
 #include <system/syslog.h>
-#include <system/assert.h>
+#include <libc/assert.h>
 #include <syscall/scmmap.h>
 #include <libc/string.h>
 #include <interrupts/trampoline.h>

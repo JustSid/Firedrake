@@ -18,7 +18,7 @@
 
 #include <container/atree.h>
 #include <system/syslog.h>
-#include <system/assert.h>
+#include <libc/assert.h>
 #include <libc/string.h>
 
 #include "iomodule.h"

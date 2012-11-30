@@ -168,9 +168,3 @@ void vd_writeString(const char *string)
 
 	__vd_setCursor(_vd_cursorX, _vd_cursorY);
 }
-
-
-void _vd_init()
-{
-	vd_clear();
-}

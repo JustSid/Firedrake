@@ -20,7 +20,7 @@
 #include <scheduler/scheduler.h>
 #include <memory/memory.h>
 #include <system/syslog.h>
-#include <system/assert.h>
+#include <libc/assert.h>
 #include <system/video.h>
 #include "syscall.h"
 

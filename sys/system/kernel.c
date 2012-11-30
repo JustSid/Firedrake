@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libc/assert.h>
 #include <libc/backtrace.h>
 #include <libc/stdio.h>
 #include <libc/string.h>
@@ -24,7 +25,6 @@
 #include <ioglue/iostore.h>
 #include <scheduler/scheduler.h>
 #include "elf.h"
-#include "assert.h"
 #include "kernel.h"
 #include "helper.h"
 #include "syslog.h"
@@ -135,6 +135,8 @@ const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary)
 
 			return library->path;
 		}
+
+		return "???";
 	}
 
 	return "<null>";
@@ -193,7 +195,7 @@ uintptr_t kern_resolveAddress(uintptr_t address)
 		}
 	}
 
-	return 0x0;	
+	return address;	
 }
 
 

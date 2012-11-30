@@ -21,7 +21,7 @@
 
 #include <types.h>
 #include <system/lock.h>
-#include <system/assert.h>
+#include <libc/assert.h>
 
 #include "iterator.h"
 

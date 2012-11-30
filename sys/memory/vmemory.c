@@ -19,7 +19,7 @@
 #include <config.h>
 #include <interrupts/trampoline.h>
 #include <system/syslog.h>
-#include <system/assert.h>
+#include <libc/assert.h>
 #include <system/panic.h>
 #include <system/kernel.h>
 #include <system/lock.h>

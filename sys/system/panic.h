@@ -19,8 +19,6 @@
 #ifndef _PANIC_H_
 #define _PANIC_H_
 
-#include "cpu.h"
-
 void panic(const char *format, ...) __attribute__ ((noreturn));
 
 #endif /* _PANIC_H_ */

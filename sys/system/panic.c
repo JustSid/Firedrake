@@ -22,6 +22,7 @@
 #include <scheduler/scheduler.h>
 #include <kerneld/syslogd.h>
 #include "panic.h"
+#include "cpu.h"
 #include "kernel.h"
 #include "syslog.h"
 #include "helper.h"

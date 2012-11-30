@@ -17,7 +17,7 @@
 //
 
 #include <memory/memory.h>
-#include <system/assert.h>
+#include <libc/assert.h>
 #include <system/helper.h>
 #include <system/syslog.h>
 #include <libc/string.h>

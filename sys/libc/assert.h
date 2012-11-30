@@ -1,5 +1,5 @@
 //
-//  elf.c
+//  assert.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,31 +16,22 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "elf.h"
+/**
+ * Overview:
+ * Defines simple assertion macros
+ **/
+#ifndef _ASSERT_H_
+#define _ASSERT_H_
 
-// This hashing function is defined by the system V ABI
-// Don't even think about changing it!
-uint32_t elf_hash(const char *name)
-{
-	uint8_t *buffer = (uint8_t *)name;
-	uint32_t h = 0;
-	uint32_t g;
+#include <config.h>
+#include <system/panic.h>
 
-	while(*buffer != '\0')
-	{
-		uint32_t c = *buffer;
-		h = (h << 4) + c;
+#ifndef CONF_RELEASE
+// Assertion macro that results in a panic
+#define assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed.", __func__, __LINE__, #e) : (void)0
+#else
+#define assert(e) (void)0
+#endif
 
-		if((g = h & 0xf0000000) != 0) 
-		{
-			h ^= g;
-			h ^= g >> 24;
-		}
-
-		buffer ++;
-	}
-
-	return h;
-}
-
+#endif /* _ASSERT_H_ */
 
