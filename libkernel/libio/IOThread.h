@@ -40,7 +40,7 @@ public:
 
 	IOThread *initWithFunction(IOThread::Function function);
 
-	void sleep(uint32_t time);
+	void sleep(uint64_t time);
 	void wakeup();
 	void detach();
 

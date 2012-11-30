@@ -65,7 +65,7 @@ typedef struct thread_s
 
 	// Sleeping
 	bool sleeping;
-	uint64_t wakeupCall;
+	timestamp_t wakeupCall;
 
 	struct process_s 	*process;
 	struct thread_s 	*next;
@@ -96,7 +96,7 @@ thread_t *thread_getCollectableThreads(); // Defined in scheduler.c
 thread_t *thread_getWithID(uint32_t id);
 
 void thread_join(uint32_t id); // Don't forget to force a reschedule
-void thread_sleep(thread_t *thread, time_t time);
+void thread_sleep(thread_t *thread, uint64_t time);
 void thread_wakeup(thread_t *thread);
 // If this is called using the appropriate syscall, the rescheduling is done automatically
 

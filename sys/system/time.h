@@ -24,30 +24,30 @@
 #define TIME_FREQUENCY 1000
 #define TIME_MILLISECS_PER_TICK 1
 
-typedef uint32_t time_t;
-typedef uint64_t timestamp_t; // Precise time
-
-time_t time_getSeconds();
-time_t time_getMilliSeconds();
-timestamp_t time_getTimestamp();
-timestamp_t time_getTimestampSinceBoot();
-
-timestamp_t timestamp_add(timestamp_t timestamp1, timestamp_t timestamp2);
-timestamp_t timestamp_subtract(timestamp_t timestamp1, timestamp_t timestamp2);
-
-static inline uint32_t timestamp_getSeconds(timestamp_t timestamp)
+typedef struct
 {
-	uint32_t seconds = (uint32_t)(timestamp >> 32);
-	return seconds;
-}
+	uint32_t year;
+	uint8_t month;
+	uint8_t day;
+	uint8_t hour;
+	uint8_t minute;
+	uint8_t second;
+} date_components_t;
 
-static inline uint32_t timestamp_getMilliseconds(timestamp_t timestamp)
-{
-	uint32_t millisecs = (uint32_t)(timestamp & 0xFFFFFFFF);
-	return millisecs;
-}
+typedef int64_t timestamp_t; // Milliseconds
+typedef int32_t unix_time_t; // Seconds
 
-time_t time_create(uint32_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second);
+int32_t time_getSeconds(timestamp_t time); // Returns the seconds from a timestamp
+int32_t time_getMilliseconds(timestamp_t time); // Returns the milliseconds from a timestamp
+
+timestamp_t time_convertUnix(unix_time_t time);
+unix_time_t time_convertTimestamp(timestamp_t time);
+
+timestamp_t time_getTimestamp(); // Returns the milliseconds since boot
+unix_time_t time_getUnixTime(); // Returns the current unix timestamp
+unix_time_t time_getBootTime(); // Returns the unix timestamp of the boot time
+
+unix_time_t time_create(date_components_t *components);
 
 bool time_init(void *unused); // Assumes that no interrupts are enabled!
 

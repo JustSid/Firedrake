@@ -36,7 +36,7 @@ extern "C"
 	thread_t __io_threadCreate(void *entry, void *owner, void *arg);
 	thread_t __io_threadID();
 	void __io_threadSetName(thread_t id, const char *name);
-	void __io_threadSleep(thread_t id, uint32_t time);
+	void __io_threadSleep(thread_t id, uint64_t time);
 	void __io_threadWakeup(thread_t id);
 	void sd_yield();
 }
@@ -132,7 +132,7 @@ void IOThread::threadEntry()
 	release();
 }
 
-void IOThread::sleep(uint32_t time)
+void IOThread::sleep(uint64_t time)
 {
 	__io_threadSleep(_id, time);
 }

@@ -191,14 +191,6 @@ uint32_t sd_schedule(uint32_t esp)
 		}
 	}
 
-	// Update the processes time
-	process->usedTime += TIME_MILLISECS_PER_TICK;
-	if(((time_t)(process->usedTime) % 1000) == 0)
-	{
-		time_t time = (time_t)(process->usedTime >> 32);
-		process->usedTime = ((timestamp_t)(time + 1) << 32);
-	}
-
 	_process_currentProcess = process;
 	ir_trampoline_map->pagedir  = process->pdirectory;
 	ir_trampoline_map->tss.esp0 = thread->esp + sizeof(cpu_state_t);

@@ -545,7 +545,7 @@ void thread_join(uint32_t id)
 		thread_attachPredicate(thread, cthread, thread_predicateOnExit);
 }
 
-void thread_sleep(thread_t *thread, time_t time)
+void thread_sleep(thread_t *thread, uint64_t time)
 {
 	if(!thread->sleeping)
 	{
@@ -553,7 +553,7 @@ void thread_sleep(thread_t *thread, time_t time)
 		thread->blocked ++;
 	}
 
-	thread->wakeupCall = timestamp_add(thread->wakeupCall, (timestamp_t)time);
+	thread->wakeupCall += time;
 	thread->sleeping = true;
 }
 

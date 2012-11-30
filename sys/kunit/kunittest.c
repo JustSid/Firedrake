@@ -103,18 +103,18 @@ void kunit_testRun(kunit_test_t *test)
 	}
 
 	test->finished = time_getTimestamp();
-	timestamp_t diff = timestamp_subtract(test->finished, test->started);
+	timestamp_t diff = test->finished - test->started;
 
 
 	if(test->state == kunit_test_state_ran)
 	{
 #ifndef CONF_KUNITFAILSONLY
-		info("Test case '%s' passed (%i.%03i s).\n", test->name, timestamp_getSeconds(diff), timestamp_getMilliseconds(diff));
+		info("Test case '%s' passed (%i.%03i s).\n", test->name, time_getSeconds(diff), time_getMilliseconds(diff));
 #endif
 	}
 	else
 	{
-		info("Test case '%s' failed (%i.%03i s).\n", test->name, timestamp_getSeconds(diff), timestamp_getMilliseconds(diff));
+		info("Test case '%s' failed (%i.%03i s).\n", test->name, time_getSeconds(diff), time_getMilliseconds(diff));
 	}
 
 	test->buffer = NULL;

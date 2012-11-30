@@ -134,10 +134,10 @@ void kunit_test_suiteRun(kunit_test_suite_t *suite)
 	}
 
 	suite->finished = time_getTimestamp();
-	timestamp_t diff = timestamp_subtract(suite->finished, suite->started);
+	timestamp_t diff = suite->finished - suite->started;
 
-	uint32_t seconds = timestamp_getSeconds(diff);
-	uint32_t millisecs = timestamp_getMilliseconds(diff);
+	uint32_t seconds = time_getSeconds(diff);
+	uint32_t millisecs = time_getMilliseconds(diff);
 
 	info("Executed %i tests with %i failures (%i.%03i s).\n\n", suite->run, suite->failed, seconds, millisecs);
 	kunit_test_suite_currentSuite = NULL;

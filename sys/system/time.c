@@ -18,75 +18,54 @@
 
 #include <scheduler/scheduler.h>
 #include <interrupts/interrupts.h>
+#include <libc/bsd/quad.h>
 #include "time.h"
 #include "port.h"
 #include "cmos.h"
 #include "syslog.h"
 
-// Holds the time since boot
-static time_t time_globalSecs = 0;
-static time_t time_globalMilliSecs = 0;
-
 static bool time_gotBootTime = false;
-static timestamp_t time_bootTime = 0; // Holds the timestamp of the boot process
+static unix_time_t time_unixBoot = 0; // UNIX timestamp of the boot time
+static timestamp_t time_current = 0; // Milliseconds since boot
 
 // Time getter functions
-time_t time_getSeconds()
+int32_t time_getSeconds(timestamp_t time)
 {
-	return time_globalSecs;
+	int32_t seconds = (int32_t)__udivdi3(time, 1000);
+	return seconds;
 }
 
-time_t time_getMilliSeconds()
+int32_t time_getMilliseconds(timestamp_t time)
 {
-	return time_globalMilliSecs;
+	int32_t milliseconds = (int32_t)__umoddi3(time, 1000);
+	return milliseconds;
+}
+
+timestamp_t time_convertUnix(unix_time_t time)
+{
+	timestamp_t timestamp = (timestamp_t)time;
+	timestamp *= 1000;
+	return timestamp;
+}
+
+unix_time_t time_convertTimestamp(timestamp_t time)
+{
+	return (unix_time_t)time_getSeconds(time);
 }
 
 timestamp_t time_getTimestamp()
 {
-	timestamp_t timestamp = ((timestamp_t)time_globalSecs << 32) | time_globalMilliSecs;
-	return timestamp + time_bootTime;
+	return time_current;
 }
 
-timestamp_t time_getTimestampSinceBoot()
+unix_time_t time_getUnixTime()
 {
-	timestamp_t timestamp = ((timestamp_t)time_globalSecs << 32) | time_globalMilliSecs;
-	return timestamp;
+	return time_unixBoot + time_getSeconds(time_current);
 }
 
-timestamp_t timestamp_add(timestamp_t timestamp1, timestamp_t timestamp2)
+unix_time_t time_getBootTime()
 {
-	uint32_t seconds = timestamp_getSeconds(timestamp1) + timestamp_getSeconds(timestamp2);
-	uint32_t msecs = timestamp_getMilliseconds(timestamp1) + timestamp_getMilliseconds(timestamp2);
-
-	while(msecs >= 1000)
-	{
-		seconds ++;
-		msecs -= 1000;
-	}
-
-	timestamp_t timestamp = ((timestamp_t)seconds << 32) | msecs;
-	return timestamp; 
-}
-
-timestamp_t timestamp_subtract(timestamp_t timestamp1, timestamp_t timestamp2)
-{
-	uint32_t secs1 = timestamp_getSeconds(timestamp1);
-	uint32_t secs2 = timestamp_getSeconds(timestamp2);
-
-	int32_t msecs1 = (int32_t)timestamp_getMilliseconds(timestamp1);
-	int32_t msecs2 = (int32_t)timestamp_getMilliseconds(timestamp2);
-
-	uint32_t diffSecs = secs1 - secs2;
-	int32_t diffMsecs = msecs1 - msecs2;
-
-	if(diffMsecs < 0)
-	{
-		diffMsecs += 1000;
-		diffSecs --;
-	}
-
-	timestamp_t timestamp = ((timestamp_t)diffSecs << 32) | diffMsecs;
-	return timestamp;
+	return time_unixBoot;
 }
 
 // Time calculation
@@ -97,7 +76,7 @@ const uint16_t time_daysBeforeMonth[16] = {0, 0, 31, 59, 90, 120, 151, 181, 212,
 bool time_isLeapYear(uint32_t year)
 {
 	year = (year + 1) % 400; // correct to nearest multiple of 400 years	
-	return (0 == (year & 3) && 100 != year && 200 != year && 300 != year);
+	return ((year & 3) == 0 && year != 100 && year != 200 && year != 300);
 }
 
 uint16_t time_daysOfYear(uint32_t year)
@@ -105,14 +84,17 @@ uint16_t time_daysOfYear(uint32_t year)
 	return time_isLeapYear(year) ? 366 : 365;
 }
 
-time_t time_create(uint32_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second)
+unix_time_t time_create(date_components_t *components)
 {
 	// Convert into UNIX timestamp
-	time_t interval = second;
-	interval += (minute * 60);
-	interval += (hour * 3600);
-	interval += ((day - 1) * 24 * 3600);
-	interval += ((time_daysBeforeMonth[month - 1] + time_daysOfMonth[month - 1]) * 24 * 3600);
+	unix_time_t interval = components->second;
+
+	interval += (components->minute * 60);
+	interval += (components->hour * 3600);
+	interval += ((components->day - 1) * 24 * 3600);
+	interval += ((time_daysBeforeMonth[components->month - 1] + time_daysOfMonth[components->month - 1]) * 24 * 3600);
+
+	uint32_t year = components->year;
 
 	while(year > 1970)
 	{
@@ -128,34 +110,38 @@ time_t time_create(uint32_t year, uint8_t month, uint8_t day, uint8_t hour, uint
 void time_readCMOS()
 {
 	// Read the time from the CMOS
-	uint32_t year  = (uint32_t)cmos_readData(CMOS_REGISTER_YEAR) + 2000;
-	uint32_t month = (uint32_t)cmos_readData(CMOS_REGISTER_MONTH);
-	uint32_t day   = (uint32_t)cmos_readData(CMOS_REGISTER_DMONTH);
+	date_components_t components;
 
-	uint32_t hour   = (uint32_t)cmos_readData(CMOS_REGISTER_HOUR);
-	uint32_t minute = (uint32_t)cmos_readData(CMOS_REGISTER_MINUTE);
-	uint32_t second = (uint32_t)cmos_readData(CMOS_REGISTER_SECOND);
+	components.year  = (uint32_t)cmos_readData(CMOS_REGISTER_YEAR) + 2000;
+	components.month = (uint8_t)cmos_readData(CMOS_REGISTER_MONTH);
+	components.day   = (uint8_t)cmos_readData(CMOS_REGISTER_DMONTH);
+
+	components.hour   = (uint8_t)cmos_readData(CMOS_REGISTER_HOUR);
+	components.minute = (uint8_t)cmos_readData(CMOS_REGISTER_MINUTE);
+	components.second = (uint8_t)cmos_readData(CMOS_REGISTER_SECOND);
 
 	
-	time_t interval = time_create(year, month, day, hour, minute, second);
-	time_bootTime = ((timestamp_t)interval << 32);
+	time_unixBoot = time_create(&components);
 }
 
 void time_waitForBootTime()
 {
 	while(!time_gotBootTime)
 		__asm__ volatile ("hlt;");
-
-	// Fix the start time of the current processes
-	process_t *process = process_getFirstProcess();
-	while(process)
-	{
-		process->startTime = time_bootTime;
-		process = process->next;
-	}
 }
 
 uint32_t time_tick(uint32_t esp)
+{
+	// Update the global time
+	time_current ++;
+	process_getCurrentProcess()->usedTime ++;
+
+	// Call the scheduler
+	esp = sd_schedule(esp);
+	return esp;
+}
+
+uint32_t time_prepare(uint32_t esp)
 {
 	// The first tick is invalid because it gets delayed due to interrupts being disabled during a short time of the boot process
 	static bool firstTick = true;
@@ -165,25 +151,10 @@ uint32_t time_tick(uint32_t esp)
 		return esp;
 	}
 
-	// Check if we already got the boot time, otherwise get the current time from the CMOS
-	if(!time_gotBootTime)
-	{
-		time_readCMOS(); // Its safe to read from the CMOS now
-		time_gotBootTime = true;
+	time_readCMOS(); // Its safe to read from the CMOS now
+	time_gotBootTime = true;
 
-		return esp;
-	}
-
-	// Update the global time
-	time_globalMilliSecs += TIME_MILLISECS_PER_TICK;
-	if((time_globalMilliSecs % 1000) == 0)
-	{
-		time_globalMilliSecs = 0;
-		time_globalSecs ++;
-	}
-
-	// Call the scheduler
-	esp = sd_schedule(esp);
+	ir_setInterruptHandler(time_tick, 0x20);
 	return esp;
 }
 
@@ -201,7 +172,7 @@ bool time_init(void *UNUSED(unused))
 	time_setPITFrequency();
 	cmos_writeRTCFlags(CMOS_RTC_FLAG_24HOUR | CMOS_RTC_FLAG_BINARY);
 
-	ir_setInterruptHandler(time_tick, 0x20);
+	ir_setInterruptHandler(time_prepare, 0x20);
 
 	dbg("clock speed pinned at %iHz", TIME_FREQUENCY);
 	return true;

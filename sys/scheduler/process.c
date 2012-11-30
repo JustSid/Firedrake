@@ -52,7 +52,7 @@ process_t *process_createVoid(bool insert)
 		process->image       = NULL;
 		process->pdirectory  = NULL;
 
-		process->startTime = time_getTimestampSinceBoot();
+		process->startTime = time_getTimestamp();
 		process->usedTime  = 0;
 
 		process->mappings = list_create(sizeof(mmap_description_t), offsetof(mmap_description_t, listNext), offsetof(mmap_description_t, listPrev));
@@ -165,8 +165,8 @@ void process_destroy(process_t *process)
 	if(process->image)
 		ld_executableRelease(process->image);
 
-	uint32_t seconds = timestamp_getSeconds(process->usedTime);
-	uint32_t millisecs = timestamp_getMilliseconds(process->usedTime);
+	uint32_t seconds = time_getSeconds(process->usedTime);
+	uint32_t millisecs = time_getMilliseconds(process->usedTime);
 
 	dbg("Process %i died, used %i.%03i secs on CPU\n", process->pid, seconds, millisecs);
 
