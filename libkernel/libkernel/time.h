@@ -1,6 +1,6 @@
 //
-//  libio.h
-//  libio
+//  time.h
+//  libkernel
 //
 //  Created by Sidney Just
 //  Copyright (c) 2012 by Sidney Just
@@ -16,37 +16,23 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBIO_H_
-#define _LIBIO_H_
+#ifndef _LIBKERNEL_TIME_H_
+#define _LIBKERNEL_TIME_H_
 
-#include <libkernel/libkernel.h>
+#include "base.h"
+#include "stdint.h"
 
-#include "IORuntime.h"
-#include "IOSymbol.h"
-#include "IODatabase.h"
-#include "IOLog.h"
+typedef uint32_t unix_time_t;
+typedef uint64_t timestamp_t;
 
-#include "IOObject.h"
-#include "IOAutoreleasePool.h"
-#include "IOProvider.h"
-#include "IOModule.h"
-#include "IOService.h"
-#include "IODMARegion.h"
+kern_extern int32_t time_getSeconds(timestamp_t time);
+kern_extern int32_t time_getMilliseconds(timestamp_t time);
 
-#include "IOArray.h"
-#include "IODictionary.h"
-#include "IOSet.h"
+kern_extern timestamp_t time_convertUnix(unix_time_t time);
+kern_extern unix_time_t time_convertTimestamp(timestamp_t time);
 
-#include "IOData.h"
-#include "IOString.h"
-#include "IONumber.h"
-#include "IODate.h"
+kern_extern timestamp_t time_getTimestamp();
+kern_extern unix_time_t time_getUnixTime(); 
+kern_extern unix_time_t time_getBootTime();
 
-#include "IOThread.h"
-#include "IORunLoop.h"
-#include "IOEventSource.h"
-#include "IOInterruptEventSource.h"
-
-#include "IOEthernetController.h"
-
-#endif /* _LIBIO_H_ */
+#endif /* _LIBKERNEL_TIME_H_ */

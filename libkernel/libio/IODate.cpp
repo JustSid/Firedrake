@@ -1,5 +1,5 @@
 //
-//  libio.h
+//  IODate.cpp
 //  libio
 //
 //  Created by Sidney Just
@@ -16,37 +16,72 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBIO_H_
-#define _LIBIO_H_
-
-#include <libkernel/libkernel.h>
-
-#include "IORuntime.h"
-#include "IOSymbol.h"
-#include "IODatabase.h"
-#include "IOLog.h"
-
-#include "IOObject.h"
-#include "IOAutoreleasePool.h"
-#include "IOProvider.h"
-#include "IOModule.h"
-#include "IOService.h"
-#include "IODMARegion.h"
-
-#include "IOArray.h"
-#include "IODictionary.h"
-#include "IOSet.h"
-
-#include "IOData.h"
-#include "IOString.h"
-#include "IONumber.h"
 #include "IODate.h"
 
-#include "IOThread.h"
-#include "IORunLoop.h"
-#include "IOEventSource.h"
-#include "IOInterruptEventSource.h"
+#ifdef super
+#undef super
+#endif
+#define super IOObject
 
-#include "IOEthernetController.h"
+IORegisterClass(IODate, super);
 
-#endif /* _LIBIO_H_ */
+IODate *IODate::init()
+{
+	if(!super::init())
+		return 0;
+
+	_delta = time_getTimestamp();
+	return this;
+}
+
+IODate *IODate::initWithTimestamp(timestamp_t time)
+{
+	if(!super::init())
+		return 0;
+
+	_delta = time;
+	return this;
+}
+
+IODate *IODate::initWithTimestampSinceNow(timestamp_t time)
+{
+	if(!super::init())
+		return 0;
+
+	_delta = time_getTimestamp() + time;
+	return this;
+}
+
+
+bool IODate::isEqual(IOObject *other) const
+{
+	if(this == other)
+		return true;
+
+	if(other->isSubclassOf(symbol()))
+		return false;
+
+	IODate *date = (IODate *)other;
+	return _delta == date->_delta;
+}
+
+hash_t IODate::hash() const
+{
+	return (hash_t)_delta;
+}
+
+unix_time_t IODate::date() const
+{
+	unix_time_t delta = time_getBootTime();
+	return delta + time_convertTimestamp(_delta);
+}
+
+unix_time_t IODate::unixTimestamp() const
+{
+	return time_convertTimestamp(_delta);
+}
+
+timestamp_t IODate::timestamp() const
+{
+	return _delta;
+}

@@ -311,7 +311,15 @@ const char *__io_exportedSymbolNames[] = {
 	"kern_alloc",
 	"kern_free",
 	"dma_request",
-	"dma_free"
+	"dma_free",
+	// Time
+	"time_getSeconds",
+	"time_getMilliseconds",
+	"time_convertUnix",
+	"time_convertTimestamp",
+	"time_getTimestamp",
+	"time_getUnixTime",
+	"time_getBootTime"
 };
 
 io_library_t *__io_kernelLibrary = NULL;

@@ -1,5 +1,5 @@
 //
-//  libio.h
+//  IODate.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,37 +16,29 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBIO_H_
-#define _LIBIO_H_
-
-#include <libkernel/libkernel.h>
-
-#include "IORuntime.h"
-#include "IOSymbol.h"
-#include "IODatabase.h"
-#include "IOLog.h"
+#ifndef _IODATE_H_
+#define _IODATE_H_
 
 #include "IOObject.h"
-#include "IOAutoreleasePool.h"
-#include "IOProvider.h"
-#include "IOModule.h"
-#include "IOService.h"
-#include "IODMARegion.h"
 
-#include "IOArray.h"
-#include "IODictionary.h"
-#include "IOSet.h"
+class IODate : public IOObject
+{
+public:
+	virtual IODate *init();
+	virtual IODate *initWithTimestamp(timestamp_t time);
+	virtual IODate *initWithTimestampSinceNow(timestamp_t time);
 
-#include "IOData.h"
-#include "IOString.h"
-#include "IONumber.h"
-#include "IODate.h"
+	virtual bool isEqual(IOObject *other) const;
+	virtual hash_t hash() const;
 
-#include "IOThread.h"
-#include "IORunLoop.h"
-#include "IOEventSource.h"
-#include "IOInterruptEventSource.h"
+	unix_time_t date() const;
+	unix_time_t unixTimestamp() const;
+	timestamp_t timestamp() const;
 
-#include "IOEthernetController.h"
+private:
+	timestamp_t _delta;
 
-#endif /* _LIBIO_H_ */
+	IODeclareClass(IODate)
+};
+
+#endif /* _IODATE_H_ */
