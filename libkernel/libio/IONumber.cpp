@@ -32,7 +32,7 @@ IORegisterClass(IONumber, super);
 
 #define IONumberSimpleAccess(number, type) (*((type *)number->_buffer))
 
-IONumber *IONumber::initWithBuffer(IONumberType type, void *blob, size_t size)
+IONumber *IONumber::initWithBuffer(Type type, void *blob, size_t size)
 {
 	if(super::init())
 	{

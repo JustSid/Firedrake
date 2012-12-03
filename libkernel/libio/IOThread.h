@@ -40,6 +40,9 @@ public:
 
 	IOThread *initWithFunction(IOThread::Function function);
 
+	static IOThread *currentThread();
+	static IOThread *withFunction(IOThread::Function function);
+
 	void sleep(uint64_t time);
 	void wakeup();
 	void detach();
@@ -52,9 +55,6 @@ public:
 
 	IORunLoop *runLoop() const;
 	IOAutoreleasePool *autoreleasePool() const;
-
-	static IOThread *currentThread();
-	static IOThread *withFunction(IOThread::Function function);
 
 	static void yield();
 	

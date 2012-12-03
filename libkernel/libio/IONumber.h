@@ -22,18 +22,6 @@
 #include "IOTypes.h"
 #include "IOObject.h"
 
-typedef enum
-{
-	kIONumberTypeInt8,
-	kIONumberTypeInt16,
-	kIONumberTypeInt32,
-	kIONumberTypeInt64,
-	kIONumberTypeUInt8,
-	kIONumberTypeUInt16,
-	kIONumberTypeUInt32,
-	kIONumberTypeUInt64,
-} IONumberType;
-
 class IONumber : public IOObject
 {
 public:
@@ -73,10 +61,22 @@ public:
 	virtual IOString *description() const;
 
 private:
-	IONumber *initWithBuffer(IONumberType type, void *blob, size_t size);
+	typedef enum
+	{
+		kIONumberTypeInt8,
+		kIONumberTypeInt16,
+		kIONumberTypeInt32,
+		kIONumberTypeInt64,
+		kIONumberTypeUInt8,
+		kIONumberTypeUInt16,
+		kIONumberTypeUInt32,
+		kIONumberTypeUInt64,
+	} Type;
+
+	IONumber *initWithBuffer(Type type, void *blob, size_t size);
 	virtual void free();
 
-	IONumberType _type;
+	Type _type;
 	void *_buffer;
 
 	IODeclareClass(IONumber)

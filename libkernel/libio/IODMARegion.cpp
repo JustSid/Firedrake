@@ -49,6 +49,11 @@ void IODMARegion::free()
 }
 
 
+size_t IODMARegion::availableBytes() const
+{
+	return _wrapped->pages * 4096;
+}
+
 size_t IODMARegion::physicalRegionCount() const
 {
 	return _wrapped->pfragmentCount;

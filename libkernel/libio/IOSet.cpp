@@ -86,18 +86,6 @@ private:
 IORegisterClass(IOSet, super);
 IORegisterClass(IOSetIterator, IOIterator);
 
-IOSet *IOSet::withCapacity(size_t capacity)
-{
-	IOSet *set = IOSet::alloc();
-	if(!set->initWithCapacity(capacity))
-	{
-		set->release();
-		return 0;
-	}
-
-	return set->autorelease();
-}
-
 IOSet *IOSet::init()
 {
 	if(super::init())
@@ -166,6 +154,53 @@ void IOSet::free()
 	}
 
 	super::free();
+}
+
+IOSet *IOSet::set()
+{
+	IOSet *set = IOSet::alloc()->init();
+	return set->autorelease();
+}
+
+IOSet *IOSet::withCapacity(size_t capacity)
+{
+	IOSet *set = IOSet::alloc();
+	if(!set->initWithCapacity(capacity))
+	{
+		set->release();
+		return 0;
+	}
+
+	return set->autorelease();
+}
+
+IOSet *IOSet::withObjects(IOObject *first, ...)
+{
+	va_list args;
+	size_t count = 1;
+
+	// Count the arguments
+	va_start(args, first);
+
+	while(va_arg(args, IOObject *) != 0)
+		count ++;
+
+	va_end(args);
+
+	// Create the array
+	IOSet *set = IOSet::alloc()->initWithCapacity(count);
+	set->addObject(first);
+
+	va_start(args, first);
+
+	IOObject *object;
+	while((object = va_arg(args, IOObject *)))
+	{
+		set->addObject(object);
+	}
+
+	va_end(args);
+	return set->autorelease();
 }
 
 // Lookup

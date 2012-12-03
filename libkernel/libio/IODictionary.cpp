@@ -90,33 +90,6 @@ IORegisterClass(IODictionaryIterator, IOIterator);
 
 // Constructor
 
-IODictionary *IODictionary::withCapacity(size_t capacity)
-{
-	IODictionary *dictionary = IODictionary::alloc()->initWithCapacity(capacity);
-	return dictionary->autorelease();
-}
-
-IODictionary *IODictionary::withObjectsAndKeys(IOObject *object, IOObject *key, ...)
-{
-	IODictionary *dictionary = IODictionary::alloc()->init();
-
-	va_list args;
-	va_start(args, key);
-
-	while(object && key)
-	{
-		dictionary->setObjectForKey(object, key);
-
-		object = va_arg(args, IOObject *);
-
-		if(object)
-			key = va_arg(args, IOObject *);
-	}
-
-	va_end(args);
-	return dictionary->autorelease();
-}
-
 IODictionary *IODictionary::init()
 {
 	if(super::init())
@@ -189,6 +162,38 @@ void IODictionary::free()
 	super::free();
 }
 
+IODictionary *IODictionary::dictionary()
+{
+	IODictionary *dictionary = IODictionary::alloc()->init();
+	return dictionary;
+}
+
+IODictionary *IODictionary::withCapacity(size_t capacity)
+{
+	IODictionary *dictionary = IODictionary::alloc()->initWithCapacity(capacity);
+	return dictionary->autorelease();
+}
+
+IODictionary *IODictionary::withObjectsAndKeys(IOObject *object, IOObject *key, ...)
+{
+	IODictionary *dictionary = IODictionary::alloc()->init();
+
+	va_list args;
+	va_start(args, key);
+
+	while(object && key)
+	{
+		dictionary->setObjectForKey(object, key);
+
+		object = va_arg(args, IOObject *);
+
+		if(object)
+			key = va_arg(args, IOObject *);
+	}
+
+	va_end(args);
+	return dictionary->autorelease();
+}
 
 // Lookup
 

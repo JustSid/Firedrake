@@ -30,13 +30,6 @@
 
 IORegisterClass(IOArray, super);
 
-IOArray *IOArray::withCapacity(uint32_t capacity)
-{
-	IOArray *array = IOArray::alloc()->initWithCapacity(capacity);
-	return array->autorelease();
-}
-
-
 IOArray *IOArray::init()
 {
 	if(super::init())
@@ -83,6 +76,46 @@ void IOArray::free()
 	super::free();
 }
 
+IOArray *IOArray::array()
+{
+	IOArray *array = IOArray::alloc()->init();
+	return array->autorelease();
+}
+
+IOArray *IOArray::withCapacity(uint32_t capacity)
+{
+	IOArray *array = IOArray::alloc()->initWithCapacity(capacity);
+	return array->autorelease();
+}
+
+IOArray *IOArray::withObjects(IOObject *first, ...)
+{
+	va_list args;
+	size_t count = 1;
+
+	// Count the arguments
+	va_start(args, first);
+
+	while(va_arg(args, IOObject *) != 0)
+		count ++;
+
+	va_end(args);
+
+	// Create the array
+	IOArray *array = IOArray::alloc()->initWithCapacity(count);
+	array->addObject(first);
+
+	va_start(args, first);
+
+	IOObject *object;
+	while((object = va_arg(args, IOObject *)))
+	{
+		array->addObject(object);
+	}
+
+	va_end(args);
+	return array->autorelease();
+}
 
 // Public API
 

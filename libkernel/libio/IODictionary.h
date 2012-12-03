@@ -40,8 +40,9 @@ public:
 	virtual IODictionary *init();
 	virtual IODictionary *initWithCapacity(size_t capacity);
 	
+	static IODictionary *dictionary();
 	static IODictionary *withCapacity(size_t capacity);
-	static IODictionary *withObjectsAndKeys(IOObject *object, IOObject *key, ...);
+	static IODictionary *withObjectsAndKeys(IOObject *object, IOObject *key, ...)  __attribute__((sentinel));
 
 	virtual void setObjectForKey(IOObject *object, IOObject *key);
 	virtual void removeObjectForKey(IOObject *key);

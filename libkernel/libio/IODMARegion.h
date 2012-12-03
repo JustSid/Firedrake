@@ -24,16 +24,18 @@
 
 #include "IOObject.h"
 
-enum
-{
-	kIODMARegionRequestContiguous = (1 << 0)
-};
-
 class IODMARegion : public IOObject
 {
 public:
+	enum
+	{
+		RequestContiguous = (1 << 0),
+		Request32bitLimit = (1 << 1)
+	};
+
 	IODMARegion *initWithRequest(uint32_t request, size_t pages);
 
+	size_t availableBytes() const;
 	size_t physicalRegionCount() const;
 	uintptr_t physicalRegion(size_t index=0) const;
 

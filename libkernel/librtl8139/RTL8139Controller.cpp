@@ -70,8 +70,8 @@ bool RTL8139Controller::start(IOProvider *provider)
 	writeRegister16(RTL_IMR, 0xFFFF);
 
 	// Get some buffers up in here
-	_receiveRegion  = IODMARegion::alloc()->initWithRequest(kIODMARegionRequestContiguous, 3);
-	_transmitRegion = IODMARegion::alloc()->initWithRequest(kIODMARegionRequestContiguous, 3);
+	_receiveRegion  = IODMARegion::alloc()->initWithRequest(IODMARegion::RequestContiguous | IODMARegion::Request32bitLimit, 3);
+	_transmitRegion = IODMARegion::alloc()->initWithRequest(IODMARegion::RequestContiguous | IODMARegion::Request32bitLimit, 3);
 
 	_transmitBuffer = (uint8_t *)_transmitRegion->virtualRegion();
 	_receiveBuffer  = (uint8_t *)_receiveRegion->virtualRegion();

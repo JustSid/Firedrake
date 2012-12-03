@@ -39,7 +39,9 @@ public:
 	virtual IOSet *init();
 	virtual IOSet *initWithCapacity(size_t capacity);
 
+	IOSet *set();
 	IOSet *withCapacity(size_t capacity);
+	IOSet *withObjects(IOObject *object, ...) __attribute__((sentinel));
 
 	void addObject(IOObject *object);
 	void removeObject(IOObject *object);

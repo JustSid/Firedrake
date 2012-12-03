@@ -67,26 +67,45 @@ void IOAutoreleasePool::free()
 			panic("IOAutoreleasePool::free() called, but IOAutoreleasePool is not the top most pool!");
 	}
 
-	while(_count)
+	if(_previous)
 	{
-		IOObject **objects = _objects;
-		size_t count = _count;
+		_owner->_topPool = _previous;
 
-		_count = 0;
-		_size  = 5;
-		_objects = (IOObject **)kalloc(_size * sizeof(IOObject *));
-
-		for(size_t i=0; i<count; i++)
+		for(size_t i=0; i<_count; i++)
 		{
-			IOObject *object = objects[i];
+			IOObject *object = _objects[i];
 			object->release();
 		}
 
-		kfree(objects);
+		kfree(_objects);
 	}
+	else
+	{
+		// There is no previous pool which could hold objects that get autoreleased in other objects free() method,
+		// so we have to keep this pool up and catch any object that might get autoreleased while releasing all other
+		// objects.
 
-	kfree(_objects);
-	_owner->_topPool = _previous;
+		while(_count)
+		{
+			IOObject **objects = _objects;
+			size_t count = _count;
+
+			_count = 0;
+			_size  = 5;
+			_objects = (IOObject **)kalloc(_size * sizeof(IOObject *));
+
+			for(size_t i=0; i<count; i++)
+			{
+				IOObject *object = objects[i];
+				object->release();
+			}
+
+			kfree(objects);
+		}
+
+		kfree(_objects);
+		_owner->_topPool = _previous;
+	}
 
 	super::free();
 }

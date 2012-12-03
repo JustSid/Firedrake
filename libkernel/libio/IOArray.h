@@ -28,7 +28,9 @@ public:
 	virtual IOArray *init();
 	virtual IOArray *initWithCapacity(size_t capacity);
 	
+	static IOArray *array();
 	static IOArray *withCapacity(uint32_t capacity);
+	static IOArray *withObjects(IOObject *first, ...)  __attribute__((sentinel));
 
 	void addObject(IOObject *object);
 	void removeObject(IOObject *object);
