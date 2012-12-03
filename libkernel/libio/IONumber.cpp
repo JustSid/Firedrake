@@ -206,6 +206,9 @@ hash_t IONumber::hash() const
 
 bool IONumber::isEqual(const IOObject *other) const
 {
+	if(this == other)
+		return true;
+
 	if(!other->isSubclassOf(symbol()))
 		return false;
 

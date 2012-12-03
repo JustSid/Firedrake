@@ -25,7 +25,7 @@
 #define _VERSION_H_
 
 const char *versionBeast	= "Jormungand";
-const char *versionAppendix = "_test";
+const char *versionAppendix = "";
 
 #define VersionMajor 0
 #define VersionMinor 3

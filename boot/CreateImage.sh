@@ -8,7 +8,7 @@ libraries=()
 drivers=(libkernel libio libPCI libRTL8139)
 
 ## Misc
-cmdline="--debug --dumpgrub"
+cmdline="--debug"
 grubpath="$BASEDIR/image/boot/grub/grub.cfg"
 
 ## Setup the image folder
