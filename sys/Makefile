@@ -5,7 +5,7 @@ OBJS = $(addsuffix .o, $(basename $(SRCS)))
 
 
 ASFLAGS  = -m32 -I.
-CFLAGS 	 = -m32 -std=c11 -Wall -Wextra -mno-sse -mno-mmx -nostdlib -nostdinc -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -O2 -pedantic-errors -I.
+CFLAGS 	 = -m32 -std=c99 -Wall -Wextra -mno-sse -mno-mmx -nostdlib -nostdinc -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -O2 -pedantic-errors -I.
 LDFLAGS  = -T Makefile.ld
 
 firedrake: $(OBJS)
