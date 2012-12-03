@@ -54,6 +54,7 @@ private:
 
 	IOThread *_host;
 	IOArray *_eventSources;
+	IOArray *_removedSources;
 
 	bool _shouldStop;
 	kern_spinlock_t _lock;
