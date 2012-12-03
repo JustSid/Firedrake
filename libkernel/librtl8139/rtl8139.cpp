@@ -33,7 +33,7 @@ void RTL8139_bootstrap(IOThread *)
 	// Make our service available
 	IODictionary *properties = IODictionary::withObjectsAndKeys(IONumber::withUInt8(kPCIDeviceClassNetworkController), PCIDevicePropertyClassID,
 																IONumber::withUInt16(0x10EC), PCIDevicePropertyVendorID,
-																IONumber::withUInt16(0x8139), PCIDevicePropertyDeviceID, 0);
+																IONumber::withUInt16(0x8139), PCIDevicePropertyDeviceID, NULL);
 
 	IOService::registerService(IOSymbol::withName("RTL8139Controller"), IOService::createMatchingDictionary(PCIDeviceFamily, properties));
 
