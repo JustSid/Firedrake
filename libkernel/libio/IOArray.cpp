@@ -124,9 +124,7 @@ void IOArray::addObject(IOObject *object)
 	if(_capacity >= _count)
 	{
 		object->retain();
-		_objects[_count] = object;
-
-		_count ++;
+		_objects[_count ++] = object;
 		return;
 	}
 
@@ -141,7 +139,7 @@ void IOArray::addObject(IOObject *object)
 		_capacity = _capacity + _changeSize;
 
 		object->retain();
-		_objects[_count] = object;
+		_objects[_count ++] = object;
 
 		return;
 	}
