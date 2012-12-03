@@ -1,5 +1,5 @@
 //
-//  libio.h
+//  IOTimerEventSource.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,38 +16,33 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBIO_H_
-#define _LIBIO_H_
-
-#include <libkernel/libkernel.h>
-
-#include "IORuntime.h"
-#include "IOSymbol.h"
-#include "IODatabase.h"
-#include "IOLog.h"
+#ifndef _IOTIMEREVENTSOURCE_H_
+#define _IOTIMEREVENTSOURCE_H_
 
 #include "IOObject.h"
-#include "IOAutoreleasePool.h"
-#include "IOProvider.h"
-#include "IOModule.h"
-#include "IOService.h"
-#include "IODMARegion.h"
-
-#include "IOArray.h"
-#include "IODictionary.h"
-#include "IOSet.h"
-
-#include "IOData.h"
-#include "IOString.h"
-#include "IONumber.h"
+#include "IOEventSource.h"
 #include "IODate.h"
 
-#include "IOThread.h"
-#include "IORunLoop.h"
-#include "IOEventSource.h"
-#include "IOInterruptEventSource.h"
-#include "IOTimerEventSource.h"
+class IOTimerEventSource : public IOEventSource
+{
+public:
+	typedef void (*Action)(IOObject *owner, IOTimerEventSource *source);
 
-#include "IOEthernetController.h"
+	IOTimerEventSource *initWithDate(IODate *firedate, bool repeats);
+	IOTimerEventSource *initWithDate(IODate *firedate, IOObject *owner, IOTimerEventSource::Action action, bool repeats);
 
-#endif /* _LIBIO_H_ */
+	virtual void doWork();
+
+	IODate *fireDate() const;
+
+private:
+	bool _repeats;
+	timestamp_t _fireInterval;
+	timestamp_t _fireDate;
+
+	IOObject *_object;
+
+	IODeclareClass(IOTimerEventSource)
+};
+
+#endif /* _IOTIMEREVENTSOURCE_H_ */
