@@ -121,10 +121,11 @@ void IORunLoop::processEventSources()
 			eventSource->doWork();
 	}
 
-	for(size_t i=0; i<_removedSources->count(); i++)
+	IOIterator *iterator = _removedSources->objectIterator();
+	IOEventSource *eventSource;
+
+	while((eventSource = (IOEventSource *)iterator->nextObject()))
 	{
-		IOEventSource *eventSource = (IOEventSource *)_removedSources->objectAtIndex(i);
-		
 		eventSource->setRunLoop(0);
 		_eventSources->removeObject(eventSource);
 	}
