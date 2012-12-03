@@ -46,6 +46,7 @@ private:
 
 	IODictionary *_devices;
 	kern_spinlock_t _lock;
+	bool _firstRun;
 
 	IODeclareClass(PCIProvider)
 };

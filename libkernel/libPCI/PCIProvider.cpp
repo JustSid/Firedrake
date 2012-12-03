@@ -42,6 +42,7 @@ PCIProvider *PCIProvider::initWithKmod(kern_module_t *kmod)
 
 	_lock = KERN_SPINLOCK_INIT;
 	_devices = IODictionary::alloc()->init();
+	_firstRun = true;
 
 	if(_devices == 0)
 	{
@@ -88,8 +89,11 @@ void PCIProvider::checkDevice(uint8_t bus, uint8_t device)
 			{
 				bool result = publishService(pcidevice);
 				if(result)
-				{
 					_devices->setObjectForKey(pcidevice, lookup);
+			
+
+				if(_firstRun && sys_checkCommandline("--dumppci", 0))
+				{
 					IOLog("Discovered %@", pcidevice);
 				}
 			}
@@ -111,6 +115,7 @@ void PCIProvider::requestProbe()
 		}
 	}
 
+	_firstRun = false;
 	kern_spinlock_unlock(&_lock);
 }
 

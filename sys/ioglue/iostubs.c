@@ -293,6 +293,7 @@ IOReturn kern_registerForInterrupt(uint32_t interrupt, bool exclusive, void *own
 const char *__io_exportedSymbolNames[] = {
 	"panic",
 	"__io_primitiveLog",
+	"sys_checkCommandline",
 	// Threads
 	"sd_yield",
 	"__io_threadCreate",

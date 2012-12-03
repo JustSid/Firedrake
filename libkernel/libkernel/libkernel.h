@@ -39,4 +39,6 @@
 #include "spinlock.h"
 #include "interrupts.h"
 
+kern_extern bool sys_checkCommandline(const char *option, char *buffer);
+
 #endif /* _LIBKERNEL_H_ */
