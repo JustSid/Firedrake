@@ -19,7 +19,7 @@
 			"-m32",
 			"-Wall",
 			"-Wextra",
-			"-std=c99",
+			"-std=c11",
 			"-nostdlib",
 			"-nostdinc",
 			"-fno-builtin",
