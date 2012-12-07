@@ -30,6 +30,7 @@ public:
 	IOInterruptEventSource *initWithInterrupt(uint32_t interrupt, IOObject *owner, IOInterruptEventSource::Action action, bool exclusive=false);
 
 	virtual void doWork();
+	virtual void setAction(IOObject *owner, Action action);
 
 	uint32_t interrupt() { return _interrupt; }
 

@@ -25,6 +25,7 @@
 
 class IOTimerEventSource : public IOEventSource
 {
+friend class IORunLoop;
 public:
 	typedef void (*Action)(IOObject *owner, IOTimerEventSource *source);
 
@@ -32,6 +33,7 @@ public:
 	IOTimerEventSource *initWithDate(IODate *firedate, IOObject *owner, IOTimerEventSource::Action action, bool repeats);
 
 	virtual void doWork();
+	virtual void setAction(IOObject *owner, Action action);
 
 	IODate *fireDate() const;
 

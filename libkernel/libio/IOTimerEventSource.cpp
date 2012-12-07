@@ -75,6 +75,11 @@ void IOTimerEventSource::doWork()
 	}
 }
 
+void IOTimerEventSource::setAction(IOObject *owner, Action action)
+{
+	super::setAction(owner, (IOEventSource::Action)action);
+}
+
 IODate *IOTimerEventSource::fireDate() const
 {
 	IODate *date = IODate::alloc()->initWithTimestamp(_fireDate);

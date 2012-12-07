@@ -77,6 +77,12 @@ void IOEventSource::doWork()
 {
 }
 
+void IOEventSource::setAction(IOObject *owner, Action action)
+{
+	_owner = owner;
+	_action = action;
+}
+
 void IOEventSource::enable()
 {
 	_enabled = true;

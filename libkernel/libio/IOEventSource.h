@@ -29,8 +29,8 @@ public:
 	typedef void (*Action)(IOObject *owner, ...);
 
 	virtual void doWork();
+	virtual void setAction(IOObject *owner, Action action);
 
-	virtual void setRunLoop(IORunLoop *runLoop);
 	virtual void signalWorkAvailable();
 	
 	virtual void enable();
@@ -43,6 +43,7 @@ protected:
 	virtual IOEventSource *initWithAction(IOObject *owner, Action action);
 
 	virtual void free();
+	virtual void setRunLoop(IORunLoop *runLoop);
 
 	bool _enabled;
 
