@@ -203,12 +203,6 @@ bool sys_checkCommandline(const char *option, char *buffer)
 				{
 					switch(*found)
 					{
-						case '-':
-							if(!inQuote)
-								return true;
-
-							break;
-
 						case '"':
 							inQuote = !inQuote;
 							if(!inQuote)
@@ -219,6 +213,8 @@ bool sys_checkCommandline(const char *option, char *buffer)
 						case ' ':
 							if(inQuote)
 								*buffer++ = ' ';
+							else
+								return true;
 
 							break;
 

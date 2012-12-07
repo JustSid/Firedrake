@@ -143,18 +143,19 @@ uint32_t time_tick(uint32_t esp)
 
 uint32_t time_prepare(uint32_t esp)
 {
-	// The first tick is invalid because it gets delayed due to interrupts being disabled during a short time of the boot process
-	static bool firstTick = true;
-	if(firstTick)
+	static unix_time_t temp = 0;
+
+	if(temp != time_unixBoot || temp == 0)
 	{
-		firstTick = false;
+		temp = time_unixBoot;
+		time_readCMOS();
+
 		return esp;
 	}
 
-	time_readCMOS(); // Its safe to read from the CMOS now
 	time_gotBootTime = true;
-
 	ir_setInterruptHandler(time_tick, 0x20);
+
 	return esp;
 }
 

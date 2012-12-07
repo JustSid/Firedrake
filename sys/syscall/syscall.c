@@ -102,7 +102,6 @@ void _sc_mmapInit();
 
 bool sc_init(void *UNUSED(ingored))
 {
-	ir_setInterruptHandler(_sc_execute, 0x30);
 	ir_setInterruptHandler(_sc_execute, 0x80);
 
 	sc_setSyscallHandler(SYS_PRINT, _sc_print);
