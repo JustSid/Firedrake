@@ -45,7 +45,7 @@ void kerneld_main()
 	thread_create(self, ioglued, 4096, 0);
 	thread_create(self, kerneld_unitTests, 4096, 0);
 
-#ifndef CONF_RUNKUNIT
+#if CONF_RUNKUNIT == 0
 	// Spawn a test process
 	//process_createWithFile("hellostatic.bin");
 #endif /* CONF_RUNKUNIT */
@@ -83,9 +83,7 @@ void kerneld_unitTests()
 {
 #if CONF_RUNKUNIT
 	runUnitTests();
-
-	watchdogd_printSamplingResults(thread_getCurrentThread());
-#ifdef CONF_KUNITEXIT
+#if CONF_KUNITEXITATEND
 	info("Ran all unit tests, idling now\n");
 
 	ir_disableInterrupts(true);
@@ -95,7 +93,7 @@ void kerneld_unitTests()
 
 	while(1)
 		__asm__ volatile("cli; hlt;"); // Stop everything right here and now
-#endif /* CONF_KUNITEXIT */
+#endif /* CONF_KUNITEXITATEND */
 #endif /* CONF_RUNKUNIT */
 
 	sd_threadExit();

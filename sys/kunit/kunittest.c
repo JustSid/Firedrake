@@ -94,7 +94,7 @@ void kunit_testRun(kunit_test_t *test)
 
 	if(setjmp(buffer) == 0)
 	{
-#ifndef CONF_KUNITFAILSONLY
+#if CONF_KUNITFAILSONLY
 		info("Test case '%s' started.\n", test->name);
 #endif
 
@@ -108,7 +108,7 @@ void kunit_testRun(kunit_test_t *test)
 
 	if(test->state == kunit_test_state_ran)
 	{
-#ifndef CONF_KUNITFAILSONLY
+#if CONF_KUNITFAILSONLY
 		info("Test case '%s' passed (%i.%03i s).\n", test->name, time_getSeconds(diff), time_getMilliseconds(diff));
 #endif
 	}

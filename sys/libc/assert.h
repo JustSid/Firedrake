@@ -26,11 +26,10 @@
 #include <config.h>
 #include <system/panic.h>
 
-#ifndef CONF_RELEASE
-// Assertion macro that results in a panic
-#define assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed.", __func__, __LINE__, #e) : (void)0
-#else
+#if CONF_RELEASE
 #define assert(e) (void)0
+#else
+#define assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed.", __func__, __LINE__, #e) : (void)0
 #endif
 
 #endif /* _ASSERT_H_ */

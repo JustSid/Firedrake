@@ -90,11 +90,7 @@ void sys_boot(struct multiboot_s *info)
 		sys_dumpgrub();
 	}
 
-#ifndef CONF_RELEASE
 	info("--------------------------------------------------------------------------------\n\n");
-#else
-	vd_clear();
-#endif
 
 	kerneld_main(); // Jump over to the kernel daemon which will do the rest of the work now
 	panic("kerneld bugged"); // In the case that we leave kerneld, something went really wrong. PANIC!
