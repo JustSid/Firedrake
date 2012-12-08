@@ -159,9 +159,13 @@ void IOArray::removeObject(uint32_t index)
 	IOObject *object = _objects[index];
 	object->release();
 
-	memcpy(&_objects[index], &_objects[index + 1], _count - index);
 	_count --;
 
+	for(uint32_t i=index; i<_count; i++)
+	{
+		_objects[index] = _objects[index + 1];
+	}
+	
 	if((_capacity - (_changeSize * 2)) > _count)
 	{
 		IOObject **temp = (IOObject **)kalloc((_count + _changeSize) * sizeof(IOObject *));
