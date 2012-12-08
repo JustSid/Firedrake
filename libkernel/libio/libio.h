@@ -47,6 +47,7 @@
 #include "IOEventSource.h"
 #include "IOInterruptEventSource.h"
 #include "IOTimerEventSource.h"
+#include "IORemoteCommand.h"
 
 #include "IOEthernetController.h"
 

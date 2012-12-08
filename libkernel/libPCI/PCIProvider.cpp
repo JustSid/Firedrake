@@ -105,18 +105,31 @@ void PCIProvider::checkDevice(uint8_t bus, uint8_t device)
 
 void PCIProvider::requestProbe()
 {
-	kern_spinlock_lock(&_lock);
-
-	for(int bus=0; bus<256; bus++)
+	if(runLoop()->isOnThread())
 	{
-		for(int device=0; device<32; device++)
-		{
-			checkDevice(bus, device);
-		}
-	}
+		kern_spinlock_lock(&_lock);
 
-	_firstRun = false;
-	kern_spinlock_unlock(&_lock);
+		for(int bus=0; bus<256; bus++)
+		{
+			for(int device=0; device<32; device++)
+			{
+				checkDevice(bus, device);
+			}
+		}
+
+		_firstRun = false;
+		kern_spinlock_unlock(&_lock);
+	}
+	else
+	{
+		IORemoteCommand *command = IORemoteCommand::alloc()->initWithAction(this, IOMemberFunctionCast(IOEventSource::Action, this, &PCIProvider::requestProbe));
+		runLoop()->addEventSource(command);
+
+		command->executeCommand();
+		command->release();
+
+		runLoop()->removeEventSource(command);
+	}
 }
 
 

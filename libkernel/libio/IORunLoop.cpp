@@ -96,7 +96,7 @@ void IORunLoop::addEventSource(IOEventSource *eventSource)
 
 void IORunLoop::removeEventSource(IOEventSource *eventSource)
 {
-	if(isOnThread())
+	if(isOnThread() && _doingStep)
 	{
 		_removedSources->addObject(eventSource);
 	}
@@ -144,14 +144,17 @@ void IORunLoop::signalWorkAvailable()
 
 void IORunLoop::step()
 {
+	_doingStep = true;
+
 	IOAutoreleasePool *pool = IOAutoreleasePool::alloc()->init();
 	kern_spinlock_lock(&_lock);
 
 	processEventSources();
 
-
 	kern_spinlock_unlock(&_lock);
 	pool->release();
+
+	_doingStep = false;
 }
 
 void IORunLoop::run()

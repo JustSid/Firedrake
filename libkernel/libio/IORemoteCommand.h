@@ -1,5 +1,5 @@
 //
-//  IORunLoop.h
+//  IORemoteCommand.h
 //  libio
 //
 //  Created by Sidney Just
@@ -16,52 +16,44 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IORUNLOOP_H_
-#define _IORUNLOOP_H_
-
-#include <libkernel/spinlock.h>
+#ifndef _IOREMOTECOMMAND_H_
+#define _IOREMOTECOMMAND_H_
 
 #include "IOObject.h"
-#include "IOArray.h"
-#include "IOSet.h"
 #include "IOEventSource.h"
+#include "IOThread.h"
 
-class IOThread;
-
-class IORunLoop : public IOObject
+class IORemoteCommand : public IOEventSource
 {
-friend class IOThread;
-friend class IOEventSource;
 public:
-	static IORunLoop *currentRunLoop();	
+	virtual IORemoteCommand *init();
+	virtual IORemoteCommand *initWithAction(IOObject *owner, Action action);
+	
+	virtual void doWork();
 
-	bool isOnThread();
+	void setTimeout(uint64_t timeout);
+	uint64_t timeout();
 
-	void run();
-	void stop();
-
-	void addEventSource(IOEventSource *eventSource);
-	void removeEventSource(IOEventSource *eventSource);
-
-protected:
-	void step();
-	void signalWorkAvailable();
+	IOReturn executeAction(Action action, void *arg0=0, void *arg1=0, void *arg2=0, void *arg3=0, void *arg4=0);
+	IOReturn executeCommand(void *arg0=0, void *arg1=0, void *arg2=0, void *arg3=0, void *arg4=0);
 
 private:
-	virtual IORunLoop *initWithThread(IOThread *thread);
-	virtual void free();
+	uint64_t _timeout;
+	IOThread *_caller;
 
-	void processEventSources();
-
-	IOThread *_host;
-	IOArray *_eventSources;
-	IOSet *_removedSources;
-
-	bool _doingStep;
-	bool _shouldStop;
 	kern_spinlock_t _lock;
+	bool _waiting;
+	bool _executed;
+	bool _cancelled;
+	bool _executing;
 
-	IODeclareClass(IORunLoop)
+	void *_arg0;
+	void *_arg1;
+	void *_arg2;
+	void *_arg3;
+	void *_arg4;
+
+	IODeclareClass(IORemoteCommand)
 };
 
-#endif /* _IORUNLOOP_H_ */
+#endif /* _IOREMOTECOMMAND_H_ */
