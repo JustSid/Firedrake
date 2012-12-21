@@ -74,7 +74,7 @@ IOReturn IORemoteCommand::executeCommand(void *arg0, void *arg1, void *arg2, voi
 {
 	if(_runLoop->isOnThread())
 	{
-		_action(_owner, _arg0, _arg1, _arg2, _arg3, _arg4);
+		_action(_owner, arg0, arg1, arg2, arg3, arg4);
 		return kIOReturnSuccess;
 	}
 
