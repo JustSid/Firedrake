@@ -3,7 +3,7 @@
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2012 by Sidney Just
+//  Copyright (c) 2013 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated 
 //  documentation files (the "Software"), to deal in the Software without reKUriction, including without limitation 
 //  the rights to use, copy, modify, merge, publish, diKUribute, sublicense, and/or sell copies of the Software, 

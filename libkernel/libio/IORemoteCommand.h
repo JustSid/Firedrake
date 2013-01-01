@@ -1,6 +1,6 @@
 //
-//  interrupts.h
-//  libkernel
+//  IORemoteCommand.h
+//  libio
 //
 //  Created by Sidney Just
 //  Copyright (c) 2013 by Sidney Just
@@ -16,16 +16,44 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERNEL_INTERRUPTS_H_
-#define _LIBKERNEL_INTERRUPTS_H_
+#ifndef _IOREMOTECOMMAND_H_
+#define _IOREMOTECOMMAND_H_
 
-#include "base.h"
-#include "stdint.h"
-#include "error.h"
+#include "IOObject.h"
+#include "IOEventSource.h"
+#include "IOThread.h"
 
-typedef void (*kern_interrupt_handler_t)(void *owner, void *context, uint32_t interrupt);
+class IORemoteCommand : public IOEventSource
+{
+public:
+	virtual IORemoteCommand *init();
+	virtual IORemoteCommand *initWithAction(IOObject *owner, Action action);
+	
+	virtual void doWork();
 
-kern_extern IOReturn kern_requestExclusiveInterrupt(void *owner, void *context, uint32_t *outInterrupt, kern_interrupt_handler_t callback);
-kern_extern IOReturn kern_registerForInterrupt(uint32_t interrupt, bool exclusive, void *owner, void *context, kern_interrupt_handler_t callback);
+	void setTimeout(uint64_t timeout);
+	uint64_t timeout();
 
-#endif /* _LIBKERNEL_INTERRUPTS_H_ */
+	IOReturn executeAction(Action action, void *arg0=0, void *arg1=0, void *arg2=0, void *arg3=0, void *arg4=0);
+	IOReturn executeCommand(void *arg0=0, void *arg1=0, void *arg2=0, void *arg3=0, void *arg4=0);
+
+private:
+	uint64_t _timeout;
+	IOThread *_caller;
+
+	kern_spinlock_t _lock;
+	bool _waiting;
+	bool _executed;
+	bool _cancelled;
+	bool _executing;
+
+	void *_arg0;
+	void *_arg1;
+	void *_arg2;
+	void *_arg3;
+	void *_arg4;
+
+	IODeclareClass(IORemoteCommand)
+};
+
+#endif /* _IOREMOTECOMMAND_H_ */
