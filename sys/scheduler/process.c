@@ -219,11 +219,6 @@ void process_destroy(process_t *process)
 	if(process->image)
 		ld_executableRelease(process->image);
 
-	uint32_t seconds = time_getSeconds(process->usedTime);
-	uint32_t millisecs = time_getMilliseconds(process->usedTime);
-
-	dbg("Process %i died, used %i.%03i secs on CPU\n", process->pid, seconds, millisecs);
-
 	// Remove all mappings
 	mmap_description_t *description = list_first(process->mappings);
 	while(description)

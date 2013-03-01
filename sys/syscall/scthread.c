@@ -57,10 +57,10 @@ uint32_t _sc_threadAttach(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 	return thread ? thread->id : -1;
 }
 
-uint32_t _sc_threadJoin(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
+uint32_t _sc_threadJoin(uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	uint32_t tid = *(uint32_t *)(uesp);
-	thread_join(tid);
+	thread_join(tid, errno);
 
 	*esp = sd_schedule(*esp);
 	return 0;

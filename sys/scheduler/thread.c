@@ -385,6 +385,11 @@ thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 
 void thread_destroy(thread_t *thread)
 {
+	if(thread->listener)
+	{
+		thread_notify(thread, thread_eventDidExit);
+	}
+
 	process_t *process = thread->process;
 	spinlock_lock(&thread->lock);
 
@@ -443,14 +448,74 @@ thread_t *thread_getWithID(uint32_t id)
 }
 
 
+void thread_attachListener(thread_t *thread, thread_listener_t *tlistener)
+{
+	spinlock_lock(&thread->lock);
 
-void thread_join(uint32_t id)
+	thread_listener_t *listener = list_addBack(thread->listener);
+	listener->listener = tlistener->listener;
+	listener->event    = tlistener->event;
+	listener->blocks   = tlistener->blocks;
+	listener->oneShot  = tlistener->oneShot;
+	listener->callback = tlistener->callback;
+
+	if(listener->blocks)
+	{
+		listener->listener->blocks ++;
+		listener->oneShot = true;
+	}
+
+	spinlock_unlock(&thread->lock);
+}
+
+void thread_notify(thread_t *thread, thread_event_t event)
+{
+	spinlock_lock(&thread->lock);
+
+	thread_listener_t *listener = (thread_listener_t *)list_first(thread->listener);
+	while(listener)
+	{
+		if(listener->event == event)
+		{
+			if(listener->callback)
+				listener->callback(thread, event);
+
+			if(listener->blocks)
+				listener->listener->blocks --;
+
+			if(listener->oneShot)
+			{
+				thread_listener_t *temp = listener;
+				listener = listener->next;
+
+				list_remove(thread->listener, temp);
+				continue;
+			}
+		}
+
+		listener = listener->next;
+	}
+
+	spinlock_unlock(&thread->lock);
+}
+
+
+void thread_join(uint32_t id, int *UNUSED(errno))
 {
 	thread_t *thread  = thread_getWithID(id);
 	thread_t *cthread = thread_getCurrentThread();
+
+	if(!thread)
+		return;
 	
-	/*if(thread)
-		thread_attachPredicate(thread, cthread, thread_predicateOnExit);*/
+	thread_listener_t listener;
+	listener.listener = cthread;
+	listener.event    = thread_eventDidExit;
+	listener.blocks   = true;
+	listener.oneShot  = true;
+	listener.callback = NULL;
+
+	thread_attachListener(thread, &listener);
 }
 
 void thread_sleep(thread_t *thread, uint64_t time)
