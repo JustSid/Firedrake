@@ -125,7 +125,6 @@ uint32_t sd_schedule(uint32_t esp)
 			return esp;
 
 		thread->esp = esp;
-		thread->hasBeenRunning = true;
 	}
 
 	// Check if the process or thread died
@@ -158,7 +157,7 @@ uint32_t sd_schedule(uint32_t esp)
 
 	// Update the thread
 	thread->usedTicks ++;
-	while(thread->usedTicks >= thread->wantedTicks || thread->blocked > 0 || thread->died)
+	while(thread->usedTicks >= thread->wantedTicks || thread->blocks > 0 || thread->died)
 	{
 		thread->usedTicks = 0;
 
@@ -166,12 +165,12 @@ uint32_t sd_schedule(uint32_t esp)
 		{
 			timestamp_t timestamp = time_getTimestamp();
 
-			if(timestamp >= thread->wakeupCall)
+			if(timestamp >= thread->alarm)
 			{
 				thread->sleeping = false;
-				thread->blocked --;
+				thread->blocks --;
 
-				if(thread->blocked == 0 && thread->died != false)
+				if(thread->blocks == 0 && thread->died != false)
 					break;
 			}
 		}
@@ -241,10 +240,12 @@ void sd_disableScheduler()
 	*(buffer ++) = 0x90;
 }
 
+extern process_t *process_forgeInitialProcess();
+
 bool sd_init(void *UNUSED(ingored))
 {
-	process_t *process = process_createKernel();
-	thread_t *thread = process->mainThread;
+	process_t *process = process_forgeInitialProcess();
+	thread_t  *thread = process->mainThread;
 	thread_setName(thread, "kerneld");
 
 	// Prepare everything for the kernel task

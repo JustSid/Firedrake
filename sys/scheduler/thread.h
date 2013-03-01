@@ -20,11 +20,16 @@
 #define _THREAD_H_
 
 #include <types.h>
+#include <container/list.h>
 #include <system/cpu.h>
 #include <system/time.h>
+#include <system/lock.h>
 
 struct process_s;
-struct thread_block_s;
+struct thread_listener_s;
+
+#define THREAD_NULL UINT32_MAX
+#define THREAD_STACK_LIMIT 0xBFFFFFFD
 
 typedef void (*thread_entry_t)();
 
@@ -32,17 +37,19 @@ typedef struct thread_s
 {
 	uint32_t id;
 	thread_entry_t entry;
+	spinlock_t lock;
 
+	// Scheduling
 	uint8_t maxTicks;
 	uint8_t usedTicks;
 	uint8_t wantedTicks;
-	uint8_t died;
+	uint8_t blocks; // The number of resources that block the thread, or 0 if the thread isn't blocked
 
-	bool hasBeenRunning;
-	bool wasNice; // True if the thread gave back it's resources
+	bool wasNice; // True if the thread gave CPU time back
+	bool died; // True if the thread is dead and can be purged
 
-	// Thread stacks
-	size_t userStackSize;
+	// Stack
+	size_t userStackPages;
 	uint8_t *userStack;
 	uint8_t *userStackVirt;
 
@@ -51,7 +58,8 @@ typedef struct thread_s
 
 	uint32_t esp;
 
-	// Arguments. Kernel threads only
+	// Arguments passed to the thread.
+	// Only valid for ring 0 threads, ring 3 threads get their arguments passed on the stack
 	uintptr_t **arguments;
 	uint32_t argumentCount;
 
@@ -59,13 +67,12 @@ typedef struct thread_s
 	const char *name;
 	bool watched;
 
-	// Blocking
-	struct thread_block_s *blocks;
-	uint32_t blocked;
+	// Notification system
+	list_t *listener;
 
 	// Sleeping
 	bool sleeping;
-	timestamp_t wakeupCall;
+	timestamp_t alarm;
 
 	struct process_s 	*process;
 	struct thread_s 	*next;
@@ -74,39 +81,36 @@ typedef struct thread_s
 
 typedef enum
 {
-	thread_predicateOnExit
-} thread_predicate_t;
+	thread_eventDidExit
+} thread_event_t;
 
-typedef struct thread_block_s
+typedef struct thread_listener_s
 {
-	thread_predicate_t predicate;
-	thread_t *thread;
+	thread_event_t event; // The event that is listened for
+	thread_t *listener; // The listening thread
 	
-	struct thread_block_s *next;
-} thread_block_t;
+	bool blocks; // True if the listener is waiting for the event
+	bool oneShot;
 
+	void (*callback)(thread_t *source, thread_event_t event);
 
-#define THREAD_NULL UINT32_MAX
-#define THREAD_STACK_LIMIT 0xBFFFFFFD
+	struct thread_listener_s *next;
+	struct thread_listener_s *prev;
+} thread_listener_t;
+
 
 thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t stackSize, uint32_t args, ...);
-thread_t *thread_copy(struct process_s *target, thread_t *source); // Creates a copy of the source thread for the target process
+
 thread_t *thread_getCurrentThread(); // Defined in scheduler.c!
-thread_t *thread_getCollectableThreads(); // Defined in scheduler.c
 thread_t *thread_getWithID(uint32_t id);
 
-void thread_join(uint32_t id); // Don't forget to force a reschedule
+void thread_attachListener(thread_listener_t *listener);
+
+void thread_join(uint32_t id);
 void thread_sleep(thread_t *thread, uint64_t time);
 void thread_wakeup(thread_t *thread);
-// If this is called using the appropriate syscall, the rescheduling is done automatically
 
-void thread_predicateBecameTrue(struct thread_s *thread, thread_predicate_t predicate);
-void thread_attachPredicate(struct thread_s *thread, struct thread_s *blockThread, thread_predicate_t predicate);
-void thread_setName(struct thread_s *thread, const char *name);
-
-void thread_destroy(struct thread_s *thread); // Frees the memory of the thread.
-// Be careful to not destroy the running thread, no sanity check is performed!
-
+void thread_setName(thread_t *thread, const char *name);
 void thread_setPriority(thread_t *thread, int priority);
 
 #endif /* _THREAD_H_ */

@@ -34,11 +34,11 @@ uint32_t _sc_exit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 uint32_t _sc_sleep(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 {
 	thread_t *thread = thread_getCurrentThread();
-	thread->blocked ++;
+	thread->blocks ++;
 
 	*esp = sd_schedule(*esp);
 
-	thread->blocked --;
+	thread->blocks --;
 	return 0;
 }
 
@@ -61,7 +61,6 @@ uint32_t _sc_threadJoin(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
 	thread_join(tid);
 
 	*esp = sd_schedule(*esp);
-
 	return 0;
 }
 

@@ -33,9 +33,7 @@ pid_t _process_getUniqueID()
 	return uid ++;
 }
 
-// If insert = true, the scheduler must be locked until the thread list is populated!
-// otherwise the scheduler doesn't need to be locked
-process_t *process_createVoid(bool insert)
+process_t *process_createVoid()
 {
 	process_t *process = (process_t *)halloc(NULL, sizeof(process_t));
 	if(process)
@@ -60,81 +58,74 @@ process_t *process_createVoid(bool insert)
 		process->threadLock = SPINLOCK_INIT;
 		process->mainThread = NULL;
 		process->next       = NULL;
-
-		if(insert)
-		{
-			if(parent)
-			{
-				process->next = parent->next;
-				parent->next  = process;
-			}
-			else
-				_process_setFirstProcess(process);
-		}
 	}
 
 	return process;
 }
 
-
-
-process_t *process_createWithFile(const char *name)
+void process_insert(process_t *process)
 {
 	spinlock_lock(&_sd_lock);
 
-	process_t *process = process_createVoid(true);
+	process_t *parent = process->pprocess;
+
+	process->next = parent->next;
+	parent->next  = process;
+
+	spinlock_unlock(&_sd_lock);
+}
+
+process_t *process_createWithFile(const char *name)
+{
+	process_t *process = process_createVoid();
 	if(process)
 	{
 		process->pdirectory = vm_createDirectory();
 		process->image 		= ld_executableCreateWithFile(process->pdirectory, name);
 
 		thread_create(process, (thread_entry_t)process->image->entry, 4 * 4096, 0);
+		process_insert(process);
 	}
 
-	spinlock_unlock(&_sd_lock);
 	return process;
 }
+
+extern thread_t *thread_clone(struct process_s *target, thread_t *source); 
 
 process_t *process_fork(process_t *parent)
 {
 	assert(parent);
 
-	process_t *child = process_createVoid(false);
+	process_t *child = process_createVoid();
 	if(child)
 	{
 		child->pdirectory = vm_createDirectory();
 		child->image = ld_exectuableCopy(child->pdirectory, parent->image);
 		child->ring0 = parent->ring0;
 
-		thread_copy(child, parent->scheduledThread);
+		thread_clone(child, parent->scheduledThread);
 
 		// Copy the memory mappings right here
 		// Todo: Implement copy-on-write someday because thats going to be a performance bottleneck once processes actually start to copy things around...
 		mmap_copyMappings(child, parent);
-
-		// Add the child into the process list
-		spinlock_lock(&_sd_lock);
-
-		child->next  = parent->next;
-		parent->next = child;
-
-		spinlock_unlock(&_sd_lock);
+		process_insert(child);
 	}
 
 	return child;
 }
 
-process_t *process_createKernel()
+process_t *process_forgeInitialProcess()
 {
 	spinlock_lock(&_sd_lock);
 
-	process_t *process = process_createVoid(true);
+	process_t *process = process_createVoid();
 	if(process)
 	{		
 		process->pdirectory = vm_getKernelDirectory();
 		process->ring0      = true;
 
 		thread_create(process, NULL, 4096, 0);
+		_process_setFirstProcess(process);
 	}
 
 	spinlock_unlock(&_sd_lock);
@@ -148,6 +139,9 @@ process_t *process_getParent()
 }
 
 
+
+
+extern void thread_destroy(thread_t *thread);
 
 void process_destroy(process_t *process)
 {

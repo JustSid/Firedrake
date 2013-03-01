@@ -32,87 +32,99 @@
 
 uint32_t _thread_getUniqueID(process_t *process)
 {
-	uint32_t uid = 0;
-	
-	bool found;
-	do {
-		found = true;
-		thread_t *thread = process->mainThread;
-		
-		while(thread)
-		{
-			if(thread->id == uid)
-			{
-				found = false;
-				break;
-			}
-			
-			thread = thread->next;
-		}
-		
-		if(!found)
-			uid ++;
-		
-	} while(!found);
-	
+	uint32_t uid = process->threadCounter ++;
 	return uid;
 }
 
-thread_t *thread_createVoid()
+thread_t *thread_createVoid(thread_entry_t entry)
 {
 	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
 	if(thread)
 	{
 		// Setup general stuff
-		thread->id             = THREAD_NULL;
-		thread->died           = false;
-		thread->hasBeenRunning = false;
-		thread->wasNice        = true;
+		thread->id    = THREAD_NULL;
+		thread->entry = entry;
+		thread->lock  = SPINLOCK_INIT;
 
 		// Debugging related
 		thread->name    = NULL;
 		thread->watched = false;
 
 		// Priority and scheduling stuff
-		thread->maxTicks	= THREAD_MAX_TICKS;
-		thread->wantedTicks	= THREAD_WANTED_TICKS;
-		thread->usedTicks	= 0;
+		thread->maxTicks    = THREAD_MAX_TICKS;
+		thread->wantedTicks = THREAD_WANTED_TICKS;
+		thread->usedTicks   = 0;
 
-		thread->blocked = 0;
-		thread->blocks  = NULL;
-		thread->next 	= NULL;
+		thread->died    = false;
+		thread->wasNice = true;
+
+		thread->blocks   = 0;
+		thread->listener = list_create(sizeof(thread_listener_t), offsetof(thread_listener_t, next), offsetof(thread_listener_t, prev));
+
+		thread->esp  = 0;
+		thread->next = NULL;
 
 		// Stack stuff
-		thread->userStackSize   = 0;
+		thread->userStackPages  = 0;
 		thread->userStack       = NULL;
 		thread->userStackVirt   = NULL;
 		thread->kernelStack     = NULL;
 		thread->kernelStackVirt = NULL;
 
+		thread->arguments = NULL;
+		thread->argumentCount = 0;
+
 		// Sleeping related
-		thread->sleeping   = false;
-		thread->wakeupCall = 0;
+		thread->sleeping = false;
+		thread->alarm    = 0;
+
+		if(!thread->listener)
+		{
+			hfree(NULL, thread);
+			thread = NULL;
+		}
 	}
 
 	return thread;
 }
 
+void thread_attachToProcess(process_t *process, thread_t *thread)
+{
+	spinlock_lock(&process->threadLock); // Acquire the process' thread lock so we don't end up doing bad things
+
+	thread->process = process;
+	thread->id = _thread_getUniqueID(process);
+
+	if(process->mainThread)
+	{
+		thread_t *mthread = process->mainThread;
+
+		thread->next  = mthread->next;
+		mthread->next = thread;
+	}
+	else
+	{
+		process->mainThread 		= thread;
+		process->scheduledThread 	= thread;
+	}
+
+	spinlock_unlock(&process->threadLock);
+}
+
+
 thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
 {
-	thread_t *thread = thread_createVoid();
+	thread_t *thread = thread_createVoid(entry);
 	if(thread)
 	{
 		//size_t stackPages = 1; //MAX(1, stackSize / 4096);
-		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
 
+		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
 		if(!kernelStack)
 		{
 			hfree(NULL, thread);
 			return NULL;
 		}
-
-		thread->entry   = entry;
-		thread->process = process;
 
 		// Create the kernel stack
 		thread->kernelStack     = kernelStack;
@@ -138,9 +150,9 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 
 		// Forge initial kernel stackframe
 		*(-- stack) = 0x10; // ss
-		*(-- stack) = 0x0; // esp, kernel threads use the TSS
+		*(-- stack) = 0x0;  // esp, kernel threads use the TSS
 		*(-- stack) = 0x0200; // eflags
-		*(-- stack) = 0x8; // cs
+		*(-- stack) = 0x8;    // cs
 		*(-- stack) = (uint32_t)entry; // eip
 
 		// Interrupt number and error code
@@ -163,28 +175,8 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 		*(-- stack) = 0x10;
 		*(-- stack) = 0x10;
 
-		// Update the threads
 		thread->esp = (uint32_t)stack;
-
-		// Attach the thread to the process;
-		spinlock_lock(&process->threadLock); // Acquire the process' thread lock so we don't end up doing bad things
-
-		thread->id = _thread_getUniqueID(process);
-		if(process->mainThread)
-		{
-			thread_t *mthread = process->mainThread;
-
-			// Attach the new thread next to the main thread
-			thread->next  = mthread->next;
-			mthread->next = thread;
-		}
-		else
-		{
-			process->mainThread 		= thread;
-			process->scheduledThread 	= thread;
-		}
-
-		spinlock_unlock(&process->threadLock);
+		thread_attachToProcess(process, thread);
 	}
 
 	return thread;
@@ -192,7 +184,7 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 
 thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
 {
-	thread_t *thread = thread_createVoid();
+	thread_t *thread = thread_createVoid(entry);
 	if(thread)
 	{
 		size_t stackPages = 1; //MAX(1, stackSize / 4096);
@@ -212,22 +204,16 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 			return NULL;
 		}
 
-		// Setup general stuff
-		thread->entry   = entry;
-		thread->process = process;
-
 		// User and kernel stack
 		thread->userStack   = userStack;
 		thread->kernelStack = kernelStack;
 
 		// Map the user stack
-		thread->userStackSize = stackPages;
-		thread->userStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)thread->userStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_USERLAND);
+		thread->userStackPages = stackPages;
+		thread->userStackVirt  = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)thread->userStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_USERLAND);
 
 		uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
 		memset(ustack, 0, 1 * VM_PAGE_SIZE);
-
-		thread->arguments = NULL; // Only for kernel threads
 
 		// Push the arguments for the thread on its stack
 		if(argCount > 0)
@@ -252,7 +238,7 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 		*(-- stack) = 0x23; // ss
 		*(-- stack) = (uint32_t)(thread->userStackVirt + 4092 - (argCount * sizeof(uint32_t))); // esp
 		*(-- stack) = 0x0200; // eflags
-		*(-- stack) = 0x1B; // cs
+		*(-- stack) = 0x1B;   // cs
 		*(-- stack) = (uint32_t)entry; // eip
 
 		// Interrupt number and error code
@@ -275,28 +261,10 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 		*(-- stack) = 0x23;
 		*(-- stack) = 0x23;
 
-		// Update the threads
 		thread->esp = ((uint32_t)(thread->kernelStackVirt + VM_PAGE_SIZE)) - sizeof(cpu_state_t);
 
-		// Attach the thread to the process;
-		spinlock_lock(&process->threadLock); // Acquire the process' thread lock so we don't end up doing bad things
-
-		thread->id = _thread_getUniqueID(process);
-		if(process->mainThread)
-		{
-			thread_t *mthread = process->mainThread;
-
-			// Attach the new thread next to the main thread
-			thread->next  = mthread->next;
-			mthread->next = thread;
-		}
-		else
-		{
-			process->mainThread 		= thread;
-			process->scheduledThread 	= thread;
-		}
-
-		spinlock_unlock(&process->threadLock);
+		// Attach the thread to the process
+		thread_attachToProcess(process, thread);
 	}
 
 	return thread;
@@ -322,11 +290,11 @@ thread_t *thread_create(process_t *process, thread_entry_t entry, size_t stackSi
 	return thread;
 }
 
-
-
-thread_t *thread_copy(struct process_s *process, thread_t *source)
+thread_t *thread_clone(struct process_s *process, thread_t *source)
 {
-	thread_t *thread = halloc(NULL,	sizeof(thread_t));
+	spinlock_lock(&source->lock);
+
+	thread_t *thread = thread_createVoid(source->entry);
 	if(thread)
 	{
 		uint8_t *userStack 	 = (uint8_t *)pm_alloc(1);
@@ -341,31 +309,18 @@ thread_t *thread_copy(struct process_s *process, thread_t *source)
 				pm_free((uintptr_t)kernelStack, 1);
 			
 			hfree(NULL, thread);
+			spinlock_unlock(&source->lock);
+
 			return NULL;
 		}
-
-		// Setup the general stuff
-		thread->id 			= THREAD_NULL;
-		thread->entry 		= source->entry;
-		thread->died 		= false;
-
-		// Priority and scheduling stuff
-		thread->maxTicks	= source->maxTicks;
-		thread->wantedTicks	= source->wantedTicks;
-		thread->usedTicks	= 0;
-
-		thread->blocked = 0;
-		thread->blocks  = NULL;
-		thread->process = process;
-		thread->next 	= NULL;
 
 		// Stack handling
 		thread->userStack   = userStack;
 		thread->kernelStack = kernelStack;
 
 		// User stack
-		thread->userStackVirt = source->userStackVirt;
-		thread->userStackSize = source->userStackSize;
+		thread->userStackVirt  = source->userStackVirt;
+		thread->userStackPages = source->userStackPages;
 
 		vm_mapPageRange(process->pdirectory, (uintptr_t)userStack, (vm_address_t)thread->userStackVirt, 1, VM_FLAGS_USERLAND);
 
@@ -379,47 +334,27 @@ thread_t *thread_copy(struct process_s *process, thread_t *source)
 
 		// Kernel stack
 		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
+		thread->esp = source->esp + ((uintptr_t)thread->kernelStackVirt) - ((uintptr_t)source->kernelStackVirt);
 
 		memcpy(thread->kernelStackVirt, source->kernelStackVirt, VM_PAGE_SIZE);
 
-		size_t offset = ((uintptr_t)thread->kernelStackVirt) - ((uintptr_t)source->kernelStackVirt);
-		thread->esp = source->esp + offset;
-
-		// Attach the thread to the process;
-		spinlock_lock(&process->threadLock); // Acquire the process' thread lock so we don't end up doing bad things
-
-		thread->id = _thread_getUniqueID(process);
-		if(process->mainThread)
-		{
-			thread_t *mthread = process->mainThread;
-
-			// Attach the new thread next to the main thread
-			thread->next  = mthread->next;
-			mthread->next = thread;
-		}
-		else
-		{
-			process->mainThread 		= thread;
-			process->scheduledThread 	= thread;
-		}
-
-		spinlock_unlock(&process->threadLock);
+		// Attach the thread to the process
+		thread_attachToProcess(process, thread);
 	}
 
+	spinlock_unlock(&source->lock);
 	return thread;
 }
 
-
-
-void thread_destroy(struct thread_s *thread)
+void thread_destroy(thread_t *thread)
 {
 	process_t *process = thread->process;
-	thread_predicateBecameTrue(thread, thread_predicateOnExit);
+	spinlock_lock(&thread->lock);
 
 	if(thread->userStackVirt)
 	{
-		vm_free(process->pdirectory, (vm_address_t)thread->userStackVirt, thread->userStackSize);
-		pm_free((uintptr_t)thread->userStack, thread->userStackSize);
+		vm_free(process->pdirectory, (vm_address_t)thread->userStackVirt, thread->userStackPages);
+		pm_free((uintptr_t)thread->userStack, thread->userStackPages);
 	}
 	
 	if(thread->arguments)
@@ -442,11 +377,8 @@ void thread_destroy(struct thread_s *thread)
 	hfree(NULL, thread);
 }
 
-void thread_setPriority(thread_t *thread, int priorityy)
-{
-	int result = MIN(thread->maxTicks, MAX(1, priorityy));
-	thread->wantedTicks = result;
-}
+
+
 
 thread_t *thread_getWithID(uint32_t id)
 {
@@ -467,56 +399,44 @@ thread_t *thread_getWithID(uint32_t id)
 }
 
 
-void thread_predicateBecameTrue(struct thread_s *thread, thread_predicate_t predicate)
-{
-	thread_block_t *block = thread->blocks;
-	thread_block_t *previous = NULL;
-	while(block)
-	{
-		if(block->predicate == predicate)
-		{
-			thread_block_t *temp = block;
-			block->thread->blocked --;
-			
-			if(!previous)
-			{
-				thread->blocks = block->next;
-				block = block->next;
-			}
-			else
-			{
-				previous->next = block->next;
-				block = block->next;
-			}
-			
-			hfree(NULL, temp);
-			continue;
-		}
-		
-		previous = block;
-		block = block->next;
-	}
-}
 
-void thread_attachPredicate(struct thread_s *thread, struct thread_s *blockThread, thread_predicate_t predicate)
+void thread_join(uint32_t id)
 {
-	assert(thread);
-	assert(blockThread);
+	thread_t *thread  = thread_getWithID(id);
+	thread_t *cthread = thread_getCurrentThread();
 	
-	thread_block_t *block = halloc(NULL, sizeof(thread_block_t));
-	if(block)
+	/*if(thread)
+		thread_attachPredicate(thread, cthread, thread_predicateOnExit);*/
+}
+
+void thread_sleep(thread_t *thread, uint64_t time)
+{
+	if(!thread->sleeping)
 	{
-		block->predicate 	= predicate;
-		block->thread 		= blockThread;
-		block->next			= thread->blocks;
-		
-		thread->blocks = block;
-		blockThread->blocked ++;
+		thread->alarm = time_getTimestamp();
+		thread->sleeping = true;
+		thread->blocks ++;
+	}
+
+	thread->alarm += time;
+}
+
+void thread_wakeup(thread_t *thread)
+{
+	if(thread->sleeping)
+	{
+		thread->sleeping = false;
+		thread->alarm = 0;
+		thread->blocks --;
 	}
 }
 
-void thread_setName(struct thread_s *thread, const char *name)
+
+
+void thread_setName(thread_t *thread, const char *name)
 {
+	spinlock_lock(&thread->lock);
+
 	if(thread->name)
 	{
 		hfree(NULL, (void *)thread->name);
@@ -534,35 +454,16 @@ void thread_setName(struct thread_s *thread, const char *name)
 			thread->name = (const char *)copy;
 		}
 	}
+
+	spinlock_unlock(&thread->lock);
 }
 
-void thread_join(uint32_t id)
+void thread_setPriority(thread_t *thread, int priorityy)
 {
-	thread_t *thread  = thread_getWithID(id);
-	thread_t *cthread = thread_getCurrentThread();
-	
-	if(thread)
-		thread_attachPredicate(thread, cthread, thread_predicateOnExit);
-}
+	spinlock_lock(&thread->lock);
 
-void thread_sleep(thread_t *thread, uint64_t time)
-{
-	if(!thread->sleeping)
-	{
-		thread->wakeupCall = time_getTimestamp();
-		thread->blocked ++;
-	}
+	int result = MIN(thread->maxTicks, MAX(1, priorityy));
+	thread->wantedTicks = result;
 
-	thread->wakeupCall += time;
-	thread->sleeping = true;
-}
-
-void thread_wakeup(thread_t *thread)
-{
-	if(thread->blocked)
-	{
-		thread->sleeping = false;
-		thread->wakeupCall = 0;
-		thread->blocked --;
-	}
+	spinlock_unlock(&thread->lock);
 }

@@ -32,6 +32,12 @@
 extern void sd_disableScheduler();
 extern void syslogd_forceFlush();
 
+extern process_t *process_getCollectableProcesses();
+extern thread_t *thread_getCollectableThreads();
+
+extern void process_destroy(process_t *process);
+extern void thread_destroy(thread_t *thread);
+
 void kerneld_unitTests() __attribute__((noreturn));
 
 void kerneld_main() __attribute__((noinline, noreturn));

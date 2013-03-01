@@ -41,6 +41,7 @@ typedef struct process_s
 	spinlock_t threadLock; // Must be obtained before changing something on the threads
 	thread_t *mainThread; // The main thread, ie. the first spawned thread
 	thread_t *scheduledThread; // The thread that is currently scheduled
+	uint32_t threadCounter; // +1 for every created thread
 
 	timestamp_t startTime;
 	timestamp_t usedTime;
@@ -56,14 +57,10 @@ typedef struct process_s
 #define PROCESS_NULL UINT32_MAX
 
 process_t *process_createWithFile(const char *name);
-process_t *process_createKernel();
 process_t *process_fork(process_t *parent);
 
 process_t *process_getCurrentProcess(); // Defined in scheduler.c!
 process_t *process_getFirstProcess(); // Defined in scheduler.c, returns a process that can be used to iterate through the process list
-process_t *process_getCollectableProcesses(); // Scheduler.c too
 process_t *process_getParent();
-
-void process_destroy(process_t *process); // Frees all memory used by the process
 
 #endif /* _PROCESS_H_ */
