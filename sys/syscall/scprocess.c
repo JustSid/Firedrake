@@ -31,48 +31,6 @@ uint32_t _sc_exit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 	return 0; // The process won't receive it...
 }
 
-uint32_t _sc_sleep(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
-{
-	thread_t *thread = thread_getCurrentThread();
-	thread->blocks ++;
-
-	*esp = sd_schedule(*esp);
-
-	thread->blocks --;
-	return 0;
-}
-
-uint32_t _sc_threadAttach(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
-{
-	process_t *process = process_getCurrentProcess();
-	uint32_t entry = *(uint32_t *)(uesp + 0);
-	uint32_t stacksize = *(uint32_t *)(uesp + 1);
-
-	uint32_t arg1 = *(uint32_t *)(uesp + 2);
-	uint32_t arg2 = *(uint32_t *)(uesp + 3);
-
-	thread_t *thread = thread_create(process, (thread_entry_t)entry, stacksize, errno, 2, arg1, arg2);
-	return thread ? thread->id : -1;
-}
-
-uint32_t _sc_threadJoin(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
-{
-	uint32_t tid = *(uint32_t *)(uesp);
-	thread_join(tid);
-
-	*esp = sd_schedule(*esp);
-	return 0;
-}
-
-uint32_t _sc_threadExit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
-{
-	thread_t *thread = thread_getCurrentThread();
-	thread->died = true;
-
-	*esp = sd_schedule(*esp);
-	return 0;
-}
-
 uint32_t _sc_processCreate(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 {
 	process_t *current = process_getCurrentProcess();
@@ -111,8 +69,6 @@ uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *errno)
 	return 0;
 }
 
-
-
 uint32_t _sc_fork(uint32_t *esp, uint32_t *UNUSED(uesp), int *errno)
 {
 	process_t *process = process_getCurrentProcess();
@@ -135,10 +91,6 @@ uint32_t _sc_fork(uint32_t *esp, uint32_t *UNUSED(uesp), int *errno)
 void _sc_processInit()
 {
 	sc_setSyscallHandler(SYS_EXIT, _sc_exit);
-	sc_setSyscallHandler(SYS_SLEEP, _sc_sleep);
-	sc_setSyscallHandler(SYS_THREADATTACH, _sc_threadAttach);
-	sc_setSyscallHandler(SYS_THREADEXIT, _sc_threadExit);
-	sc_setSyscallHandler(SYS_THREADJOIN, _sc_threadJoin);
 	sc_setSyscallHandler(SYS_PROCESSCREATE, _sc_processCreate);
 	sc_setSyscallHandler(SYS_PROCESSKILL, _sc_processKill);
 	sc_setSyscallHandler(SYS_FORK, _sc_fork);

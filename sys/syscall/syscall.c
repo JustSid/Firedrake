@@ -77,6 +77,8 @@ uint32_t _sc_execute(uint32_t esp)
 
 	state->eax = result;
 	state->ecx = (errno != 0) ? errno : state->ecx;
+
+	thread->errno = errno;
 	
 	// Unmap the userstack
 	vm_free(vm_getKernelDirectory(), (uintptr_t)ustack, 1);
@@ -98,6 +100,7 @@ void sc_setSyscallInKernelHandler(uint32_t syscall, syscall_callback_t callback)
 
 
 void _sc_processInit();
+void _sc_threadInit();
 void _sc_mmapInit();
 
 bool sc_init(void *UNUSED(ingored))
@@ -108,6 +111,7 @@ bool sc_init(void *UNUSED(ingored))
 	sc_setSyscallHandler(SYS_PRINTCOLOR, _sc_print);
 
 	_sc_processInit();
+	_sc_threadInit();
 	_sc_mmapInit();
 
 	return true;

@@ -78,6 +78,10 @@ thread_t *thread_createVoid(process_t *process, thread_entry_t entry, int *errno
 		thread->arguments = NULL;
 		thread->argumentCount = 0;
 
+		// TLS
+		thread->errno = 0;
+		memset(thread->TLSSlots, 0, THREAD_TLS_SLOTS * sizeof(struct TLSSlot));
+
 		// Sleeping related
 		thread->sleeping = false;
 		thread->alarm    = 0;
@@ -471,6 +475,89 @@ void thread_wakeup(thread_t *thread)
 	}
 }
 
+
+
+uintptr_t thread_getTLSValue(thread_t *thread, uint32_t index, int *errno)
+{
+	if(index >= THREAD_TLS_SLOTS)
+	{
+		if(errno)
+			*errno = EINVAL;
+
+		return -1;
+	}
+
+	struct TLSSlot *slot = &thread->TLSSlots[index];
+	if(!slot->used)
+	{
+		if(errno)
+			*errno = EINVAL;
+
+		return -1;
+	}
+
+	return slot->value;
+}
+
+void thread_setTLSValue(thread_t *thread, uint32_t index, uintptr_t value, int *errno)
+{
+	if(index >= THREAD_TLS_SLOTS)
+	{
+		if(errno)
+			*errno = EINVAL;
+
+		return;
+	}
+
+	struct TLSSlot *slot = &thread->TLSSlots[index];
+	if(!slot->used)
+	{
+		if(errno)
+			*errno = EINVAL;
+
+		return;
+	}
+
+	slot->value = value;
+}
+
+uint32_t thread_allocateTLSSlot(thread_t *thread, int *errno)
+{
+	for(uint32_t i=0; i<THREAD_TLS_SLOTS; i++)
+	{
+		if(thread->TLSSlots[i].used == false)
+		{
+			thread->TLSSlots[i].used = true;
+			return i;
+		}
+	}
+
+	if(errno)
+		*errno = ENOMEM;
+
+	return -1;
+}
+
+void thread_freeTLSSlot(thread_t *thread, uint32_t index, int *errno)
+{
+	if(index >= THREAD_TLS_SLOTS)
+	{
+		if(errno)
+			*errno = EINVAL;
+
+		return;
+	}
+
+	if(!thread->TLSSlots[index].used)
+	{
+		if(errno)
+			*errno = EINVAL;
+
+		return;
+	}	
+
+	thread->TLSSlots[index].used = false;
+}
 
 
 void thread_setName(thread_t *thread, const char *name, int *errno)

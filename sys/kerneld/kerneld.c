@@ -53,7 +53,7 @@ void kerneld_main()
 
 #if CONF_RUNKUNIT == 0
 	// Spawn a test process
-	//process_createWithFile("hellostatic.bin");
+	process_createWithFile("hellostatic.bin", NULL);
 #endif /* CONF_RUNKUNIT */
 
 	// Let's do some work
