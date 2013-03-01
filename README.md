@@ -16,7 +16,7 @@ List of note-worthy features:
   * Kernel wide unit tests
 
 ## Development
-Development of Firedrake happens mostly in two branches: The [development](https://github.com/JustSid/Firedrake/tree/development) contains patches for the current major release (ie 0.3.x) and the [unstable](https://github.com/JustSid/Firedrake/tree/unstable) branch contains code for the next major release (ie 0.4.0). Versioninging follows the [Semantic Versioning](http://semver.org) standard.
+Development of Firedrake happens mostly in two branches: The [master](https://github.com/JustSid/Firedrake/tree/master) branch, which contains patches for the current stable release, and the [unstable](https://github.com/JustSid/Firedrake/tree/unstable) branch which contains the changes for the next major release. Versioninging follows the [Semantic Versioning](http://semver.org) standard.
 
 ## Compiling
 ### Prerequisites
@@ -33,15 +33,15 @@ If you want to create mountable ISO files, you also need the following two packa
 
 You also need to mark the `/boot/CreateImage.sh` script as executable by running `chmod +x ./boot/CreateImage.sh`.
 
-### Make
+### Building
 To make a complete build of Firedrake, you only need to run `make`, which will compile the kernel as well as all default libraries and programs. If you want to create a bootable ISO file, you need to run the `make install` target. 
-You can also run the `help` target which prints a list of targets that are available together with an description of what they do.
+You can also run the `help` target which prints a list of targets that are available together with a description of what they do.
 
 ## Executing
 If you want to run Firedrake but don't want to reboot your PC for it, you can use an emulator. Firedrake has been tested in `qemu` and `VMWare Fusion`, but should also run in `Virtual Box`, `Bochs` and almost every other emulator which emulates a x86 CPU and a PC BIOS.
 
 ## License
-Firedrake is released under the permissive MIT license. For more informations, please read the LICENSE file.
+Firedrake is released under the permissive MIT license. For more informations, please read the [LICENSE](LICENSE.md) file.
 
 ### Third party code
-Firedrake uses code from the FreeBSD project for 64bit integer division. The code can be found in /sys/libc/bsd/ and is released under the BSD license. See the README.md inside /sys/libc/bsd for more informations.
+Firedrake uses code from the FreeBSD project for 64bit software integer division. The code can be found in /sys/libc/bsd/ and is released under the BSD license. See the [README](sys/libc/bsd/README.md) inside /sys/libc/bsd for more informations.
