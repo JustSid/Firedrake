@@ -500,22 +500,16 @@ void thread_notify(thread_t *thread, thread_event_t event)
 }
 
 
-void thread_join(uint32_t id, int *UNUSED(errno))
+void thread_join(thread_t *thread, thread_t *toJoin, int *UNUSED(errno))
 {
-	thread_t *thread  = thread_getWithID(id);
-	thread_t *cthread = thread_getCurrentThread();
-
-	if(!thread)
-		return;
-	
 	thread_listener_t listener;
-	listener.listener = cthread;
+	listener.listener = thread;
 	listener.event    = thread_eventDidExit;
 	listener.blocks   = true;
 	listener.oneShot  = true;
 	listener.callback = NULL;
 
-	thread_attachListener(thread, &listener);
+	thread_attachListener(toJoin, &listener);
 }
 
 void thread_sleep(thread_t *thread, uint64_t time)

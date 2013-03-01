@@ -40,6 +40,33 @@ uint32_t _sc_print(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 	return 0;
 }
 
+void *sc_mapProcessMemory(void *memory, vm_address_t *mappedBase, size_t pages, int *errno)
+{
+	process_t *process = process_getCurrentProcess();
+
+	vm_address_t virtual = round4kDown((vm_address_t)memory);
+	vm_address_t offset  = ((vm_address_t)memory) - virtual;
+	uintptr_t physical;
+
+	if(virtual == 0x0)
+	{
+		*errno = EINVAL;
+		return NULL;
+	}
+
+	physical = vm_resolveVirtualAddress(process->pdirectory, virtual);
+	virtual  = vm_alloc(vm_getKernelDirectory(), physical, pages, VM_FLAGS_KERNEL);
+
+	if(!virtual)
+	{
+		*errno = ENOMEM;
+		return NULL;
+	}
+
+	*mappedBase = virtual;
+	return (void *)(virtual + offset);
+}
+
 
 /**
  * Syscall main entry point
@@ -94,7 +121,6 @@ bool sc_init(void *UNUSED(ingored))
 	ir_setInterruptHandler(_sc_execute, 0x80);
 
 	sc_setSyscallHandler(SYS_PRINT, _sc_print);
-	sc_setSyscallHandler(SYS_PRINTCOLOR, _sc_print);
 
 	_sc_processInit();
 	_sc_threadInit();

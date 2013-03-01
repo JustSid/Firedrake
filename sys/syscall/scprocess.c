@@ -82,12 +82,51 @@ uint32_t _sc_fork(uint32_t *esp, uint32_t *UNUSED(uesp), int *errno)
 	return -1;
 }
 
+uint32_t _sc_pid(uint32_t *UNUSED(esp), uint32_t *UNUSED(uesp), int *UNUSED(errno))
+{
+	process_t *process = process_getCurrentProcess();
+	return process->pid;
+}
+
+uint32_t _sc_ppid(uint32_t *UNUSED(esp), uint32_t *UNUSED(uesp), int *UNUSED(errno))
+{
+	process_t *process = process_getCurrentProcess();
+	return process->parent;
+}
+
+uint32_t _sc_wait(uint32_t *esp, uint32_t *uesp, int *errno)
+{
+	pid_t pid = *(pid_t *)(uesp);
+	process_t *process = process_getWithPid(pid);
+	
+	if(!process || process->died)
+	{
+		*errno = EINVAL;
+		return -1;
+	}
+
+	process_t *current = process_getCurrentProcess();
+	thread_t *thread = current->mainThread;
+
+	while(thread)
+	{
+		thread_join(thread, process->mainThread, errno); // TODO: Make this call atomic!
+		thread = thread->next;
+	}
+
+	*esp = sd_schedule(*esp);
+	return 0;
+}
+
 
 
 void _sc_processInit()
 {
 	sc_setSyscallHandler(SYS_EXIT, _sc_exit);
+	sc_setSyscallHandler(SYS_FORK, _sc_fork);
+	sc_setSyscallHandler(SYS_PID, _sc_pid);
+	sc_setSyscallHandler(SYS_PPID, _sc_ppid);
+	sc_setSyscallHandler(SYS_WAIT, _sc_wait);
 	sc_setSyscallHandler(SYS_PROCESSCREATE, _sc_processCreate);
 	sc_setSyscallHandler(SYS_PROCESSKILL, _sc_processKill);
-	sc_setSyscallHandler(SYS_FORK, _sc_fork);
 }

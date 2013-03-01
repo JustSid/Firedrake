@@ -35,6 +35,11 @@ uint32_t thread_create(void *entry, void *arg)
 	return result;
 }
 
+uint32_t thread_self()
+{
+	return syscall(SYS_THREADSELF);
+}
+
 void thread_join(uint32_t id)
 {
 	syscall(SYS_THREADJOIN, id);
@@ -42,14 +47,29 @@ void thread_join(uint32_t id)
 
 void yield()
 {
-	syscall(SYS_YIELD);
+	syscall(SYS_THREADYIELD);
 }
 
 void sleep(uint32_t time)
 {
-	syscall(SYS_SLEEP, time);
+	syscall(SYS_THREADSLEEP, time);
 }
 
+
+void waitpid(pid_t pid)
+{
+	syscall(SYS_WAIT, pid);
+}
+
+pid_t getpid()
+{
+	return syscall(SYS_PID);
+}
+
+pid_t getppid()
+{
+	return syscall(SYS_PPID);
+}
 
 pid_t fork()
 {

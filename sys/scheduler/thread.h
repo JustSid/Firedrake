@@ -118,7 +118,7 @@ thread_t *thread_getWithID(uint32_t id);
 void thread_attachListener(thread_t *thread, thread_listener_t *listener);
 void thread_notify(thread_t *thread, thread_event_t event);
 
-void thread_join(uint32_t id, int *errno);
+void thread_join(thread_t *thread, thread_t *toJoin, int *errno);
 void thread_sleep(thread_t *thread, uint64_t time);
 void thread_wakeup(thread_t *thread);
 

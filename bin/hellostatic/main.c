@@ -27,9 +27,11 @@ void threadEntry(void *arg)
 	int slot = tls_allocate();
 	tls_set(slot, arg);
 
+	printf("%i: set %p\n", thread_self(), arg);
+
 	sleep(1000);
 
-	printf("Got: %p\n", tls_get(slot));
+	printf("%i: got: %p\n", thread_self(), tls_get(slot));
 
 	tls_free(slot);
 	tls_free(slot); // Make sure that errno is != 0!
@@ -37,12 +39,23 @@ void threadEntry(void *arg)
 
 int main()
 {
-	uint32_t t1 = thread_create(threadEntry, 0x1024);
-	uint32_t t2 = thread_create(threadEntry, 0x32);
+	pid_t pid = fork();
+	if(pid == 0)
+	{
+		printf("forked(), pid: %i, parent: %i\n", getpid(), getppid());
 
-	thread_join(t1);
-	thread_join(t2);
+		uint32_t t1 = thread_create((void *)threadEntry, (void *)0x1024);
+		uint32_t t2 = thread_create((void *)threadEntry, (void *)0x32);
 
-	printf("errno: %i\n", errno);
+		thread_join(t1);
+		thread_join(t2);		
+	}
+	else
+	{
+		printf("Waiting for child to terminate...\n");
+		waitpid(pid);
+	}
+	
+	printf("pid %i: errno: %i\n", getpid(), errno);
 	return 0;
 }

@@ -25,10 +25,16 @@
 typedef int32_t pid_t;
 
 uint32_t thread_create(void *entry, void *arg);
+uint32_t thread_self();
 void thread_join(uint32_t id);
 
 void sleep(uint32_t time);
 void yield();
+
+pid_t getpid();
+pid_t getppid();
+
+void waitpid(pid_t pid);
 
 pid_t fork();
 

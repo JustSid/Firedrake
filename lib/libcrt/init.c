@@ -24,7 +24,7 @@ void _start() __attribute__ ((noreturn));
 void _start()
 {
 	int result = main(0, 0x0);
-	syscall(2, result);
+	syscall(1, result);
 
 	while(1) {}
 }

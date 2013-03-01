@@ -26,51 +26,29 @@
 #define _SYS_MAXCALLS 128 // Increase if needed
 
 #define SYS_PRINT         0
-#define SYS_PRINTCOLOR    1
-#define SYS_EXIT          2
-#define SYS_YIELD         3
-#define SYS_SLEEP         18
-#define SYS_THREADATTACH  4
-#define SYS_THREADEXIT    5
-#define SYS_THREADJOIN    6
-#define SYS_ERRNO         13
-#define SYS_TLS_ALLOCATE  14
-#define SYS_TLS_FREE      15
-#define SYS_TLS_SET       16
-#define SYS_TLS_GET       17
-#define SYS_PROCESSCREATE 7
-#define SYS_PROCESSKILL   8
-#define SYS_MMAP          9
-#define SYS_MUNMAP        10
-#define SYS_MPROTECT      11
-#define SYS_FORK          12
+#define SYS_EXIT          1
+#define SYS_PID           2
+#define SYS_PPID          3
+#define SYS_FORK          4
+#define SYS_WAIT          5
+#define SYS_THREADYIELD   6
+#define SYS_THREADSLEEP   7
+#define SYS_THREADATTACH  8
+#define SYS_THREADEXIT    9
+#define SYS_THREADJOIN    10
+#define SYS_THREADSELF    11
+#define SYS_ERRNO         12
+#define SYS_TLS_ALLOCATE  13
+#define SYS_TLS_FREE      14
+#define SYS_TLS_SET       15
+#define SYS_TLS_GET       16
+#define SYS_PROCESSCREATE 17
+#define SYS_PROCESSKILL   18
+#define SYS_MMAP          19
+#define SYS_MUNMAP        20
+#define SYS_MPROTECT      21
 
-static inline void *sc_mapProcessMemory(void *memory, vm_address_t *mappedBase, size_t pages, int *errno)
-{
-	process_t *process = process_getCurrentProcess();
-
-	vm_address_t virtual = round4kDown((vm_address_t)memory);
-	vm_address_t offset  = ((vm_address_t)memory) - virtual;
-	uintptr_t physical;
-
-	if(virtual == 0x0)
-	{
-		*errno = EINVAL;
-		return NULL;
-	}
-
-	physical = vm_resolveVirtualAddress(process->pdirectory, virtual);
-	virtual  = vm_alloc(vm_getKernelDirectory(), physical, pages, VM_FLAGS_KERNEL);
-
-	if(!virtual)
-	{
-		*errno = ENOMEM;
-		return NULL;
-	}
-
-	*mappedBase = virtual;
-	return (void *)(virtual + offset);
-}
+void *sc_mapProcessMemory(void *memory, vm_address_t *mappedBase, size_t pages, int *errno);
 
 typedef uint32_t (*syscall_callback_t)(uint32_t *esp, uint32_t *uesp, int *errno);
 
