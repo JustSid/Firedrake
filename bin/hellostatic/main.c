@@ -19,38 +19,30 @@
 #include <libtest/print.h>
 #include <libtest/thread.h>
 #include <libtest/mmap.h>
+#include <libtest/errno.h>
+#include <libtest/tls.h>
 
-void cheapstrcpy(char *dst, const char *src)
+void threadEntry(void *arg)
 {
-	while(*src != '\0')
-	{
-		*dst = *src;
+	int slot = tls_allocate();
+	tls_set(slot, arg);
 
-		dst ++;
-		src ++;
-	}
+	sleep(1000);
+
+	printf("Got: %p\n", tls_get(slot));
+
+	tls_free(slot);
+	tls_free(slot); // Make sure that errno is != 0!
 }
 
 int main()
 {
-	void *blob = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	cheapstrcpy((char *)blob, "Hello world\n");
+	uint32_t t1 = thread_create(threadEntry, 0x1024);
+	uint32_t t2 = thread_create(threadEntry, 0x32);
 
-	pid_t pid = fork();
-	if(pid == 0)
-	{
-		puts("Child process!\n");
+	thread_join(t1);
+	thread_join(t2);
 
-		cheapstrcpy((char *)blob, "Hello child process\n");
-		puts((const char *)blob);
-	}
-	else
-	{
-		sleep(); // Todo: How about waitpid()?
-
-		puts("Parent process!\n");
-		puts((const char *)blob);
-	}
-
+	printf("errno: %i\n", errno);
 	return 0;
 }
