@@ -91,23 +91,22 @@ uint32_t _sc_processCreate(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 	return process ? (uint32_t)process->pid : -1;
 }
 
-uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
+uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	pid_t pid = *(pid_t *)(uesp);
-	process_t *process = process_getFirstProcess();
+	process_t *process = process_getWithPid(pid);
 
-	while(process)
+	if(process)
 	{
-		if(process->pid == pid)
-		{
-			process->died = true;
+		process->died = true;
 
-			*esp = sd_schedule(*esp);
-			return 1;
-		}
-
-		process = process->next;
+		*esp = sd_schedule(*esp);
+		return 1;
 	}
+
+
+	if(errno)
+		*errno = EINVAL;
 
 	return 0;
 }

@@ -58,9 +58,9 @@ typedef struct process_s
 
 process_t *process_createWithFile(const char *name, int *errno);
 process_t *process_fork(process_t *parent, int *errno);
+process_t *process_getWithPod(pid_t pid);
 
-process_t *process_getCurrentProcess(); // Defined in scheduler.c!
-process_t *process_getFirstProcess(); // Defined in scheduler.c, returns a process that can be used to iterate through the process list
+process_t *process_getCurrentProcess();
 process_t *process_getParent();
 
 #endif /* _PROCESS_H_ */

@@ -27,6 +27,7 @@
 #include "scheduler.h"
 
 extern void _process_setFirstProcess(process_t *process); // Scheduler.c
+extern process_t *process_getFirstProcess();
 
 void thread_destroy(thread_t *thread);
 void process_destroy(process_t *process);
@@ -181,6 +182,23 @@ process_t *process_getParent()
 {
 	process_t *process = process_getCurrentProcess();
 	return process->pprocess;
+}
+
+process_t *process_getWithPod(pid_t pid)
+{
+	spinlock_lock(&_sd_lock);
+
+	process_t *process = process_getFirstProcess();
+	while(process)
+	{
+		if(process->pid == pid)
+			break;
+
+		process = process->next;
+	}
+
+	spinlock_unlock(&_sd_lock);
+	return process;
 }
 
 
