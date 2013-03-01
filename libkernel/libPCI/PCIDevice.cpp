@@ -115,7 +115,6 @@ bool PCIDevice::start(IOProvider *provider)
 	if(!publishService(_controller))
 		return false;
 
-	IOLog("Published %@", _controller);
 	return true;
 }
 

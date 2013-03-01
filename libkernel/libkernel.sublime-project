@@ -36,6 +36,7 @@
             "working_dir": "${project_path}",
 			"cmd": ["exec ./../remotebuild.sh"],
 			"shell": true,
+			"path": "/usr/local/bin:/usr/bin:",
 			"selector": "source.c, source.c++, source.asm",
 
 			"variants":
@@ -47,7 +48,7 @@
 				{
 					"name": "Instrument",
 					"cmd": ["exec ./../executeqemu.sh --debug"]
-					},
+				},
 				{
 					"name": "Clean",
 					"cmd": ["exec ./../remotebuild.sh --clean"]
