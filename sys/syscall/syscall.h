@@ -20,9 +20,8 @@
 #define _SYSCALL_H_
 
 #include <types.h>
+#include <errno.h>
 #include <system/cpu.h>
-
-#include "errno.h"
 
 #define _SYS_MAXCALLS 		128 // Increase if needed
 
