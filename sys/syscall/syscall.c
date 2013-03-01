@@ -40,7 +40,7 @@ uint32_t _sc_print(uint32_t *UNUSED(esp), uint32_t *uesp, int *UNUSED(errno))
 	uintptr_t physical = vm_resolveVirtualAddress(process->pdirectory, virtual);
 
 	virtual = vm_alloc(vm_getKernelDirectory(), physical, 2, VM_FLAGS_KERNEL); // TODO: Look if it really spans over two pages, not just assume anything
-	vd_writeString((char *)(virtual + offset));
+	info("%s", (char *)(virtual + offset));
 
 	vm_free(vm_getKernelDirectory(), virtual, 2);
 	return 0;
