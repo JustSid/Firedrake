@@ -40,9 +40,14 @@ void thread_join(uint32_t id)
 	syscall(SYS_THREADJOIN, id);
 }
 
-void sleep()
+void yield()
 {
-	syscall(SYS_SLEEP);
+	syscall(SYS_YIELD);
+}
+
+void sleep(uint32_t time)
+{
+	syscall(SYS_SLEEP, time);
 }
 
 

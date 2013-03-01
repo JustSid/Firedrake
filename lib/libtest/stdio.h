@@ -1,5 +1,5 @@
 //
-//  thread.h
+//  string.h
 //  libtest
 //
 //  Created by Sidney Just
@@ -16,20 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _THREAD_H_
-#define _THREAD_H_
+#ifndef _STDIO_H_
+#define _STDIO_H_
 
 #include "stdint.h"
-#include "syscall.h"
 
-typedef int32_t pid_t;
+int vsnprintf(char *buffer, size_t size, const char *format, va_list arg);
+int vsprintf(char *buffer, const char *format, va_list arg);
 
-uint32_t thread_create(void *entry, void *arg);
-void thread_join(uint32_t id);
+int snprintf(char *dst, size_t size, const char *format, ...);
+int sprintf(char *dst, const char *format, ...);
 
-void sleep(uint32_t time);
-void yield();
-
-pid_t fork();
-
-#endif /* _THREAD_H_ */
+#endif /* _STDIO_H_ */

@@ -1,5 +1,5 @@
 //
-//  thread.h
+//  tls.h
 //  libtest
 //
 //  Created by Sidney Just
@@ -16,20 +16,13 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _THREAD_H_
-#define _THREAD_H_
+#ifndef _TLS_H_
+#define _TLS_H_
 
-#include "stdint.h"
-#include "syscall.h"
+void *tls_get(int slot);
+void tls_set(int slot, void *value);
 
-typedef int32_t pid_t;
+int tls_allocate();
+void tls_free(int slot);
 
-uint32_t thread_create(void *entry, void *arg);
-void thread_join(uint32_t id);
-
-void sleep(uint32_t time);
-void yield();
-
-pid_t fork();
-
-#endif /* _THREAD_H_ */
+#endif /* _TLS_H_ */

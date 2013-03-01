@@ -21,19 +21,25 @@
 
 #include "stdint.h"
 
-#define SYS_PRINT 			0
-#define SYS_PRINTCOLOR 		1
-#define SYS_EXIT 			2
-#define SYS_SLEEP			3
-#define SYS_THREADATTACH	4
-#define SYS_THREADEXIT		5
-#define SYS_THREADJOIN		6
-#define SYS_PROCESSCREATE	7
-#define SYS_PROCESSKILL		8
-#define SYS_MMAP			9
-#define SYS_MUNMAP			10
-#define SYS_MPROTECT		11
-#define SYS_FORK			12
+#define SYS_PRINT         0
+#define SYS_PRINTCOLOR    1
+#define SYS_EXIT          2
+#define SYS_YIELD         3
+#define SYS_SLEEP         18
+#define SYS_THREADATTACH  4
+#define SYS_THREADEXIT    5
+#define SYS_THREADJOIN    6
+#define SYS_ERRNO         13
+#define SYS_TLS_ALLOCATE  14
+#define SYS_TLS_FREE      15
+#define SYS_TLS_SET       16
+#define SYS_TLS_GET       17
+#define SYS_PROCESSCREATE 7
+#define SYS_PROCESSKILL   8
+#define SYS_MMAP          9
+#define SYS_MUNMAP        10
+#define SYS_MPROTECT      11
+#define SYS_FORK          12
 
 uint32_t syscall(int type, ...);
 

@@ -1,6 +1,6 @@
 //
-//  thread.h
-//  libtest
+//  tls.c
+//  Firedrake
 //
 //  Created by Sidney Just
 //  Copyright (c) 2013 by Sidney Just
@@ -16,20 +16,25 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _THREAD_H_
-#define _THREAD_H_
-
-#include "stdint.h"
 #include "syscall.h"
+#include "tls.h"
 
-typedef int32_t pid_t;
+void *tls_get(int slot)
+{
+	return (void *)syscall(SYS_TLS_GET, slot);
+}
 
-uint32_t thread_create(void *entry, void *arg);
-void thread_join(uint32_t id);
+void tls_set(int slot, void *value)
+{
+	syscall(SYS_TLS_SET, slot, value);
+}
 
-void sleep(uint32_t time);
-void yield();
+int tls_allocate()
+{
+	return (int)syscall(SYS_TLS_ALLOCATE);
+}
 
-pid_t fork();
-
-#endif /* _THREAD_H_ */
+void tls_free(int slot)
+{
+	syscall(SYS_TLS_FREE, slot);
+}

@@ -20,5 +20,6 @@
 #define _RPINT_H_
 
 void puts(const char *string);
+void printf(const char *format, ...);
 
 #endif

@@ -17,9 +17,23 @@
 //
 
 #include "print.h"
+#include "stdint.h"
 #include "syscall.h"
+#include "stdio.h"
 
 void puts(const char *string)
 {
 	syscall(SYS_PRINT, string);
+}
+
+void printf(const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
+
+	char buffer[1024];
+	vsnprintf(buffer, 1024, format, args);
+
+	puts(buffer);
+	va_end(args);
 }

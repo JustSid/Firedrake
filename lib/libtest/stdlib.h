@@ -1,5 +1,5 @@
 //
-//  thread.h
+//  stdlib.h
 //  libtest
 //
 //  Created by Sidney Just
@@ -16,20 +16,23 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _THREAD_H_
-#define _THREAD_H_
+/*
+ * Overview:
+ * Implements only a subset of the libc stdlib.h, namely the numeric conversion functions
+ * Everything else has no place in the kernel.
+ */
+#ifndef _STDLIB_H_
+#define _STDLIB_H_
 
 #include "stdint.h"
-#include "syscall.h"
 
-typedef int32_t pid_t;
+int atoi(const char *string);
+double atof(const char *string);
 
-uint32_t thread_create(void *entry, void *arg);
-void thread_join(uint32_t id);
 
-void sleep(uint32_t time);
-void yield();
+#define STDLIBBUFFERLENGTH 128
 
-pid_t fork();
+int _itostr(int i, int base, char *buffer, bool lowerCase); // Converts an integer to a string and copies the result into buffer
+int _uitostr(unsigned int i, int base, char *buffer, bool lowerCase);
 
-#endif /* _THREAD_H_ */
+#endif /* _STDLIB_H_ */
