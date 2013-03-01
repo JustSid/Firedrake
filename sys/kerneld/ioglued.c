@@ -44,7 +44,7 @@ void __ioglued_addReferencelessModule(io_module_t *module)
 
 void ioglued()
 {
-	thread_setName(thread_getCurrentThread(), "ioglued");
+	thread_setName(thread_getCurrentThread(), "ioglued", NULL);
 
 	__ioglued_modulesToStop = array_create();
 	spinlock_unlock(&__ioglued_lock);

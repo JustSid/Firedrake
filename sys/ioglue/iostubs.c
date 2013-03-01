@@ -60,7 +60,7 @@ void __io_threadEntry()
 uint32_t __io_threadCreate(void *entry, void *owner, void *arg)
 {
 	process_t *process = process_getCurrentProcess();
-	thread_t *thread = thread_create(process, __io_threadEntry, 4096, 3, entry, owner, arg);
+	thread_t *thread   = thread_create(process, __io_threadEntry, 4096, NULL, 3, entry, owner, arg);
 
 	return thread->id;
 }
@@ -73,18 +73,9 @@ uint32_t __io_threadID()
 
 void __io_threadSetName(uint32_t id, const char *name)
 {
-	process_t *process = process_getCurrentProcess();
-	thread_t *thread = process->mainThread;
-	while(thread)
-	{
-		if(thread->id == id)
-		{
-			thread_setName(thread, name);
-			break;
-		}
-		
-		thread = thread->next;
-	}
+	thread_t *thread = thread_getWithID(id);
+	if(thread)
+		thread_setName(thread, name, NULL);
 }
 
 void __io_threadSleep(uint32_t id, uint32_t time)
@@ -101,9 +92,7 @@ void __io_threadWakeup(uint32_t id)
 {
 	thread_t *thread = thread_getWithID(id);
 	if(thread)
-	{
 		thread_wakeup(thread);
-	}
 }
 
 // ------

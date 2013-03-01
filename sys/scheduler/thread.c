@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <errno.h>
 #include <libc/math.h>
 #include <libc/string.h>
 #include <libc/assert.h>
@@ -30,21 +31,24 @@
 #define THREAD_MAX_TICKS 10
 #define THREAD_WANTED_TICKS 4
 
+void thread_destroy(thread_t *thread);
+
 uint32_t _thread_getUniqueID(process_t *process)
 {
 	uint32_t uid = process->threadCounter ++;
 	return uid;
 }
 
-thread_t *thread_createVoid(thread_entry_t entry)
+thread_t *thread_createVoid(process_t *process, thread_entry_t entry, int *errno)
 {
 	thread_t *thread = (thread_t *)halloc(NULL, sizeof(thread_t));
 	if(thread)
 	{
 		// Setup general stuff
-		thread->id    = THREAD_NULL;
-		thread->entry = entry;
-		thread->lock  = SPINLOCK_INIT;
+		thread->id      = THREAD_NULL;
+		thread->entry   = entry;
+		thread->lock    = SPINLOCK_INIT;
+		thread->process = process;
 
 		// Debugging related
 		thread->name    = NULL;
@@ -85,6 +89,9 @@ thread_t *thread_createVoid(thread_entry_t entry)
 		}
 	}
 
+	if(!thread && errno)
+		*errno = ENOMEM;
+
 	return thread;
 }
 
@@ -92,7 +99,6 @@ void thread_attachToProcess(process_t *process, thread_t *thread)
 {
 	spinlock_lock(&process->threadLock); // Acquire the process' thread lock so we don't end up doing bad things
 
-	thread->process = process;
 	thread->id = _thread_getUniqueID(process);
 
 	if(process->mainThread)
@@ -112,23 +118,30 @@ void thread_attachToProcess(process_t *process, thread_t *thread)
 }
 
 
-thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
+#define THREAD_BAILWITHERROR(error) do { \
+		thread_destroy(thread); \
+		if(errno) \
+			*errno = error; \
+		return NULL; \
+	} while(0) 
+
+thread_t *thread_createKernel(process_t *process, thread_entry_t entry, uint32_t argCount, va_list args, int *errno)
 {
-	thread_t *thread = thread_createVoid(entry);
+	thread_t *thread = thread_createVoid(process, entry, errno);
 	if(thread)
 	{
-		//size_t stackPages = 1; //MAX(1, stackSize / 4096);
-
 		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
 		if(!kernelStack)
 		{
-			hfree(NULL, thread);
-			return NULL;
+			THREAD_BAILWITHERROR(ENOMEM);
 		}
 
 		// Create the kernel stack
 		thread->kernelStack     = kernelStack;
 		thread->kernelStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
+
+		if(!thread->kernelStackVirt)
+			THREAD_BAILWITHERROR(ENOMEM);
 
 		uint32_t *stack = ((uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE)) - argCount;
 		memset(thread->kernelStackVirt, 0, 1 * VM_PAGE_SIZE);
@@ -140,6 +153,8 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 		if(argCount > 0)
 		{
 			thread->arguments = (uintptr_t **)halloc(NULL, argCount * sizeof(uintptr_t *));
+			if(!thread->arguments)
+				THREAD_BAILWITHERROR(ENOMEM);
 
 			for(uint32_t i=0; i<argCount; i++)
 			{
@@ -182,12 +197,12 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t U
 	return thread;
 }
 
-thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t UNUSED(stackSize), uint32_t argCount, va_list args)
+thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t stackSize, uint32_t argCount, va_list args, int *errno)
 {
-	thread_t *thread = thread_createVoid(entry);
+	thread_t *thread = thread_createVoid(process, entry, errno);
 	if(thread)
 	{
-		size_t stackPages = 1; //MAX(1, stackSize / 4096);
+		size_t stackPages = 1; // pageCount(stackSize);
 
 		uint8_t *userStack 	 = (uint8_t *)pm_alloc(1);
 		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
@@ -200,8 +215,7 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 			if(kernelStack)
 				pm_free((uintptr_t)kernelStack, 1);
 			
-			hfree(NULL, thread);
-			return NULL;
+			THREAD_BAILWITHERROR(ENOMEM);
 		}
 
 		// User and kernel stack
@@ -212,7 +226,13 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 		thread->userStackPages = stackPages;
 		thread->userStackVirt  = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)thread->userStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_USERLAND);
 
+		if(!thread->userStackVirt)
+			THREAD_BAILWITHERROR(ENOMEM);
+
 		uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
+		if(!ustack)
+			THREAD_BAILWITHERROR(ENOMEM);
+
 		memset(ustack, 0, 1 * VM_PAGE_SIZE);
 
 		// Push the arguments for the thread on its stack
@@ -232,6 +252,8 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 
 		// Forge initial kernel stackframe
 		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
+		if(!thread->kernelStackVirt)
+			THREAD_BAILWITHERROR(ENOMEM);
 
 		uint32_t *stack = (uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE);
 
@@ -262,39 +284,36 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 		*(-- stack) = 0x23;
 
 		thread->esp = ((uint32_t)(thread->kernelStackVirt + VM_PAGE_SIZE)) - sizeof(cpu_state_t);
-
-		// Attach the thread to the process
 		thread_attachToProcess(process, thread);
 	}
 
 	return thread;
 }
 
-thread_t *thread_create(process_t *process, thread_entry_t entry, size_t stackSize, uint32_t args, ...)
+thread_t *thread_create(process_t *process, thread_entry_t entry, size_t stackSize, int *errno, uint32_t args, ...)
 {
-	thread_t *thread;
-
 	va_list vlist;
 	va_start(vlist, args);
 
+	thread_t *thread;
 	if(process->ring0)
 	{
-		thread = thread_createKernel(process, entry, stackSize, args, vlist);
+		thread = thread_createKernel(process, entry, args, vlist, errno);
 	}
 	else
 	{
-		thread = thread_createUserland(process, entry, stackSize, args, vlist);
+		thread = thread_createUserland(process, entry, stackSize, args, vlist, errno);
 	}
 
 	va_end(vlist);
 	return thread;
 }
 
-thread_t *thread_clone(struct process_s *process, thread_t *source)
+thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 {
 	spinlock_lock(&source->lock);
 
-	thread_t *thread = thread_createVoid(source->entry);
+	thread_t *thread = thread_createVoid(process, source->entry, errno);
 	if(thread)
 	{
 		uint8_t *userStack 	 = (uint8_t *)pm_alloc(1);
@@ -308,10 +327,8 @@ thread_t *thread_clone(struct process_s *process, thread_t *source)
 			if(kernelStack)
 				pm_free((uintptr_t)kernelStack, 1);
 			
-			hfree(NULL, thread);
 			spinlock_unlock(&source->lock);
-
-			return NULL;
+			THREAD_BAILWITHERROR(ENOMEM);
 		}
 
 		// Stack handling
@@ -327,6 +344,18 @@ thread_t *thread_clone(struct process_s *process, thread_t *source)
 		void *ustackSource = (void *)vm_alloc(vm_getKernelDirectory(), vm_resolveVirtualAddress(source->process->pdirectory, (vm_address_t)source->userStackVirt), 1, VM_FLAGS_KERNEL);
 		void *ustackTarget = (void *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
 
+		if(!ustackSource || !ustackTarget)
+		{
+			if(ustackSource)
+				vm_free(vm_getKernelDirectory(), (vm_address_t)ustackSource, 1);
+
+			if(ustackTarget)
+				vm_free(vm_getKernelDirectory(), (vm_address_t)ustackTarget, 1);
+
+			spinlock_unlock(&source->lock);
+			THREAD_BAILWITHERROR(ENOMEM);
+		}
+
 		memcpy(ustackTarget, ustackSource, VM_PAGE_SIZE);
 
 		vm_free(vm_getKernelDirectory(), (vm_address_t)ustackSource, 1);
@@ -336,9 +365,13 @@ thread_t *thread_clone(struct process_s *process, thread_t *source)
 		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
 		thread->esp = source->esp + ((uintptr_t)thread->kernelStackVirt) - ((uintptr_t)source->kernelStackVirt);
 
-		memcpy(thread->kernelStackVirt, source->kernelStackVirt, VM_PAGE_SIZE);
+		if(!thread->kernelStackVirt)
+		{
+			spinlock_unlock(&source->lock);
+			THREAD_BAILWITHERROR(ENOMEM);
+		}
 
-		// Attach the thread to the process
+		memcpy(thread->kernelStackVirt, source->kernelStackVirt, VM_PAGE_SIZE);
 		thread_attachToProcess(process, thread);
 	}
 
@@ -352,11 +385,20 @@ void thread_destroy(thread_t *thread)
 	spinlock_lock(&thread->lock);
 
 	if(thread->userStackVirt)
-	{
 		vm_free(process->pdirectory, (vm_address_t)thread->userStackVirt, thread->userStackPages);
+
+	if(thread->userStack)
 		pm_free((uintptr_t)thread->userStack, thread->userStackPages);
-	}
 	
+	if(thread->kernelStackVirt)
+	{
+		vm_free(process->pdirectory, (vm_address_t)thread->kernelStackVirt, 1);
+		vm_free(vm_getKernelDirectory(), (vm_address_t)thread->kernelStackVirt, 1);
+	}
+
+	if(thread->kernelStack)
+		pm_free((uintptr_t)thread->kernelStack, 1);
+
 	if(thread->arguments)
 	{
 		hfree(NULL, thread->arguments);
@@ -369,10 +411,8 @@ void thread_destroy(thread_t *thread)
 		thread->name = NULL;
 	}
 
-	vm_free(process->pdirectory, (vm_address_t)thread->kernelStackVirt, 1);
-	vm_free(vm_getKernelDirectory(), (vm_address_t)thread->kernelStackVirt, 1);
-	
-	pm_free((uintptr_t)thread->kernelStack, 1);
+	if(thread->listener)
+		list_destroy(thread->listener);
 
 	hfree(NULL, thread);
 }
@@ -433,7 +473,7 @@ void thread_wakeup(thread_t *thread)
 
 
 
-void thread_setName(thread_t *thread, const char *name)
+void thread_setName(thread_t *thread, const char *name, int *errno)
 {
 	spinlock_lock(&thread->lock);
 
@@ -453,6 +493,9 @@ void thread_setName(thread_t *thread, const char *name)
 			strcpy(copy, name);
 			thread->name = (const char *)copy;
 		}
+		
+		if(!copy && errno)
+			*errno = ENOMEM;
 	}
 
 	spinlock_unlock(&thread->lock);

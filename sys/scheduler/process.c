@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <errno.h>
 #include <memory/memory.h>
 #include <system/syslog.h>
 #include <libc/assert.h>
@@ -27,13 +28,16 @@
 
 extern void _process_setFirstProcess(process_t *process); // Scheduler.c
 
+void thread_destroy(thread_t *thread);
+void process_destroy(process_t *process);
+
 pid_t _process_getUniqueID()
 {
 	static pid_t uid = 0;
 	return uid ++;
 }
 
-process_t *process_createVoid()
+process_t *process_createVoid(int *errno)
 {
 	process_t *process = (process_t *)halloc(NULL, sizeof(process_t));
 	if(process)
@@ -58,7 +62,16 @@ process_t *process_createVoid()
 		process->threadLock = SPINLOCK_INIT;
 		process->mainThread = NULL;
 		process->next       = NULL;
+
+		if(!process->mappings)
+		{
+			hfree(NULL, process);
+			process = NULL;
+		}
 	}
+
+	if(!process && errno)
+		*errno = ENOMEM;
 
 	return process;
 }
@@ -75,38 +88,70 @@ void process_insert(process_t *process)
 	spinlock_unlock(&_sd_lock);
 }
 
-process_t *process_createWithFile(const char *name)
+#define PROCESS_BAILWITHERROR(p, error) do { \
+		process_destroy(p); \
+		if(errno) \
+			*errno = error; \
+		return NULL; \
+	} while(0)
+
+process_t *process_createWithFile(const char *name, int *errno)
 {
-	process_t *process = process_createVoid();
+	if(!name)
+	{
+		if(errno)
+			*errno = EINVAL;
+
+		return NULL;
+	}
+
+	process_t *process = process_createVoid(errno);
 	if(process)
 	{
 		process->pdirectory = vm_createDirectory();
-		process->image 		= ld_executableCreateWithFile(process->pdirectory, name);
+		if(!process->pdirectory)
+			PROCESS_BAILWITHERROR(process, ENOMEM);
 
-		thread_create(process, (thread_entry_t)process->image->entry, 4 * 4096, 0);
+		process->image = ld_executableCreateWithFile(process->pdirectory, name);
+		if(!process->image)
+			PROCESS_BAILWITHERROR(process, ENOMEM);
+
+		thread_t *thread = thread_create(process, (thread_entry_t)process->image->entry, 4 * 4096, errno, 0);
+		if(!thread)
+		{
+			process_destroy(process);
+			return NULL;
+		}
+
 		process_insert(process);
 	}
 
 	return process;
 }
 
-extern thread_t *thread_clone(struct process_s *target, thread_t *source); 
+extern thread_t *thread_clone(struct process_s *target, thread_t *source, int *errno); 
 
-process_t *process_fork(process_t *parent)
+process_t *process_fork(process_t *parent, int *errno)
 {
-	assert(parent);
-
-	process_t *child = process_createVoid();
+	process_t *child = process_createVoid(errno);
 	if(child)
 	{
 		child->pdirectory = vm_createDirectory();
+		if(!child->pdirectory)
+			PROCESS_BAILWITHERROR(child, ENOMEM);
+
 		child->image = ld_exectuableCopy(child->pdirectory, parent->image);
 		child->ring0 = parent->ring0;
 
-		thread_clone(child, parent->scheduledThread);
+		thread_t *thread = thread_clone(child, parent->scheduledThread, errno);
+		if(!thread)
+		{
+			process_destroy(child);
+			return NULL;
+		}
 
 		// Copy the memory mappings right here
-		// Todo: Implement copy-on-write someday because thats going to be a performance bottleneck once processes actually start to copy things around...
+		// TODO: Implement copy-on-write someday because thats going to be a performance bottleneck once processes actually start to copy things around...
 		mmap_copyMappings(child, parent);
 		process_insert(child);
 	}
@@ -118,13 +163,13 @@ process_t *process_forgeInitialProcess()
 {
 	spinlock_lock(&_sd_lock);
 
-	process_t *process = process_createVoid();
+	process_t *process = process_createVoid(NULL);
 	if(process)
 	{		
 		process->pdirectory = vm_getKernelDirectory();
 		process->ring0      = true;
 
-		thread_create(process, NULL, 4096, 0);
+		thread_create(process, NULL, 4096, NULL, 0);
 		_process_setFirstProcess(process);
 	}
 
@@ -139,9 +184,6 @@ process_t *process_getParent()
 }
 
 
-
-
-extern void thread_destroy(thread_t *thread);
 
 void process_destroy(process_t *process)
 {

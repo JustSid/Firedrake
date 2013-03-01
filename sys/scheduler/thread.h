@@ -99,9 +99,9 @@ typedef struct thread_listener_s
 } thread_listener_t;
 
 
-thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t stackSize, uint32_t args, ...);
+thread_t *thread_create(struct process_s *process, thread_entry_t entry, size_t stackSize, int *errno, uint32_t args, ...);
 
-thread_t *thread_getCurrentThread(); // Defined in scheduler.c!
+thread_t *thread_getCurrentThread();
 thread_t *thread_getWithID(uint32_t id);
 
 void thread_attachListener(thread_listener_t *listener);
@@ -110,7 +110,7 @@ void thread_join(uint32_t id);
 void thread_sleep(thread_t *thread, uint64_t time);
 void thread_wakeup(thread_t *thread);
 
-void thread_setName(thread_t *thread, const char *name);
+void thread_setName(thread_t *thread, const char *name, int *errno);
 void thread_setPriority(thread_t *thread, int priority);
 
 #endif /* _THREAD_H_ */

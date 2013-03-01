@@ -42,7 +42,7 @@ uint32_t _sc_sleep(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 	return 0;
 }
 
-uint32_t _sc_threadAttach(uint32_t *UNUSED(esp), uint32_t *uesp, int *UNUSED(errno))
+uint32_t _sc_threadAttach(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	uint32_t entry = *(uint32_t *)(uesp + 0);
@@ -51,8 +51,8 @@ uint32_t _sc_threadAttach(uint32_t *UNUSED(esp), uint32_t *uesp, int *UNUSED(err
 	uint32_t arg1 = *(uint32_t *)(uesp + 2);
 	uint32_t arg2 = *(uint32_t *)(uesp + 3);
 
-	thread_t *thread = thread_create(process, (thread_entry_t)entry, stacksize, 2, arg1, arg2);
-	return thread->id;
+	thread_t *thread = thread_create(process, (thread_entry_t)entry, stacksize, errno, 2, arg1, arg2);
+	return thread ? thread->id : -1;
 }
 
 uint32_t _sc_threadJoin(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
@@ -73,7 +73,7 @@ uint32_t _sc_threadExit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno
 	return 0;
 }
 
-uint32_t _sc_processCreate(uint32_t *UNUSED(esp), uint32_t *uesp, int *UNUSED(errno))
+uint32_t _sc_processCreate(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 {
 	process_t *current = process_getCurrentProcess();
 	const char *name = *(const char **)(uesp);
@@ -85,10 +85,10 @@ uint32_t _sc_processCreate(uint32_t *UNUSED(esp), uint32_t *uesp, int *UNUSED(er
 	virtual = vm_alloc(vm_getKernelDirectory(), physical, 2, VM_FLAGS_KERNEL); // TODO: Look if it really spans over two pages, not just assume anything
 	name = (const char *)(virtual + offset);
 
-	process_t *process = process_createWithFile(name);
+	process_t *process = process_createWithFile(name, errno);
 
 	vm_free(vm_getKernelDirectory(), virtual, 2); // Unmap the name
-	return process ? (uint32_t)process->pid : PROCESS_NULL;
+	return process ? (uint32_t)process->pid : -1;
 }
 
 uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
@@ -119,7 +119,7 @@ uint32_t _sc_fork(uint32_t *esp, uint32_t *UNUSED(uesp), int *errno)
 	process_t *process = process_getCurrentProcess();
 	process->scheduledThread->esp = *esp; // Update the kernel stack for the thread because its needed when the thread is copied
 
-	process_t *child = process_fork(process);
+	process_t *child = process_fork(process, errno);
 	if(child)
 	{
 		cpu_state_t *state = (cpu_state_t *)child->scheduledThread->esp;
@@ -128,7 +128,6 @@ uint32_t _sc_fork(uint32_t *esp, uint32_t *UNUSED(uesp), int *errno)
 		return child->pid;
 	}
 
-	*errno = EAGAIN; // This is just a guess as its currently impossible to get an actual error from process_fork()
 	return -1;
 }
 

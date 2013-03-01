@@ -56,8 +56,8 @@ typedef struct process_s
 
 #define PROCESS_NULL UINT32_MAX
 
-process_t *process_createWithFile(const char *name);
-process_t *process_fork(process_t *parent);
+process_t *process_createWithFile(const char *name, int *errno);
+process_t *process_fork(process_t *parent, int *errno);
 
 process_t *process_getCurrentProcess(); // Defined in scheduler.c!
 process_t *process_getFirstProcess(); // Defined in scheduler.c, returns a process that can be used to iterate through the process list

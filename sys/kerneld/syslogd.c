@@ -113,7 +113,7 @@ void syslogd_forceFlush()
 
 void syslogd()
 {
-	thread_setName(thread_getCurrentThread(), "syslogd");
+	thread_setName(thread_getCurrentThread(), "syslogd", NULL);
 
 	syslogd_buffer = ringbuffer_create(80 * 25);
 	if(!syslogd_buffer)
