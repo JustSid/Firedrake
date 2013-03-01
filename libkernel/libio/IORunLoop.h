@@ -57,6 +57,8 @@ private:
 	IOArray *_eventSources;
 	IOSet *_removedSources;
 
+	timestamp_t _nextStep;
+
 	bool _shouldStop;
 	kern_spinlock_t _lock;
 

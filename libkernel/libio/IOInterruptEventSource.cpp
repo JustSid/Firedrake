@@ -106,6 +106,11 @@ void IOInterruptEventSource::doWork()
 	}
 }
 
+void IOInterruptEventSource::setAction(IOObject *owner, Action action)
+{
+	super::setAction(owner, (IOEventSource::Action)action);
+}
+
 void IOInterruptEventSource::handleInterrupt()
 {
 	_count ++;
