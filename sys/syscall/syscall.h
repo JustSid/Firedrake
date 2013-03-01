@@ -45,6 +45,33 @@
 #define SYS_MPROTECT      11
 #define SYS_FORK          12
 
+static inline void *sc_mapProcessMemory(void *memory, vm_address_t *mappedBase, size_t pages, int *errno)
+{
+	process_t *process = process_getCurrentProcess();
+
+	vm_address_t virtual = round4kDown((vm_address_t)memory);
+	vm_address_t offset  = ((vm_address_t)memory) - virtual;
+	uintptr_t physical;
+
+	if(virtual == 0x0)
+	{
+		*errno = EINVAL;
+		return NULL;
+	}
+
+	physical = vm_resolveVirtualAddress(process->pdirectory, virtual);
+	virtual  = vm_alloc(vm_getKernelDirectory(), physical, pages, VM_FLAGS_KERNEL);
+
+	if(!virtual)
+	{
+		*errno = ENOMEM;
+		return NULL;
+	}
+
+	*mappedBase = virtual;
+	return (void *)(virtual + offset);
+}
+
 typedef uint32_t (*syscall_callback_t)(uint32_t *esp, uint32_t *uesp, int *errno);
 
 void sc_setSyscallHandler(uint32_t syscall, syscall_callback_t callback);

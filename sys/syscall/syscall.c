@@ -25,22 +25,16 @@
 #include "syscall.h"
 
 static syscall_callback_t _sc_syscalls[_SYS_MAXCALLS];
-static syscall_callback_t _sc_syscalls_inKernel[_SYS_MAXCALLS];
 
 // Mark: Implementation
-uint32_t _sc_print(uint32_t *UNUSED(esp), uint32_t *uesp, int *UNUSED(errno))
+uint32_t _sc_print(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 {
-	process_t *process = process_getCurrentProcess();
+	vm_address_t virtual;
+	char *string = sc_mapProcessMemory(*(void **)(uesp), &virtual, 2, errno);
+	if(!string)
+		return -1;
 
-	const char *string = *(const char **)(uesp);
-
-	// Map the string
-	vm_address_t virtual = round4kDown((vm_address_t)string);
-	vm_address_t offset = ((vm_address_t)string) - virtual;
-	uintptr_t physical = vm_resolveVirtualAddress(process->pdirectory, virtual);
-
-	virtual = vm_alloc(vm_getKernelDirectory(), physical, 2, VM_FLAGS_KERNEL); // TODO: Look if it really spans over two pages, not just assume anything
-	info("%s", (char *)(virtual + offset));
+	info("%s", string);
 
 	vm_free(vm_getKernelDirectory(), virtual, 2);
 	return 0;
@@ -90,14 +84,6 @@ void sc_setSyscallHandler(uint32_t syscall, syscall_callback_t callback)
 	assert(syscall >= 0 && syscall < _SYS_MAXCALLS);
 	_sc_syscalls[syscall] = callback;
 }
-
-
-void sc_setSyscallInKernelHandler(uint32_t syscall, syscall_callback_t callback)
-{
-	assert(syscall >= 0 && syscall < _SYS_MAXCALLS);
-	_sc_syscalls_inKernel[syscall] = callback;
-}
-
 
 void _sc_processInit();
 void _sc_threadInit();

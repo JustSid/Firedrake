@@ -33,19 +33,15 @@ uint32_t _sc_exit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 
 uint32_t _sc_processCreate(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 {
-	process_t *current = process_getCurrentProcess();
-	const char *name = *(const char **)(uesp);
+	vm_address_t virtual;
+	char *name = sc_mapProcessMemory(*(void **)(uesp), &virtual, 2, errno);
+	if(!name)
+		return -1;
 
-	vm_address_t virtual = round4kDown((vm_address_t)name);
-	vm_address_t offset = ((vm_address_t)name) - virtual;
-	uintptr_t physical = vm_resolveVirtualAddress(current->pdirectory, virtual);
-
-	virtual = vm_alloc(vm_getKernelDirectory(), physical, 2, VM_FLAGS_KERNEL); // TODO: Look if it really spans over two pages, not just assume anything
-	name = (const char *)(virtual + offset);
 
 	process_t *process = process_createWithFile(name, errno);
+	vm_free(vm_getKernelDirectory(), virtual, 2);
 
-	vm_free(vm_getKernelDirectory(), virtual, 2); // Unmap the name
 	return process ? (uint32_t)process->pid : -1;
 }
 
