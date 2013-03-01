@@ -23,5 +23,5 @@
 syscall:
 	movl 0x4(%esp), %eax
 	movl $0x0, %ecx
-	int  $0x30
+	int  $0x80
 	ret
