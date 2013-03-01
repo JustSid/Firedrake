@@ -119,30 +119,41 @@ IOArray *IOArray::withObjects(IOObject *first, ...)
 
 // Public API
 
+void IOArray::resize(size_t size)
+{
+	IOObject **temp = (IOObject **)kalloc(size * sizeof(IOObject *));
+	if(!temp)
+		panic("Failed to resize IOArray!");
+
+	memcpy(temp, _objects, _count * sizeof(IOObject *));
+	kfree(_objects);
+
+	_objects  = temp;
+	_capacity = _capacity + _changeSize;
+
+}
+
 void IOArray::addObject(IOObject *object)
 {
-	if(_capacity >= _count)
+	if(_count >= _capacity)
+		resize((_capacity + _changeSize));
+
+	object->retain();
+	_objects[_count ++] = object;
+}
+
+void IOArray::insertObject(IOObject *object, uint32_t index)
+{
+	if(_count >= _capacity)
+		resize((_capacity + _changeSize));
+
+	for(uint32_t i=_count; i>index; i--)
 	{
-		object->retain();
-		_objects[_count ++] = object;
-		return;
+		_objects[i] = _objects[i - 1];
 	}
 
-
-	IOObject **temp = (IOObject **)kalloc((_capacity + _changeSize) * sizeof(IOObject *));
-	if(temp)
-	{
-		memcpy(temp, _objects, _count * sizeof(IOObject *));
-		kfree(_objects);
-
-		_objects  = temp;
-		_capacity = _capacity + _changeSize;
-
-		object->retain();
-		_objects[_count ++] = object;
-
-		return;
-	}
+	_objects[index] = object->retain();
+	_count ++;
 }
 
 void IOArray::removeObject(IOObject *object)

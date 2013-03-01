@@ -58,6 +58,8 @@ private:
 	IOSet *_removedSources;
 
 	bool _doingStep;
+	timestamp_t _nextStep;
+
 	bool _shouldStop;
 	kern_spinlock_t _lock;
 

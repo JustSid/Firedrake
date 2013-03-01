@@ -19,6 +19,7 @@
 #include "IORunLoop.h"
 #include "IOThread.h"
 #include "IOAutoreleasePool.h"
+#include "IOTimerEventSource.h"
 #include "IOLog.h"
 
 #ifdef super
@@ -113,12 +114,29 @@ void IORunLoop::removeEventSource(IOEventSource *eventSource)
 
 void IORunLoop::processEventSources()
 {
+	static IOSymbol *timerSymbol = 0;
+	if(!timerSymbol)
+		timerSymbol = IOSymbol::withName("IOTimerEventSource");
+
+	timestamp_t now = time_getTimestamp();
+
 	for(size_t i=0; i<_eventSources->count(); i++)
 	{
 		IOEventSource *eventSource = (IOEventSource *)_eventSources->objectAtIndex(i);
 
 		if(eventSource->isEnabled())
+		{
 			eventSource->doWork();
+
+			if(eventSource->isSubclassOf(timerSymbol))
+			{
+				IOTimerEventSource *timer = (IOTimerEventSource *)eventSource;
+				timestamp_t fireDate = timer->_fireDate;
+
+				if(_nextStep > fireDate - now)
+					_nextStep = fireDate - now;
+			}
+		}
 	}
 
 	IOIterator *iterator = _removedSources->objectIterator();
@@ -162,8 +180,10 @@ void IORunLoop::run()
 	_shouldStop = false;
 	while(!_shouldStop)
 	{
+		_nextStep = 100;
 		step();
-		_host->sleep(10);
+
+		_host->sleep(_nextStep);
 	}
 }
 

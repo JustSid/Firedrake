@@ -121,8 +121,15 @@ io_module_t *io_moduleWithName(const char *name)
 		if(!library)
 		{
 			library = io_libraryCreateWithFile(name);
+			if(!library)
+			{
+				warn("Couldn't find library %s!\n", name);
+				spinlock_unlock(&__io_moduleLock);
+
+				return NULL;
+			}
+
 			io_storeAddLibrary(library);
-			
 			createdLibrary = true;
 		}
 
