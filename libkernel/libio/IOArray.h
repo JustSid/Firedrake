@@ -33,6 +33,7 @@ public:
 	static IOArray *withObjects(IOObject *first, ...)  __attribute__((sentinel));
 
 	void addObject(IOObject *object);
+	void insertObject(IOObject *object, uint32_t index);
 	void removeObject(IOObject *object);
 	void removeObject(uint32_t index);
 	void removeAllObjects();
@@ -50,6 +51,7 @@ public:
 
 private:
 	virtual void free();
+	void resize(size_t size);
 
 	IOObject **_objects;
 	uint32_t _count, _capacity;
