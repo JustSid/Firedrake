@@ -58,7 +58,7 @@ typedef struct process_s
 
 process_t *process_createWithFile(const char *name, int *errno);
 process_t *process_fork(process_t *parent, int *errno);
-process_t *process_getWithPod(pid_t pid);
+process_t *process_getWithPid(pid_t pid);
 
 process_t *process_getCurrentProcess();
 process_t *process_getParent();

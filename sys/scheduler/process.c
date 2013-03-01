@@ -184,7 +184,7 @@ process_t *process_getParent()
 	return process->pprocess;
 }
 
-process_t *process_getWithPod(pid_t pid)
+process_t *process_getWithPid(pid_t pid)
 {
 	spinlock_lock(&_sd_lock);
 
