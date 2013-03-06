@@ -129,7 +129,7 @@ void IOArray::resize(size_t size)
 	kfree(_objects);
 
 	_objects  = temp;
-	_capacity = _capacity + _changeSize;
+	_capacity = size;
 
 }
 
