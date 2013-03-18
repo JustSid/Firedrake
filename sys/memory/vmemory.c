@@ -458,6 +458,21 @@ vm_page_directory_t vm_createDirectory()
 	return (vm_page_directory_t)physPageDir;
 }
 
+void vm_deleteDirectory(vm_page_directory_t directory)
+{
+	vm_page_directory_t mapped = (vm_page_directory_t)vm_alloc(__vm_kernelDirectory, (uintptr_t)directory, 1, VM_FLAGS_KERNEL);
+
+	for(int i=0; i<VM_DIRECTORY_LENGTH; i++)
+	{
+		uint32_t table = mapped[i] & ~VM_FLAGS_ALL;
+		if(table)
+			pm_free(table, 1);
+	}
+
+	vm_free(__vm_kernelDirectory, (vm_address_t)mapped, 1);
+	pm_free((uintptr_t)directory, 1);
+}
+
 uintptr_t vm_resolveVirtualAddress(vm_page_directory_t pdirectory, vm_address_t vaddress)
 {	
 	bool isKernelDirectory = true;

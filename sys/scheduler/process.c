@@ -231,6 +231,8 @@ void process_destroy(process_t *process)
 		description = description->next;
 	}
 
+	vm_deleteDirectory(process->pdirectory);
+
 	list_destroy(process->mappings);
 	hfree(NULL, process);
 }

@@ -22,13 +22,15 @@
 #include <types.h>
 #include <bootstrap/multiboot.h>
 
-#define VM_PAGETABLEFLAG_PRESENT    0x1
-#define VM_PAGETABLEFLAG_WRITEABLE  0x2
-#define VM_PAGETABLEFLAG_USERSPACE  0x4
+#define VM_PAGETABLEFLAG_PRESENT    (1 << 0)
+#define VM_PAGETABLEFLAG_WRITEABLE  (1 << 1)
+#define VM_PAGETABLEFLAG_USERSPACE  (1 << 2)
 
-#define VM_FLAGS_KERNEL		VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE
-#define VM_FLAGS_USERLAND	VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE | VM_PAGETABLEFLAG_USERSPACE
-#define VM_FLAGS_USERLAND_R	VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_USERSPACE
+#define VM_FLAGS_KERNEL		(VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE)
+#define VM_FLAGS_USERLAND	(VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE | VM_PAGETABLEFLAG_USERSPACE)
+#define VM_FLAGS_USERLAND_R	(VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_USERSPACE)
+
+#define VM_FLAGS_ALL ((1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5))
 
 #define VM_DIRECTORY_LENGTH 1024
 #define VM_PAGETABLE_LENGTH 1024
@@ -50,6 +52,7 @@ static inline void invlpg(uintptr_t addr)
 
 vm_page_directory_t vm_getKernelDirectory();
 vm_page_directory_t vm_createDirectory();
+void vm_deleteDirectory(vm_page_directory_t directory);
 
 uintptr_t vm_resolveVirtualAddress(vm_page_directory_t context, vm_address_t virtAddress);
 
