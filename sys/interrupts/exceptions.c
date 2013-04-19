@@ -126,6 +126,7 @@ uint32_t __ir_handleException(uint32_t esp)
 			process->died = true;
 
 			dbg("%s while %s (to/from) address %p, caused by %i:%i. Killing.\n", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), __ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), address, process->pid, thread->id);
+			dbg("Faulty address: %p\n", state->eip);
 			return sd_schedule(esp);
 		}
 	}

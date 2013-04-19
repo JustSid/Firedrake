@@ -19,7 +19,7 @@
 #ifndef _PROCESS_H_
 #define _PROCESS_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <container/list.h>
 #include <system/lock.h>
 #include <system/kernel.h>

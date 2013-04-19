@@ -21,7 +21,7 @@
 
 #ifndef __kasm__
 
-#include <types.h>
+#include <prefix.h>
 #include <memory/memory.h>
 #include <system/tss.h>
 #include <system/gdt.h>

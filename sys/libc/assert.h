@@ -23,7 +23,7 @@
 #ifndef _ASSERT_H_
 #define _ASSERT_H_
 
-#include <config.h>
+#include <prefix.h>
 #include <system/panic.h>
 
 #if CONF_RELEASE

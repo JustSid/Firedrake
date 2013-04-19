@@ -242,7 +242,7 @@ void sd_disableScheduler()
 
 extern process_t *process_forgeInitialProcess();
 
-bool sd_init(void *UNUSED(ingored))
+bool sd_init(__unused void *data)
 {
 	process_t *process = process_forgeInitialProcess();
 	thread_t  *thread = process->mainThread;

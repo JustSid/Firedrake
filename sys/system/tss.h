@@ -19,7 +19,7 @@
 #ifndef _TSS_H_
 #define _TSS_H_
 
-#include <types.h>
+#include <prefix.h>
 
 struct tss_s 
 {

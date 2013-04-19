@@ -19,7 +19,7 @@
 #ifndef _IOLIBRARY_H_
 #define _IOLIBRARY_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <system/elf.h>
 #include <container/list.h>
 #include <memory/memory.h>

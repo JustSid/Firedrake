@@ -16,7 +16,6 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <config.h>
 #include <libc/string.h>
 #include <libc/stdio.h>
 #include <system/syslog.h>
@@ -120,7 +119,7 @@ void kunit_testRun(kunit_test_t *test)
 	test->buffer = NULL;
 }
 
-void kunit_testFail(kunit_test_t *test, char *UNUSED(description), ...)
+void kunit_testFail(kunit_test_t *test, __unused char *description, ...)
 {
 	test->state = kunit_test_state_failed;
 	test->failures ++;

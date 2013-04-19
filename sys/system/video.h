@@ -23,7 +23,7 @@
 #ifndef _VIDEO_H_
 #define _VIDEO_H_
 
-#include <types.h>
+#include <prefix.h>
 
 typedef enum
 {

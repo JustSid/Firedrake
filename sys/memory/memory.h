@@ -19,7 +19,7 @@
 #ifndef _MEMORY_H_
 #define _MEMORY_H_
 
-#include <types.h>
+#include <prefix.h>
 #include "pmemory.h"
 #include "vmemory.h"
 #include "heap.h"

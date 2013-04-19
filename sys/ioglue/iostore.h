@@ -19,7 +19,7 @@
 #ifndef _IOSTORE_H_
 #define _IOSTORE_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <system/lock.h>
 #include <container/list.h>
 #include <container/atree.h>

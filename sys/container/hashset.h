@@ -19,7 +19,7 @@
 #ifndef _HASHSET_H_
 #define _HASHSET_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <system/lock.h>
 
 #include "array.h"

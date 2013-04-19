@@ -19,6 +19,7 @@
 #include <memory/memory.h>
 #include <container/array.h>
 #include <system/syslog.h>
+#include <system/helper.h>
 #include <libc/string.h>
 #include "iostore.h"
 #include "iostubs.h"
@@ -237,7 +238,7 @@ void io_storeCallInitFunctions(io_library_t *library)
 bool io_initStubs();
 bool io_moduleInit();
 
-bool io_init(void *UNUSED(unused))
+bool io_init(__unused void *data)
 {
 	if(!io_initStubs() || !io_moduleInit())
 		return false;
@@ -245,6 +246,9 @@ bool io_init(void *UNUSED(unused))
 	__io_storeLibraries = atree_create(io_storeAtreeLookup);
 	if(!__io_storeLibraries)
 		return false;
+
+	if(sys_checkCommandline("--no-ioglue", NULL))
+		return true;
 
 	// Load the two essential kernel libraries
 	__io_libkernel = io_libraryCreateWithFile("libkernel.so");

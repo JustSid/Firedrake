@@ -539,7 +539,7 @@ void hfree(heap_t *heap, void *ptr)
 }
 
 
-bool heap_init(void *UNUSED(unused))
+bool heap_init(__unused void *data)
 {
 	_mm_kernelHeap = heap_create(kHeapFlagAligned);
 	return (_mm_kernelHeap != NULL);

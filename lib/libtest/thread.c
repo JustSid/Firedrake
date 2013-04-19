@@ -47,7 +47,7 @@ void thread_join(uint32_t id)
 
 void yield()
 {
-	syscall(SYS_THREADYIELD);
+	syscall(SYS_THREADSLEEP, 0);
 }
 
 void sleep(uint32_t time)

@@ -19,7 +19,7 @@
 #ifndef _GDT_H_
 #define _GDT_H_
 
-#include <types.h>
+#include <prefix.h>
 #include "tss.h"
 
 #define GDT_FLAG_DATASEG 	0x02

@@ -19,7 +19,7 @@
 #ifndef _HEAP_H_
 #define _HEAP_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <system/lock.h>
 #include "vmemory.h"
 

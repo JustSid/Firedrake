@@ -500,7 +500,7 @@ void thread_notify(thread_t *thread, thread_event_t event)
 }
 
 
-void thread_join(thread_t *thread, thread_t *toJoin, int *UNUSED(errno))
+void thread_join(thread_t *thread, thread_t *toJoin, __unused int *errno)
 {
 	thread_listener_t listener;
 	listener.listener = thread;

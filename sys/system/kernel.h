@@ -19,7 +19,7 @@
 #ifndef _kernel_h_
 #define _kernel_h_
 
-#include <types.h>
+#include <prefix.h>
 #include <ioglue/iostore.h>
 
 const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary);

@@ -340,7 +340,7 @@ void io_libraryResolveDependencies(io_library_t *library)
 // Creation / Deletion
 // -----------
 
-io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t UNUSED(length))
+io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, __unused size_t length)
 {
 	io_library_t *library = halloc(NULL, sizeof(io_library_t));
 	if(library)

@@ -19,7 +19,7 @@
 #ifndef _KUNITTEST_H_
 #define _KUNITTEST_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <libc/setjmp.h>
 #include <system/time.h>
 

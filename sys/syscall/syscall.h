@@ -19,7 +19,7 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <errno.h>
 #include <system/cpu.h>
 

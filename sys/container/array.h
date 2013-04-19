@@ -19,7 +19,7 @@
 #ifndef _ARRAY_H_
 #define _ARRAY_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <system/lock.h>
 #include <libc/assert.h>
 

@@ -19,7 +19,7 @@
 #ifndef _LOCK_H_
 #define _LOCK_H_
 
-#include <types.h>
+#include <prefix.h>
 
 typedef uint8_t spinlock_t;
 

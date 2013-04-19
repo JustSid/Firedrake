@@ -376,34 +376,39 @@ bool io_initStubs()
 		if(!module)
 			return false;
 
+		// Look for the kernels symbol and string table
 		elf_header_t *header = (elf_header_t *)module->start;
 		elf_section_header_t *section = (elf_section_header_t *)(((char *)header) + header->e_shoff);
 
 		for(elf32_word_t i=0; i<header->e_shnum; i++, section++)
 		{
-			if(section->sh_type == SHT_STRTAB && section->sh_flags == 0 && i != header->e_shstrndx)
-			{
-				__io_kernelLibrary->strtab = (const char *)(((char *)header) + section->sh_offset);
-				__io_kernelLibrary->strtabSize = section->sh_size;
+			if(i == header->e_shstrndx)
 				continue;
-			}
 
-			if(section->sh_type == SHT_SYMTAB)
+			switch(section->sh_type)
 			{
-				__io_kernelLibrary->symtab = (elf_sym_t *)(((char *)header) + section->sh_offset);
-				__io_kernelLibrarySymbolCount = (section->sh_size / section->sh_entsize);
+				case SHT_STRTAB:
+					__io_kernelLibrary->strtab = (const char *)(((char *)header) + section->sh_offset);
+					__io_kernelLibrary->strtabSize = section->sh_size;
+					break;
+
+				case SHT_SYMTAB:
+					__io_kernelLibrary->symtab = (elf_sym_t *)(((char *)header) + section->sh_offset);
+					__io_kernelLibrarySymbolCount = (section->sh_size / section->sh_entsize);
+					break;
+
+				default:
+					break;
 			}
 		}
 
-		size_t exportedSymbolCount = sizeof(__io_exportedSymbolNames) / sizeof(char *);
-
+		// Initialize the kernel library stub and allocate enough space for the exported symbol section
 		__io_kernelLibrary->name = __io_kernelLibrary->path = "firedrake";
 		__io_kernelLibrary->relocBase = 0x0;
-		__io_exportedSymbols = halloc(NULL, exportedSymbolCount * sizeof(elf_sym_t *));
+		__io_exportedSymbols = halloc(NULL, (sizeof(__io_exportedSymbolNames) / sizeof(char *)) * sizeof(elf_sym_t *));
 
 		return (__io_kernelLibrary->strtab && __io_kernelLibrary->symtab && __io_exportedSymbols);
 	}
 
 	return true;
 }
-

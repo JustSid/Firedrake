@@ -19,7 +19,7 @@
 #ifndef _VMEMORY_H_
 #define _VMEMORY_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <bootstrap/multiboot.h>
 
 #define VM_PAGETABLEFLAG_PRESENT    (1 << 0)

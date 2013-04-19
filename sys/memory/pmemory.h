@@ -20,7 +20,7 @@
 #define _PMEMORY_H_
 
 #include <bootstrap/multiboot.h>
-#include <types.h>
+#include <prefix.h>
 
 #define PM_PAGE_SIZE 0x1000
 

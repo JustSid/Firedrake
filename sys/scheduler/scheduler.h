@@ -19,7 +19,7 @@
 #ifndef _SCHEDULER_H_
 #define _SCHEDULER_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <system/lock.h>
 #include "process.h"
 #include "thread.h"

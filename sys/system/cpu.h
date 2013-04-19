@@ -23,7 +23,7 @@
 #ifndef _CPU_H_
 #define _CPU_H_
 
-#include <types.h>
+#include <prefix.h>
 
 /**
  * Struct that is able to hold the state of the CPU

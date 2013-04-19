@@ -19,7 +19,7 @@
 #ifndef _ATREE_H_
 #define _ATREE_H_
 
-#include <types.h>
+#include <prefix.h>
 #include "iterator.h"
 
 #define kAtreeMaxHeight 64

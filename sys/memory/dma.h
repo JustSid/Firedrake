@@ -19,7 +19,7 @@
 #ifndef _DMA_H_
 #define _DMA_H_
 
-#include <types.h>
+#include <prefix.h>
 #include "pmemory.h"
 #include "vmemory.h"
 

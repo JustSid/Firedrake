@@ -19,7 +19,7 @@
 #ifndef _SCMMAP_H_
 #define _SCMMAP_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <container/list.h>
 #include <memory/memory.h>
 #include <scheduler/scheduler.h>

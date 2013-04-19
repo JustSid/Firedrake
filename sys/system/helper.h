@@ -19,7 +19,7 @@
 #ifndef _HELPER_H_
 #define _HELPER_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <bootstrap/multiboot.h>
 
 const char *sys_unitForSize(size_t size, size_t *result);

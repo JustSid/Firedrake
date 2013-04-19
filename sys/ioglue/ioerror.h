@@ -19,7 +19,7 @@
 #ifndef _IOERROR_H_
 #define _IOERROR_H_
 
-#include <types.h>
+#include <prefix.h>
 
 typedef uint32_t IOReturn;
 

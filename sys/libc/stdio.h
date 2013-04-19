@@ -19,7 +19,7 @@
 #ifndef _STDIO_H_
 #define _STDIO_H_
 
-#include <types.h>
+#include <prefix.h>
 
 int vsnprintf(char *buffer, size_t size, const char *format, va_list arg);
 int vsprintf(char *buffer, const char *format, va_list arg);

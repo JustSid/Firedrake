@@ -19,7 +19,7 @@
 #ifndef _CMOS_H_
 #define _CMOS_H_
 
-#include <types.h>
+#include <prefix.h>
 #include "port.h"
 
 #define CMOS_REGISTER_SECOND	0x00

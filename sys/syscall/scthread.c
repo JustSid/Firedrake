@@ -21,10 +21,15 @@
 #include <system/panic.h>
 #include "syscall.h"
 
-uint32_t _sc_yield(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
+uint32_t _sc_sleep(uint32_t *esp, uint32_t *uesp, __unused int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
+	uint32_t time = *(uint32_t *)(uesp + 0);
+
 	thread->blocks ++;
+
+	if(time > 0)
+		thread_sleep(thread, time);
 
 	*esp = sd_schedule(*esp);
 
@@ -32,19 +37,7 @@ uint32_t _sc_yield(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 	return 0;
 }
 
-uint32_t _sc_sleep(uint32_t *esp, uint32_t *uesp, int *UNUSED(errno))
-{
-	thread_t *thread = thread_getCurrentThread();
-	uint32_t time = *(uint32_t *)(uesp + 0);
-
-	thread_sleep(thread, time);
-
-	*esp = sd_schedule(*esp);
-
-	return 0;
-}
-
-uint32_t _sc_threadAttach(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
+uint32_t _sc_threadAttach(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	uint32_t entry = *(uint32_t *)(uesp + 0);
@@ -75,7 +68,7 @@ uint32_t _sc_threadJoin(uint32_t *esp, uint32_t *uesp, int *errno)
 	return 0;
 }
 
-uint32_t _sc_threadExit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
+uint32_t _sc_threadExit(uint32_t *esp, __unused uint32_t *uesp, __unused int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
 	thread->died = true;
@@ -84,22 +77,22 @@ uint32_t _sc_threadExit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno
 	return 0;
 }
 
-uint32_t _sc_threadErrno(uint32_t *UNUSED(esp), uint32_t *UNUSED(uesp), int *UNUSED(errno))
+uint32_t _sc_threadErrno(__unused uint32_t *esp, __unused uint32_t *uesp, __unused int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
-	uint32_t errno = thread->errno;
+	uint32_t temp = thread->errno;
 
 	thread->errno = 0;
-	return errno;
+	return temp;
 }
 
-uint32_t _sc_threadTSLAllocate(uint32_t *UNUSED(esp), uint32_t *UNUSED(uesp), int *errno)
+uint32_t _sc_threadTSLAllocate(__unused uint32_t *esp, __unused uint32_t *uesp, int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
 	return thread_allocateTLSSlot(thread, errno);
 }
 
-uint32_t _sc_threadTSLFree(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
+uint32_t _sc_threadTSLFree(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
 	uint32_t slot = *(uint32_t *)(uesp + 0);
@@ -108,7 +101,7 @@ uint32_t _sc_threadTSLFree(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 	return 0;
 }
 
-uint32_t _sc_threadTSLGet(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
+uint32_t _sc_threadTSLGet(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
 	uint32_t slot = *(uint32_t *)(uesp + 0);
@@ -116,7 +109,7 @@ uint32_t _sc_threadTSLGet(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 	return thread_getTLSValue(thread, slot, errno);
 }
 
-uint32_t _sc_threadTSLSet(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
+uint32_t _sc_threadTSLSet(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
 	uint32_t slot  = *(uint32_t *)(uesp + 0);
@@ -126,7 +119,7 @@ uint32_t _sc_threadTSLSet(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 	return 0;
 }
 
-uint32_t _Sc_threadSelf(uint32_t *UNUSED(esp), uint32_t *UNUSED(uesp), int *UNUSED(errno))
+uint32_t _Sc_threadSelf(__unused uint32_t *esp, __unused uint32_t *uesp, __unused int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
 	return thread->id;
@@ -135,7 +128,6 @@ uint32_t _Sc_threadSelf(uint32_t *UNUSED(esp), uint32_t *UNUSED(uesp), int *UNUS
 
 void _sc_threadInit()
 {
-	sc_setSyscallHandler(SYS_THREADYIELD, _sc_yield);
 	sc_setSyscallHandler(SYS_THREADSLEEP, _sc_sleep);
 	sc_setSyscallHandler(SYS_THREADATTACH, _sc_threadAttach);
 	sc_setSyscallHandler(SYS_THREADEXIT, _sc_threadExit);

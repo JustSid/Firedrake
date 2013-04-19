@@ -27,7 +27,7 @@
 static syscall_callback_t _sc_syscalls[_SYS_MAXCALLS];
 
 // Mark: Implementation
-uint32_t _sc_print(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
+uint32_t _sc_print(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	vm_address_t virtual;
 	char *string = sc_mapProcessMemory(*(void **)(uesp), &virtual, 2, errno);
@@ -79,12 +79,14 @@ uint32_t _sc_execute(uint32_t esp)
 
 	if(callback == NULL)
 	{
-		dbg("Syscall %i not implemented but invoked!\n", state->eax);
+		dbg("Syscall %i not implemented but!\n", state->eax);
 		return esp;
 	}
 
-	// Map the userstack
 	thread_t *thread = thread_getCurrentThread();
+	thread->esp = esp;
+
+	// Map the userstack into the kernel
 	uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
 	uint32_t offset = ((uint8_t *)state->esp) - thread->userStackVirt;
 
@@ -116,7 +118,7 @@ void _sc_processInit();
 void _sc_threadInit();
 void _sc_mmapInit();
 
-bool sc_init(void *UNUSED(ingored))
+bool sc_init(__unused void *data)
 {
 	ir_setInterruptHandler(_sc_execute, 0x80);
 

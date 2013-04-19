@@ -1,5 +1,5 @@
 //
-//  loader.h
+//  macros.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,31 +16,14 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LOADER_H_
-#define _LOADER_H_
+#ifndef _MACROS_H_
+#define _MACROS_H_
 
-#include <prefix.h>
-#include <memory/memory.h>
+#define __unused      __attribute__((unused))
+#define __used        __attribute__((used))
+#define __deprecated  __attribute__((deprecated))
+#define __unavailable __attribute__((unavailable))
 
-typedef struct ld_exectuable_s
-{
-	vm_page_directory_t pdirectory;
-	struct ld_exectuable_s *source;
+#define offsetof(type, member) ((unsigned int)&(((type *)0)->member))
 
-	vm_address_t entry; // The main entry point into the executable
-
-	// Location and size of the image
-	uintptr_t    	pimage;
-	vm_address_t 	vimage;
-	size_t 			imagePages;
-
-	uint32_t useCount;
-} ld_exectuable_t;
-
-ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory,  uint8_t *begin, size_t size);
-ld_exectuable_t *ld_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file);
-ld_exectuable_t *ld_exectuableCopy(vm_page_directory_t pdirectory, ld_exectuable_t *source);
-
-void ld_executableRelease(ld_exectuable_t *executable);
-
-#endif /* _LOADER_H_ */
+#endif

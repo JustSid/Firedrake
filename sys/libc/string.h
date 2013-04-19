@@ -23,7 +23,7 @@
 #ifndef _STRING_H_
 #define _STRING_H_
 
-#include <types.h>
+#include <prefix.h>
 
 #define isdigit(c) (c >= '0' && c <= '9')
 #define isspace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r')

@@ -19,7 +19,7 @@
 #ifndef _ELF_H_
 #define _ELF_H_
 
-#include <types.h>
+#include <prefix.h>
 
 typedef uint16_t elf32_half_t;
 

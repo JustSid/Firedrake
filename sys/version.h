@@ -24,14 +24,14 @@
 #ifndef _VERSION_H_
 #define _VERSION_H_
 
-const char *versionBeast	= "Nidhogg";
-const char *versionAppendix = "";
+extern const char *kVersionBeast;
+extern const char *kVersionAppendix;
 
-#define VersionMajor 0
-#define VersionMinor 4
-#define VersionPatch 0
+#define kVersionMajor 0
+#define kVersionMinor 4
+#define kVersionPatch 0
 
 #define VersionCreate(major, minor, patch) ((major << 16) | (minor << 8) | (patch))
-#define VersionCurrent VersionCreate(VersionMajor, VersionMinor, VersionPatch)
+#define VersionCurrent() VersionCreate(kVersionMajor, kVersionMinor, kVersionPatch)
 
 #endif /* _VERSION_H_ */

@@ -19,7 +19,7 @@
 #ifndef _MULTIBOOT_H_
 #define _MULTIBOOT_H_
 
-#include <types.h>
+#include <prefix.h>
 
 // http://www.gnu.org/software/grub/manual/multiboot/multiboot.html
 

@@ -19,7 +19,7 @@
 #ifndef _LIST_H_
 #define _LIST_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <system/lock.h>
 
 typedef bool (*list_fillEntryCallback_t)(void *entry);

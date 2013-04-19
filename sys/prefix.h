@@ -1,5 +1,5 @@
 //
-//  loader.h
+//  prefix.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,31 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LOADER_H_
-#define _LOADER_H_
+#ifndef _PREFIX_H_
+#define _PREFIX_H_
 
-#include <prefix.h>
-#include <memory/memory.h>
+#include "version.h"
+#include "config.h"
 
-typedef struct ld_exectuable_s
-{
-	vm_page_directory_t pdirectory;
-	struct ld_exectuable_s *source;
+#include "types.h"
+#include "macros.h"
 
-	vm_address_t entry; // The main entry point into the executable
+#include <libc/assert.h>
 
-	// Location and size of the image
-	uintptr_t    	pimage;
-	vm_address_t 	vimage;
-	size_t 			imagePages;
-
-	uint32_t useCount;
-} ld_exectuable_t;
-
-ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory,  uint8_t *begin, size_t size);
-ld_exectuable_t *ld_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file);
-ld_exectuable_t *ld_exectuableCopy(vm_page_directory_t pdirectory, ld_exectuable_t *source);
-
-void ld_executableRelease(ld_exectuable_t *executable);
-
-#endif /* _LOADER_H_ */
+#endif

@@ -168,7 +168,7 @@ void time_setPITFrequency()
 	outb(0x40, divisor >> 8);
 }
 
-bool time_init(void *UNUSED(unused))
+bool time_init(__unused void *data)
 {
 	time_setPITFrequency();
 	cmos_writeRTCFlags(CMOS_RTC_FLAG_24HOUR | CMOS_RTC_FLAG_BINARY);

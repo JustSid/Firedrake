@@ -226,7 +226,7 @@ bool mmap_tryJoinFragments(mmap_description_t *description, vm_address_t address
 // mmap() signature:
 // void *mmap(void *addr, size_t length, int prot, int flags, int fd, uint32_t offset)
 
-uint32_t _sc_mmap(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
+uint32_t _sc_mmap(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 
@@ -237,8 +237,8 @@ uint32_t _sc_mmap(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 	int flags         = *((int *)(uesp + 3));
 
 	// Unused stuff
-	int UNUSED(filed)         = *((int *)(uesp + 4));
-	uint32_t UNUSED(offset)   = *((int *)(uesp + 5));
+	__unused int filed         = *((int *)(uesp + 4));
+	__unused uint32_t offset   = *((int *)(uesp + 5));
 
 	list_lock(process->mappings);
 	mmap_description_t *description = list_addBack(process->mappings);
@@ -339,7 +339,7 @@ mmapFailed:
 
 // munmap() signature
 // int munmap(void *address, size_t length)
-uint32_t _sc_munmap(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
+uint32_t _sc_munmap(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 
@@ -393,7 +393,7 @@ uint32_t _sc_munmap(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
 // mprotect() signature
 // int mprotect(const void *addr, size_t len, int prot)
 
-uint32_t _sc_mprotect(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
+uint32_t _sc_mprotect(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 

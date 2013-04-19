@@ -24,7 +24,7 @@
 #ifndef _STDLIB_H_
 #define _STDLIB_H_
 
-#include <types.h>
+#include <prefix.h>
 
 int atoi(const char *string);
 double atof(const char *string);

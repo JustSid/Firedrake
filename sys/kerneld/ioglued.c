@@ -19,6 +19,7 @@
 #include <container/array.h>
 #include <system/lock.h>
 #include <system/syslog.h>
+#include <system/helper.h>
 #include <ioglue/iostore.h>
 #include <ioglue/iomodule.h>
 #include <scheduler/scheduler.h>
@@ -48,6 +49,12 @@ void ioglued()
 
 	__ioglued_modulesToStop = array_create();
 	spinlock_unlock(&__ioglued_lock);
+
+	if(sys_checkCommandline("--no-ioglue", NULL))
+	{
+		while(1)
+			sd_yield();
+	}
 
 	size_t size = sizeof(ioglued_modules) / sizeof(const char *);
 	for(size_t i=0; i<size; i++)

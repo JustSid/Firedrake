@@ -21,7 +21,7 @@
 #include <system/panic.h>
 #include "syscall.h"
 
-uint32_t _sc_exit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
+uint32_t _sc_exit(uint32_t *esp, __unused uint32_t *uesp, __unused int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	process->died = true;
@@ -31,41 +31,7 @@ uint32_t _sc_exit(uint32_t *esp, uint32_t *UNUSED(uesp), int *UNUSED(errno))
 	return 0; // The process won't receive it...
 }
 
-uint32_t _sc_processCreate(uint32_t *UNUSED(esp), uint32_t *uesp, int *errno)
-{
-	vm_address_t virtual;
-	char *name = sc_mapProcessMemory(*(void **)(uesp), &virtual, 2, errno);
-	if(!name)
-		return -1;
-
-
-	process_t *process = process_createWithFile(name, errno);
-	vm_free(vm_getKernelDirectory(), virtual, 2);
-
-	return process ? (uint32_t)process->pid : -1;
-}
-
-uint32_t _sc_processKill(uint32_t *esp, uint32_t *uesp, int *errno)
-{
-	pid_t pid = *(pid_t *)(uesp);
-	process_t *process = process_getWithPid(pid);
-
-	if(process)
-	{
-		process->died = true;
-
-		*esp = sd_schedule(*esp);
-		return 1;
-	}
-
-
-	if(errno)
-		*errno = EINVAL;
-
-	return 0;
-}
-
-uint32_t _sc_fork(uint32_t *esp, uint32_t *UNUSED(uesp), int *errno)
+uint32_t _sc_fork(uint32_t *esp, __unused uint32_t *uesp, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	process->scheduledThread->esp = *esp; // Update the kernel stack for the thread because its needed when the thread is copied
@@ -82,13 +48,13 @@ uint32_t _sc_fork(uint32_t *esp, uint32_t *UNUSED(uesp), int *errno)
 	return -1;
 }
 
-uint32_t _sc_pid(uint32_t *UNUSED(esp), uint32_t *UNUSED(uesp), int *UNUSED(errno))
+uint32_t _sc_pid(__unused uint32_t *esp, __unused uint32_t *uesp, __unused int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	return process->pid;
 }
 
-uint32_t _sc_ppid(uint32_t *UNUSED(esp), uint32_t *UNUSED(uesp), int *UNUSED(errno))
+uint32_t _sc_ppid(__unused uint32_t *esp, __unused uint32_t *uesp, __unused int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	return process->parent;
@@ -127,6 +93,4 @@ void _sc_processInit()
 	sc_setSyscallHandler(SYS_PID, _sc_pid);
 	sc_setSyscallHandler(SYS_PPID, _sc_ppid);
 	sc_setSyscallHandler(SYS_WAIT, _sc_wait);
-	sc_setSyscallHandler(SYS_PROCESSCREATE, _sc_processCreate);
-	sc_setSyscallHandler(SYS_PROCESSKILL, _sc_processKill);
 }

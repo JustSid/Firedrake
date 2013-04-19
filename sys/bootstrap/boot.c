@@ -18,9 +18,7 @@
 
 #include "multiboot.h"
 
-#include <version.h>
-#include <types.h>
-#include <config.h>
+#include <prefix.h>
 #include <kerneld/syslogd.h>
 #include <system/syslog.h>
 #include <system/panic.h>
@@ -35,6 +33,9 @@
 #include <scheduler/scheduler.h>
 #include <ioglue/iostore.h>
 #include <system/time.h>
+
+const char *kVersionBeast    = "Nidhogg";
+const char *kVersionAppendix = "";
 
 struct multiboot_s *bootinfo = NULL;
 typedef bool (*sys_function_t)(void *);
@@ -68,7 +69,7 @@ void sys_boot(struct multiboot_s *info)
 	syslog_level_t loglevel = (sys_checkCommandline("--debug", NULL)) ? LOG_DEBUG : LOG_INFO;
 	syslogd_setLogLevel(loglevel);
 	
-	info("\16\24Firedrake\16\27 v%i.%i.%i:%i%s (%s)\n", VersionMajor, VersionMinor, VersionPatch, VersionCurrent, versionAppendix, versionBeast);
+	info("\16\24Firedrake\16\27 v%i.%i.%i:%i %s %s\n", kVersionMajor, kVersionMinor, kVersionPatch, VersionCurrent(), kVersionBeast, kVersionAppendix);
 	info("Kernel compiled on %s %s\n", __DATE__, __TIME__);
 	info("Here be dragons!\n\n");
 

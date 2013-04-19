@@ -19,7 +19,7 @@
 #ifndef _RINGBUFFER_H_
 #define _RINGBUFFER_H_
 
-#include <types.h>
+#include <prefix.h>
 
 typedef struct
 {

@@ -63,7 +63,7 @@ void ir_trampolineFixEntryCall(uint32_t offset, size_t limit)
 	*call = ir_trampolineResolveCall((uint8_t *)(call + 1), (uintptr_t)ir_handleInterrupt);
 }
 
-bool ir_trampoline_init(void *UNUSED(unused))
+bool ir_trampoline_init(__unused void *data)
 {
 	// Map the trampoline area into memory
 	vm_mapPageRange(vm_getKernelDirectory(), (uintptr_t)IR_TRAMPOLINE_PHYSICAL, (vm_address_t)IR_TRAMPOLINE_BEGIN, IR_TRAMPOLINE_PAGES, VM_FLAGS_KERNEL);

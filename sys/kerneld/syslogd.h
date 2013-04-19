@@ -19,7 +19,7 @@
 #ifndef _SYSLOGD_H_
 #define _SYSLOGD_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <system/syslog.h>
 
 void syslogd_queueMessage(syslog_level_t level, const char *message);

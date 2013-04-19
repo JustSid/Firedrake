@@ -24,8 +24,6 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
 
-#include <config.h>
-
 #define NULL (void *)0
 
 #define	bool int
@@ -58,20 +56,15 @@ typedef uint32_t 		size_t;
 typedef long 			intptr_t;
 typedef unsigned long 	uintptr_t;
 
-// MARK: Other stuff
-typedef int32_t pid_t;
 typedef size_t  offset_t;
-typedef uint32_t mode_t;
+typedef int32_t pid_t;
 
 #define kCompareLesserThan -1
-#define kCompareEqualTo 0
+#define kCompareEqualTo     0
 #define kCompareGreaterThan 1
 
 typedef int8_t comparison_result_t;
 typedef comparison_result_t (*comparator_t)(void *object1, void *object2);
-
-#define UNUSED(x) UNUSED_ ## x __attribute__((unused))
-#define offsetof(type, member) ((unsigned int)&(((type *)0)->member))
 
 // MARK: Fixed size integer constraints
 #define INT8_C(v)   (v)

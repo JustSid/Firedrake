@@ -19,7 +19,7 @@
 #ifndef _THREAD_H_
 #define _THREAD_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <container/list.h>
 #include <system/cpu.h>
 #include <system/time.h>
@@ -85,9 +85,9 @@ typedef struct thread_s
 	bool sleeping;
 	timestamp_t alarm;
 
-	struct process_s 	*process;
-	struct thread_s 	*next;
-	struct thread_s 	*sleepingNext;
+	struct process_s *process;
+	struct thread_s  *next;
+	struct thread_s  *sleepingNext;
 } thread_t;
 
 typedef enum

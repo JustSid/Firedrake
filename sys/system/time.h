@@ -19,7 +19,7 @@
 #ifndef _TIME_H_
 #define _TIME_H_
 
-#include <types.h>
+#include <prefix.h>
 
 #define TIME_FREQUENCY 1000
 #define TIME_MILLISECS_PER_TICK 1

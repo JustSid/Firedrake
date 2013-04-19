@@ -19,7 +19,7 @@
 #ifndef _INTERRUPTS_H_
 #define _INTERRUPTS_H_
 
-#include <types.h>
+#include <prefix.h>
 #include <system/cpu.h>
 
 #define IDT_FLAG_INTERRUPT_GATE 	0xE

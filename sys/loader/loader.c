@@ -24,7 +24,7 @@
 
 #include "loader.h"
 
-ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *begin, size_t UNUSED(size))
+ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *begin, __unused size_t size)
 {
 	elf_header_t *header = (elf_header_t *)begin;
 

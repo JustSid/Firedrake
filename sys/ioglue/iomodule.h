@@ -19,7 +19,7 @@
 #ifndef _IOMODULE_H_
 #define _IOMODULE_H_
 
-#include <types.h>
+#include <prefix.h>
 #include "iolibrary.h"
 
 struct io_module_s;
