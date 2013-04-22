@@ -100,8 +100,6 @@ uint32_t _sc_execute(uint32_t esp)
 
 	state->eax = result;
 	state->ecx = (errno != 0) ? errno : state->ecx;
-
-	thread->errno = errno;
 	
 	// Unmap the userstack
 	vm_free(vm_getKernelDirectory(), (uintptr_t)ustack, 1);

@@ -19,22 +19,91 @@
 #include "syscall.h"
 #include "tls.h"
 
-void *tls_get(int slot)
+#define kTLSAreaSize 2
+#define kTLSBucketCount ((kTLSAreaSize * 4096) / sizeof(struct tls_bucket_s))
+
+struct tls_bucket_s
 {
-	return (void *)syscall(SYS_TLS_GET, slot);
+	bool occupied;
+	void *value;
+};
+
+bool tls_set(tls_key_t key, const void *value)
+{
+	if(key == kTLSInvalidKey || key == 0)
+		return false;
+
+	struct tls_bucket_s *bucket = (struct tls_bucket_s *)syscall(SYS_TLS_AREA, kTLSAreaSize);
+	if(bucket)
+	{
+		bucket += key;
+		if(bucket->occupied)
+		{
+			bucket->value = (void *)value;
+			return true;
+		}
+	}
+
+	return false;
 }
 
-void tls_set(int slot, void *value)
+void *tls_get(tls_key_t key)
 {
-	syscall(SYS_TLS_SET, slot, value);
+	if(key == kTLSInvalidKey || key == 0)
+		return NULL;
+
+	struct tls_bucket_s *bucket = (struct tls_bucket_s *)syscall(SYS_TLS_AREA, kTLSAreaSize);
+	if(bucket)
+	{
+		bucket += key;
+
+		if(bucket->occupied)
+			return bucket->value;
+	}
+
+	return NULL;
 }
 
-int tls_allocate()
+
+int *__tls_errno()
 {
-	return (int)syscall(SYS_TLS_ALLOCATE);
+	struct tls_bucket_s *buckets = (struct tls_bucket_s *)syscall(SYS_TLS_AREA, kTLSAreaSize);
+	return (int *)(&buckets[0].value);
 }
 
-void tls_free(int slot)
+void __tls_setErrno(int value)
 {
-	syscall(SYS_TLS_FREE, slot);
+	*__tls_errno() = value;
+}
+
+
+tls_key_t tls_allocateKey()
+{
+	struct tls_bucket_s *buckets = (struct tls_bucket_s *)syscall(SYS_TLS_AREA, kTLSAreaSize);
+	if(buckets)
+	{
+		for(uint32_t i=1; i<kTLSBucketCount; i++)
+		{
+			if(!buckets[i].occupied)
+			{
+				buckets[i].occupied = true;
+				return (tls_key_t)i;
+			}
+		}
+	}
+
+	return -1;
+}
+
+void tls_freeKey(tls_key_t key)
+{
+	if(key == kTLSInvalidKey || key == 0)
+		return;
+
+	struct tls_bucket_s *bucket = (struct tls_bucket_s *)syscall(SYS_TLS_AREA, kTLSAreaSize);
+	if(bucket)
+	{
+		bucket += key;
+		bucket->occupied = false;
+	}
 }

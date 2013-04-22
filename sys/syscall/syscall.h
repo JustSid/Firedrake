@@ -37,11 +37,7 @@
 #define SYS_THREADEXIT    9
 #define SYS_THREADJOIN    10
 #define SYS_THREADSELF    11
-#define SYS_ERRNO         12
-#define SYS_TLS_ALLOCATE  13
-#define SYS_TLS_FREE      14
-#define SYS_TLS_SET       15
-#define SYS_TLS_GET       16
+#define SYS_TLS_AREA      12
 #define SYS_PROCESSCREATE 17
 #define SYS_PROCESSKILL   18
 #define SYS_MMAP          19

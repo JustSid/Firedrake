@@ -19,10 +19,18 @@
 #ifndef _TLS_H_
 #define _TLS_H_
 
-void *tls_get(int slot);
-void tls_set(int slot, void *value);
+#include "stdint.h"
 
-int tls_allocate();
-void tls_free(int slot);
+typedef uint32_t tls_key_t;
+#define kTLSInvalidKey ((tls_key_t)-1)
+
+bool tls_set(tls_key_t key, const void *value);
+void *tls_get(tls_key_t key);
+
+int *__tls_errno();
+void __tls_setErrno(int value);
+
+tls_key_t tls_allocateKey();
+void tls_freeKey(tls_key_t key);
 
 #endif /* _TLS_H_ */

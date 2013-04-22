@@ -79,8 +79,7 @@ thread_t *thread_createVoid(process_t *process, thread_entry_t entry, int *errno
 		thread->argumentCount = 0;
 
 		// TLS
-		thread->errno = 0;
-		memset(thread->TLSSlots, 0, THREAD_TLS_SLOTS * sizeof(struct TLSSlot));
+		thread->tlsVirtual = 0;
 
 		// Sleeping related
 		thread->sleeping = false;
@@ -405,6 +404,13 @@ void thread_destroy(thread_t *thread)
 		vm_free(vm_getKernelDirectory(), (vm_address_t)thread->kernelStackVirt, 1);
 	}
 
+	if(thread->tlsVirtual)
+	{
+		uintptr_t physical = vm_resolveVirtualAddress(process->pdirectory, thread->tlsVirtual);
+		vm_free(process->pdirectory, thread->tlsVirtual, thread->tlsPages);
+		pm_free(physical, thread->tlsPages);
+	}
+
 	if(thread->kernelStack)
 		pm_free((uintptr_t)thread->kernelStack, 1);
 
@@ -536,86 +542,52 @@ void thread_wakeup(thread_t *thread)
 
 
 
-uintptr_t thread_getTLSValue(thread_t *thread, uint32_t index, int *errno)
+uintptr_t thread_getTLSArea(thread_t *thread, uint32_t pages, int *errno)
 {
-	if(index >= THREAD_TLS_SLOTS)
+	uint32_t allowedPages = MAX(1, MIN(5, pages));
+	bool needsTLSResize = (allowedPages > thread->tlsPages && thread->tlsVirtual != 0);
+
+	if(thread->tlsVirtual && allowedPages <= thread->tlsPages)
+		return thread->tlsVirtual;
+
+	process_t *process = thread->process;
+	uintptr_t pmemory = pm_alloc(allowedPages);
+
+	if(!pmemory)
 	{
-		if(errno)
-			*errno = EINVAL;
-
-		return -1;
-	}
-
-	struct TLSSlot *slot = &thread->TLSSlots[index];
-	if(!slot->used)
-	{
-		if(errno)
-			*errno = EINVAL;
-
-		return -1;
-	}
-
-	return slot->value;
-}
-
-void thread_setTLSValue(thread_t *thread, uint32_t index, uintptr_t value, int *errno)
-{
-	if(index >= THREAD_TLS_SLOTS)
-	{
-		if(errno)
-			*errno = EINVAL;
-
-		return;
-	}
-
-	struct TLSSlot *slot = &thread->TLSSlots[index];
-	if(!slot->used)
-	{
-		if(errno)
-			*errno = EINVAL;
-
-		return;
-	}
-
-	slot->value = value;
-}
-
-uint32_t thread_allocateTLSSlot(thread_t *thread, int *errno)
-{
-	for(uint32_t i=0; i<THREAD_TLS_SLOTS; i++)
-	{
-		if(thread->TLSSlots[i].used == false)
-		{
-			thread->TLSSlots[i].used = true;
-			return i;
-		}
-	}
-
-	if(errno)
 		*errno = ENOMEM;
-
-	return -1;
-}
-
-void thread_freeTLSSlot(thread_t *thread, uint32_t index, int *errno)
-{
-	if(index >= THREAD_TLS_SLOTS)
-	{
-		if(errno)
-			*errno = EINVAL;
-
-		return;
+		return -1;
 	}
 
-	if(!thread->TLSSlots[index].used)
+	vm_address_t vmemory = vm_alloc(process->pdirectory, pmemory, allowedPages, VM_FLAGS_USERLAND);
+	if(!vmemory)
 	{
-		if(errno)
-			*errno = EINVAL;
+		pm_free(pmemory, allowedPages);
 
-		return;
-	}	
+		*errno = ENOMEM;
+		return -1;
+	}
 
-	thread->TLSSlots[index].used = false;
+	vm_address_t target = vm_alloc(vm_getKernelDirectory(), pmemory, allowedPages, VM_FLAGS_KERNEL);
+	memset((void *)target, 0, allowedPages * VM_PAGE_SIZE);
+
+	if(needsTLSResize)
+	{
+		uintptr_t sourcePmemory = vm_resolveVirtualAddress(process->pdirectory, thread->tlsVirtual);
+		vm_address_t source = vm_alloc(vm_getKernelDirectory(), sourcePmemory, thread->tlsPages, VM_FLAGS_USERLAND);
+
+		memcpy((void *)target, (void *)source, thread->tlsPages * VM_PAGE_SIZE);
+
+		vm_free(process->pdirectory, thread->tlsVirtual, thread->tlsPages);
+		pm_free(sourcePmemory, thread->tlsPages);
+	}
+
+	vm_free(vm_getKernelDirectory(), target, allowedPages);
+
+	thread->tlsVirtual = vmemory;
+	thread->tlsPages = allowedPages;
+	
+	return vmemory;
 }
 
 

@@ -77,49 +77,16 @@ uint32_t _sc_threadExit(uint32_t *esp, __unused uint32_t *uesp, __unused int *er
 	return 0;
 }
 
-uint32_t _sc_threadErrno(__unused uint32_t *esp, __unused uint32_t *uesp, __unused int *errno)
+uint32_t _sc_threadTLSArea(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
-	uint32_t temp = thread->errno;
+	uint32_t pages = *(uint32_t *)(uesp + 0);
 
-	thread->errno = 0;
-	return temp;
+	return thread_getTLSArea(thread, pages, errno);
 }
 
-uint32_t _sc_threadTSLAllocate(__unused uint32_t *esp, __unused uint32_t *uesp, int *errno)
-{
-	thread_t *thread = thread_getCurrentThread();
-	return thread_allocateTLSSlot(thread, errno);
-}
 
-uint32_t _sc_threadTSLFree(__unused uint32_t *esp, uint32_t *uesp, int *errno)
-{
-	thread_t *thread = thread_getCurrentThread();
-	uint32_t slot = *(uint32_t *)(uesp + 0);
-
-	thread_freeTLSSlot(thread, slot, errno);
-	return 0;
-}
-
-uint32_t _sc_threadTSLGet(__unused uint32_t *esp, uint32_t *uesp, int *errno)
-{
-	thread_t *thread = thread_getCurrentThread();
-	uint32_t slot = *(uint32_t *)(uesp + 0);
-
-	return thread_getTLSValue(thread, slot, errno);
-}
-
-uint32_t _sc_threadTSLSet(__unused uint32_t *esp, uint32_t *uesp, int *errno)
-{
-	thread_t *thread = thread_getCurrentThread();
-	uint32_t slot  = *(uint32_t *)(uesp + 0);
-	uint32_t value = *(uint32_t *)(uesp + 1);
-
-	thread_setTLSValue(thread, slot, value, errno);
-	return 0;
-}
-
-uint32_t _Sc_threadSelf(__unused uint32_t *esp, __unused uint32_t *uesp, __unused int *errno)
+uint32_t _sc_threadSelf(__unused uint32_t *esp, __unused uint32_t *uesp, __unused int *errno)
 {
 	thread_t *thread = thread_getCurrentThread();
 	return thread->id;
@@ -132,10 +99,6 @@ void _sc_threadInit()
 	sc_setSyscallHandler(SYS_THREADATTACH, _sc_threadAttach);
 	sc_setSyscallHandler(SYS_THREADEXIT, _sc_threadExit);
 	sc_setSyscallHandler(SYS_THREADJOIN, _sc_threadJoin);
-	sc_setSyscallHandler(SYS_THREADSELF, _Sc_threadSelf);
-	sc_setSyscallHandler(SYS_ERRNO, _sc_threadErrno);
-	sc_setSyscallHandler(SYS_TLS_ALLOCATE, _sc_threadTSLAllocate);
-	sc_setSyscallHandler(SYS_TLS_FREE, _sc_threadTSLFree);
-	sc_setSyscallHandler(SYS_TLS_SET, _sc_threadTSLSet);
-	sc_setSyscallHandler(SYS_TLS_GET, _sc_threadTSLGet);
+	sc_setSyscallHandler(SYS_THREADSELF, _sc_threadSelf);
+	sc_setSyscallHandler(SYS_TLS_AREA, _sc_threadTLSArea);
 }

@@ -20,8 +20,9 @@
 #define _ERRNO_H_
 
 #include "syscall.h"
+#include "tls.h"
 
-#define errno syscall(SYS_ERRNO)
+#define errno *(__tls_errno())
 
 #define E2BIG             1 // Argument list too long.
 #define EACCES            2 // Permission denied.

@@ -30,15 +30,8 @@ struct thread_listener_s;
 
 #define THREAD_NULL UINT32_MAX
 #define THREAD_STACK_LIMIT 0xBFFFFFFD
-#define THREAD_TLS_SLOTS   64
 
 typedef void (*thread_entry_t)();
-
-struct TLSSlot
-{
-	uintptr_t value;
-	bool used;
-};
 
 typedef struct thread_s
 {
@@ -78,8 +71,8 @@ typedef struct thread_s
 	list_t *listener;
 
 	// TLS
-	int errno;
-	struct TLSSlot TLSSlots[THREAD_TLS_SLOTS];
+	vm_address_t tlsVirtual;
+	size_t tlsPages;
 
 	// Sleeping
 	bool sleeping;
@@ -122,10 +115,7 @@ void thread_join(thread_t *thread, thread_t *toJoin, int *errno);
 void thread_sleep(thread_t *thread, uint64_t time);
 void thread_wakeup(thread_t *thread);
 
-uintptr_t thread_getTLSValue(thread_t *thread, uint32_t index, int *errno);
-void thread_setTLSValue(thread_t *thread, uint32_t index, uintptr_t value, int *errno);
-uint32_t thread_allocateTLSSlot(thread_t *thread, int *errno);
-void thread_freeTLSSlot(thread_t *thread, uint32_t index, int *errno);
+uintptr_t thread_getTLSArea(thread_t *thread, uint32_t pages, int *errno);
 
 void thread_setName(thread_t *thread, const char *name, int *errno);
 void thread_setPriority(thread_t *thread, int priority);

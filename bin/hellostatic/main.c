@@ -24,17 +24,14 @@
 
 void threadEntry(void *arg)
 {
-	int slot = tls_allocate();
-	tls_set(slot, arg);
+	tls_key_t key = tls_allocateKey();
+	tls_set(key, arg);
 
 	printf("%i: set %p\n", thread_self(), arg);
 
 	sleep(1000);
 
-	printf("%i: got: %p\n", thread_self(), tls_get(slot));
-
-	tls_free(slot);
-	tls_free(slot); // Make sure that errno is != 0!
+	printf("%i: got: %p\n", thread_self(), tls_get(key));
 }
 
 int main()
