@@ -105,7 +105,7 @@ double atof(const char *string)
 }
 
 
-int _itostr(int i, int base, char *buffer, bool lowerCase)
+int _itostr(int32_t i, int base, char *buffer, bool lowerCase)
 {
 	if(i == 0)
 	{
@@ -143,7 +143,71 @@ int _itostr(int i, int base, char *buffer, bool lowerCase)
 	return length;
 }
 
-int _uitostr(unsigned int i, int base, char *buffer, bool lowerCase)
+int _itostr64(int64_t i, int base, char *buffer, bool lowerCase)
+{
+	if(i == 0)
+	{
+		strlcpy(buffer, "0", 1);
+		return 1;
+	}
+	
+
+	int length = 0;
+	bool negative = (i < 0);
+	
+	char _buffer[STDLIBBUFFERLENGTH];
+	char *temp = _buffer + (STDLIBBUFFERLENGTH - 1);
+	const char *digits = (lowerCase) ? "0123456789abcdefghijklmnopqrstuvwxyz" : "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	
+	if(negative)
+		i = -i;
+	
+
+	while(i > 0)
+	{
+		*--temp = digits[i % base];
+
+		i /= base;
+		length ++;
+	}
+	
+	if(negative)
+	{
+		*--temp = '-';
+		length ++;
+	}
+	
+	strlcpy(buffer, (const char *)temp, (size_t)length);
+	return length;
+}
+
+int _uitostr(uint32_t i, int base, char *buffer, bool lowerCase)
+{
+	if(i == 0)
+	{
+		strlcpy(buffer, "0", 1);
+		return 1;
+	}
+	
+
+	int length = 0;
+	char _buffer[STDLIBBUFFERLENGTH];
+	char *temp = _buffer + (STDLIBBUFFERLENGTH - 1);
+	const char *digits = (lowerCase) ? "0123456789abcdefghijklmnopqrstuvwxyz" : "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+	while(i > 0)
+	{
+		*--temp = digits[i % base];
+
+		i /= base;
+		length ++;
+	}
+
+	strlcpy(buffer, (const char *)temp, (size_t)length);
+	return length;
+}
+
+int _uitostr64(uint64_t i, int base, char *buffer, bool lowerCase)
 {
 	if(i == 0)
 	{

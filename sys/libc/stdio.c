@@ -25,6 +25,41 @@
 #define kVsnprintfFlagForceSign  (1 << 1) // '+'
 #define kVsnprintfZeroPad		 (1 << 2) // '0'
 
+#define vsnprintfPeekSize(sizeBuffer) do { \
+		if(format[index + 1] != '\0') \
+		{ \
+			switch(format[index + 1]) \
+			{ \
+				case 'h': \
+				{ \
+					sizeBuffer = 2; \
+					index ++; \
+					\
+					if(format[index + 2] == 'h') \
+					{ \
+						sizeBuffer = 1; \
+						index ++; \
+					} \
+					\
+					break; \
+				} \
+				\
+				case 'l': \
+				{ \
+					sizeBuffer = 4; \
+					index ++; \
+					\
+					if(format[index + 1] == 'l') \
+					{ \
+						sizeBuffer = 8; \
+						index ++; \
+					} \
+					break; \
+				} \
+			} \
+		} \
+	} while(0)
+
 int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 {
 	size_t written = 0;
@@ -130,21 +165,61 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 
 					int  base = (specifier == 'i' || specifier == 'u' || specifier == 'd') ? 10 : 16;
 					bool isUint = (specifier== 'p' || specifier == 'u' || specifier == 'x');
+					bool lowerCase = (specifier == 'x');
 					
 					char *prefix = (specifier == 'p') ? "0x" : "\0";
 					char string[STDLIBBUFFERLENGTH];
-					
-					if(isUint)
-					{
-						unsigned long value = va_arg(arg, unsigned long);
-						_uitostr(value, base, string, (format[index] == 'x'));
-					}
-					else 
-					{
-						long value = va_arg(arg, long);
-						_itostr(value, base, string, (format[index] == 'x'));
-					}
 
+					if(specifier == 'p')
+					{
+						void *value = va_arg(arg, void *);
+						_uitostr((uint32_t)value, base, string, false);
+					}
+					else
+					{
+						size_t size = 4;
+						vsnprintfPeekSize(size);
+
+						switch(size)
+						{
+							case 1:
+							case 2:
+							case 4:
+							{
+								if(isUint)
+								{
+									uint32_t value = va_arg(arg, uint32_t);
+									_uitostr(value, base, string, lowerCase);
+								}
+								else
+								{
+									int32_t value = va_arg(arg, int32_t);
+									_itostr(value, base, string, lowerCase);
+								}
+
+								break;
+							}
+
+							case 8:
+							{
+								if(isUint)
+								{
+									uint64_t value = va_arg(arg, uint64_t);
+									_uitostr64(value, base, string, lowerCase);
+								}
+								else
+								{
+									int64_t value = va_arg(arg, int64_t);
+									_itostr64(value, base, string, lowerCase);
+								}
+
+								break;
+							}
+
+							default:
+								break;
+						}
+					}
 					
 					while(*prefix != '\0')
 					{
@@ -197,6 +272,14 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					}
 					
 					
+					break;
+				}
+
+				case 'n':
+				{
+					int *value = va_arg(arg, int *);
+					*value = (int)written;
+
 					break;
 				}
 					

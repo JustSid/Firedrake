@@ -32,7 +32,10 @@ double atof(const char *string);
 
 #define STDLIBBUFFERLENGTH 128
 
-int _itostr(int i, int base, char *buffer, bool lowerCase); // Converts an integer to a string and copies the result into buffer
-int _uitostr(unsigned int i, int base, char *buffer, bool lowerCase);
+int _itostr(int32_t i, int base, char *buffer, bool lowerCase); // Converts an integer to a string and copies the result into buffer
+int _itostr64(int64_t i, int base, char *buffer, bool lowerCase);
+
+int _uitostr(uint32_t i, int base, char *buffer, bool lowerCase);
+int _uitostr64(uint64_t i, int base, char *buffer, bool lowerCase);
 
 #endif /* _STDLIB_H_ */
