@@ -125,11 +125,12 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 				case 'X':
 				case 'u':
 				{
-					int  base = (format[index] == 'i' || format[index] == 'd') ? 10 : 16;
-					bool pointer = (format[index] == 'p');
-					bool isUint = (format[index] == 'p' || format[index] == 'u' || format[index] == 'x');
+					char specifier = format[index];
+
+					int  base = (specifier == 'i' || specifier == 'u' || specifier == 'd') ? 10 : 16;
+					bool isUint = (specifier== 'p' || specifier == 'u' || specifier == 'x');
 					
-					char *prefix = (pointer) ? "0x" : "\0";
+					char *prefix = (specifier == 'p') ? "0x" : "\0";
 					char string[STDLIBBUFFERLENGTH];
 					
 					if(isUint)
