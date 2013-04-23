@@ -35,7 +35,7 @@
 					sizeBuffer = 2; \
 					index ++; \
 					\
-					if(format[index + 2] == 'h') \
+					if(format[index + 1] == 'h') \
 					{ \
 						sizeBuffer = 1; \
 						index ++; \
