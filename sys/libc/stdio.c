@@ -25,41 +25,6 @@
 #define kVsnprintfFlagForceSign  (1 << 1) // '+'
 #define kVsnprintfZeroPad		 (1 << 2) // '0'
 
-#define vsnprintfPeekSize(sizeBuffer) do { \
-		if(format[index + 1] != '\0') \
-		{ \
-			switch(format[index + 1]) \
-			{ \
-				case 'h': \
-				{ \
-					sizeBuffer = 2; \
-					index ++; \
-					\
-					if(format[index + 1] == 'h') \
-					{ \
-						sizeBuffer = 1; \
-						index ++; \
-					} \
-					\
-					break; \
-				} \
-				\
-				case 'l': \
-				{ \
-					sizeBuffer = 4; \
-					index ++; \
-					\
-					if(format[index + 1] == 'l') \
-					{ \
-						sizeBuffer = 8; \
-						index ++; \
-					} \
-					break; \
-				} \
-			} \
-		} \
-	} while(0)
-
 int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 {
 	size_t written = 0;
@@ -119,6 +84,39 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 				index ++;
 			}
 			
+			// Get the length
+			long typeLength = 4;
+
+			switch(format[index])
+			{
+				case 'h':
+				{
+					typeLength = 2;
+					index ++;
+					
+					if(format[index] == 'h')
+					{
+						typeLength = 1;
+						index ++;
+					}
+					
+					break;
+				}
+				
+				case 'l':
+				{
+					typeLength = 4;
+					index ++;
+
+					if(format[index] == 'l')
+					{
+						typeLength = 8;
+						index ++;
+					}
+
+					break;
+				}
+			}
 
 			switch(format[index])
 			{
@@ -177,10 +175,7 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					}
 					else
 					{
-						size_t size = 4;
-						vsnprintfPeekSize(size);
-
-						switch(size)
+						switch(typeLength)
 						{
 							case 1:
 							case 2:
