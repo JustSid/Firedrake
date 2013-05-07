@@ -29,6 +29,8 @@
 
 IORegisterClass(IOString, super);
 
+extern int __IOvsnprintf(char *buffer, size_t size, const char *format, va_list arg);
+
 // Factory methods
 
 IOString *IOString::withString(const IOString *other)
@@ -115,7 +117,7 @@ IOString *IOString::initWithFormat(const char *cstring, ...)
 		va_start(args, cstring);
 
 		char buffer[1024];
-		vsnprintf(buffer, 1024, cstring, args);
+		__IOvsnprintf(buffer, 1024, cstring, args);
 
 		_length = strlen(buffer);
 		_string = (char *)kalloc(_length + 1);
@@ -140,7 +142,7 @@ IOString *IOString::initWithVariadic(const char *format, va_list args)
 	if(init())
 	{
 		char buffer[1024];
-		vsnprintf(buffer, 1024, format, args);
+		__IOvsnprintf(buffer, 1024, format, args);
 
 		_length = strlen(buffer);
 		_string = (char *)kalloc(_length + 1);

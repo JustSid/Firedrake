@@ -54,15 +54,12 @@ void operator delete[](void *ptr)
 void libio_worker(IOThread *thread)
 {
 	IOAutoreleasePool *pool = IOAutoreleasePool::alloc()->init();
-
 	thread->setName(IOString::withCString("libio worker"));
-
-	pool->release();
 
 	while(1)
 	{
-		//pool->release();
-		//pool = IOAutoreleasePool::alloc()->init();
+		pool->release();
+		pool = IOAutoreleasePool::alloc()->init();
 
 		sd_yield();
 	}

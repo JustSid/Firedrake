@@ -84,6 +84,40 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 				index ++;
 			}
 			
+			// Get the length
+			long typeLength = 4;
+			switch(format[index])
+			{
+				case 'h':
+				{
+					typeLength = 2;
+					index ++;
+
+					if(format[index] == 'h')
+					{
+						typeLength = 1;
+						index ++;
+					}
+					break;
+				}
+
+				case 'i':
+				{
+					typeLength = 4;
+					index ++;
+
+					if(format[index] == 'i')
+					{
+						typeLength = 8;
+						index ++;
+					}
+
+					break;
+				}
+
+				default:
+					break;
+			}
 
 			switch(format[index])
 			{
@@ -126,25 +160,59 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 				case 'X':
 				case 'u':
 				{
-					int  base = (format[index] == 'i' || format[index] == 'd') ? 10 : 16;
-					bool pointer = (format[index] == 'p');
-					bool isUint = (format[index] == 'p' || format[index] == 'u' || format[index] == 'x');
-					
-					const char *prefix = (pointer) ? "0x" : "\0";
-					char string[STDLIBBUFFERLENGTH];
-					
-					if(isUint)
-					{
-						unsigned long value = va_arg(arg, unsigned long);
-						_uitostr(value, base, string, (format[index] == 'x'));
-					}
-					else 
-					{
-						long value = va_arg(arg, long);
-						_itostr(value, base, string, (format[index] == 'x'));
-					}
+					char character = format[index];
 
-				
+					int  base = (character == 'i' || character == 'd' || character == 'u') ? 10 : 16;
+					bool isUint = (character == 'u' || character == 'x');
+					bool lowercase = (character == 'x');
+					
+					const char *prefix = (character == 'p') ? "0x" : "\0";
+					char string[STDLIBBUFFERLENGTH];
+
+					if(character == 'p')
+					{
+						void *value = va_arg(arg, void *);
+						_uitostr((uint32_t)value, base, string, false);
+					}
+					else
+					{
+						switch(typeLength)
+						{
+							case 1:
+							case 2:
+							case 4:
+							{
+								if(isUint)
+								{
+									uint32_t value = va_arg(arg, uint32_t);
+									_uitostr(value, base, string, lowercase);
+								}
+								else
+								{
+									int32_t value = va_arg(arg, int32_t);
+									_itostr(value, base, string, lowercase);
+								}
+
+								break;
+							}
+
+							case 8:
+							{
+								if(isUint)
+								{
+									uint64_t value = va_arg(arg, uint64_t);
+									_uitostr64(value, base, string, lowercase);
+								}
+								else
+								{
+									int64_t value = va_arg(arg, int64_t);
+									_itostr64(value, base, string, lowercase);
+								}
+
+								break;
+							}
+						}
+					}
 					
 					while(*prefix != '\0')
 					{

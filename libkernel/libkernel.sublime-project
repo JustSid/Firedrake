@@ -34,7 +34,7 @@
         {
             "name": "Build Firedrake",
             "working_dir": "${project_path}",
-			"cmd": ["exec ./../remotebuild.sh"],
+			"cmd": ["exec ./../build.sh"],
 			"shell": true,
 			"path": "/usr/local/bin:/usr/bin:",
 			"selector": "source.c, source.c++, source.asm",
@@ -43,15 +43,15 @@
 			[
 				{
 					"name": "Run",
-					"cmd": ["exec ./../executeqemu.sh"]
+					"cmd": ["exec ./../build.sh --run"]
 				},
 				{
 					"name": "Instrument",
-					"cmd": ["exec ./../executeqemu.sh --debug"]
+					"cmd": ["exec ./../build.sh --run"]
 				},
 				{
 					"name": "Clean",
-					"cmd": ["exec ./../remotebuild.sh --clean"]
+					"cmd": ["exec ./../build.sh --run"]
 				}
 			]
 		}

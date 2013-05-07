@@ -29,4 +29,7 @@ kern_extern int atoi(const char *string);
 kern_extern int _itostr(int i, int base, char *buffer, bool lowerCase); // Converts an integer to a string and copies the result into buffer
 kern_extern int _uitostr(unsigned int i, int base, char *buffer, bool lowerCase);
 
+kern_extern int _itostr64(int64_t i, int base, char *buffer, bool lowerCase);
+kern_extern int _uitostr64(uint64_t i, int base, char *buffer, bool lowerCase);
+
 #endif /* _LIBKERNEL_STDLIB_H_ */

@@ -283,6 +283,10 @@ const char *__io_exportedSymbolNames[] = {
 	"panic",
 	"__io_primitiveLog",
 	"sys_checkCommandline",
+	"__divdi3",
+	"__moddi3",
+	"__udivdi3",
+	"__umoddi3",
 	// Threads
 	"sd_yield",
 	"__io_threadCreate",
