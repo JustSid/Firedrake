@@ -50,6 +50,9 @@ void list_unlock(list_t *list);
 void *list_addBack(list_t *list);
 void *list_addFront(list_t *list);
 
+void list_insertBack(list_t *list, void *entry);
+void list_insertFront(list_t *list, void *entry);
+
 void list_remove(list_t *list, void *entry);
 
 size_t list_count(list_t *list);

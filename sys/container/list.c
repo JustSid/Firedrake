@@ -71,8 +71,6 @@ void list_unlock(list_t *list)
 
 void *list_addBack(list_t *list)
 {
-	spinlock_lock(&list->internalLock);
-
 	void *entry = halloc(NULL, list->entrySize);
 	if(entry)
 	{
@@ -90,27 +88,14 @@ void *list_addBack(list_t *list)
 			}
 		}
 
-		list_accessNext(list, entry) = NULL;
-		list_accessPrev(list, entry) = list->last;
-
-		if(list->last)
-			list_accessNext(list, list->last) = entry;
-
-		list->last = entry;
-		list->count ++;
-
-		if(list->first == NULL)
-			list->first = entry;
+		list_insertBack(list, entry);
 	}
 
-	spinlock_unlock(&list->internalLock);
 	return entry;
 }
 
 void *list_addFront(list_t *list)
 {
-	spinlock_lock(&list->internalLock);
-
 	void *entry = halloc(NULL, list->entrySize);
 	if(entry)
 	{
@@ -128,21 +113,48 @@ void *list_addFront(list_t *list)
 			}
 		}
 
-		list_accessNext(list, entry) = list->first;
-		list_accessPrev(list, entry) = NULL;
-
-		if(list->first)
-			list_accessPrev(list, list->first) = entry;
-
-		list->first = entry;
-		list->count ++;
-
-		if(list->last == NULL)
-			list->last = entry;
+		list_insertFront(list, entry);
 	}
 
-	spinlock_unlock(&list->internalLock);
 	return entry;
+}
+
+void list_insertBack(list_t *list, void *entry)
+{
+	spinlock_lock(&list->internalLock);
+
+	list_accessNext(list, entry) = NULL;
+	list_accessPrev(list, entry) = list->last;
+
+	if(list->last)
+		list_accessNext(list, list->last) = entry;
+
+	list->last = entry;
+	list->count ++;
+
+	if(list->first == NULL)
+		list->first = entry;
+
+	spinlock_unlock(&list->internalLock);
+}
+
+void list_insertFront(list_t *list, void *entry)
+{
+	spinlock_lock(&list->internalLock);
+
+	list_accessNext(list, entry) = list->first;
+	list_accessPrev(list, entry) = NULL;
+
+	if(list->first)
+		list_accessPrev(list, list->first) = entry;
+
+	list->first = entry;
+	list->count ++;
+
+	if(list->last == NULL)
+		list->last = entry;
+
+	spinlock_unlock(&list->internalLock);
 }
 
 void list_remove(list_t *list, void *entry)
