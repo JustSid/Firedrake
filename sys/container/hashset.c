@@ -38,7 +38,7 @@ static size_t hashset_maxCount[42] =
 }; 
 
 
-hashset_t *hashset_create(size_t capacity, hashset_hashfunc_t hashFunction)
+hashset_t *hashset_create(size_t capacity, hashset_hashfunc_t hashFunction, hashset_comparefunc_t compareFunction)
 {
 	hashset_t *set = halloc(NULL, sizeof(hashset_t));
 	if(set)
@@ -67,6 +67,8 @@ hashset_t *hashset_create(size_t capacity, hashset_hashfunc_t hashFunction)
 		set->count = 0;
 
 		set->hashFunction = hashFunction;
+		set->compareFunction = compareFunction ? compareFunction : hash_pointerCompare;
+
 		set->lock = SPINLOCK_INIT;
 	}
 
@@ -111,7 +113,7 @@ array_t *hashset_allObjects(hashset_t *set)
 	return array;
 }
 
-hashset_bucket_t *hashset_findBucket1(hashset_t *set, void *key)
+hashset_bucket_t *hashset_findBucket1(hashset_t *set, const void *key)
 {
 	uint32_t hash = set->hashFunction(key);
 	size_t index = hash % set->capacity;
@@ -119,7 +121,7 @@ hashset_bucket_t *hashset_findBucket1(hashset_t *set, void *key)
 	hashset_bucket_t *bucket = set->buckets[index];
 	while(bucket)
 	{
-		if(bucket->key == key)
+		if(set->compareFunction(bucket->key, key))
 			return bucket;
 
 		bucket = bucket->overflow;
@@ -128,7 +130,7 @@ hashset_bucket_t *hashset_findBucket1(hashset_t *set, void *key)
 	return NULL;
 }
 
-hashset_bucket_t *hashset_findBucket2(hashset_t *set, void *key)
+hashset_bucket_t *hashset_findBucket2(hashset_t *set, const void *key)
 {
 	uint32_t hash = set->hashFunction(key);
 	size_t index = hash % set->capacity;
@@ -136,7 +138,7 @@ hashset_bucket_t *hashset_findBucket2(hashset_t *set, void *key)
 	hashset_bucket_t *bucket = set->buckets[index];
 	while(bucket)
 	{
-		if(bucket->key == key)
+		if(set->compareFunction(bucket->key, key))
 			return bucket;
 		
 		bucket = bucket->overflow;
@@ -243,13 +245,13 @@ void hashset_unlock(hashset_t *set)
 }
 
 
-void *hashset_objectForKey(hashset_t *set, void *key)
+void *hashset_objectForKey(hashset_t *set, const void *key)
 {
 	hashset_bucket_t *bucket = hashset_findBucket1(set, key);
 	return bucket ? bucket->data : NULL;
 }
 
-void hashset_removeObjectForKey(hashset_t *set, void *key)
+void hashset_removeObjectForKey(hashset_t *set, const void *key)
 {
 	hashset_bucket_t *bucket = hashset_findBucket1(set, key);
 	if(bucket)
@@ -262,7 +264,7 @@ void hashset_removeObjectForKey(hashset_t *set, void *key)
 	}
 }
 
-void hashset_setObjectForKey(hashset_t *set, void *data, void *key)
+void hashset_setObjectForKey(hashset_t *set, void *data, const void *key)
 {
 	if(!data)
 	{
@@ -295,7 +297,7 @@ void *hashset_iteratorGetNextObject(hashset_t *set, uintptr_t *__bucket, uint32_
 		if(bucket->data)
 		{
 			*__bucket = (uintptr_t)bucket->overflow;
-			return (object) ? bucket->data : bucket->key;
+			return (object) ? bucket->data : (void *)bucket->key;
 		}
 
 		bucket = bucket->overflow;
@@ -313,7 +315,7 @@ void *hashset_iteratorGetNextObject(hashset_t *set, uintptr_t *__bucket, uint32_
 				*__bucket = (uintptr_t)bucket->overflow;
 				*__index = index + 1;
 
-				return (object) ? bucket->data : bucket->key;
+				return (object) ? bucket->data : (void *)bucket->key;
 			}
 
 			bucket = bucket->overflow;
@@ -357,12 +359,12 @@ iterator_t *hashset_keyIterator(hashset_t *set)
 
 // Hashing functions
 
-uint32_t hash_pointer(void *key)
+uint32_t hash_pointer(const void *key)
 {
 	return (uint32_t)key;
 }
 
-uint32_t hash_cstring(void *key)
+uint32_t hash_cstring(const void *key)
 {
 	uint8_t *string = (uint8_t *)key;
 
@@ -385,4 +387,31 @@ uint32_t hash_cstring(void *key)
 	}
 	
 	return (result << (length & 31));
+}
+
+// Source: http://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
+uint32_t hash_integer(const void *key)
+{
+	uint32_t ikey = (uint32_t)key;
+
+	ikey = ((ikey >> 16) ^ ikey) * 0x45D9F3B;
+	ikey = ((ikey >> 16) ^ ikey) * 0x45D9F3B;
+	ikey = ((ikey >> 16) ^ ikey);
+
+	return ikey;
+}
+
+bool hash_pointerCompare(const void *key1, const void *key2)
+{
+	return (key1 == key2);
+}
+
+bool hash_cstringCompare(const void *key1, const void *key2)
+{
+	return (strcmp((const char *)key1, (const char *)key2) == 0);
+}
+
+bool hash_integerCompare(const void *key1, const void *key2)
+{
+	return (key1 == key2);
 }

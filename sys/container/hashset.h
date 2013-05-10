@@ -27,12 +27,13 @@
 
 typedef struct hashset_bucket_s
 {
-	void *key;
+	const void *key;
 	void *data;
 	struct hashset_bucket_s *overflow;
 } hashset_bucket_t;
 
-typedef uint32_t (*hashset_hashfunc_t)(void *);
+typedef uint32_t (*hashset_hashfunc_t)(const void *);
+typedef bool (*hashset_comparefunc_t)(const void *, const void *);
 
 typedef struct
 {
@@ -40,12 +41,14 @@ typedef struct
 	size_t count;
 
 	hashset_bucket_t **buckets;
+
 	hashset_hashfunc_t hashFunction;
+	hashset_comparefunc_t compareFunction;
 
 	spinlock_t lock;
 } hashset_t;
 
-hashset_t *hashset_create(size_t capacity, hashset_hashfunc_t hashFunction);
+hashset_t *hashset_create(size_t capacity, hashset_hashfunc_t hashFunction, hashset_comparefunc_t compareFunction);
 void hashset_destroy(hashset_t *set);
 
 array_t *hashset_allObjects(hashset_t *set);
@@ -53,9 +56,9 @@ array_t *hashset_allObjects(hashset_t *set);
 void hashset_lock(hashset_t *set);
 void hashset_unlock(hashset_t *set);
 
-void *hashset_objectForKey(hashset_t *set, void *key);
-void hashset_removeObjectForKey(hashset_t *set, void *key);
-void hashset_setObjectForKey(hashset_t *set, void *data, void *key);
+void *hashset_objectForKey(hashset_t *set, const void *key);
+void hashset_removeObjectForKey(hashset_t *set, const void *key);
+void hashset_setObjectForKey(hashset_t *set, void *data, const void *key);
 
 uint32_t hashset_count(hashset_t *set);
 
@@ -63,8 +66,12 @@ iterator_t *hashset_iterator(hashset_t *set);
 iterator_t *hashset_keyIterator(hashset_t *set);
 
 // Hashing functions
+uint32_t hash_pointer(const void *key);
+uint32_t hash_cstring(const void *key);
+uint32_t hash_integer(const void *key);
 
-uint32_t hash_pointer(void *key);
-uint32_t hash_cstring(void *key);
+bool hash_pointerCompare(const void *key1, const void *key2);
+bool hash_cstringCompare(const void *key1, const void *key2);
+bool hash_integerCompare(const void *key1, const void *key2);
 
 #endif /* _HASHSET_H_ */

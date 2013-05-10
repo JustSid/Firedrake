@@ -42,7 +42,7 @@ void test_hashset()
 
 void _test_hashset_creation()
 {
-	hashset_t *set = hashset_create(0, hash_cstring);
+	hashset_t *set = hashset_create(0, hash_cstring, hash_cstringCompare);
 
 	KUAssertNotNull(set, "The hashset must not be NULL");
 	KUAssertNotNull(set->buckets, "The hashset must have buckets!");
@@ -54,7 +54,7 @@ void _test_hashset_creation()
 
 void _test_hashset_insertion()
 {
-	hashset_t *set = hashset_create(0, hash_cstring);
+	hashset_t *set = hashset_create(0, hash_cstring, hash_cstringCompare);
 
 	hashset_setObjectForKey(set, (void *)(0x100), "Key1");
 	hashset_setObjectForKey(set, (void *)(0x200), "Key2");
@@ -67,7 +67,7 @@ void _test_hashset_insertion()
 
 void _test_hashset_deletion()
 {
-	hashset_t *set = hashset_create(0, hash_cstring);
+	hashset_t *set = hashset_create(0, hash_cstring, hash_cstringCompare);
 
 	hashset_setObjectForKey(set, (void *)(0x100), "Key1");
 	hashset_setObjectForKey(set, (void *)(0x200), "Key2");
@@ -92,7 +92,7 @@ void _test_hashset_deletion()
 
 void _test_hashset_lookup()
 {
-	hashset_t *set = hashset_create(0, hash_cstring);
+	hashset_t *set = hashset_create(0, hash_cstring, hash_cstringCompare);
 
 	hashset_setObjectForKey(set, (void *)(0x100), "Key1");
 	hashset_setObjectForKey(set, (void *)(0x200), "Key2");
@@ -121,7 +121,7 @@ void _test_hashset_stressTest()
 {
 	for(uint32_t iteration=0; iteration<10; iteration++)
 	{
-		hashset_t *set = hashset_create(0, hash_cstring);
+		hashset_t *set = hashset_create(0, hash_cstring, hash_cstringCompare);
 		heap_t *heap = heap_create(kHeapFlagSecure | kHeapFlagAligned);
 
 		for(uint32_t i=0; i<kHashsetStressTestCount; i++)
