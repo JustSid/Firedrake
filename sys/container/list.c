@@ -159,6 +159,12 @@ void list_insertFront(list_t *list, void *entry)
 
 void list_remove(list_t *list, void *entry)
 {
+	list_removeSoft(list, entry);
+	hfree(NULL, entry);
+}
+
+void list_removeSoft(list_t *list, void *entry)
+{
 	spinlock_lock(&list->internalLock);
 	
 	void *next = list_accessNext(list, entry);
@@ -177,8 +183,6 @@ void list_remove(list_t *list, void *entry)
 		list->last = prev;
 
 	list->count --;
-	hfree(NULL, entry);
-
 	spinlock_unlock(&list->internalLock);
 }
 

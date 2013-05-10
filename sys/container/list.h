@@ -54,6 +54,7 @@ void list_insertBack(list_t *list, void *entry);
 void list_insertFront(list_t *list, void *entry);
 
 void list_remove(list_t *list, void *entry);
+void list_removeSoft(list_t *list, void *entry);
 
 size_t list_count(list_t *list);
 
