@@ -366,27 +366,22 @@ uint32_t hash_pointer(const void *key)
 
 uint32_t hash_cstring(const void *key)
 {
-	uint8_t *string = (uint8_t *)key;
+	const uint8_t *string = key;
+	size_t   length = strlen((const char *)string);
+	uint32_t result = 0;
 
-	size_t length = strlen((const char *)string);
-	uint32_t result = length;
-
-	if(length <= 16) 
+	for(size_t i=0; i<length; i++)
 	{
-		for(size_t i=0; i<length; i++) 
-			result = result * 257 + string[i];
-	} 
-	else 
-	{
-		// Hash the first and last 8 bytes
-		for(size_t i=0; i<8; i++) 
-			result = result * 257 + string[i];
-		
-		for(size_t i=length - 8; i<length; i++) 
-			result = result * 257 + string[i];
+		result += string[i];
+		result += (result << 10);
+		result += (result >> 6);
 	}
-	
-	return (result << (length & 31));
+
+	result += (result << 3);
+	result += (result >> 11);
+	result += (result << 15);
+
+	return result;
 }
 
 // Source: http://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
