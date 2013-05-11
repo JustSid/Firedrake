@@ -17,22 +17,20 @@
 //
 
 #include <container/array.h>
+#include <libc/stdio.h>
+#include <libc/string.h>
 #include <system/lock.h>
 #include <system/syslog.h>
 #include <system/helper.h>
 #include <ioglue/iostore.h>
 #include <ioglue/iomodule.h>
 #include <scheduler/scheduler.h>
+#include <vfs/vfs.h>
 
 #include "ioglued.h"
 
 static spinlock_t __ioglued_lock = SPINLOCK_INIT_LOCKED;
 static array_t *__ioglued_modulesToStop = NULL;
-
-const char *ioglued_modules[] = {
-	"libPCI.so",
-	"libRTL8139.so"
-};
 
 void __ioglued_addReferencelessModule(io_module_t *module)
 {
@@ -56,15 +54,35 @@ void ioglued()
 			sd_yield();
 	}
 
-	size_t size = sizeof(ioglued_modules) / sizeof(const char *);
-	for(size_t i=0; i<size; i++)
+	// Load all libraries in the /lib folder
+	int error;
+	int fd = vfs_open("/lib", O_RDONLY, &error);
+	if(fd >= 0)
 	{
-		const char *name = ioglued_modules[i];
-		io_module_t *module = io_moduleWithName(name);
+		vfs_directory_entry_t buffer[5];
+		off_t read;
 
-		if(!module)
-			dbg("ioglued: Failed to publish \"%s\"\n", name);
+		while((read = vfs_readDir(fd, buffer, 5, &error)) > 0)
+		{
+			for(off_t i=0; i<read; i++)
+			{
+				const char *name = buffer[i].name;
+
+				if(strcmp(name, "libio.so") == 0 || strcmp(name, "libkernel.so") == 0)
+					continue;
+
+				char path[256];
+				sprintf(path, "/lib/%s", name);
+
+				io_module_t *module = io_moduleWithName(path);
+				if(!module)
+					dbg("ioglued: Failed to publish \"%s\"\n", name);
+			}
+		}
+
+		vfs_close(fd);
 	}
+
 
 	while(1) 
 	{

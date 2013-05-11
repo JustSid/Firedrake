@@ -251,8 +251,8 @@ bool io_init(__unused void *data)
 		return true;
 
 	// Load the two essential kernel libraries
-	__io_libkernel = io_libraryCreateWithFile("libkernel.so");
-	__io_libio     = io_libraryCreateWithFile("libio.so");
+	__io_libkernel = io_libraryCreateWithFile("/lib/libkernel.so");
+	__io_libio     = io_libraryCreateWithFile("/lib/libio.so");
 
 	if(__io_libkernel && __io_libio)
 	{

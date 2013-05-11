@@ -21,6 +21,7 @@
 #include <system/helper.h>
 #include <system/syslog.h>
 #include <libc/string.h>
+#include <vfs/vfs.h>
 
 #include "iolibrary.h"
 #include "iostore.h"
@@ -453,13 +454,23 @@ io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, __unused size_
 
 io_library_t *io_libraryCreateWithFile(const char *file)
 {
-	struct multiboot_module_s *module = sys_multibootModuleWithName(file);
-	if(module)
+	int error;
+	int fd = vfs_open(file, O_RDONLY, &error);
+	if(fd >= 0)
 	{
-		uint8_t *begin = (uint8_t *)module->start;
-		uint8_t *end = (uint8_t *)module->end;
+		size_t size = vfs_seek(fd, 0, SEEK_END, &error);
+		size_t pages = pageCount(size);
+		uint8_t *buffer = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 
-		return io_libraryCreate(file, begin, (size_t)(end - begin));
+		vfs_seek(fd, 0, SEEK_SET, &error);
+		vfs_read(fd, buffer, size, &error);
+
+		io_library_t *library = io_libraryCreate(file, buffer, size);
+
+		mm_free(buffer, vm_getKernelDirectory(), pages);
+		vfs_close(fd);
+
+		return library;
 	}
 
 	return NULL;

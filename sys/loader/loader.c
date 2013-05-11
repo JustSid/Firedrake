@@ -21,7 +21,7 @@
 #include <system/elf.h>
 #include <system/helper.h>
 #include <system/syslog.h>
-
+#include <vfs/vfs.h>
 #include "loader.h"
 
 ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *begin, __unused size_t size)
@@ -96,13 +96,23 @@ ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 
 ld_exectuable_t *ld_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file)
 {
-	struct multiboot_module_s *module = sys_multibootModuleWithName(file);
-	if(module)
+	int error;
+	int fd = vfs_open(file, O_RDONLY, &error);
+	if(fd >= 0)
 	{
-		uint8_t *begin = (uint8_t *)module->start;
-		uint8_t *end = (uint8_t *)module->end;
+		size_t size = vfs_seek(fd, 0, SEEK_END, &error);
+		size_t pages = pageCount(size);
+		uint8_t *buffer = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 
-		return ld_exectuableCreate(pdirectory, begin, (size_t)(end - begin));
+		vfs_seek(fd, 0, SEEK_SET, &error);
+		vfs_read(fd, buffer, size, &error);
+
+		ld_exectuable_t *executable = ld_exectuableCreate(pdirectory, buffer, size);
+		
+		mm_free(buffer, vm_getKernelDirectory(), pages);
+		vfs_close(fd);
+
+		return executable;
 	}
 
 	return NULL;
