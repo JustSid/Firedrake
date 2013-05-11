@@ -19,6 +19,6 @@
 #ifndef _SYSCALL_H_
 #define _SYSCALL_H_
 
-unsigned int syscall(int type, ...);
+unsigned int _crt_syscall(int type, ...);
 
 #endif

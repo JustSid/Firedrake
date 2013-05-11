@@ -19,9 +19,9 @@
 // We ignore the error code in this syscall function
 // the reason is that we don't errno defined and can't link against anything here, also, the only place we use a syscall is when we terminate the main process
 // in which case any possible error doesn't matter
-.global syscall
-syscall:
+.global _crt_syscall
+
+_crt_syscall:
 	movl 0x4(%esp), %eax
-	movl $0x0, %ecx
 	int  $0x80
 	ret
