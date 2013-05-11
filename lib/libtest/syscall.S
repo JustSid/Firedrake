@@ -26,7 +26,9 @@ syscall:
 	jecxz syscall_noError
 
 	pushl %ecx
+	pushl %eax
 	call __tls_setErrno
+	popl %eax
 	popl %ecx
 
 syscall_noError:
