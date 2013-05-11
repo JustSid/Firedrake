@@ -34,6 +34,7 @@
 #include <ioglue/iostore.h>
 #include <system/time.h>
 #include <system/cpu.h>
+#include <vfs/vfs.h>
 
 const char *kVersionBeast    = "Nidhogg";
 const char *kVersionAppendix = "";
@@ -83,6 +84,7 @@ void sys_boot(struct multiboot_s *info)
 	sys_init("time keeping", time_init, NULL, true); // Requires that interrupts are disabled, including NMI. So must be done before the scheduler kicks in and enables them
 	sys_init("scheduler", sd_init, NULL, true); // Requires interrupts!
 	sys_init("syscalls", sc_init, NULL, true); // Requires interrupts!
+	sys_init("vfs", vfs_init, NULL, true);
 	sys_init("ioglue", io_init, NULL, true);
 
 	dbg("\n");

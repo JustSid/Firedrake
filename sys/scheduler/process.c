@@ -19,10 +19,10 @@
 #include <errno.h>
 #include <memory/memory.h>
 #include <system/syslog.h>
-#include <libc/assert.h>
 #include <syscall/scmmap.h>
 #include <libc/string.h>
 #include <interrupts/trampoline.h>
+#include <vfs/vfs.h>
 #include "process.h"
 #include "scheduler.h"
 
@@ -48,17 +48,22 @@ process_t *process_createVoid(int *errno)
 		process->pid   = _process_getUniqueID();
 		process->died  = false;
 		process->ring0 = false;
+		process->lock  = SPINLOCK_INIT;
 
 		process->parent 	= parent ? parent->pid : PROCESS_NULL;
 		process->pprocess 	= parent;
 
 		process->image       = NULL;
 		process->pdirectory  = NULL;
+		process->context     = NULL;
 
 		process->startTime = time_getTimestamp();
 		process->usedTime  = 0;
 
 		process->mappings = list_create(sizeof(mmap_description_t), offsetof(mmap_description_t, listNext), offsetof(mmap_description_t, listPrev));
+
+		memset(&process->files, 0, kSDMaxOpenFiles * sizeof(vfs_file_t *));
+		process->openFiles = 0;
 
 		process->threadLock = SPINLOCK_INIT;
 		process->mainThread = NULL;
@@ -117,6 +122,10 @@ process_t *process_createWithFile(const char *name, int *errno)
 		if(!process->image)
 			PROCESS_BAILWITHERROR(process, ENOMEM);
 
+		process->context = vfs_contextCreate(process->pdirectory);
+		if(!process->context)
+			PROCESS_BAILWITHERROR(process, ENOMEM);
+
 		thread_t *thread = thread_create(process, (thread_entry_t)process->image->entry, 4 * 4096, errno, 0);
 		if(!thread)
 		{
@@ -144,6 +153,12 @@ process_t *process_fork(process_t *parent, int *errno)
 		child->image = ld_exectuableCopy(child->pdirectory, parent->image);
 		child->ring0 = parent->ring0;
 
+		child->context = vfs_contextCreate(child->pdirectory);
+		if(!child->context)
+			PROCESS_BAILWITHERROR(child, ENOMEM);
+
+		child->context->chdir = parent->context->chdir;
+
 		thread_t *thread = thread_clone(child, parent->scheduledThread, errno);
 		if(!thread)
 		{
@@ -169,6 +184,7 @@ process_t *process_forgeInitialProcess()
 	{		
 		process->pdirectory = vm_getKernelDirectory();
 		process->ring0      = true;
+		process->context    = vfs_getKernelContext();
 
 		thread_create(process, NULL, 4096, NULL, 0);
 		_process_setFirstProcess(process);
@@ -219,6 +235,9 @@ void process_destroy(process_t *process)
 	if(process->image)
 		ld_executableRelease(process->image);
 
+	if(process->context)
+		vfs_contextDelete(process->context);
+
 	// Remove all mappings
 	mmap_description_t *description = list_first(process->mappings);
 	while(description)
@@ -236,3 +255,49 @@ void process_destroy(process_t *process)
 	list_destroy(process->mappings);
 	hfree(NULL, process);
 }
+
+void process_lock(process_t *process)
+{
+	spinlock_lock(&process->lock);
+}
+void process_unlock(process_t *process)
+{
+	spinlock_unlock(&process->lock);
+}
+
+
+int process_allocateFiledescriptor(process_t *process)
+{
+	for(int i=0; i<kSDMaxOpenFiles; i++)
+	{
+		if(process->files[i] == NULL)
+		{
+			process->files[i] = kSDInvalidFile;
+			return i;
+		}
+	}
+
+	return -1;
+}
+void process_setFileForFiledescriptor(process_t *process, int fd, struct vfs_file_s *file)
+{
+	if(fd >= kSDMaxOpenFiles)
+		return;
+
+	process->files[fd] = file;
+}
+void process_releaseFiledescriptor(process_t *process, int fd)
+{
+	if(fd >= kSDMaxOpenFiles)
+		return;
+
+	process->files[fd] = NULL;
+}
+struct vfs_file_s *process_fileWithFiledescriptor(process_t *process, int fd)
+{
+	if(fd >= kSDMaxOpenFiles)
+		return NULL;
+
+	return process->files[fd];
+}
+

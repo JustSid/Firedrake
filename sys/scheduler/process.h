@@ -28,12 +28,21 @@
 #include <loader/loader.h>
 #include "thread.h"
 
+struct vfs_file_s;
+struct vfs_context_s;
+
+#define kSDMaxOpenFiles 512
+#define kSDInvalidFile ((struct vfs_file_s *)-1)
+
 typedef struct process_s
 {
 	vm_page_directory_t pdirectory;
+	struct vfs_context_s *context;
 
 	pid_t pid;
 	pid_t parent;
+
+	spinlock_t lock;
 
 	bool died; // True if the process can be collected by the scheduler.
 	bool ring0;
@@ -50,6 +59,9 @@ typedef struct process_s
 
 	list_t *mappings; // used for mmap() 
 
+	struct vfs_file_s *files[kSDMaxOpenFiles];
+	size_t openFiles;
+
 	struct process_s *pprocess; // Parent
 	struct process_s *next;
 } process_t;
@@ -62,5 +74,13 @@ process_t *process_getWithPid(pid_t pid);
 
 process_t *process_getCurrentProcess();
 process_t *process_getParent();
+
+void process_lock(process_t *process);
+void process_unlock(process_t *process);
+
+int process_allocateFiledescriptor(process_t *process);
+void process_setFileForFiledescriptor(process_t *process, int fd, struct vfs_file_s *file);
+void process_releaseFiledescriptor(process_t *process, int fd);
+struct vfs_file_s *process_fileWithFiledescriptor(process_t *process, int fd);
 
 #endif /* _PROCESS_H_ */

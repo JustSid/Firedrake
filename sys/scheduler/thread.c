@@ -227,7 +227,7 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 
 		// Map the user stack
 		thread->userStackPages = stackPages;
-		thread->userStackVirt  = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)thread->userStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_USERLAND);
+		thread->userStackVirt  = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)thread->userStack, THREAD_STACK_LIMIT, stackPages, VM_FLAGS_USERLAND);
 
 		if(!thread->userStackVirt)
 			THREAD_BAILWITHERROR(ENOMEM);

@@ -57,6 +57,7 @@ typedef long 			intptr_t;
 typedef unsigned long 	uintptr_t;
 
 typedef size_t  offset_t;
+typedef int32_t off_t;
 typedef int32_t pid_t;
 
 #define kCompareLesserThan -1

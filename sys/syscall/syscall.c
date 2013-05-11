@@ -112,6 +112,7 @@ void sc_setSyscallHandler(uint32_t syscall, syscall_callback_t callback)
 void _sc_processInit();
 void _sc_threadInit();
 void _sc_mmapInit();
+void _sc_vfsInit();
 
 bool sc_init(__unused void *data)
 {
@@ -122,6 +123,7 @@ bool sc_init(__unused void *data)
 	_sc_processInit();
 	_sc_threadInit();
 	_sc_mmapInit();
+	_sc_vfsInit();
 
 	return true;
 }

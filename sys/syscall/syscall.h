@@ -43,8 +43,18 @@
 #define SYS_MMAP          19
 #define SYS_MUNMAP        20
 #define SYS_MPROTECT      21
+#define SYS_OPEN          22
+#define SYS_CLOSE         23
+#define SYS_READ          24
+#define SYS_WRITE         25
+#define SYS_SEEK          26
+#define SYS_DIRREAD       27
+#define SYS_MKDIR         28
+#define SYS_REMOVE        29
+#define SYS_MOVE          30
+#define SYS_STAT          31
 
-void *sc_mapProcessMemory(void *memory, vm_address_t *mappedBase, size_t pages, int *errno);
+void *sc_mapProcessMemory(const void *memory, vm_address_t *mappedBase, size_t pages, int *errno);
 
 typedef uint32_t (*syscall_callback_t)(uint32_t *esp, uint32_t *uesp, int *errno);
 
