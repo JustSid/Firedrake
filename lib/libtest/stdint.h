@@ -63,6 +63,9 @@ typedef uint32_t 		size_t;
 typedef long 			intptr_t;
 typedef unsigned long 	uintptr_t;
 
+typedef int32_t off_t;
+typedef uint64_t timestamp_t;
+
 // MARK: Fixed size integer constraints
 #define INT8_C(v)   (v)
 #define INT16_C(v)  (v)

@@ -1,5 +1,5 @@
 //
-//  syscall.h
+//  unistd.h
 //  libtest
 //
 //  Created by Sidney Just
@@ -16,41 +16,51 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYSCALL_H_
-#define _SYSCALL_H_
+#ifndef _UNISTD_H_
+#define _UNISTD_H_
 
 #include "stdint.h"
+#define kVFSMaxFilenameLength 256
 
-#define SYS_PRINT         0
-#define SYS_EXIT          1
-#define SYS_PID           2
-#define SYS_PPID          3
-#define SYS_FORK          4
-#define SYS_WAIT          5
-#define SYS_THREADYIELD   6
-#define SYS_THREADSLEEP   7
-#define SYS_THREADATTACH  8
-#define SYS_THREADEXIT    9
-#define SYS_THREADJOIN    10
-#define SYS_THREADSELF    11
-#define SYS_TLS_AREA      12
-#define SYS_PROCESSCREATE 17
-#define SYS_PROCESSKILL   18
-#define SYS_MMAP          19
-#define SYS_MUNMAP        20
-#define SYS_MPROTECT      21
+typedef enum
+{
+	vfs_nodeTypeFile,
+	vfs_nodeTypeDirectory,
+	vfs_nodeTypeLink
+} vfs_node_type_t;
 
-#define SYS_OPEN          22
-#define SYS_CLOSE         23
-#define SYS_READ          24
-#define SYS_WRITE         25
-#define SYS_SEEK          26
-#define SYS_DIRREAD       27
-#define SYS_MKDIR         28
-#define SYS_REMOVE        29
-#define SYS_MOVE          30
-#define SYS_STAT          31
+typedef struct
+{
+	vfs_node_type_t type;
+	char name[kVFSMaxFilenameLength];
 
-uint32_t syscall(int type, ...);
+	uint32_t id;
+	size_t   size;
+
+	timestamp_t atime;
+	timestamp_t mtime;
+	timestamp_t ctime;
+} vfs_stat_t;
+
+typedef struct vfs_directory_entry_s
+{
+	uint32_t id;
+	char name[kVFSMaxFilenameLength];
+	vfs_node_type_t type;
+} vfs_directory_entry_t;
+
+
+int open(const char *path, int flags);
+void close(int fd);
+
+size_t read(int fd, void *buffer, size_t count);
+size_t write(int fd, const void *buffer, size_t count);
+off_t lseek(int fd, off_t offset, int whence);
+off_t readdir(int fd, vfs_directory_entry_t *entp, uint32_t count);
+
+int mkdir(const char *path);
+int remove(const char *path);
+int move(const char *source, const char *target);
+int stat(const char *path, vfs_stat_t *stat);
 
 #endif

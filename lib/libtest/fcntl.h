@@ -1,5 +1,5 @@
 //
-//  syscall.h
+//  fcntl.h
 //  libtest
 //
 //  Created by Sidney Just
@@ -16,41 +16,19 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYSCALL_H_
-#define _SYSCALL_H_
+#ifndef _FCNTL_H_
+#define _FCNTL_H_
 
-#include "stdint.h"
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 
-#define SYS_PRINT         0
-#define SYS_EXIT          1
-#define SYS_PID           2
-#define SYS_PPID          3
-#define SYS_FORK          4
-#define SYS_WAIT          5
-#define SYS_THREADYIELD   6
-#define SYS_THREADSLEEP   7
-#define SYS_THREADATTACH  8
-#define SYS_THREADEXIT    9
-#define SYS_THREADJOIN    10
-#define SYS_THREADSELF    11
-#define SYS_TLS_AREA      12
-#define SYS_PROCESSCREATE 17
-#define SYS_PROCESSKILL   18
-#define SYS_MMAP          19
-#define SYS_MUNMAP        20
-#define SYS_MPROTECT      21
-
-#define SYS_OPEN          22
-#define SYS_CLOSE         23
-#define SYS_READ          24
-#define SYS_WRITE         25
-#define SYS_SEEK          26
-#define SYS_DIRREAD       27
-#define SYS_MKDIR         28
-#define SYS_REMOVE        29
-#define SYS_MOVE          30
-#define SYS_STAT          31
-
-uint32_t syscall(int type, ...);
+#define O_RDONLY (1 << 0)
+#define O_WRONLY (1 << 1)
+#define O_RDWR   (1 << 2)
+#define O_APPEND (1 << 3)
+#define O_TRUNC  (1 << 4)
+#define O_EXCL   (1 << 5)
+#define O_CREAT  (1 << 6)
 
 #endif

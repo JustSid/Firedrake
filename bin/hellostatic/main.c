@@ -17,42 +17,72 @@
 //
 
 #include <libtest/print.h>
-#include <libtest/thread.h>
-#include <libtest/mmap.h>
 #include <libtest/errno.h>
-#include <libtest/tls.h>
 
-void threadEntry(void *arg)
+#include <libtest/fcntl.h>
+#include <libtest/unistd.h>
+
+void dumpdir(const char *path)
 {
-	tls_key_t key = tls_allocateKey();
-	tls_set(key, arg);
+	int fd = open(path, O_RDONLY);
+	if(fd != -1)
+	{
+		printf("Content of %s\n", path);
 
-	printf("%i: set %p\n", thread_self(), arg);
+		vfs_directory_entry_t buffer[5];
+		off_t read;
 
-	sleep(1000);
+		while((read = readdir(fd, buffer, 5)) > 0)
+		{
+			if(read == -1)
+			{
+				printf("Encountered error: %i", errno);
+				break;
+			}
 
-	printf("%i: got: %p\n", thread_self(), tls_get(key));
+			for(off_t i=0; i<read; i++)
+			{
+				printf("Entry: %s\n", buffer[i].name);
+			}
+		}
+
+		printf("\n");
+		close(fd);
+	}
+}
+
+void dumpstat(const char *path)
+{
+	vfs_stat_t buf;
+	int result = stat(path, &buf);
+	if(result == 0)
+	{
+		printf("Stats for: %s\nName: %s, id: %i, size: %u\n", path, buf.name, buf.id, buf.size);
+	}
+}
+
+void dumpfile(const char *path)
+{
+	int fd = open(path, O_RDONLY);
+	if(fd >= 0)
+	{
+		char buffer[1024];
+		read(fd, buffer, 1024);
+
+		printf("Contents of '%s': \"%s\"\n\n", path, buffer);
+		close(fd);
+	}
+	else
+	{
+		printf("No such file or directory %s\n", path);
+	}
 }
 
 int main()
 {
-	pid_t pid = fork();
-	if(pid == 0)
-	{
-		printf("forked(), pid: %i, parent: %i\n", getpid(), getppid());
+	dumpfile("/etc/about");
+	dumpdir("/lib");
+	dumpstat("/lib/libio.so");
 
-		uint32_t t1 = thread_create((void *)threadEntry, (void *)0x1024);
-		uint32_t t2 = thread_create((void *)threadEntry, (void *)0x32);
-
-		thread_join(t1);
-		thread_join(t2);		
-	}
-	else
-	{
-		printf("Waiting for child to terminate...\n");
-		waitpid(pid);
-	}
-	
-	printf("pid %i: errno: %i\n", getpid(), errno);
 	return 0;
 }
