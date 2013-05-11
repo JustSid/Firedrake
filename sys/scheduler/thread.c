@@ -205,15 +205,15 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 	thread_t *thread = thread_createVoid(process, entry, errno);
 	if(thread)
 	{
-		size_t stackPages = 1; // pageCount(stackSize);
+		size_t stackPages = MAX(pageCount(stackSize), 32);
 
-		uint8_t *userStack 	 = (uint8_t *)pm_alloc(1);
+		uint8_t *userStack 	 = (uint8_t *)pm_alloc(stackPages);
 		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
 
 		if(!userStack || !kernelStack)
 		{
 			if(userStack)
-				pm_free((uintptr_t)userStack, 1);
+				pm_free((uintptr_t)userStack, stackPages);
 			
 			if(kernelStack)
 				pm_free((uintptr_t)kernelStack, 1);

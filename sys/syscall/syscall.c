@@ -40,7 +40,7 @@ uint32_t _sc_print(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	return 0;
 }
 
-void *sc_mapProcessMemory(void *memory, vm_address_t *mappedBase, size_t pages, int *errno)
+void *sc_mapProcessMemory(const void *memory, vm_address_t *mappedBase, size_t pages, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 
@@ -77,11 +77,8 @@ uint32_t _sc_execute(uint32_t esp)
 	cpu_state_t *state = (cpu_state_t *)esp;
 	syscall_callback_t callback = _sc_syscalls[state->eax];
 
-	if(callback == NULL)
-	{
-		dbg("Syscall %i not implemented but!\n", state->eax);
+	if(!callback)
 		return esp;
-	}
 
 	thread_t *thread = thread_getCurrentThread();
 	thread->esp = esp;
