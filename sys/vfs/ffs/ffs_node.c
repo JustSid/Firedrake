@@ -22,6 +22,9 @@
 #include <system/syslog.h>
 #include "ffs_node.h"
 
+#define kFFSNodeMaxChunkPages 10
+#define kFFSNodeMaxChunkSize (kFFSNodeMaxChunkPages * VM_PAGE_SIZE)
+
 ffs_node_data_t *ffs_node_dataCreate()
 {
 	ffs_node_data_t *data = halloc(NULL, sizeof(ffs_node_data_t));
@@ -45,7 +48,7 @@ void ffs_node_allocateMemory(ffs_node_data_t *data, size_t minSize)
 	if(!data->data)
 	{
 		size_t pages = pageCount(minSize);
-		data->data = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
+		data->data  = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 		data->pages = pages;
 
 		return;
@@ -65,34 +68,18 @@ void ffs_node_allocateMemory(ffs_node_data_t *data, size_t minSize)
 
 size_t ffs_node_writeData(ffs_node_data_t *data, vfs_context_t *context, size_t offset, const void *ptr, size_t size, int *errno)
 {
-	uint8_t *buffer = mm_alloc(vm_getKernelDirectory(), 2, VM_FLAGS_KERNEL);
-	size = MIN(size, (2 * VM_PAGE_SIZE));
-
-	bool result = vfs_contextCopyDataOut(context, ptr, size, buffer, errno);
-	if(result)
-	{
-		size_t tsize = 0;
-
-		while(*(buffer + tsize) != '\0' && (tsize < (2 * VM_PAGE_SIZE) && tsize < size))
-			tsize ++;
-
-		size = tsize;
-	}
-	else
-	{
-		mm_free(buffer, vm_getKernelDirectory(), 2);
-		return -1;
-	}
-
+	size = MIN(size, kFFSNodeMaxChunkSize);
 	ffs_node_allocateMemory(data, data->size + size);
 
-	memcpy(data->data + offset, buffer, size);
+	bool result = vfs_contextCopyDataOut(context, ptr, size, data->data + offset, errno);
+	if(!result)
+		return -1;
+
 	if(offset + size > data->size)
 	{
 		data->size += (offset + size) - data->size;
 	}
 
-	mm_free(buffer, vm_getKernelDirectory(), 2);
 	return size;
 }
 
@@ -101,8 +88,10 @@ size_t ffs_node_readData(ffs_node_data_t *data, vfs_context_t *context, size_t o
 	uint8_t *end = data->data + data->size;
 	uint8_t *preferredEnd = data->data + offset + size;
 
-	end  = MIN(end, preferredEnd);
+	end = MIN(end, preferredEnd);
+
 	size = end - (data->data + offset);
+	size = MIN(size, kFFSNodeMaxChunkSize);
 
 	if(size > 0)
 	{

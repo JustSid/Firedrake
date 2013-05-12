@@ -9,7 +9,8 @@ all:
 	for i in $(ALLDIRS); do make -C $$i; done
 
 install: all
-	./boot/CreateImage.sh
+	./initrd.py
+	./boot/image.py
 
 kernel:
 	make -C $(KERNEL_DIR)
@@ -24,6 +25,7 @@ programs:
 	make all -C $(PROGS_DIR)
 
 clean:
+	rm -rf ./boot/initrd
 	for i in $(ALLDIRS); do make clean -C $$i; done
 
 help:

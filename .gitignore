@@ -1,5 +1,6 @@
-boot/Firedrake.iso
-sys/firedrake
+/boot/Firedrake.iso
+/boot/initrd
+/sys/firedrake
 *.o
 *.bin
 *.so

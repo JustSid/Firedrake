@@ -18,24 +18,11 @@
 
 #include <vfs/vfs.h>
 #include <scheduler/process.h>
+#include <libc/string.h>
 #include <memory/memory.h>
 #include "ffs.h"
 #include "ffs_callbacks.h"
 #include "ffs_node.h"
-
-void ffs_associateDataWithFile(int fd, const void *data, size_t size)
-{
-	process_t *process = process_getCurrentProcess();
-	vfs_file_t *file = process_fileWithFiledescriptor(process, fd);
-	ffs_node_data_t *node = file->node->data;
-
-	node->data = (uint8_t *)data;
-	node->size = size;
-	node->pages = pageCount(size);
-
-	file->node->size = size;
-}
-
 
 ffs_instance_data_t *ffs_createInstanceData()
 {

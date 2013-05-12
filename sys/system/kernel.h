@@ -21,6 +21,11 @@
 
 #include <prefix.h>
 #include <ioglue/iostore.h>
+#include "elf.h"
+
+elf_header_t *kern_fetchHeader();
+elf_section_header_t *kern_fetchStringTable();
+elf_section_header_t *kern_fetchSymbolTable();
 
 const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary);
 uintptr_t kern_resolveAddress(uintptr_t address);
@@ -29,24 +34,5 @@ struct thread_s;
 
 void kern_printBacktraceForThread(struct thread_s *thread, long depth);
 void kern_printBacktrace(long depth);
-
-typedef enum 
-{
-	kern_breakOnExecution = 0,
-	kern_breakOnWrite = 1,
-	//kern_breakOnIO = 2, // According to Wikipedia, there is no processor supporting this!
-	kern_breakOnReadWrite = 3
-} kern_breakCondition;
-
-typedef enum
-{
-	kern_watchOneByte = 0,
-	kern_watchTwoBytes = 1,
-	kern_watchFourBytes = 3,
-	kern_watchEightBytes = 2
-} kern_watchBytes;
-
-void kern_setWatchpoint(uint8_t reg, bool global, uintptr_t address, kern_breakCondition condition, kern_watchBytes bytes);
-void kern_disableWatchpoint(uint8_t reg);
 
 #endif

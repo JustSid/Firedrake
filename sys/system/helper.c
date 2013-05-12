@@ -233,20 +233,3 @@ bool sys_checkCommandline(const char *option, char *buffer)
 
 	return false;
 }
-
-struct multiboot_module_s *sys_multibootModuleWithName(const char *name)
-{
-	if(bootinfo->flags & kMultibootFlagModules)
-	{
-		struct multiboot_module_s *modules = (struct multiboot_module_s *)bootinfo->mods_addr;
-		for(uint32_t i=0; i<bootinfo->mods_count; i++)
-		{
-			struct multiboot_module_s *module = &modules[i];
-
-			if(strcmp(module->name, name) == 0)
-				return module;
-		}
-	}
-
-	return NULL;
-}

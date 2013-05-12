@@ -23,6 +23,7 @@
 #include <scheduler/scheduler.h>
 #include <memory/memory.h>
 #include <system/helper.h>
+#include <system/kernel.h>
 #include <system/syslog.h>
 #include <system/cpu.h>
 #include <system/panic.h>
@@ -376,12 +377,8 @@ bool io_initStubs()
 	__io_kernelLibrary = halloc(NULL, sizeof(io_library_t));
 	if(__io_kernelLibrary)
 	{
-		struct multiboot_module_s *module = sys_multibootModuleWithName("firedrake");
-		if(!module)
-			return false;
-
 		// Look for the kernels symbol and string table
-		elf_header_t *header = (elf_header_t *)module->start;
+		elf_header_t *header = kern_fetchHeader();
 		elf_section_header_t *section = (elf_section_header_t *)(((char *)header) + header->e_shoff);
 
 		for(elf32_word_t i=0; i<header->e_shnum; i++, section++)

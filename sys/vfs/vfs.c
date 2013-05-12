@@ -395,50 +395,70 @@ vfs_instance_t *vfs_createInstanceWithName(const char *name)
 	return descriptor ? descriptor->createInstance(descriptor) : NULL;
 }
 
-void vfs_linkGRUBModules()
+void vfs_readInitrd()
 {
 	struct multiboot_module_s *modules = (struct multiboot_module_s *)bootinfo->mods_addr;
 	for(uint32_t i=0; i<bootinfo->mods_count; i++)
 	{
 		struct multiboot_module_s *module = &modules[i];
-
-		uint8_t *begin = (uint8_t *)module->start;
-		uint8_t *end = (uint8_t *)module->end;
-
-		size_t size = (size_t)(end - begin);
-
-		char completepath[256];
-
-		if(strstr(module->name, ".so"))
+		if(strcmp(module->name, "initrd") == 0)
 		{
-			sprintf(completepath, "/lib/%s", module->name);
-		}
-		else if(strstr(module->name, ".bin"))
-		{
-			sprintf(completepath, "/bin/%s", module->name);
-		}
-		else
-		{
-			sprintf(completepath, "/%s", module->name);
-		}
+			uint8_t *buffer = (uint8_t *)module->start;
+			uint8_t *end = (uint8_t *)module->end;
 
-		int error;
-		int fd = vfs_open(completepath, O_CREAT | O_WRONLY, &error);
-		ffs_associateDataWithFile(fd, module->start, size);
-		vfs_close(fd);
+			dbg("loading initrd (%u bytes)...", end - buffer);
+
+			while(buffer < end)
+			{
+				// Read the file header
+				uint32_t nameLength;
+				uint32_t binaryLength;
+
+				memcpy(&nameLength, buffer + 0, 4);
+				memcpy(&binaryLength, buffer + 4, 4);
+				buffer += 8;
+
+				// Read the files destination path
+				char *name = halloc(NULL, nameLength + 1);
+				memcpy(name, buffer, nameLength);
+
+				name[nameLength] = '\0';
+				buffer += nameLength;
+
+				// Read the files data
+				int error;
+				int fd = vfs_open(name, O_WRONLY | O_CREAT, &error);
+				if(fd >= 0)
+				{
+					size_t left = binaryLength;
+					while(left > 0)
+					{
+						size_t written = vfs_write(fd, buffer, left, &error);
+
+						left   -= written;
+						buffer += written;
+					}
+
+					vfs_close(fd);
+				}
+				else
+				{
+					buffer += binaryLength;
+					warn("Couldn't open and write %s, reason: %i\n", name, error);
+				}
+
+				hfree(NULL, name);
+			}
+
+			// TODO: At this point we could unmap the initrd module from the virtual address space
+
+			dbg("done");
+			break;
+		}
 	}
 }
 
-void vfs_writeAbout()
-{
-	char buffer[1024];
-	sprintf(buffer, "Firedrake v%i.%i.%i:%i about.\nCopyright 2013 by Sidney Just, released under the MIT license.", kVersionMajor, kVersionMinor, kVersionPatch, VersionCurrent());
-
-	int error;
-	int fd = vfs_open("/etc/about", O_CREAT | O_WRONLY, &error);
-	vfs_write(fd, buffer, strlen(buffer), &error);
-	vfs_close(fd);
-}
+extern void kern_loadKernelData();
 
 bool vfs_init(__unused void *data)
 {
@@ -462,8 +482,8 @@ bool vfs_init(__unused void *data)
 	vfs_mkdir("/lib", &error);
 	vfs_mkdir("/etc", &error);
 
-	vfs_linkGRUBModules();
-	vfs_writeAbout();
+	vfs_readInitrd();
+	kern_loadKernelData(); // Signal the kernel that it's now safe to load the kernel string and symbol table
 
 	return true;
 }

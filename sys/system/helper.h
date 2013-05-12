@@ -31,6 +31,4 @@ void demangleCPPName(const char *name, char *buffer);
 bool sys_checkCommandline(const char *option, char *buffer);
 void sys_dumpgrub();
 
-struct multiboot_module_s *sys_multibootModuleWithName(const char *name) __deprecated;
-
 #endif /* _HELPER_H_ */

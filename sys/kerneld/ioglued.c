@@ -54,33 +54,52 @@ void ioglued()
 			sd_yield();
 	}
 
-	// Load all libraries in the /lib folder
+	// Load all libraries marked in /etc/ioglue.conf
 	int error;
-	int fd = vfs_open("/lib", O_RDONLY, &error);
+	int fd = vfs_open("/etc/ioglue.conf", O_RDONLY, &error);
 	if(fd >= 0)
 	{
-		vfs_directory_entry_t buffer[5];
-		off_t read;
+		size_t size = vfs_seek(fd, 0, SEEK_END, &error);
+		vfs_seek(fd, 0, SEEK_SET, &error);
 
-		while((read = vfs_readDir(fd, buffer, 5, &error)) > 0)
+		char *content = halloc(NULL, size + 1);
+		char *temp = content;
+
+		*(content + size) = '\0';
+
+		while(size > 0)
 		{
-			for(off_t i=0; i<read; i++)
-			{
-				const char *name = buffer[i].name;
-
-				if(strcmp(name, "libio.so") == 0 || strcmp(name, "libkernel.so") == 0)
-					continue;
-
-				char path[256];
-				sprintf(path, "/lib/%s", name);
-
-				io_module_t *module = io_moduleWithName(path);
-				if(!module)
-					dbg("ioglued: Failed to publish \"%s\"\n", name);
-			}
+			size_t read = vfs_read(fd, temp, size, &error);
+			size -= read;
+			temp += read;
 		}
 
+		temp = content;
+
+		while(temp)
+		{
+			char path[256];
+			char *start = temp;
+
+			temp = strpbrk(content, ",");
+			if(temp)
+				*temp = '\0';
+			
+			sprintf(path, "/lib/%s", start);
+
+			io_module_t *module = io_moduleWithName(path);
+			if(!module)
+				dbg("ioglued: Failed to publish \"%s\"\n", path);
+
+			temp = temp ? strstr(temp + 1, "lib") : temp;
+		}
+
+		hfree(NULL, content);
 		vfs_close(fd);
+	}
+	else
+	{
+		warn("Couldn't open /etc/ioglue.conf, not loading any kernel modules!\n");
 	}
 
 

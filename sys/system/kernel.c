@@ -20,25 +20,33 @@
 #include <libc/backtrace.h>
 #include <libc/stdio.h>
 #include <libc/string.h>
+#include <memory/memory.h>
 #include <interrupts/interrupts.h>
 #include <interrupts/trampoline.h>
-#include <ioglue/iostore.h>
 #include <scheduler/scheduler.h>
-#include "elf.h"
+#include <vfs/vfs.h>
 #include "kernel.h"
 #include "helper.h"
 #include "syslog.h"
 
-struct multiboot_module_s *kern_kernelModule = NULL;
+void *kern_data = NULL;
 elf_section_header_t *kern_stringTable = NULL;
 elf_section_header_t *kern_symbolTable = NULL;
 
 extern uintptr_t kernelBegin; // Marks the beginning of the kernel (set by the linker)
 extern uintptr_t kernelEnd;	// Marks the end of the kernel (also set by the linker)
 
-bool kern_fetchStringTable()
+elf_header_t *kern_fetchHeader()
 {
-	elf_header_t *header = (elf_header_t *)kern_kernelModule->start;
+	return (elf_header_t *)kern_data;
+}
+
+elf_section_header_t *kern_fetchStringTable()
+{
+	if(kern_stringTable)
+		return kern_stringTable;
+
+	elf_header_t *header = kern_fetchHeader();
 	elf_section_header_t *section = (elf_section_header_t *)(((char *)header) + header->e_shoff);
 
 	for(elf32_word_t i=0; i<header->e_shnum; i++, section++)
@@ -46,16 +54,19 @@ bool kern_fetchStringTable()
 		if(section->sh_type == SHT_STRTAB && section->sh_flags == 0 && i != header->e_shstrndx)
 		{
 			kern_stringTable = section;
-			return true;
+			return section;
 		}
 	}
 
-	return false;
+	return NULL;
 }
 
-bool kern_fetchSymbolTable()
+elf_section_header_t *kern_fetchSymbolTable()
 {
-	elf_header_t *header = (elf_header_t *)kern_kernelModule->start;
+	if(kern_symbolTable)
+		return kern_symbolTable;
+
+	elf_header_t *header = kern_fetchHeader();
 	elf_section_header_t *section = (elf_section_header_t *)(((char *)header) + header->e_shoff);
 
 	for(elf32_word_t i=0; i<header->e_shnum; i++, section++)
@@ -63,27 +74,55 @@ bool kern_fetchSymbolTable()
 		if(section->sh_type == SHT_SYMTAB)
 		{
 			kern_symbolTable = section;
-			return true;
+			return section;
 		}
 	}
 
-	return false;
+	return NULL;
+}
+
+
+void kern_loadKernelData()
+{
+	static bool hasData = false;
+
+	if(!hasData)
+	{
+		int error;
+		int fd = vfs_open("/firedrake", O_RDONLY, &error);
+		if(fd >= 0)
+		{
+			size_t size = vfs_seek(fd, 0, SEEK_END, &error);
+			size_t pages = pageCount(size);
+
+			uint8_t *data = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
+			kern_data = data;
+
+			vfs_seek(fd, 0, SEEK_SET, &error);
+			
+			while(size > 0)
+			{
+				size_t read = vfs_read(fd, data, size, &error);
+
+				size -= read;
+				data += read;
+			}
+
+			kern_fetchStringTable();
+			kern_fetchSymbolTable();
+
+			vfs_close(fd);
+		}
+
+		hasData = true; // It doesn't matter if we have actual data or not, if the read failed, it will fail again
+	}
 }
 
 
 
 const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary)
 {
-	if(!kern_kernelModule)
-		kern_kernelModule = sys_multibootModuleWithName("firedrake");
-
-	if(!kern_stringTable)
-		kern_fetchStringTable();
-
-	if(!kern_symbolTable)
-		kern_fetchSymbolTable();
-
-	if(kern_kernelModule == NULL || kern_stringTable == NULL || kern_symbolTable == NULL)
+	if(kern_stringTable == NULL || kern_symbolTable == NULL)
 		return "???";
 
 	if(address >= IR_TRAMPOLINE_BEGIN)
@@ -101,7 +140,7 @@ const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary)
 
 	if(address >= kernelBeginVirt && address <= kernelEndVirt)
 	{
-		header = (elf_header_t *)kern_kernelModule->start;
+		header = kern_fetchHeader();
 		symbol = (elf_sym_t *)(((char *)header) + kern_symbolTable->sh_offset);
 
 		size_t symbols = kern_symbolTable->sh_size / kern_symbolTable->sh_entsize;
@@ -144,13 +183,7 @@ const char *kern_nameForAddress(uintptr_t address, io_library_t **outLibrary)
 
 uintptr_t kern_resolveAddress(uintptr_t address)
 {
-	if(!kern_kernelModule)
-		kern_kernelModule = sys_multibootModuleWithName("firedrake");
-
-	if(!kern_symbolTable)
-		kern_fetchSymbolTable();
-
-	if(kern_kernelModule == NULL || kern_symbolTable == NULL)
+	if(kern_data == NULL || kern_symbolTable == NULL)
 		return 0x0;
 
 	if(address >= IR_TRAMPOLINE_BEGIN)
@@ -167,7 +200,7 @@ uintptr_t kern_resolveAddress(uintptr_t address)
 
 	if(address >= kernelBeginVirt && address <= kernelEndVirt)
 	{
-		header  = (elf_header_t *)kern_kernelModule->start;
+		header  = kern_fetchHeader();
 		tsymbol = (elf_sym_t *)(((char *)header) + kern_symbolTable->sh_offset);
 
 		size_t symbols = kern_symbolTable->sh_size / kern_symbolTable->sh_entsize;
@@ -201,16 +234,6 @@ uintptr_t kern_resolveAddress(uintptr_t address)
 
 void kern_printBacktraceForThread(thread_t *thread, long depth)
 {
-	if(!kern_kernelModule)
-		kern_kernelModule = sys_multibootModuleWithName("firedrake");
-
-	if(!kern_stringTable)
-		kern_fetchStringTable();
-
-	if(!kern_symbolTable)
-		kern_fetchSymbolTable();
-
-
 	void *addresses[depth];
 	size_t size;
 
@@ -259,61 +282,4 @@ void kern_printBacktraceForThread(thread_t *thread, long depth)
 void kern_printBacktrace(long depth)
 {
 	kern_printBacktraceForThread(thread_getCurrentThread(), depth);
-}
-
-
-void kern_setWatchpoint(uint8_t reg, bool global, uintptr_t address, kern_breakCondition condition, kern_watchBytes bytes)
-{
-	assert(reg <= 3);
-
-	uint32_t dr7;
-	__asm__ volatile("mov %%dr7, %0" : "=r" (dr7));
-
-	// Clear out the bits for the given register
-	dr7 &= ~ (0x3 << (0 + reg));
-	dr7 &= ~ (0xF << (16 + (reg * 4)));
-
-	// Update the address
-	dr7 |= (1 << (0 + reg + (global ? 1 : 0)));
-
-	// Update the breakpoint condition
-	dr7 |= ((char)condition << (16 + (reg * 4)));
-
-	// Update the watch size
-	dr7 |= ((char)bytes << (18 + (reg * 4)));
-
-	switch(reg)
-	{
-		case 0:
-			__asm__ volatile("mov %0, %%dr0" : : "r" (address));
-			break;
-
-		case 1:
-			__asm__ volatile("mov %0, %%dr1" : : "r" (address));
-			break;
-
-		case 2:
-			__asm__ volatile("mov %0, %%dr2" : : "r" (address));
-			break;
-
-		case 3:
-			__asm__ volatile("mov %0, %%dr3" : : "r" (address));
-			break;
-
-		default:
-			break;
-	}
-
-	__asm__ volatile("mov %0, %%dr7" : : "r" (dr7));
-}
-
-void kern_disableWatchpoint(uint8_t reg)
-{
-	uint32_t dr7;
-	__asm__ volatile("mov %%dr7, %0" : "=r" (dr7));
-
-	dr7 &= ~ (0x3 << (0 + reg));
-	dr7 &= ~ (0xF << (16 + (reg * 4)));
-
-	__asm__ volatile("mov %0, %%dr7" : : "r" (dr7));
 }

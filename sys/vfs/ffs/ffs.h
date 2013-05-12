@@ -27,7 +27,6 @@ typedef struct
 	hashset_t *nodes;
 } ffs_instance_data_t;
 
-void ffs_associateDataWithFile(int fd, const void *data, size_t size);
 bool ffs_init();
 
 #endif

@@ -76,6 +76,13 @@ elf_sym_t *io_librarySymbolWithAddress(io_library_t *library, vm_address_t addre
 
 elf_sym_t *io_librarySymbolWithName(io_library_t *library, const char *name, uint32_t hash)
 {
+	assert(library->nbuckets > 0);
+	if(library->buckets == 0)
+	{
+		dbg("WTF! %s %s", library->name, name);
+		panic("");
+	}
+
 	uint32_t symnum = library->buckets[hash % library->nbuckets];
 	while(symnum != 0)
 	{
@@ -456,6 +463,7 @@ io_library_t *io_libraryCreateWithFile(const char *file)
 {
 	int error;
 	int fd = vfs_open(file, O_RDONLY, &error);
+
 	if(fd >= 0)
 	{
 		size_t size = vfs_seek(fd, 0, SEEK_END, &error);
@@ -463,7 +471,17 @@ io_library_t *io_libraryCreateWithFile(const char *file)
 		uint8_t *buffer = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 
 		vfs_seek(fd, 0, SEEK_SET, &error);
-		vfs_read(fd, buffer, size, &error);
+
+		size_t left = size;
+		uint8_t *temp = buffer;
+
+		while(left > 0)
+		{
+			size_t read = vfs_read(fd, temp, left, &error);
+
+			left -= read;
+			temp += read;
+		}
 
 		io_library_t *library = io_libraryCreate(file, buffer, size);
 

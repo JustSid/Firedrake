@@ -75,7 +75,6 @@ struct io_dependency_s
 	struct io_dependency_s *prev;
 };
 
-io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, size_t length);
 io_library_t *io_libraryCreateWithFile(const char *file);
 
 void io_libraryRetain(io_library_t *library);
