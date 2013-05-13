@@ -39,7 +39,6 @@ ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 		executable->entry      = header->e_entry;
 		executable->pdirectory = pdirectory;
 
-
 		elf_program_header_t *programHeader = (elf_program_header_t *)(begin + header->e_phoff);
 		vm_address_t minAddress = -1;
 		vm_address_t maxAddress = 0;
@@ -62,8 +61,8 @@ ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 		}
 
 		// Calculate the starting address and the number of pages we need to allocate
-		minAddress = round4kDown(minAddress);
-		pages = pageCount(maxAddress - minAddress);
+		minAddress = VM_PAGE_ALIGN_DOWN(minAddress);
+		pages = VM_PAGE_COUNT(maxAddress - minAddress);
 
 		// Memory allocation
 		uint8_t *memory = (uint8_t *)pm_alloc(pages);
@@ -101,11 +100,21 @@ ld_exectuable_t *ld_executableCreateWithFile(vm_page_directory_t pdirectory, con
 	if(fd >= 0)
 	{
 		size_t size = vfs_seek(fd, 0, SEEK_END, &error);
-		size_t pages = pageCount(size);
+		size_t pages = VM_PAGE_COUNT(size);
 		uint8_t *buffer = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 
 		vfs_seek(fd, 0, SEEK_SET, &error);
-		vfs_read(fd, buffer, size, &error);
+		
+		size_t left = size;
+		uint8_t *temp = buffer;
+
+		while(left > 0)
+		{
+			size_t read = vfs_read(fd, temp, left, &error);
+
+			left -= read;
+			temp += read;
+		}
 
 		ld_exectuable_t *executable = ld_exectuableCreate(pdirectory, buffer, size);
 		

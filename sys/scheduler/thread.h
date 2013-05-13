@@ -29,7 +29,7 @@ struct process_s;
 struct thread_listener_s;
 
 #define THREAD_NULL UINT32_MAX
-#define THREAD_STACK_LIMIT 0xBFFFFFFD
+#define THREAD_STACK_LIMIT 0xFFFF000
 
 typedef void (*thread_entry_t)();
 

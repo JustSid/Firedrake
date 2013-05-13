@@ -44,7 +44,7 @@ void *sc_mapProcessMemory(const void *memory, vm_address_t *mappedBase, size_t p
 {
 	process_t *process = process_getCurrentProcess();
 
-	vm_address_t virtual = round4kDown((vm_address_t)memory);
+	vm_address_t virtual = VM_PAGE_ALIGN_DOWN((vm_address_t)memory);
 	vm_address_t offset  = ((vm_address_t)memory) - virtual;
 	uintptr_t physical;
 

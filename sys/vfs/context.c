@@ -74,9 +74,9 @@ bool vfs_contextCopyDataOut(vfs_context_t *context, const void *data, size_t siz
 	else
 	{
 		vm_address_t temp = (vm_address_t)data;
-		vm_address_t page = round4kDown(temp);
+		vm_address_t page = VM_PAGE_ALIGN_DOWN(temp);
 
-		size_t pages  = pageCount(size);
+		size_t pages  = VM_PAGE_COUNT(size);
 		size_t offset = temp - page; 
 
 		uintptr_t physical = vm_resolveVirtualAddress(context->pdirectory, page);
@@ -117,9 +117,9 @@ bool vfs_contextCopyDataIn(vfs_context_t *context, const void *data, size_t size
 	else
 	{
 		vm_address_t temp = (vm_address_t)target;
-		vm_address_t page = round4kDown(temp);
+		vm_address_t page = VM_PAGE_ALIGN_DOWN(temp);
 
-		size_t pages  = pageCount(size);
+		size_t pages  = VM_PAGE_COUNT(size);
 		size_t offset = temp - page; 
 
 		uintptr_t physical = vm_resolveVirtualAddress(context->pdirectory, page);

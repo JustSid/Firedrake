@@ -420,7 +420,7 @@ io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, __unused size_
 		}
 
 		// Reserve enough memory and copy the .text section
-		library->pages = pageCount(maxAddress - minAddress);
+		library->pages = VM_PAGE_COUNT(maxAddress - minAddress);
 
 		library->pmemory = pm_alloc(library->pages);
 		if(!library->pmemory)
@@ -467,7 +467,7 @@ io_library_t *io_libraryCreateWithFile(const char *file)
 	if(fd >= 0)
 	{
 		size_t size = vfs_seek(fd, 0, SEEK_END, &error);
-		size_t pages = pageCount(size);
+		size_t pages = VM_PAGE_COUNT(size);
 		uint8_t *buffer = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 
 		vfs_seek(fd, 0, SEEK_SET, &error);

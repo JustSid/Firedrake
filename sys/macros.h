@@ -24,6 +24,9 @@
 #define __deprecated  __attribute__((deprecated))
 #define __unavailable __attribute__((unavailable))
 
+#define __inline   inline __attribute__((__always_inline__))
+#define __noinline __attribute__((noinline))
+
 #define offsetof(type, member) ((unsigned int)&(((type *)0)->member))
 
 #endif

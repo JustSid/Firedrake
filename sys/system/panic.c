@@ -119,7 +119,7 @@ void panic_printReason(const char *format, va_list args)
 		return;
 	}
 
-	buffer = mm_alloc(vm_getKernelDirectory(), pageCount(length), VM_FLAGS_KERNEL);
+	buffer = mm_alloc(vm_getKernelDirectory(), VM_PAGE_COUNT(length), VM_FLAGS_KERNEL);
 	if(!buffer)
 	{
 		buffer = "Failed to allocate memory for panic reason!";

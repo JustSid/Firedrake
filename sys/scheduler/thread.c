@@ -120,13 +120,15 @@ void thread_attachToProcess(process_t *process, thread_t *thread)
 	spinlock_unlock(&process->threadLock);
 }
 
-
-#define THREAD_BAILWITHERROR(error) do { \
-		thread_destroy(thread); \
-		if(errno) \
-			*errno = error; \
-		return NULL; \
-	} while(0) 
+#define __threadAssert(condition, error) do { \
+		if(!(condition)) { \
+			warn("Assertion '%s' failed!\n", #condition); \
+			thread_destroy(thread); \
+			if(errno) \
+				*errno = error; \
+			return NULL; \
+		} \
+	} while(0)
 
 thread_t *thread_createKernel(process_t *process, thread_entry_t entry, uint32_t argCount, va_list args, int *errno)
 {
@@ -134,17 +136,13 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, uint32_t
 	if(thread)
 	{
 		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
-		if(!kernelStack)
-		{
-			THREAD_BAILWITHERROR(ENOMEM);
-		}
+		__threadAssert(kernelStack, ENOMEM);
 
 		// Create the kernel stack
 		thread->kernelStack     = kernelStack;
-		thread->kernelStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
+		thread->kernelStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)kernelStack, 1, THREAD_STACK_LIMIT, VM_UPPER_LIMIT, VM_FLAGS_KERNEL);
 
-		if(!thread->kernelStackVirt)
-			THREAD_BAILWITHERROR(ENOMEM);
+		__threadAssert(thread->kernelStackVirt, ENOMEM);
 
 		uint32_t *stack = ((uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE)) - argCount;
 		memset(thread->kernelStackVirt, 0, 1 * VM_PAGE_SIZE);
@@ -156,8 +154,7 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, uint32_t
 		if(argCount > 0)
 		{
 			thread->arguments = (uintptr_t **)halloc(NULL, argCount * sizeof(uintptr_t *));
-			if(!thread->arguments)
-				THREAD_BAILWITHERROR(ENOMEM);
+			__threadAssert(thread->arguments, ENOMEM);
 
 			for(uint32_t i=0; i<argCount; i++)
 			{
@@ -205,7 +202,7 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 	thread_t *thread = thread_createVoid(process, entry, errno);
 	if(thread)
 	{
-		size_t stackPages = MAX(pageCount(stackSize), 32);
+		size_t stackPages = MAX(VM_PAGE_COUNT(stackSize), 32);
 
 		uint8_t *userStack 	 = (uint8_t *)pm_alloc(stackPages);
 		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
@@ -218,7 +215,11 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 			if(kernelStack)
 				pm_free((uintptr_t)kernelStack, 1);
 			
-			THREAD_BAILWITHERROR(ENOMEM);
+			thread_destroy(thread);
+			if(errno)
+				*errno = ENOMEM;
+
+			return NULL;
 		}
 
 		// User and kernel stack
@@ -227,14 +228,12 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 
 		// Map the user stack
 		thread->userStackPages = stackPages;
-		thread->userStackVirt  = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)thread->userStack, THREAD_STACK_LIMIT, stackPages, VM_FLAGS_USERLAND);
+		thread->userStackVirt  = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)thread->userStack, stackPages, THREAD_STACK_LIMIT, VM_UPPER_LIMIT, VM_FLAGS_USERLAND);
 
-		if(!thread->userStackVirt)
-			THREAD_BAILWITHERROR(ENOMEM);
+		__threadAssert(thread->userStackVirt, ENOMEM);
 
 		uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
-		if(!ustack)
-			THREAD_BAILWITHERROR(ENOMEM);
+		__threadAssert(ustack, ENOMEM);
 
 		memset(ustack, 0, 1 * VM_PAGE_SIZE);
 
@@ -254,9 +253,8 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 		vm_free(vm_getKernelDirectory(), (vm_address_t)ustack, 1);
 
 		// Forge initial kernel stackframe
-		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
-		if(!thread->kernelStackVirt)
-			THREAD_BAILWITHERROR(ENOMEM);
+		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, 1, THREAD_STACK_LIMIT, VM_UPPER_LIMIT, VM_FLAGS_KERNEL);
+		__threadAssert(thread->kernelStackVirt, ENOMEM);
 
 		uint32_t *stack = (uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE);
 
@@ -331,7 +329,12 @@ thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 				pm_free((uintptr_t)kernelStack, 1);
 			
 			spinlock_unlock(&source->lock);
-			THREAD_BAILWITHERROR(ENOMEM);
+			thread_destroy(thread);
+
+			if(errno)
+				*errno = ENOMEM;
+
+			return NULL;
 		}
 
 		// Stack handling
@@ -356,7 +359,12 @@ thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 				vm_free(vm_getKernelDirectory(), (vm_address_t)ustackTarget, 1);
 
 			spinlock_unlock(&source->lock);
-			THREAD_BAILWITHERROR(ENOMEM);
+			thread_destroy(thread);
+
+			if(errno)
+				*errno = ENOMEM;
+
+			return NULL;
 		}
 
 		memcpy(ustackTarget, ustackSource, VM_PAGE_SIZE);
@@ -365,13 +373,18 @@ thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 		vm_free(vm_getKernelDirectory(), (vm_address_t)ustackTarget, 1);
 
 		// Kernel stack
-		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, THREAD_STACK_LIMIT, 1, VM_FLAGS_KERNEL);
+		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, 1, THREAD_STACK_LIMIT, VM_UPPER_LIMIT, VM_FLAGS_KERNEL);
 		thread->esp = source->esp + ((uintptr_t)thread->kernelStackVirt) - ((uintptr_t)source->kernelStackVirt);
 
 		if(!thread->kernelStackVirt)
 		{
 			spinlock_unlock(&source->lock);
-			THREAD_BAILWITHERROR(ENOMEM);
+			thread_destroy(thread);
+
+			if(errno)
+				*errno = ENOMEM;
+
+			return NULL;
 		}
 
 		memcpy(thread->kernelStackVirt, source->kernelStackVirt, VM_PAGE_SIZE);

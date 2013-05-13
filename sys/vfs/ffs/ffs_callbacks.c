@@ -204,7 +204,7 @@ vfs_file_t *ffs_fileOpen(__unused vfs_instance_t *instance, __unused vfs_context
 	{
 		vfs_directory_t *directory = (vfs_directory_t *)node;
 		size_t count = hashset_count(directory->childs);
-		size_t pages = pageCount(count * sizeof(vfs_directory_entry_t));
+		size_t pages = VM_PAGE_COUNT(count * sizeof(vfs_directory_entry_t));
 
 		vfs_directory_entry_t *data = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 		vfs_directory_entry_t *temp = data;

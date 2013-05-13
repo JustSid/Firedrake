@@ -93,7 +93,7 @@ void kern_loadKernelData()
 		if(fd >= 0)
 		{
 			size_t size = vfs_seek(fd, 0, SEEK_END, &error);
-			size_t pages = pageCount(size);
+			size_t pages = VM_PAGE_COUNT(size);
 
 			uint8_t *data = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 			kern_data = data;

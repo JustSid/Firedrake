@@ -47,14 +47,14 @@ void ffs_node_allocateMemory(ffs_node_data_t *data, size_t minSize)
 {
 	if(!data->data)
 	{
-		size_t pages = pageCount(minSize);
+		size_t pages = VM_PAGE_COUNT(minSize);
 		data->data  = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 		data->pages = pages;
 
 		return;
 	}
 
-	size_t requiredPages = pageCount(minSize);
+	size_t requiredPages = VM_PAGE_COUNT(minSize);
 	if(requiredPages > data->pages)
 	{
 		void *temp = mm_alloc(vm_getKernelDirectory(), requiredPages, VM_FLAGS_KERNEL);

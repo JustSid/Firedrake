@@ -164,10 +164,10 @@ void pm_free(uintptr_t page, size_t pages)
 void pm_markMultibootModule(struct multiboot_module_s *module)
 {
 	// Mark the module data as used
-	uintptr_t start = round4kDown((uintptr_t)module->start);
-	uintptr_t end   = round4kUp((uintptr_t)module->end);
+	uintptr_t start = VM_PAGE_ALIGN_DOWN((uintptr_t)module->start);
+	uintptr_t end   = VM_PAGE_ALIGN_UP((uintptr_t)module->end);
 
-	size_t pages = pageCount((end - start));
+	size_t pages = VM_PAGE_COUNT((end - start));
 	for(size_t i=0; i<pages; i++)
 	{
 		__pm_markUsed(start);
@@ -175,8 +175,8 @@ void pm_markMultibootModule(struct multiboot_module_s *module)
 	}
 
 	// Mark the name of the module
-	start = round4kDown((uintptr_t)module->name);
-	pages = pageCount(strlen((const char *)start));
+	start = VM_PAGE_ALIGN_DOWN((uintptr_t)module->name);
+	pages = VM_PAGE_COUNT(strlen((const char *)start));
 
 	for(size_t i=0; i<pages; i++)
 	{
@@ -187,11 +187,11 @@ void pm_markMultibootModule(struct multiboot_module_s *module)
 
 void pm_markMultiboot(struct multiboot_s *info)
 {
-	__pm_markUsed(round4kDown((uintptr_t)info));
+	__pm_markUsed(VM_PAGE_ALIGN_DOWN((uintptr_t)info));
 
 	if(info->flags & kMultibootFlagCommandLine)
 	{
-		__pm_markUsed(round4kDown((uintptr_t)info->cmdline));
+		__pm_markUsed(VM_PAGE_ALIGN_DOWN((uintptr_t)info->cmdline));
 	}
 
 	if(info->flags & kMultibootFlagModules)
@@ -214,7 +214,7 @@ void pm_markMultiboot(struct multiboot_s *info)
 			struct multiboot_drive_s *drive = (struct multiboot_drive_s *)drivesPtr;
 
 			uintptr_t page = (uintptr_t)drive;
-			size_t pages = pageCount(drive->size);
+			size_t pages = VM_PAGE_COUNT(drive->size);
 
 			for(size_t i=0; i<pages; i++)
 			{
@@ -228,7 +228,7 @@ void pm_markMultiboot(struct multiboot_s *info)
 
 	if(info->flags & kMultibootFlagBootLoader)
 	{
-		__pm_markUsed(round4kDown((uintptr_t)info->boot_loader_name));
+		__pm_markUsed(VM_PAGE_ALIGN_DOWN((uintptr_t)info->boot_loader_name));
 	}
 }
 
@@ -285,8 +285,8 @@ bool pm_init(void *data)
 	}
 
 	// Mark the kernel stack as allocated
-	uintptr_t _stack_bottom = round4kDown((uintptr_t)&stack_bottom);
-	uintptr_t _stack_top    = round4kUp((uintptr_t)&stack_top);
+	uintptr_t _stack_bottom = VM_PAGE_ALIGN_DOWN((uintptr_t)&stack_bottom);
+	uintptr_t _stack_top    = VM_PAGE_ALIGN_UP((uintptr_t)&stack_top);
 
 	while(_stack_bottom < _stack_top)
 	{

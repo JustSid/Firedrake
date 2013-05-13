@@ -111,7 +111,7 @@ heap_zone_t *__heap_createZoneForSize(heap_t *heap, size_t size)
 			break;
 
 		case heap_zone_typeLarge:
-			pages = pageCount(size);
+			pages = VM_PAGE_COUNT(size);
 			break;
 	}
 

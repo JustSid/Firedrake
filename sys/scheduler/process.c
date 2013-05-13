@@ -65,9 +65,10 @@ process_t *process_createVoid(int *errno)
 		memset(&process->files, 0, kSDMaxOpenFiles * sizeof(vfs_file_t *));
 		process->openFiles = 0;
 
-		process->threadLock = SPINLOCK_INIT;
-		process->mainThread = NULL;
-		process->next       = NULL;
+		process->threadLock    = SPINLOCK_INIT;
+		process->threadCounter = 0;
+		process->mainThread    = NULL;
+		process->next          = NULL;
 
 		if(!process->mappings)
 		{
@@ -242,7 +243,7 @@ void process_destroy(process_t *process)
 	mmap_description_t *description = list_first(process->mappings);
 	while(description)
 	{
-		size_t pages = pageCount(description->length);
+		size_t pages = VM_PAGE_COUNT(description->length);
 
 		vm_free(process->pdirectory, description->vaddress, pages);
 		pm_free(description->paddress, pages);

@@ -24,11 +24,6 @@
 #include "vmemory.h"
 #include "heap.h"
 
-#define round4kDown(x) ((x) & ~(VM_PAGE_SIZE - 1)) // Rounds down to the previous 4k aligned value
-#define round4kUp(x)   round4kDown((x) + VM_PAGE_SIZE - 1) // Rounds up to the next 4k aligned value
-
-#define pageCount(x) ((((x) % VM_PAGE_SIZE) == 0) ? (x) / VM_PAGE_SIZE : ((x) / VM_PAGE_SIZE) + 1)
-
 static inline void *mm_alloc(vm_page_directory_t directory, size_t pages, uint32_t flags)
 {
 	uintptr_t pmemory = pm_alloc(pages);

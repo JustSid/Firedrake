@@ -46,7 +46,7 @@ bool mmap_copyMappings(process_t *target, process_t *source)
 	{
 		mmap_description_t *dstDescription = list_addBack(target->mappings);
 
-		size_t pages = pageCount(srcDescription->length);
+		size_t pages = VM_PAGE_COUNT(srcDescription->length);
 		dstDescription->paddress   = pm_alloc(pages);
 		dstDescription->vaddress   = srcDescription->vaddress;
 		dstDescription->protection = srcDescription->protection;
@@ -84,7 +84,7 @@ void mmap_splitDescription(mmap_description_t *description, vm_address_t address
 		*nextOut = NULL;
 
 	if((length % 4096) != 0)
-		length = round4kUp(length);
+		length = VM_PAGE_ALIGN_UP(length);
 
 	if(description->length == length)
 		return;
@@ -270,7 +270,7 @@ uint32_t _sc_mmap(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 		// Get the right virtual memory flags for the requested protection bits
 		uint32_t vmflags = mmap_vmflagsForProtectionFlags(protection);
 
-		size_t pages      = pageCount(length);
+		size_t pages      = VM_PAGE_COUNT(length);
 		uintptr_t pmemory = pm_alloc(pages);
 
 		if(!pmemory)
@@ -284,7 +284,7 @@ uint32_t _sc_mmap(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 		if(address != 0x0)
 		{
 			// todo: This could be done more elegant, but does the trick for the meantime...
-			vmemory = vm_allocLimit(process->pdirectory, pmemory, (vm_address_t)address, pages, vmflags);
+			vmemory = vm_allocLimit(process->pdirectory, pmemory, pages, (vm_address_t)address, VM_UPPER_LIMIT, vmflags);
 
 			if(!vmemory)
 				vmemory = vm_alloc(process->pdirectory, pmemory, pages, vmflags);
@@ -371,7 +371,7 @@ uint32_t _sc_munmap(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 			}
 
 			mmap_splitDescription(description, address, length, NULL, NULL);
-			size_t pages = pageCount(description->length);
+			size_t pages = VM_PAGE_COUNT(description->length);
 
 			vm_free(process->pdirectory, description->vaddress, pages);
 			pm_free(description->vaddress, pages);
@@ -428,7 +428,7 @@ uint32_t _sc_mprotect(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 			mmap_splitDescription(description, address, length, NULL, NULL);
 
 			uint32_t vmflags = mmap_vmflagsForProtectionFlags(protection);
-			size_t pages = pageCount(description->length);
+			size_t pages = VM_PAGE_COUNT(description->length);
 
 			vm_mapPageRange(process->pdirectory, description->paddress, description->vaddress, pages, vmflags);
 			description->protection = protection;
