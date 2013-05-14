@@ -1,6 +1,6 @@
 //
-//  main.c
-//  test
+//  bind.S
+//  linkd
 //
 //  Created by Sidney Just
 //  Copyright (c) 2013 by Sidney Just
@@ -16,22 +16,26 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <stdio.h>
-#include <dlfcn.h>
-#include <stdlib.h>
-#include <string.h>
+#include <sys/asm.h>
 
-int main()
-{
-	void *symbol = dlsym(RTLD_DEFAULT, "malloc");
+ENTRY(library_bindStart)
+	pushf
+	pushl %eax
+	pushl %ecx
+	pushl %edx
 
-	void *(*tmalloc)(size_t);
-	tmalloc = symbol;
+	pushl 20(%esp)
+	pushl 20(%esp)
 
-	char *pointer = tmalloc(1024);
-	strcpy(pointer, "Hello!\n");
+	call library_bind
 
-	printf("%s\n", pointer);
+	addl $8, %esp
+	movl %eax, 20(%esp)
 
-	return 0;
-}
+	popl %edx
+	popl %ecx
+	popl %eax
+	popf
+
+	leal 4(%esp), %esp
+	ret

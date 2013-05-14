@@ -1,3 +1,4 @@
+ASFLAGS  = -m32 -I../../lib/. -I../../lib/libc/. -I../../lib/libdl/.
 CFLAGS	 = -m32 -Wall -Wextra -pedantic -std=c99 -O2 -fno-stack-protector -fno-builtin -nostdinc -nostdlib -I../../lib/. -I../../lib/libc/. -I../../lib/libdl/.
 CPPFLAGS = -m32 -Wall -Wextra -pedantic -std=c++0x -O2 -fno-stack-protector -fno-rtti -fno-exceptions -nostdinc -nostdlib -I../../lib/.
 LDFLAGS  = -melf_i386 -L../../lib/libcrt/ -L../../lib/libc/ -L../../lib/libdl/

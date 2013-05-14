@@ -51,6 +51,8 @@ typedef struct library_s
 	elf_rela_t *rela;
 	elf_rela_t *relalimit;
 
+	elf32_address_t *pltgot;	
+
 	uint32_t *hashtab;
 	uint32_t *buckets;
 	uint32_t *chains;
@@ -70,9 +72,12 @@ typedef struct library_s
 library_t *library_withName(const char *name, int flags);
 
 void library_patchLinkd(library_t *library);
+void library_fixPLTGot(library_t *library);
 
 bool library_relocateNonPLT(library_t *library);
 bool library_relocatePLT(library_t *library);
+void library_relocatePLTLazy(library_t *library);
+
 
 elf_sym_t *library_lookupSymbol(library_t *library, uint32_t symNum, library_t **outLib);
 elf_sym_t *library_symbolWithName(library_t *library, const char *name, uint32_t hash);

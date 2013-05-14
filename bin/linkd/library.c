@@ -48,7 +48,7 @@ void library_resolveDependencies(library_t *library)
 			}
 			else
 			{
-				dep->library = library_withName(name, RTLD_GLOBAL | RTLD_NOW);
+				dep->library = library_withName(name, RTLD_GLOBAL | RTLD_LAZY);
 				dep->library->references ++;
 			}
 		}
@@ -153,6 +153,10 @@ void library_digestDynamic(library_t *library)
 			case DT_PLTREL:
 				usePLTRel  = (dyn->d_un.d_val == DT_REL);
 				usePLTRela = (dyn->d_un.d_val == DT_RELA);
+				break;
+
+			case DT_PLTGOT:
+				library->pltgot = (elf32_address_t *)(library->relocBase + dyn->d_un.d_ptr);
 				break;
 
 			case DT_INIT_ARRAY:
@@ -427,8 +431,16 @@ library_t *library_withName(const char *name, int flags)
 		if(flags & RTLD_NOW)
 		{
 			library_relocatePLT(library);
-			library_relocateNonPLT(library);
 		}
+		else
+		{
+			library_relocatePLTLazy(library);
+		}
+
+		library_relocateNonPLT(library);
+
+		if(library->pltgot)
+			library_fixPLTGot(library);
 
 		if(flags & RTLD_GLOBAL)
 		{

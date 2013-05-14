@@ -20,6 +20,14 @@
 #include <stdio.h>
 #include "library.h"
 
+void library_bindStart();
+
+void library_fixPLTGot(library_t *library)
+{
+	library->pltgot[1] = (elf32_address_t)library;
+	library->pltgot[2] = (elf32_address_t)&library_bindStart;
+}
+
 bool library_relocateNonPLT(library_t *library)
 {
 	for(elf_rel_t *rel = library->rel; rel<library->rellimit; rel++)
@@ -79,34 +87,66 @@ bool library_relocateNonPLT(library_t *library)
 	return true;
 }
 
+
+bool library_relocatePLTEntry(library_t *library, elf_rel_t *rel, elf32_address_t *outTarget)
+{
+	elf32_address_t *address = (elf32_address_t *)(library->relocBase + rel->r_offset);
+	elf32_address_t target;
+
+	elf_sym_t *symbol;
+	library_t *container;
+
+	uint32_t symnum = ELF32_R_SYM(rel->r_info);
+	uint32_t type   = ELF32_R_TYPE(rel->r_info);
+
+	assert(type == R_386_JMP_SLOT);
+
+	elf_sym_t *lookup = library->symtab + symnum;
+	const char *name  = library->strtab + lookup->st_name;
+
+	symbol = library_lookupSymbol(library, symnum, &container);
+	if(!symbol)
+	{
+		printf("Couldn't find symbol %s for %s!\n", name, library->name);
+		return false;
+	}
+
+	target = (elf32_address_t)(container->relocBase + symbol->st_value);
+	*address = target;
+
+	if(outTarget)
+		*outTarget = target;
+
+	return true;
+}
+
+elf32_address_t library_bind(library_t *library, elf32_word_t offset)
+{
+	elf_rel_t *rel = (elf_rel_t *)((uint8_t *)library->pltRel + offset);
+	elf32_address_t target = 0;
+
+	library_relocatePLTEntry(library, rel, &target);
+	return target;
+}
+
 bool library_relocatePLT(library_t *library)
 {
 	for(elf_rel_t *rel = library->pltRel; rel<library->pltRellimit; rel ++)
 	{
-		elf32_address_t *address = (elf32_address_t *)(library->relocBase + rel->r_offset);
-		elf32_address_t target;
-
-		elf_sym_t *symbol;
-		library_t *container;
-
-		uint32_t symnum = ELF32_R_SYM(rel->r_info);
-		uint32_t type   = ELF32_R_TYPE(rel->r_info);
-
-		assert(type == R_386_JMP_SLOT);
-
-		elf_sym_t *lookup = library->symtab + symnum;
-		const char *name  = library->strtab + lookup->st_name;
-
-		symbol = library_lookupSymbol(library, symnum, &container);
-		if(!symbol)
-		{
-			printf("Couldn't find symbol %s for %s!\n", name, library->name);
-			return false;
-		}
-
-		target = (elf32_address_t)(container->relocBase + symbol->st_value);
-		*address = target;
+		library_relocatePLTEntry(library, rel, NULL);
 	}
 
 	return true;
+}
+
+void library_relocatePLTLazy(library_t *library)
+{
+	for(elf_rel_t *rel = library->pltRel; rel<library->pltRellimit; rel ++)
+	{
+		uint32_t type = ELF32_R_TYPE(rel->r_info);
+		assert(type == R_386_JMP_SLOT);
+
+		elf32_address_t *address = (elf32_address_t *)(library->relocBase + rel->r_offset);
+		*address += (elf32_address_t)library->relocBase;
+	}
 }
