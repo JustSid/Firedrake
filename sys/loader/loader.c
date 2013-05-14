@@ -83,7 +83,7 @@ ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 		}
 
 		vm_free(vm_getKernelDirectory(), (vm_address_t)target, pages);
-		vm_mapPageRange(pdirectory, (uintptr_t)memory, minAddress, pages, VM_FLAGS_USERLAND_R);
+		vm_mapPageRange(pdirectory, (uintptr_t)memory, minAddress, pages, VM_FLAGS_USERLAND);
 
 		executable->pimage = (uintptr_t)memory;
 		executable->vimage = (vm_address_t)minAddress;

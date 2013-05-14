@@ -76,13 +76,6 @@ elf_sym_t *io_librarySymbolWithAddress(io_library_t *library, vm_address_t addre
 
 elf_sym_t *io_librarySymbolWithName(io_library_t *library, const char *name, uint32_t hash)
 {
-	assert(library->nbuckets > 0);
-	if(library->buckets == 0)
-	{
-		dbg("WTF! %s %s", library->name, name);
-		panic("");
-	}
-
 	uint32_t symnum = library->buckets[hash % library->nbuckets];
 	while(symnum != 0)
 	{
