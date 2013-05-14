@@ -54,7 +54,7 @@ bool library_relocateNonPLT(library_t *library)
 				symbol = library_lookupSymbol(library, symnum, &container);
 				if(!symbol)
 				{
-					printf("Couldn't find symbol %s for %s!\n", name, library->name);
+					library_reportError("Couldn't find symbol %s for %s!", name, library->name);
 					return false;
 				}
 
@@ -66,7 +66,7 @@ bool library_relocateNonPLT(library_t *library)
 				symbol = library_lookupSymbol(library, symnum, &container);
 				if(!symbol)
 				{
-					printf("Couldn't find symbol %s for %s!\n", name, library->name);
+					library_reportError("Couldn't find symbol %s for %s!", name, library->name);
 					return false;
 				}
 
@@ -107,7 +107,7 @@ bool library_relocatePLTEntry(library_t *library, elf_rel_t *rel, elf32_address_
 	symbol = library_lookupSymbol(library, symnum, &container);
 	if(!symbol)
 	{
-		printf("Couldn't find symbol %s for %s!\n", name, library->name);
+		library_reportError("Couldn't find symbol %s for %s!", name, library->name);
 		return false;
 	}
 
@@ -125,7 +125,10 @@ elf32_address_t library_bind(library_t *library, elf32_word_t offset)
 	elf_rel_t *rel = (elf_rel_t *)((uint8_t *)library->pltRel + offset);
 	elf32_address_t target = 0;
 
-	library_relocatePLTEntry(library, rel, &target);
+	bool result = library_relocatePLTEntry(library, rel, &target);
+	if(!result)
+		library_dieWithError("Couldn't bind symbol");
+
 	return target;
 }
 
@@ -133,7 +136,10 @@ bool library_relocatePLT(library_t *library)
 {
 	for(elf_rel_t *rel = library->pltRel; rel<library->pltRellimit; rel ++)
 	{
-		library_relocatePLTEntry(library, rel, NULL);
+		if(!library_relocatePLTEntry(library, rel, NULL))
+		{
+			return false;
+		}
 	}
 
 	return true;

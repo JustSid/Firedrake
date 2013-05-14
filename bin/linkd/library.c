@@ -33,7 +33,7 @@ library_t *__library_first = NULL;
 library_t *__library_main  = NULL;
 spinlock_t __library_lock = SPINLOCK_INIT;
 
-void library_resolveDependencies(library_t *library)
+bool library_resolveDependencies(library_t *library)
 {
 	dependency_t *dep = library->dependency;
 	while(dep)
@@ -48,13 +48,22 @@ void library_resolveDependencies(library_t *library)
 			}
 			else
 			{
-				dep->library = library_withName(name, RTLD_GLOBAL | RTLD_LAZY);
+				library_t *lib = library_withName(name, RTLD_GLOBAL | RTLD_LAZY);
+				if(!lib)
+				{
+					library_reportError("Couldn't find dependency %s", name);
+					return false;
+				}
+
+				dep->library = lib;
 				dep->library->references ++;
 			}
 		}
 
 		dep = dep->next;
 	}
+
+	return true;
 }
 
 void library_digestDynamic(library_t *library)
@@ -397,13 +406,26 @@ void library_map_library(library_t *library, uint8_t *begin)
 	}
 }
 
+
+
+void library_deleteLibrary(library_t *library)
+{
+	munmap(library->region, library->pages * VM_PAGE_SIZE);
+
+	free(library->name);
+	free(library);
+}
+
 library_t *library_withName(const char *name, int flags)
 {
 	library_t *library = __library_first;
 	while(library)
 	{
 		if(strcmp(library->name, name) == 0)
+		{
+			library->references ++;
 			return library;
+		}
 
 		library = library->next;
 	}
@@ -426,18 +448,21 @@ library_t *library_withName(const char *name, int flags)
 		munmap(begin, fileSize);
 
 		library_patchLinkd(library);
-		library_resolveDependencies(library);
+		if(!library_resolveDependencies(library))
+			goto libraryLoadFailed;
 
 		if(flags & RTLD_NOW)
 		{
-			library_relocatePLT(library);
+			if(!library_relocatePLT(library))
+				goto libraryLoadFailed;
 		}
 		else
 		{
 			library_relocatePLTLazy(library);
 		}
 
-		library_relocateNonPLT(library);
+		if(!library_relocateNonPLT(library))
+			goto libraryLoadFailed;
 
 		if(library->pltgot)
 			library_fixPLTGot(library);
@@ -451,7 +476,14 @@ library_t *library_withName(const char *name, int flags)
 		}
 
 		return library;
-	}
 
-	return NULL;
+	libraryLoadFailed:
+		library_deleteLibrary(library);
+		return NULL;
+	}
+	else
+	{
+		library_reportError("Couldn't find library %s", name);
+		return NULL;
+	}
 }

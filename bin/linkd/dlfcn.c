@@ -18,10 +18,21 @@
 
 #include <dlfcn.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
 #include "library.h"
+
+static bool __dlerror_hasError = false;
+static char __dlerror_message[512];
 
 char *__dlerror()
 {
+	if(__dlerror_hasError)
+	{
+		__dlerror_hasError = false;
+		return __dlerror_message;
+	}
+
 	return NULL;
 }
 
@@ -33,12 +44,51 @@ void *__dlopen(const char *file, int flag)
 void *__dlsym(void *handle, const char *symbol)
 {
 	if(handle == RTLD_NEXT)
+	{
+		library_reportError("RTLD_NEXT not supported");
 		return NULL;
+	}
 
-	return library_resolveSymbolWithName(handle, symbol);
+	void *entry = library_resolveSymbolWithName(handle, symbol);
+	if(!entry)
+	{
+		const char *name = NULL;
+		if(handle == RTLD_DEFAULT)
+		{
+			name = "RTLD_DEFAULT";
+		}
+		else
+		{
+			library_t *library = handle;
+			name = library->name;
+		}
+
+		library_reportError("Couldn't find symbol %s in %s", symbol, name);
+	}
+
+	return entry;
 }
 
 void __dlclose(void *handle)
 {
 	((void)handle);
+}
+
+
+
+void library_reportError(const char *error, ...)
+{
+	va_list args;
+	va_start(args, error);
+
+	vsnprintf(__dlerror_message, 512, error, args);
+	__dlerror_hasError = true;
+
+	va_end(args);
+}
+
+void library_dieWithError(const char *error, ...)
+{
+	((void)error);
+	abort();
 }

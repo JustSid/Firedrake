@@ -78,6 +78,8 @@ bool library_relocateNonPLT(library_t *library);
 bool library_relocatePLT(library_t *library);
 void library_relocatePLTLazy(library_t *library);
 
+void library_reportError(const char *error, ...);
+void library_dieWithError(const char *error, ...);
 
 elf_sym_t *library_lookupSymbol(library_t *library, uint32_t symNum, library_t **outLib);
 elf_sym_t *library_symbolWithName(library_t *library, const char *name, uint32_t hash);
