@@ -3,6 +3,15 @@
 import os
 import struct
 
+def objdump(filepath):
+	path = os.path.dirname(filepath)
+	name = os.path.basename(filepath)
+
+	command = 'objdump -d ./' + name + ' > ./dump.txt'
+
+	os.chdir(path)
+	os.system(command)
+
 def appendFile(out, filepath, path):
 	f = open(filepath, 'rb')
 	b = f.read()
@@ -22,10 +31,13 @@ def scanFolder(out, path):
 
 		if filename.rfind('.bin') >= 0:
 			appendFile(out, filepath, '/bin')
+			objdump(filepath)
 		elif filename.rfind('.so') >= 0:
 			appendFile(out, filepath, '/lib')
+			objdump(filepath)
 		elif filename == 'firedrake':
 			appendFile(out, filepath, '/')
+			objdump(filepath)
 
 		if os.path.isdir(filepath) == True:
 			scanFolder(out, filepath)
