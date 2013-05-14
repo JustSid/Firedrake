@@ -1,4 +1,4 @@
-ALLDIRS = hellostatic
+ALLDIRS = linkd test
 
 all:
 	for i in $(ALLDIRS); do make -C $$i; done
