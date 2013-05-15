@@ -21,88 +21,33 @@
 #include <system/syslog.h>
 #include <system/kernel.h>
 #include <system/helper.h>
+#include <libc/stdio.h>
 #include <scheduler/scheduler.h>
 #include "interrupts.h"
 
-const char *__ir_exception_pageFaultTranslateBit(int bit, int set);
+const char *__ir_exception_pageFaultTranslateBit(int bit, uint32_t error);
+void __ir_exceptionKillAndDump(cpu_state_t *state, const char *message, ...);
 
 uint32_t __ir_handleException(uint32_t esp)
 {
 	cpu_state_t *state = (cpu_state_t *)esp;
 
-	if(state->interrupt == 1)
+	if(state->interrupt == 0)
 	{
-		// Debug exception
-		uint32_t dr6;
-		__asm__ volatile("mov %%dr6, %0" : "=r" (dr6));
-
-		for(int i=0; i<3; i++)
-		{
-			bool didBreak = (dr6 & (1 << i));
-			if(didBreak)
-			{
-				uintptr_t address = 0x0;
-				switch(i)
-				{
-					case 0:
-						__asm__ volatile("mov %%dr0, %0" : "=r" (address));
-						break;
-
-					case 1:
-						__asm__ volatile("mov %%dr1, %0" : "=r" (address));
-						break;
-
-					case 2:
-						__asm__ volatile("mov %%dr2, %0" : "=r" (address));
-						break;
-
-					case 3:
-						__asm__ volatile("mov %%dr3, %0" : "=r" (address));
-						break;
-
-					default:
-						break;
-				}
-
-				io_library_t *library = NULL;
-				const char *name = kern_nameForAddress(kern_resolveAddress(state->eip), &library);
-
-				char buffer[255];
-				if(isCPPName(name))
-				{
-					demangleCPPName(name, buffer);
-					name = (const char *)buffer;
-				}
-
-				uint32_t eip = library ? state->eip - library->relocBase : state->eip;
-
-				warn("Watchpoint #%i triggered. Address: %p. eip: %p (%s)\n", i, address, eip, name);
-				kern_printBacktrace(20);
-			}
-		}
-
-
-		// We have to clear DR6 ourself
-		__asm__ volatile("mov %0, %%dr6" : : "r" (0x0));
-
-		return esp;
+		__ir_exceptionKillAndDump(state, "Division by zero");
+		return sd_schedule(esp);
+	}
+	else
+	if(state->interrupt == 2)
+	{
+		__ir_exceptionKillAndDump(state, "NMI");
+		return sd_schedule(esp);
 	}
 	else
 	if(state->interrupt == 13)
 	{
-		process_t *process = process_getCurrentProcess();
-		if(process->pid == 0)
-		{
-			panic("General protection fault. Error code: %p", state->error);
-		}
-		else
-		{
-			thread_t *thread = process->scheduledThread;
-			process->died = true;
-
-			dbg("General protection fault in %i:%i\n", process->pid, thread->id);
-			return sd_schedule(esp);
-		}
+		__ir_exceptionKillAndDump(state, "General protection faul. Error code: %x", state->error);
+		return sd_schedule(esp);
 	}
 	else
 	if(state->interrupt == 14)
@@ -113,39 +58,58 @@ uint32_t __ir_handleException(uint32_t esp)
 
 		__asm__ volatile("mov %%cr2, %0" : "=r" (address)); // Get the virtual address of the page
 
-		process_t *process = process_getCurrentProcess();
-		if(process->pid == 0)
-		{
-			panic("%s (%p) while %s in %s.", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), address, // Panic with the type of the error
-				__ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), // Why it occured
-				__ir_exception_pageFaultTranslateBit(3, error & (1 << 2))); // And in which mode it occured.
-		}
-		else
-		{
-			thread_t *thread = process->scheduledThread;
-			process->died = true;
+		const char *reason = __ir_exception_pageFaultTranslateBit(0, error);
+		const char *why = __ir_exception_pageFaultTranslateBit(1, error);
+		const char *ring = __ir_exception_pageFaultTranslateBit(2, error);
 
-			dbg("%s while %s (to/from) address %p, caused by %i:%i. Killing.\n", __ir_exception_pageFaultTranslateBit(1, error & (1 << 0)), __ir_exception_pageFaultTranslateBit(2, error & (1 << 1)), address, process->pid, thread->id);
-			dbg("Faulty address: %p\n", state->eip);
-			return sd_schedule(esp);
-		}
+		__ir_exceptionKillAndDump(state, "%s (%p) while %s in %s", reason, address, why, ring);
+		return sd_schedule(esp);
 	}
 
 	panic("Unhandled exception %i occured!", state->interrupt);
 }
 
-const char *__ir_exception_pageFaultTranslateBit(int bit, int set)
+
+
+void __ir_exceptionKillAndDump(cpu_state_t *state, const char *message, ...)
+{
+	process_t *process = process_getCurrentProcess();
+	thread_t *thread = process->scheduledThread;
+
+	char buffer[256];
+
+	va_list args;
+	va_start(args, message);
+	vsnprintf(buffer, 255, message, args);
+	va_end(args);
+
+	if(process->pid == 0)
+	{
+		panic(buffer);
+	}
+
+	process->died = true;
+	
+	dbg("Process %i:%i crashed!\nReason: \16\27\"%s\"\16\031.\n", process->pid, thread->id, buffer);
+	dbg("  eax: \16\27%08x\16\031, ecx: \16\27%08x\16\031, edx: \16\27%08x\16\031, ebx: \16\27%08x\16\031\n", state->eax, state->ecx, state->edx, state->ebx);
+	dbg("  esp: \16\27%08x\16\031, ebp: \16\27%08x\16\031, esi: \16\27%08x\16\031, edi: \16\27%08x\16\031\n", state->esp, state->ebp, state->esi, state->edi);
+	dbg("  eip: \16\27%08x\16\031, eflags: \16\27%08x\16\031.\n", state->eip, state->eflags);
+
+	kern_printBacktraceForThread(thread, 15);
+}
+
+const char *__ir_exception_pageFaultTranslateBit(int bit, uint32_t error)
 {
 	switch(bit)
 	{
+		case 0:
+			return (error & (1 << bit)) ? "Protection violation" : "Non-present page";
+
 		case 1:
-			return set ? "Protection violation" : "Non-present page";
+			return (error & (1 << bit)) ? "writing" : "reading";
 
 		case 2:
-			return set ? "writing" : "reading";
-
-		case 3:
-			return set ? "ring 3" : "ring 0";
+			return (error & (1 << bit)) ? "ring 3" : "ring 0";
 
 		default:
 			break;
