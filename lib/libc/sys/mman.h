@@ -1,6 +1,6 @@
 //
-//  mman.h
-//  libtest
+//  sys/mman.h
+//  libc
 //
 //  Created by Sidney Just
 //  Copyright (c) 2013 by Sidney Just
@@ -31,8 +31,10 @@
 #define MAP_SHARED    	0x0001
 #define MAP_PRIVATE   	0x0002
 #define MAP_ANONYMOUS 	0x0004
+#define MAP_FIXED       0x0008
 
 void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 int munmap(void *address, size_t length);
+int mprotect(void *address, size_t length, int prot);
 
 #endif /* _MMAP_H_ */

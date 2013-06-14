@@ -106,7 +106,7 @@ library_t *map_program(uint8_t *begin, void **entry)
 	minAddress = VM_PAGE_ALIGN_DOWN(minAddress);
 	pages = VM_PAGE_COUNT(maxAddress - minAddress);
 
-	uint8_t *target = mmap((void *)minAddress, pages * VM_PAGE_SIZE, PROT_READ | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
+	uint8_t *target = mmap((void *)minAddress, pages * VM_PAGE_SIZE, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, 0, 0);
 	memset(target, 0, pages * VM_PAGE_SIZE);
 
 	for(int i=0; i<header->e_phnum; i++) 

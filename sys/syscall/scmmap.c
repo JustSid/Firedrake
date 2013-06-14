@@ -17,20 +17,21 @@
 //
 
 #include <libc/assert.h>
+#include <system/panic.h>
 #include <system/syslog.h>
 #include <libc/string.h>
 
 #include "scmmap.h"
 #include "syscall.h"
 
-uint32_t mmap_vmflagsForProtectionFlags(int protection)
+static inline uint32_t mmap_vmflagsForProtectionFlags(int protection)
 {
 	uint32_t vmflags = VM_PAGETABLEFLAG_PRESENT;
 
 	if(!(protection & PROT_NONE))
-		vmflags |= VM_FLAGS_USERLAND;
+		vmflags |= VM_PAGETABLEFLAG_USERSPACE;
 
-	if(!(protection & PROT_READ) && (protection & PROT_WRITE))
+	if((protection & PROT_WRITE))
 		vmflags |= VM_PAGETABLEFLAG_WRITEABLE;
 
 	return vmflags;
@@ -38,189 +39,84 @@ uint32_t mmap_vmflagsForProtectionFlags(int protection)
 
 bool mmap_copyMappings(process_t *target, process_t *source)
 {
-	list_lock(target->mappings);
-	list_lock(source->mappings);
+	process_lock(source);
+	process_block(source);
 
-	mmap_description_t *srcDescription = list_first(source->mappings);
-	while(srcDescription)
+	size_t pages = atree_count(source->mappings);
+	uintptr_t pmemory = pm_alloc(pages);
+
+	mmap_description_t *description;
+	mmap_description_t *targetDescription = halloc(NULL, pages * sizeof(mmap_description_t));
+	iterator_t *iterator = atree_iterator(source->mappings);
+
+	assert(targetDescription && iterator && pmemory);
+
+	vm_address_t targetPage = vm_alloc(vm_getKernelDirectory(), pmemory, 2, VM_FLAGS_KERNEL);
+	vm_address_t sourcePage = targetPage + VM_PAGE_SIZE;
+
+	assert(targetPage);
+	
+	while((description = iterator_nextObject(iterator)))
 	{
-		mmap_description_t *dstDescription = list_addBack(target->mappings);
+		vm_mapPage__noLock(vm_getKernelDirectory(), description->paddress, sourcePage, VM_FLAGS_KERNEL);
+		vm_mapPage__noLock(vm_getKernelDirectory(), pmemory, targetPage, VM_FLAGS_KERNEL);
 
-		size_t pages = VM_PAGE_COUNT(srcDescription->length);
-		dstDescription->paddress   = pm_alloc(pages);
-		dstDescription->vaddress   = srcDescription->vaddress;
-		dstDescription->protection = srcDescription->protection;
-		dstDescription->length     = srcDescription->length;
+		memcpy((void *)targetPage, (void *)sourcePage, VM_PAGE_SIZE);
 
-		vm_mapPageRange(target->pdirectory, dstDescription->paddress, dstDescription->vaddress, pages, mmap_vmflagsForProtectionFlags(dstDescription->protection));
+		targetDescription->paddress = pmemory;
+		targetDescription->vaddress = description->vaddress;
+		targetDescription->protection = description->protection;
 
-		// Copy the mappings content
-		void *srcmem = (void *)vm_alloc(vm_getKernelDirectory(), srcDescription->paddress, pages, VM_FLAGS_KERNEL);
-		void *dstmem = (void *)vm_alloc(vm_getKernelDirectory(), dstDescription->paddress, pages, VM_FLAGS_KERNEL);
+		uint32_t vmflags = mmap_vmflagsForProtectionFlags(targetDescription->protection);
+		vm_mapPage__noLock(target->pdirectory, targetDescription->paddress, targetDescription->vaddress, vmflags);
 
-		memcpy(dstmem, srcmem, srcDescription->length);
+		atree_insert(target->mappings, targetDescription, (void *)(targetDescription->vaddress));
 
-		vm_free(vm_getKernelDirectory(), (vm_address_t)srcmem, pages);
-		vm_free(vm_getKernelDirectory(), (vm_address_t)dstmem, pages);
-
-		srcDescription = srcDescription->next;
+		pmemory += VM_PAGE_SIZE;
+		targetDescription ++;
 	}
 
-	list_unlock(source->mappings);
-	list_unlock(target->mappings);
+	iterator_destroy(iterator);
+
+	vm_free(vm_getKernelDirectory(), targetPage, 2);
+
+	process_unblock(source);
+	process_unlock(source);
 
 	return true;
 }
 
-// Splits a mmap_description_t from address to address + length
-void mmap_splitDescription(mmap_description_t *description, vm_address_t address, size_t length, mmap_description_t **prevOut, mmap_description_t **nextOut)
+void mmap_destroyMappings(process_t *process)
 {
-	process_t *process = (process_t *)description->process;
+	mmap_description_t *description;
+	iterator_t *iterator = atree_iterator(process->mappings);
 
-	if(prevOut)
-		*prevOut = NULL;
+	assert(iterator);
 
-	if(nextOut)
-		*nextOut = NULL;
-
-	if((length % 4096) != 0)
-		length = VM_PAGE_ALIGN_UP(length);
-
-	if(description->length == length)
-		return;
-
-	if(description->vaddress == address)
+	while((description = iterator_nextObject(iterator)))
 	{
-		mmap_description_t *next = list_addBack(process->mappings);
-		next->paddress   = description->paddress + length;
-		next->vaddress   = description->vaddress + length;
-		next->length     = description->length - length;
-		next->protection = description->protection;
-		next->next       = description->next;
-		next->process    = description->process;
-
-		description->length = description->length - next->length;
-		description->next = next;
-
-		if(nextOut)
-			*nextOut = next;
+		vm_mapPage__noLock(process->pdirectory, 0x0, description->vaddress, 0);
+		pm_free(description->paddress, 1);
 	}
-	else if(description->vaddress + description->length == address + length)
-	{
-		mmap_description_t *prev = list_addBack(process->mappings);
-		prev->paddress   = description->paddress;
-		prev->vaddress   = description->vaddress;
-		prev->length     = description->length - length;
-		prev->protection = description->protection;
-		prev->prev       = description->prev;
-		prev->process    = description->process;
 
-		description->vaddress = prev->vaddress + prev->length;
-		description->paddress = prev->paddress + prev->length;
-		description->length   = description->length - prev->length;
-		description->prev     = prev;
+	iterator_destroy(iterator);
+	atree_destroy(process->mappings);
 
-		if(prevOut)
-			*prevOut = prev;
-	}
-	else
-	{
-		mmap_description_t *prev = list_addBack(process->mappings);
-		prev->paddress   = description->paddress;
-		prev->vaddress   = description->vaddress;
-		prev->length     = address - description->vaddress;
-		prev->protection = description->protection;
-		prev->prev       = description->prev;
-		prev->process    = description->process;
-
-		mmap_description_t *next = list_addBack(process->mappings);
-		next->paddress   = description->paddress + length;
-		next->vaddress   = description->vaddress + length;
-		next->length     = (description->vaddress + description->length) - (address + length);
-		next->protection = description->protection;
-		next->next       = description->next;
-		next->process    = description->process;
-
-		description->vaddress = prev->vaddress + prev->length;
-		description->paddress = prev->paddress + prev->length;
-		description->length   = description->length - (prev->length + next->length);
-		description->prev     = prev;
-		description->next     = next;
-
-		if(nextOut)
-			*nextOut = next;
-
-		if(prevOut)
-			*prevOut = prev;
-	}
+	process->mappings = atree_create(mmap_atreeLookup);
 }
 
-// Joins the two descriptions
-// 
-void mmap_joinDescription(mmap_description_t *description, mmap_description_t *joining)
+int mmap_atreeLookup(void *key1, void *key2)
 {
-	assert((joining == description->next || joining == description->prev));
+	vm_address_t t1 = (vm_address_t)key1;
+	vm_address_t t2 = (vm_address_t)key2;	
 
-	process_t *process = (process_t *)description->process;
+	if(t1 > t2)
+		return kCompareGreaterThan;
 
-	if(description->next == joining)
-	{
-		description->next = joining->next;
-		description->length += joining->length;
-		
-		list_remove(process->mappings, joining);
-	}
-	else
-	{
-		description->prev = joining->prev;
-		description->length += joining->length;
-		description->vaddress = joining->vaddress;
-		description->paddress = joining->paddress;
+	if(t1 < t2)
+		return kCompareLesserThan;
 
-		list_remove(process->mappings, joining);
-	}
-}
-
-bool mmap_tryJoinFragments(mmap_description_t *description, vm_address_t address, size_t length)
-{
-	// Check if the mapping is just fragmented
-	mmap_description_t *last = NULL;
-	mmap_description_t *current = description->next;
-
-	size_t lengthLeft = (address + length) - (description->vaddress + description->length);
-	while(current)
-	{
-		if(lengthLeft <= current->length)
-		{
-			size_t overflow = current->length - lengthLeft;
-			if(overflow > 0)
-				mmap_splitDescription(current, current->vaddress, overflow, NULL, NULL);
-
-			last = current;
-			break;
-		}
-
-		lengthLeft -= current->length;
-		current = current->next;
-	}
-
-	if(last)
-	{
-		// Join the fragments together
-		current = description->next;
-		while(1)
-		{
-			mmap_joinDescription(description, current);
-			if(current == last)
-				break;
-
-			current = description->next;
-		}
-
-		return true;
-	}
-
-	return false;
+	return kCompareEqualTo;
 }
 
 // mmap() signature:
@@ -240,154 +136,167 @@ uint32_t _sc_mmap(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	__unused int filed         = *((int *)(uesp + 4));
 	__unused uint32_t offset   = *((int *)(uesp + 5));
 
-	list_lock(process->mappings);
-	mmap_description_t *description = list_addBack(process->mappings);
+	size_t pages = VM_PAGE_COUNT(length);
 
-	if(!description)
+	process_lock(process);
+	process_block(process);
+
+	uintptr_t pmemory = 0x0;
+	vm_address_t vmemory = 0x0;
+	uint32_t vmflags = mmap_vmflagsForProtectionFlags(protection);
+
+	// Sanity check
+	if((flags & MAP_PRIVATE) && (flags & MAP_SHARED))
 	{
-		list_unlock(process->mappings);
-
-		*errno = ENOMEM;
+		*errno = EINVAL;
 		return MAP_FAILED;
 	}
 
-	description->process = process;
-
-	if((flags & MAP_PRIVATE) && (flags & MAP_SHARED))
-		goto mmapFailed;
-
-	if((flags & MAP_PRIVATE) && (flags & MAP_ANONYMOUS))
+	if((address && (address % VM_PAGE_SIZE) != 0) || (length % VM_PAGE_SIZE) != 0 || length == 0)
 	{
-		// Check if address and length are on an 4k aligned
-		if((address % 4096) != 0 || (length % 4096) != 0)
-		{
-			list_unlock(process->mappings);
+		*errno = EINVAL;
+		return MAP_FAILED;
+	}
 
-			*errno = EINVAL;
-			return MAP_FAILED;
-		}
+	// Allocate the memory
+	pmemory = pm_alloc(pages);
+	if(!pmemory)
+	{
+		*errno = ENOMEM;
+		goto mmap_failed;
+	}
 
-		// Get the right virtual memory flags for the requested protection bits
-		uint32_t vmflags = mmap_vmflagsForProtectionFlags(protection);
+	if(address)
+	{
+		vmemory = vm_allocLimit(process->pdirectory, pmemory, pages, (vm_address_t)address, VM_UPPER_LIMIT, vmflags);
 
-		size_t pages      = VM_PAGE_COUNT(length);
-		uintptr_t pmemory = pm_alloc(pages);
-
-		if(!pmemory)
+		if(vmemory != address && flags & MAP_FIXED)
 		{
 			*errno = ENOMEM;
-			goto mmapFailed;
-		}
-
-
-		vm_address_t vmemory = 0x0;
-		if(address != 0x0)
-		{
-			// todo: This could be done more elegant, but does the trick for the meantime...
-			vmemory = vm_allocLimit(process->pdirectory, pmemory, pages, (vm_address_t)address, VM_UPPER_LIMIT, vmflags);
-
-			if(!vmemory)
-				vmemory = vm_alloc(process->pdirectory, pmemory, pages, vmflags);
-		}
-		else
-		{
-			vmemory = vm_alloc(process->pdirectory, pmemory, pages, vmflags);
+			goto mmap_failed;
 		}
 
 		if(!vmemory)
+			vmemory = vm_alloc(process->pdirectory, pmemory, pages, vmflags);
+	}
+	else
+	{
+		// Sorry, no NULL page for you
+		if(flags & MAP_FIXED)
 		{
 			*errno = ENOMEM;
-
-			pm_free(pmemory, pages);
-			goto mmapFailed;
+			goto mmap_failed;
 		}
 
-
-		// Map the memory also in kernel address space and initialize it with zeroes
-		void *memory = (void *)vm_alloc(vm_getKernelDirectory(), pmemory, pages, VM_FLAGS_KERNEL);
-		if(!memory)
-		{
-			*errno = ENOMEM;
-
-			vm_free(process->pdirectory, vmemory, pages);
-			pm_free(pmemory, pages);
-
-			goto mmapFailed;
-		}
-
-		memset(memory, 0, pages * VM_PAGE_SIZE);
-		vm_free(vm_getKernelDirectory(), (vm_address_t)memory, pages);
-
-		// Update the description
-		description->vaddress   = vmemory;
-		description->paddress   = pmemory;
-		description->length     = length;
-		description->protection = protection;
-
-		list_unlock(process->mappings);
-		return vmemory;
+		vmemory = vm_alloc(process->pdirectory, pmemory, pages, vmflags);
 	}
 
+	if(!vmemory)
+	{
+		*errno = ENOMEM;
+		goto mmap_failed;
+	}
 
-mmapFailed:
+	// Map the memory also in kernel address space and initialize it with zeroes
+	void *memory = (void *)vm_alloc(vm_getKernelDirectory(), pmemory, pages, VM_FLAGS_KERNEL);
+	if(!memory)
+	{
+		*errno = ENOMEM;
+		goto mmap_failed;
+	}
 
-	list_remove(process->mappings, description);
-	list_unlock(process->mappings);
+	memset(memory, 0, pages * VM_PAGE_SIZE);
+	vm_free(vm_getKernelDirectory(), (vm_address_t)memory, pages);
+
+	// Create descriptions for each page
+	uintptr_t tpmemory = pmemory;
+	vm_address_t tvmemory = vmemory;
+
+	mmap_description_t *description = halloc(NULL, pages * sizeof(mmap_description_t));
+	if(!description)
+	{
+		*errno = ENOMEM;
+		goto mmap_failed;
+	}
+
+	for(size_t i=0; i<pages; i++)
+	{
+		description->vaddress = tvmemory;
+		description->paddress = tpmemory;
+		description->protection = protection;
+
+		atree_insert(process->mappings, description, (void *)tvmemory);
+
+		description ++;
+		tvmemory += VM_PAGE_SIZE;
+		tpmemory += VM_PAGE_SIZE;
+	}
+
+	process_unblock(process);
+	process_unlock(process);
+
+	return vmemory;
+
+mmap_failed:
+	if(vmemory)
+		vm_free(process->pdirectory, vmemory, pages);
+
+	if(pmemory)
+		pm_free(pmemory, pages);
+
+	process_unblock(process);
+	process_unlock(process);
 
 	return MAP_FAILED;
 }
 
 // munmap() signature
 // int munmap(void *address, size_t length)
+
 uint32_t _sc_munmap(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
-	process_t *process = process_getCurrentProcess();
-
-	// fetch the arguments from the stack
 	uintptr_t address = *((uintptr_t *)(uesp + 0));
-	size_t length = *((size_t *)(uesp + 1));
+	size_t length     = *((size_t *)(uesp + 1));
 
-	if((address % 4096) != 0 || length == 0)
+	// Sanity checks
+	if((address % VM_PAGE_SIZE) != 0)
 	{
 		*errno = EINVAL;
 		return -1;
 	}
 
-	list_lock(process->mappings);
-
-	// Search for the mmap entry that fits the address and length
-	mmap_description_t *description = list_first(process->mappings); 
-	while(description)
+	if((length % VM_PAGE_SIZE) != 0 || length == 0)
 	{
-		if(description->vaddress >= address && address <= description->vaddress + description->length)
-		{
-			if(address + length > description->vaddress + description->length)
-			{
-				if(!mmap_tryJoinFragments(description, address, length))
-				{
-					*errno = ENOMEM;
-					return -1;
-				}
-			}
-
-			mmap_splitDescription(description, address, length, NULL, NULL);
-			size_t pages = VM_PAGE_COUNT(description->length);
-
-			vm_free(process->pdirectory, description->vaddress, pages);
-			pm_free(description->vaddress, pages);
-
-			list_remove(process->mappings, description);
-			list_unlock(process->mappings);
-			return 0;
-		}
-
-		description = description->next;
+		*errno = EINVAL;
+		return -1;
 	}
 
-	list_unlock(process->mappings);
-	
-	*errno = EINVAL;
-	return -1;
+	size_t pages = VM_PAGE_COUNT(length);
+
+	process_t *process = process_getCurrentProcess();
+	process_lock(process);
+	process_block(process);
+
+	for(size_t i=0; i<pages; i++)
+	{
+		mmap_description_t *description = atree_find(process->mappings, (void *)(address));
+		if(!description)
+		{
+			address += VM_PAGE_SIZE;
+			continue;
+		}
+
+		vm_mapPage__noLock(process->pdirectory, 0x0, description->vaddress, 0);
+		pm_free(description->paddress, 1);
+
+		atree_remove(process->mappings, (void *)address);
+		address += VM_PAGE_SIZE;
+	}
+
+	process_unblock(process);
+	process_unlock(process);
+
+	return 0;
 }
 
 // mprotect() signature
@@ -395,55 +304,50 @@ uint32_t _sc_munmap(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 
 uint32_t _sc_mprotect(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 {
-	process_t *process = process_getCurrentProcess();
-
-	// fetch the arguments from the stack
 	uintptr_t address = *((uintptr_t *)(uesp + 0));
 	size_t length     = *((size_t *)(uesp + 1));
-	int  protection   = *((int *)(uesp + 2));
+	int protection    = *((int *)(uesp + 2));
 
-	if((address % 4096) != 0 || length == 0)
+	// Sanity checks
+	if((address % VM_PAGE_SIZE) != 0)
 	{
 		*errno = EINVAL;
 		return -1;
 	}
 
-
-	list_lock(process->mappings);
-
-	mmap_description_t *description = list_first(process->mappings); 
-	while(description)
+	if((length % VM_PAGE_SIZE) != 0 || length == 0)
 	{
-		if(description->vaddress >= address && address <= description->vaddress + description->length)
-		{
-			if(address + length > description->vaddress + description->length)
-			{
-				if(!mmap_tryJoinFragments(description, address, length))
-				{
-					*errno = ENOMEM;
-					return -1;
-				}
-			}
-
-			mmap_splitDescription(description, address, length, NULL, NULL);
-
-			uint32_t vmflags = mmap_vmflagsForProtectionFlags(protection);
-			size_t pages = VM_PAGE_COUNT(description->length);
-
-			vm_mapPageRange(process->pdirectory, description->paddress, description->vaddress, pages, vmflags);
-			description->protection = protection;
-
-			list_unlock(process->mappings);
-			return 0;
-		}
-
-		description = description->next;
+		*errno = EINVAL;
+		return -1;
 	}
 
-	list_unlock(process->mappings);
+	size_t pages = VM_PAGE_COUNT(length);
+	uint32_t vmflags = mmap_vmflagsForProtectionFlags(protection);
 
-	*errno = EINVAL;
-	return -1;
+	process_t *process = process_getCurrentProcess();
+	process_lock(process);
+	process_block(process);
+
+	for(size_t i=0; i<pages; i++)
+	{
+		mmap_description_t *description = atree_find(process->mappings, (void *)(address));
+		if(!description)
+		{
+			address += VM_PAGE_SIZE;
+			continue;
+		}
+
+		if(description->protection != protection)
+		{
+			vm_mapPage__noLock(process->pdirectory, description->paddress, description->vaddress, vmflags);
+			description->protection = protection;
+		}
+	}
+
+	process_unblock(process);
+	process_unlock(process);
+
+	return 0;
 }
 
 

@@ -20,7 +20,7 @@
 #define _PROCESS_H_
 
 #include <prefix.h>
-#include <container/list.h>
+#include <container/atree.h>
 #include <system/lock.h>
 #include <system/kernel.h>
 #include <system/time.h>
@@ -59,7 +59,7 @@ typedef struct process_s
 
 	ld_exectuable_t *image;
 
-	list_t *mappings; // used for mmap() 
+	atree_t *mappings; // used for mmap() 
 
 	struct vfs_file_s *files[kSDMaxOpenFiles];
 	size_t openFiles;

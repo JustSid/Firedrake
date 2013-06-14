@@ -67,7 +67,7 @@ process_t *process_createVoid(int *errno)
 		process->startTime = time_getTimestamp();
 		process->usedTime  = 0;
 
-		process->mappings = list_create(sizeof(mmap_description_t), offsetof(mmap_description_t, listNext), offsetof(mmap_description_t, listPrev));
+		process->mappings = atree_create(mmap_atreeLookup);
 		if(!process->mappings)
 		{
 			hfree(NULL, process);
@@ -85,7 +85,7 @@ process_t *process_createVoid(int *errno)
 
 		if(!process->mappings)
 		{
-			list_destroy(process->mappings);
+			atree_destroy(process->mappings);
 			hfree(NULL, process);
 			process = NULL;
 
@@ -255,21 +255,6 @@ bool process_duplicateFiles(process_t *process, process_t *source, int *errno)
 	return result;
 }
 
-void process_cleanMappings(process_t *process)
-{
-	mmap_description_t *description = list_first(process->mappings);
-	while(description)
-	{
-		size_t pages = VM_PAGE_COUNT(description->length);
-
-		vm_free(process->pdirectory, description->vaddress, pages);
-		pm_free(description->paddress, pages);
-
-		description = description->next;
-	}
-}
-
-
 void process_switchExecutable(process_t *process, const char *file, int *errno)
 {
 	process_lock(process);
@@ -281,10 +266,7 @@ void process_switchExecutable(process_t *process, const char *file, int *errno)
 
 	// General clean up
 	//process_closeFiles(process);
-	//process_cleanMappings(process);
-
-	//list_destroy(process->mappings);
-	//process->mappings = list_create(sizeof(mmap_description_t), offsetof(mmap_description_t, listNext), offsetof(mmap_description_t, listPrev));
+	mmap_destroyMappings(process);
 
 	// Get rid of all threads except of the currently scheduled thread
 	thread_t *mthread = process->scheduledThread;
@@ -355,8 +337,8 @@ void process_destroy(process_t *process)
 	// Remove all mappings
 	if(process->mappings)
 	{
-		process_cleanMappings(process);
-		list_destroy(process->mappings);
+		mmap_destroyMappings(process);
+		atree_destroy(process->mappings);
 	}
 
 	vm_deleteDirectory(process->pdirectory);

@@ -30,3 +30,9 @@ int munmap(void *address, size_t length)
 	unsigned int result = syscall(SYS_MUNMAP, address, length);
 	return (int)result;
 }
+
+int mprotect(void *address, size_t length, int prot)
+{
+	unsigned int result = syscall(SYS_MPROTECT, address, length, prot);
+	return (int)result;
+}

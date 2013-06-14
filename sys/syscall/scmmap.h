@@ -29,30 +29,23 @@
 #define PROT_WRITE  0x02
 #define PROT_EXEC	0x04
 
-#define MAP_SHARED    0x0001 // Not supported yet
-#define MAP_PRIVATE   0x0002
+#define MAP_SHARED      0x0001 // Not supported yet
+#define MAP_PRIVATE     0x0002
 #define MAP_ANONYMOUS 	0x0004 // Must be specified because of lack of file descriptors
+#define MAP_FIXED       0x0008
 #define MAP_FAILED		-1
 
 typedef struct mmap_description_s
 {
-	process_t *process; // Process of the mapping
-
 	vm_address_t vaddress;
 	uintptr_t paddress;
 
-	size_t length; // In bytes
 	int protection; // mmap flags, not vmemory flags!
-
-	// Used when the mmap is fragmented
-	struct mmap_description_s *next;
-	struct mmap_description_s *prev;
-
-	struct mmap_description_s *listNext;
-	struct mmap_description_s *listPrev;
 } mmap_description_t;
 
-uint32_t mmap_vmflagsForProtectionFlags(int protection);
 bool mmap_copyMappings(process_t *target, process_t *source);
+void mmap_destroyMappings(process_t *process);
+
+int mmap_atreeLookup(void *key1, void *key2);
 
 #endif
