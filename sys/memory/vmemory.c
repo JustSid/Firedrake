@@ -770,6 +770,9 @@ bool vm_init(void *info)
 	vm_address_t _kernelBegin = (vm_address_t)&kernelBegin;
 	vm_address_t _kernelEnd   = (vm_address_t)&kernelEnd;
 
+	_kernelBegin = VM_PAGE_ALIGN_DOWN(_kernelBegin);
+	_kernelEnd   = VM_PAGE_ALIGN_UP(_kernelEnd);
+
 	__vm_mapPageRange__noLock(__vm_kernelDirectory, _kernelBegin, _kernelBegin, VM_PAGE_COUNT(_kernelEnd - _kernelBegin), VM_FLAGS_KERNEL); // Map the kernel
 	__vm_mapPageRange__noLock(__vm_kernelDirectory, 0xB8000, 0xB8000, 1, VM_FLAGS_KERNEL); // Map the video memory
 
@@ -779,8 +782,8 @@ bool vm_init(void *info)
 
 	_stack_bottom = VM_PAGE_ALIGN_DOWN(_stack_bottom);
 	_stack_top    = VM_PAGE_ALIGN_UP(_stack_top);
-
-	__vm_mapPageRange__noLock(__vm_kernelDirectory, _stack_bottom, _stack_bottom, _stack_top - _stack_bottom, VM_FLAGS_KERNEL);
+	
+	__vm_mapPageRange__noLock(__vm_kernelDirectory, _stack_bottom, _stack_bottom, VM_PAGE_COUNT(_stack_top - _stack_bottom), VM_FLAGS_KERNEL);
 
 	// Map the multiboot info
 	vm_mapMultiboot((struct multiboot_s *)info);
