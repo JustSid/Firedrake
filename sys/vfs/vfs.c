@@ -107,7 +107,7 @@ vfs_descriptor_t *vfs_filesystemWithName(const char *name)
 // File operations
 // --------
 
-int vfs_open(const char *path, int flags, int *errno)
+int vfs_open(vfs_context_t *context, const char *path, int flags, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	process_lock(process);
@@ -121,7 +121,6 @@ int vfs_open(const char *path, int flags, int *errno)
 		return -1;
 	}
 
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_node_t *node = vfs_resolvePath(path, context, errno);
 
 	if(node)
@@ -187,23 +186,40 @@ int vfs_open(const char *path, int flags, int *errno)
 	return -1;
 }
 
-int vfs_close(int fd)
+int vfs_close(vfs_context_t *context, int fd)
 {
 	process_t *process = process_getCurrentProcess();
 	vfs_file_t *file = process_fileWithFiledescriptor(process, fd);
 	if(!file)
 		return -1;
 
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_instance_t *instance = file->node->instance;
-
 	instance->callbacks.fileClose(instance, context, file);
 	
 	process_releaseFiledescriptor(process, fd);
 	return 0;
 }
 
-size_t vfs_write(int fd, const void *data, size_t size, int *errno)
+vfs_file_t *vfs_duplicateFile(vfs_context_t *context, process_t *process, vfs_file_t *file, int *errno)
+{
+	vfs_instance_t *instance = file->node->instance;
+
+	process_lock(process);
+
+	vfs_file_t *result = instance->callbacks.fileDuplicate(instance, context, file, errno);
+
+	process_unlock(process);
+
+	return result;
+}
+
+void vfs_forceClose(vfs_context_t *context, process_t *process, vfs_file_t *file)
+{
+	vfs_instance_t *instance = file->node->instance;
+	instance->callbacks.fileClose(instance, context, file);
+}
+
+size_t vfs_write(vfs_context_t *context, int fd, const void *data, size_t size, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	vfs_file_t *file = process_fileWithFiledescriptor(process, fd);
@@ -220,13 +236,11 @@ size_t vfs_write(int fd, const void *data, size_t size, int *errno)
 		return -1;
 	}
 
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_instance_t *instance = file->node->instance;
-
 	return instance->callbacks.fileWrite(instance, context, file, data, size, errno);
 }
 
-size_t vfs_read(int fd, void *data, size_t size, int *errno)
+size_t vfs_read(vfs_context_t *context, int fd, void *data, size_t size, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	vfs_file_t *file = process_fileWithFiledescriptor(process, fd);
@@ -243,13 +257,11 @@ size_t vfs_read(int fd, void *data, size_t size, int *errno)
 		return -1;
 	}
 
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_instance_t *instance = file->node->instance;
-
 	return instance->callbacks.fileRead(instance, context, file, data, size, errno);
 }
 
-off_t vfs_seek(int fd, off_t offset, int whence, int *errno)
+off_t vfs_seek(vfs_context_t *context, int fd, off_t offset, int whence, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	vfs_file_t *file = process_fileWithFiledescriptor(process, fd);
@@ -260,13 +272,11 @@ off_t vfs_seek(int fd, off_t offset, int whence, int *errno)
 		return -1;
 	}
 
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_instance_t *instance = file->node->instance;
-
 	return instance->callbacks.fileSeek(instance, context, file, offset, whence, errno);
 }
 
-off_t vfs_readDir(int fd, struct vfs_directory_entry_s *entp, uint32_t count, int *errno)
+off_t vfs_readDir(vfs_context_t *context, int fd, struct vfs_directory_entry_s *entp, uint32_t count, int *errno)
 {
 	process_t *process = process_getCurrentProcess();
 	vfs_file_t *file = process_fileWithFiledescriptor(process, fd);
@@ -284,18 +294,14 @@ off_t vfs_readDir(int fd, struct vfs_directory_entry_s *entp, uint32_t count, in
 	}
 
 
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_instance_t *instance = file->node->instance;
-
 	return instance->callbacks.dirRead(instance, context, file, entp, count, errno);
 }
 
 
-bool vfs_mkdir(const char *path, int *errno)
+bool vfs_mkdir(vfs_context_t *context, const char *path, int *errno)
 {
 	char name[kVFSMaxFilenameLength];
-
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_node_t *node = vfs_resolvePathToParent(path, context, name, errno);
 
 	if(!node)
@@ -316,9 +322,8 @@ bool vfs_mkdir(const char *path, int *errno)
 	return (node != NULL);
 }
 
-bool vfs_remove(const char *path, int *errno)
+bool vfs_remove(vfs_context_t *context, const char *path, int *errno)
 {
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_node_t *node = vfs_resolvePath(path, context, errno);
 
 	if(!node)
@@ -330,9 +335,8 @@ bool vfs_remove(const char *path, int *errno)
 	return result;
 }
 
-bool vfs_move(const char *source, const char *destination, int *errno)
+bool vfs_move(vfs_context_t *context, const char *source, const char *destination, int *errno)
 {
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_instance_t *instance;
 	vfs_node_t *node;
 	vfs_node_t *target;
@@ -359,9 +363,8 @@ bool vfs_move(const char *source, const char *destination, int *errno)
 	return result;
 }
 
-bool vfs_stat(const char *path, vfs_stat_t *stat, int *errno)
+bool vfs_stat(vfs_context_t *context, const char *path, vfs_stat_t *stat, int *errno)
 {
-	vfs_context_t *context = vfs_getCurrentContext();
 	vfs_node_t *node = vfs_resolvePath(path, context, errno);
 
 	if(!node)
@@ -427,19 +430,19 @@ void vfs_readInitrd()
 
 				// Read the files data
 				int error;
-				int fd = vfs_open(name, O_WRONLY | O_CREAT, &error);
+				int fd = vfs_open(vfs_getKernelContext(), name, O_WRONLY | O_CREAT, &error);
 				if(fd >= 0)
 				{
 					size_t left = binaryLength;
 					while(left > 0)
 					{
-						size_t written = vfs_write(fd, buffer, left, &error);
+						size_t written = vfs_write(vfs_getKernelContext(), fd, buffer, left, &error);
 
 						left   -= written;
 						buffer += written;
 					}
 
-					vfs_close(fd);
+					vfs_close(vfs_getKernelContext(), fd);
 				}
 				else
 				{
@@ -478,9 +481,9 @@ bool vfs_init(__unused void *data)
 
 	int error;
 
-	vfs_mkdir("/bin", &error);
-	vfs_mkdir("/lib", &error);
-	vfs_mkdir("/etc", &error);
+	vfs_mkdir(vfs_getKernelContext(), "/bin", &error);
+	vfs_mkdir(vfs_getKernelContext(), "/lib", &error);
+	vfs_mkdir(vfs_getKernelContext(), "/etc", &error);
 
 	vfs_readInitrd();
 	kern_loadKernelData(); // Signal the kernel that it's now safe to load the kernel string and symbol table

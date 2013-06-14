@@ -455,22 +455,22 @@ io_library_t *io_libraryCreate(const char *path, uint8_t *buffer, __unused size_
 io_library_t *io_libraryCreateWithFile(const char *file)
 {
 	int error;
-	int fd = vfs_open(file, O_RDONLY, &error);
+	int fd = vfs_open(vfs_getKernelContext(), file, O_RDONLY, &error);
 
 	if(fd >= 0)
 	{
-		size_t size = vfs_seek(fd, 0, SEEK_END, &error);
+		size_t size = vfs_seek(vfs_getKernelContext(), fd, 0, SEEK_END, &error);
 		size_t pages = VM_PAGE_COUNT(size);
 		uint8_t *buffer = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 
-		vfs_seek(fd, 0, SEEK_SET, &error);
+		vfs_seek(vfs_getKernelContext(), fd, 0, SEEK_SET, &error);
 
 		size_t left = size;
 		uint8_t *temp = buffer;
 
 		while(left > 0)
 		{
-			size_t read = vfs_read(fd, temp, left, &error);
+			size_t read = vfs_read(vfs_getKernelContext(), fd, temp, left, &error);
 
 			left -= read;
 			temp += read;
@@ -479,7 +479,7 @@ io_library_t *io_libraryCreateWithFile(const char *file)
 		io_library_t *library = io_libraryCreate(file, buffer, size);
 
 		mm_free(buffer, vm_getKernelDirectory(), pages);
-		vfs_close(fd);
+		vfs_close(vfs_getKernelContext(), fd);
 
 		return library;
 	}

@@ -89,20 +89,20 @@ void kern_loadKernelData()
 	if(!hasData)
 	{
 		int error;
-		int fd = vfs_open("/firedrake", O_RDONLY, &error);
+		int fd = vfs_open(vfs_getKernelContext(), "/firedrake", O_RDONLY, &error);
 		if(fd >= 0)
 		{
-			size_t size = vfs_seek(fd, 0, SEEK_END, &error);
+			size_t size = vfs_seek(vfs_getKernelContext(), fd, 0, SEEK_END, &error);
 			size_t pages = VM_PAGE_COUNT(size);
 
 			uint8_t *data = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 			kern_data = data;
 
-			vfs_seek(fd, 0, SEEK_SET, &error);
+			vfs_seek(vfs_getKernelContext(), fd, 0, SEEK_SET, &error);
 			
 			while(size > 0)
 			{
-				size_t read = vfs_read(fd, data, size, &error);
+				size_t read = vfs_read(vfs_getKernelContext(), fd, data, size, &error);
 
 				size -= read;
 				data += read;
@@ -111,7 +111,7 @@ void kern_loadKernelData()
 			kern_fetchStringTable();
 			kern_fetchSymbolTable();
 
-			vfs_close(fd);
+			vfs_close(vfs_getKernelContext(), fd);
 		}
 
 		hasData = true; // It doesn't matter if we have actual data or not, if the read failed, it will fail again

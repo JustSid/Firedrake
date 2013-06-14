@@ -48,6 +48,7 @@ typedef struct vfs_callbacks_s
 	bool (*nodeStat)(struct vfs_instance_s *instance, struct vfs_context_s *context, vfs_node_t *node, vfs_stat_t *stat, int *errno);
 
 	struct vfs_file_s *(*fileOpen)(struct vfs_instance_s *instance, struct vfs_context_s *context, vfs_node_t *node, int flags, int *errno);
+	struct vfs_file_s *(*fileDuplicate)(struct vfs_instance_s *instance, struct vfs_context_s *contrext, struct vfs_file_s *file, int *errno);
 	void (*fileClose)(struct vfs_instance_s *instance, struct vfs_context_s *context, struct vfs_file_s *file);
 
 	size_t (*fileWrite)(struct vfs_instance_s *instance, struct vfs_context_s *context, struct vfs_file_s *file, const void *data, size_t size, int *errno);

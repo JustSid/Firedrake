@@ -56,11 +56,11 @@ void ioglued()
 
 	// Load all libraries marked in /etc/ioglue.conf
 	int error;
-	int fd = vfs_open("/etc/ioglue.conf", O_RDONLY, &error);
+	int fd = vfs_open(vfs_getKernelContext(), "/etc/ioglue.conf", O_RDONLY, &error);
 	if(fd >= 0)
 	{
-		size_t size = vfs_seek(fd, 0, SEEK_END, &error);
-		vfs_seek(fd, 0, SEEK_SET, &error);
+		size_t size = vfs_seek(vfs_getKernelContext(), fd, 0, SEEK_END, &error);
+		vfs_seek(vfs_getKernelContext(), fd, 0, SEEK_SET, &error);
 
 		char *content = halloc(NULL, size + 1);
 		char *temp = content;
@@ -69,7 +69,7 @@ void ioglued()
 
 		while(size > 0)
 		{
-			size_t read = vfs_read(fd, temp, size, &error);
+			size_t read = vfs_read(vfs_getKernelContext(), fd, temp, size, &error);
 			size -= read;
 			temp += read;
 		}
@@ -95,7 +95,7 @@ void ioglued()
 		}
 
 		hfree(NULL, content);
-		vfs_close(fd);
+		vfs_close(vfs_getKernelContext(), fd);
 	}
 	else
 	{

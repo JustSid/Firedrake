@@ -90,19 +90,16 @@ size_t ffs_node_readData(ffs_node_data_t *data, vfs_context_t *context, size_t o
 
 	end = MIN(end, preferredEnd);
 
+	if(data->data + offset > end)
+		return 0;
+
 	size = end - (data->data + offset);
 	size = MIN(size, kFFSNodeMaxChunkSize);
 
 	if(size > 0)
 	{
 		bool result = vfs_contextCopyDataIn(context, data->data + offset, size, ptr, errno);
-		if(result)
-		{
-			data->size += size;
-			return size;
-		}
-
-		return -1;
+		return result ? size : -1;
 	}
 
 	return 0;

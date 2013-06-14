@@ -25,22 +25,16 @@
 typedef struct ld_exectuable_s
 {
 	vm_page_directory_t pdirectory;
-	struct ld_exectuable_s *source;
-
 	vm_address_t entry; // The main entry point into the executable
 
 	// Location and size of the image
-	uintptr_t    	pimage;
-	vm_address_t 	vimage;
-	size_t 			imagePages;
-
-	uint32_t useCount;
+	uintptr_t    pimage;
+	vm_address_t vimage;
+	size_t       pages;
 } ld_exectuable_t;
 
-ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory,  uint8_t *begin, size_t size);
-ld_exectuable_t *ld_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file);
-ld_exectuable_t *ld_exectuableCopy(vm_page_directory_t pdirectory, ld_exectuable_t *source);
-
-void ld_executableRelease(ld_exectuable_t *executable);
+ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory);
+ld_exectuable_t *ld_exectuableCopy(vm_page_directory_t pdirectory, ld_exectuable_t *executable);
+void ld_destroyExecutable(ld_exectuable_t *executable);
 
 #endif /* _LOADER_H_ */

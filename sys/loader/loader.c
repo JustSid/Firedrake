@@ -17,14 +17,13 @@
 //
 
 #include <libc/string.h>
-#include <bootstrap/multiboot.h>
 #include <system/elf.h>
 #include <system/helper.h>
 #include <system/syslog.h>
 #include <vfs/vfs.h>
 #include "loader.h"
 
-ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *begin, __unused size_t size)
+ld_exectuable_t *ld_exectuableCreateWithData(vm_page_directory_t pdirectory, uint8_t *begin)
 {
 	elf_header_t *header = (elf_header_t *)begin;
 
@@ -35,15 +34,12 @@ ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 	if(executable)
 	{
 		// Initialize the executable
-		executable->useCount   = 1;
 		executable->entry      = header->e_entry;
 		executable->pdirectory = pdirectory;
 
 		elf_program_header_t *programHeader = (elf_program_header_t *)(begin + header->e_phoff);
 		vm_address_t minAddress = -1;
 		vm_address_t maxAddress = 0;
-
-		size_t pages = 0;
 
 		// Calculate the needed size
 		for(int i=0; i<header->e_phnum; i++) 
@@ -61,8 +57,8 @@ ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 		}
 
 		// Calculate the starting address and the number of pages we need to allocate
-		minAddress = VM_PAGE_ALIGN_DOWN(minAddress);
-		pages = VM_PAGE_COUNT(maxAddress - minAddress);
+		minAddress   = VM_PAGE_ALIGN_DOWN(minAddress);
+		size_t pages = VM_PAGE_COUNT(maxAddress - minAddress);
 
 		// Memory allocation
 		uint8_t *memory = (uint8_t *)pm_alloc(pages);
@@ -84,42 +80,42 @@ ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory, uint8_t *be
 
 		vm_free(vm_getKernelDirectory(), (vm_address_t)target, pages);
 		vm_mapPageRange(pdirectory, (uintptr_t)memory, minAddress, pages, VM_FLAGS_USERLAND);
-
+		
 		executable->pimage = (uintptr_t)memory;
 		executable->vimage = (vm_address_t)minAddress;
-		executable->imagePages = pages;
+		executable->pages  = pages;
 	}
 
 	return executable;
 }
 
-ld_exectuable_t *ld_executableCreateWithFile(vm_page_directory_t pdirectory, const char *file)
+ld_exectuable_t *ld_exectuableCreate(vm_page_directory_t pdirectory)
 {
 	int error;
-	int fd = vfs_open(file, O_RDONLY, &error);
+	int fd = vfs_open(vfs_getKernelContext(), "/bin/linkd.bin", O_RDONLY, &error);
 	if(fd >= 0)
 	{
-		size_t size = vfs_seek(fd, 0, SEEK_END, &error);
+		size_t size  = vfs_seek(vfs_getKernelContext(), fd, 0, SEEK_END, &error);
 		size_t pages = VM_PAGE_COUNT(size);
 		uint8_t *buffer = mm_alloc(vm_getKernelDirectory(), pages, VM_FLAGS_KERNEL);
 
-		vfs_seek(fd, 0, SEEK_SET, &error);
+		vfs_seek(vfs_getKernelContext(), fd, 0, SEEK_SET, &error);
 		
 		size_t left = size;
 		uint8_t *temp = buffer;
 
 		while(left > 0)
 		{
-			size_t read = vfs_read(fd, temp, left, &error);
+			size_t read = vfs_read(vfs_getKernelContext(), fd, temp, left, &error);
 
 			left -= read;
 			temp += read;
 		}
 
-		ld_exectuable_t *executable = ld_exectuableCreate(pdirectory, buffer, size);
+		ld_exectuable_t *executable = ld_exectuableCreateWithData(pdirectory, buffer);
 		
 		mm_free(buffer, vm_getKernelDirectory(), pages);
-		vfs_close(fd);
+		vfs_close(vfs_getKernelContext(), fd);
 
 		return executable;
 	}
@@ -127,46 +123,40 @@ ld_exectuable_t *ld_executableCreateWithFile(vm_page_directory_t pdirectory, con
 	return NULL;
 }
 
-ld_exectuable_t *ld_exectuableCopy(vm_page_directory_t pdirectory, ld_exectuable_t *source)
+ld_exectuable_t *ld_exectuableCopy(vm_page_directory_t pdirectory, ld_exectuable_t *executable)
 {
-	if(!source)
-		return NULL;
-
-	ld_exectuable_t *executable = halloc(NULL, sizeof(ld_exectuable_t));
-	if(executable)
+	ld_exectuable_t *copy = halloc(NULL, sizeof(ld_exectuable_t));
+	if(copy)
 	{
-		source->useCount ++;
+		copy->pdirectory = pdirectory;
+		copy->entry = executable->entry;
 
-		executable->pdirectory = pdirectory;
-		executable->useCount   = 1;
-		executable->entry      = source->entry;
+		copy->pages = executable->pages;
 
-		executable->source = source;
-		executable->pimage = source->pimage;
-		executable->vimage = source->vimage;
-		executable->imagePages = source->imagePages;
+		copy->pimage = pm_alloc(copy->pages);
+		copy->vimage = executable->vimage;
 
-		vm_mapPageRange(pdirectory, executable->pimage, executable->vimage, executable->imagePages, VM_FLAGS_USERLAND_R);
+		vm_mapPageRange(pdirectory, copy->pimage, copy->vimage, copy->pages, VM_FLAGS_USERLAND);
+
+		uint8_t *target = (uint8_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)copy->pimage, copy->pages, VM_FLAGS_KERNEL);
+		uint8_t *source = (uint8_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)executable->pimage, copy->pages, VM_FLAGS_KERNEL);
+
+		memcpy(target, source, copy->pages * VM_PAGE_SIZE);
+
+		vm_free(vm_getKernelDirectory(), (vm_address_t)source, copy->pages);
+		vm_free(vm_getKernelDirectory(), (vm_address_t)target, copy->pages);
 	}
 
-	return executable;
+	return copy;
 }
 
-void ld_executableRelease(ld_exectuable_t *executable)
+void ld_destroyExecutable(ld_exectuable_t *executable)
 {
-	executable->useCount --;
+	if(executable->pimage)
+		pm_free(executable->pimage, executable->pages);
 
-	if(executable->useCount == 0)
-	{
-		if(executable->source)
-			ld_executableRelease(executable->source);
+	if(executable->vimage)
+		vm_free(executable->pdirectory, executable->vimage, executable->pages);
 
-		if(executable->pimage)
-			pm_free(executable->pimage, executable->imagePages);
-
-		if(executable->vimage)
-			vm_free(executable->pdirectory, executable->vimage, executable->imagePages);
-
-		hfree(NULL, executable);
-	}
+	hfree(NULL, executable);
 }

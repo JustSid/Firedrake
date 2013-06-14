@@ -240,6 +240,11 @@ vfs_file_t *ffs_fileOpen(__unused vfs_instance_t *instance, __unused vfs_context
 
 	return file;
 }
+vfs_file_t *ffs_fileDuplicate(__unused vfs_instance_t *instance, __unused vfs_context_t *context, vfs_file_t *file, int *errno)
+{
+	//vfs_file_t *copy = vfs_fileCreate(node, flags, NULL, errno);
+	return NULL;
+}
 void ffs_fileClose(__unused vfs_instance_t *instance, __unused vfs_context_t *context, vfs_file_t *file)
 {
 	if(file->data)
@@ -278,6 +283,10 @@ size_t ffs_fileRead(__unused vfs_instance_t *instance, vfs_context_t *context, v
 	if(read != (size_t)-1)
 	{
 		file->offset += read;
+	}
+	else
+	{
+		panic("Failed with errno %i\n", *errno);
 	}
 
 	vfs_nodeUnlock(file->node);

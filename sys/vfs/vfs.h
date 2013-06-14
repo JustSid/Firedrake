@@ -27,22 +27,27 @@
 #include "context.h"
 #include "fcntl.h"
 
+struct process_s;
+
 bool vfs_registerFilesystem(vfs_descriptor_t *descriptor);
 bool vfs_unregisterFilesystem(const char *name);
 vfs_descriptor_t *vfs_filesystemWithName(const char *name);
 
-int vfs_open(const char *path, int flags, int *errno);
-int vfs_close(int fd);
+int vfs_open(vfs_context_t *context, const char *path, int flags, int *errno);
+int vfs_close(vfs_context_t *context, int fd);
 
-size_t vfs_read(int fd, void *data, size_t size, int *errno);
-size_t vfs_write(int fd, const void *data, size_t size, int *errno);
-off_t vfs_seek(int fd, off_t offset, int whence, int *errno);
-off_t vfs_readDir(int fd, struct vfs_directory_entry_s *entp, uint32_t count, int *errno);
+vfs_file_t *vfs_duplicateFile(vfs_context_t *context, struct process_s *process, vfs_file_t *file, int *errno);
+void vfs_forceClose(vfs_context_t *context, struct process_s *process, vfs_file_t *file);
 
-bool vfs_mkdir(const char *path, int *errno);
-bool vfs_remove(const char *path, int *errno);
-bool vfs_move(const char *source, const char *destination, int *errno);
-bool vfs_stat(const char *path, vfs_stat_t *stat, int *errno);
+size_t vfs_read(vfs_context_t *context, int fd, void *data, size_t size, int *errno);
+size_t vfs_write(vfs_context_t *context, int fd, const void *data, size_t size, int *errno);
+off_t vfs_seek(vfs_context_t *context, int fd, off_t offset, int whence, int *errno);
+off_t vfs_readDir(vfs_context_t *context, int fd, struct vfs_directory_entry_s *entp, uint32_t count, int *errno);
+
+bool vfs_mkdir(vfs_context_t *context, const char *path, int *errno);
+bool vfs_remove(vfs_context_t *context, const char *path, int *errno);
+bool vfs_move(vfs_context_t *context, const char *source, const char *destination, int *errno);
+bool vfs_stat(vfs_context_t *context, const char *path, vfs_stat_t *stat, int *errno);
 
 bool vfs_init(void *data);
 

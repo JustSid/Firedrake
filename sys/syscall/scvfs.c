@@ -30,7 +30,7 @@ uint32_t _sc_open(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	vm_address_t virtual;
 
 	char *path = sc_mapProcessMemory(tpath, &virtual, 2, errno);
-	int fd = vfs_open(path, flags, errno);
+	int fd = vfs_open(vfs_getCurrentContext(), path, flags, errno);
 
 	vm_free(vm_getKernelDirectory(), virtual, 2);
 	return (uint32_t)fd;
@@ -39,7 +39,7 @@ uint32_t _sc_open(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 uint32_t _sc_close(__unused uint32_t *esp, uint32_t *uesp, __unused int *errno)
 {
 	int fd = *(int *)(uesp + 0);
-	int result = vfs_close(fd);
+	int result = vfs_close(vfs_getCurrentContext(), fd);
 	return (uint32_t)result;
 }
 
@@ -50,7 +50,7 @@ uint32_t _sc_read(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	void *data = *(void **)(uesp + 1);
 	size_t size = *(size_t *)(uesp + 2);
 
-	size_t result = vfs_read(fd, data, size, errno);
+	size_t result = vfs_read(vfs_getCurrentContext(), fd, data, size, errno);
 	return (uint32_t)result;
 }
 
@@ -60,7 +60,7 @@ uint32_t _sc_write(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	void *data = *(void **)(uesp + 1);
 	size_t size = *(size_t *)(uesp + 2);
 
-	size_t result = vfs_write(fd, data, size, errno);
+	size_t result = vfs_write(vfs_getCurrentContext(), fd, data, size, errno);
 	return (uint32_t)result;
 }
 
@@ -70,7 +70,7 @@ uint32_t _sc_seek(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	off_t offset = *(off_t *)(uesp + 1);
 	int whence = *(int *)(uesp + 2);
 
-	size_t result = vfs_seek(fd, offset, whence, errno);
+	size_t result = vfs_seek(vfs_getCurrentContext(), fd, offset, whence, errno);
 	return (uint32_t)result;
 }
 
@@ -80,7 +80,7 @@ uint32_t _sc_readdir(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	void *ptr = *(void **)(uesp + 1);
 	uint32_t count = *(int *)(uesp + 2);
 
-	off_t result = vfs_readDir(fd, ptr, count, errno);
+	off_t result = vfs_readDir(vfs_getCurrentContext(), fd, ptr, count, errno);
 	return (uint32_t)result;
 }
 
@@ -92,7 +92,7 @@ uint32_t _sc_mkdir(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	vm_address_t virtual;
 	char *path = sc_mapProcessMemory(tpath, &virtual, 2, errno);
 
-	bool result = vfs_mkdir(path, errno);
+	bool result = vfs_mkdir(vfs_getCurrentContext(), path, errno);
 	vm_free(vm_getKernelDirectory(), virtual, 2);
 
 	return result ? 0 : (size_t)-1;
@@ -105,7 +105,7 @@ uint32_t _sc_remove(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	vm_address_t virtual;
 	char *path = sc_mapProcessMemory(tpath, &virtual, 2, errno);
 
-	bool result = vfs_remove(path, errno);
+	bool result = vfs_remove(vfs_getCurrentContext(), path, errno);
 	vm_free(vm_getKernelDirectory(), virtual, 2);
 
 	return result ? 0 : (size_t)-1;
@@ -120,7 +120,7 @@ uint32_t _sc_move(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	char *path1 = sc_mapProcessMemory(tpath1, &virtual1, 2, errno);
 	char *path2 = sc_mapProcessMemory(tpath2, &virtual2, 2, errno);
 
-	bool result = vfs_move(path1, path2, errno);
+	bool result = vfs_move(vfs_getCurrentContext(), path1, path2, errno);
 
 	vm_free(vm_getKernelDirectory(), virtual1, 2);
 	vm_free(vm_getKernelDirectory(), virtual2, 2);
@@ -136,7 +136,7 @@ uint32_t _sc_stat(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	vm_address_t virtual;
 	char *path = sc_mapProcessMemory(tpath, &virtual, 2, errno);
 
-	bool result = vfs_stat(path, stat, errno);
+	bool result = vfs_stat(vfs_getCurrentContext(), path, stat, errno);
 	vm_free(vm_getKernelDirectory(), virtual, 2);
 
 	return result ? 0 : (size_t)-1;
