@@ -26,52 +26,56 @@
 #include "interrupts.h"
 
 const char *__ir_exception_pageFaultTranslateBit(int bit, uint32_t error);
-void __ir_exceptionKillAndDump(cpu_state_t *state, const char *message, ...);
+void __ir_exceptionKillAndDump(cpu_state_t *state, bool forcePanic, const char *message, ...);
 
 uint32_t __ir_handleException(uint32_t esp)
 {
 	cpu_state_t *state = (cpu_state_t *)esp;
 
-	if(state->interrupt == 0)
+	switch(state->interrupt)
 	{
-		__ir_exceptionKillAndDump(state, "Division by zero");
-		return sd_schedule(esp);
-	}
-	else
-	if(state->interrupt == 2)
-	{
-		__ir_exceptionKillAndDump(state, "NMI");
-		return sd_schedule(esp);
-	}
-	else
-	if(state->interrupt == 13)
-	{
-		__ir_exceptionKillAndDump(state, "General protection faul. Error code: %x", state->error);
-		return sd_schedule(esp);
-	}
-	else
-	if(state->interrupt == 14)
-	{
-		// Page Fault
-		uint32_t address;
-		uint32_t error = state->error;
+		case 0:
+			__ir_exceptionKillAndDump(state, false, "Division by zero");
+			return sd_schedule(esp);
 
-		__asm__ volatile("mov %%cr2, %0" : "=r" (address)); // Get the virtual address of the page
+		case 2:
+			__ir_exceptionKillAndDump(state, true, "NMI");
+			return sd_schedule(esp);
 
-		const char *reason = __ir_exception_pageFaultTranslateBit(0, error);
-		const char *why = __ir_exception_pageFaultTranslateBit(1, error);
-		const char *ring = __ir_exception_pageFaultTranslateBit(2, error);
+		case 6:
+			__ir_exceptionKillAndDump(state, false, "Invalid opcode");
+			return sd_schedule(esp);
 
-		__ir_exceptionKillAndDump(state, "%s (%p) while %s in %s", reason, address, why, ring);
-		return sd_schedule(esp);
+		case 13:
+			__ir_exceptionKillAndDump(state, false, "General protection faul. Error code: %x", state->error);
+			return sd_schedule(esp);
+
+		case 14:
+		{
+			// Page Fault
+			uint32_t address;
+			uint32_t error = state->error;
+
+			__asm__ volatile("mov %%cr2, %0" : "=r" (address)); // Get the virtual address of the page
+
+			const char *reason = __ir_exception_pageFaultTranslateBit(0, error);
+			const char *why = __ir_exception_pageFaultTranslateBit(1, error);
+			const char *ring = __ir_exception_pageFaultTranslateBit(2, error);
+
+			bool forcePanic = ((error & (1 << 2)) == 0); // If it occured in the kernel, chances are that something is in an invalid state!
+
+			__ir_exceptionKillAndDump(state, forcePanic, "%s (%p) while %s in %s", reason, address, why, ring);
+			return sd_schedule(esp);
+		}
+
+		default:
+			panic("Unhandled exception %i occured!", state->interrupt);
 	}
-
-	panic("Unhandled exception %i occured!", state->interrupt);
 }
 
 
 
-void __ir_exceptionKillAndDump(cpu_state_t *state, const char *message, ...)
+void __ir_exceptionKillAndDump(cpu_state_t *state, bool forcePanic, const char *message, ...)
 {
 	process_t *process = process_getCurrentProcess();
 	thread_t *thread = process->scheduledThread;
@@ -83,9 +87,10 @@ void __ir_exceptionKillAndDump(cpu_state_t *state, const char *message, ...)
 	vsnprintf(buffer, 255, message, args);
 	va_end(args);
 
-	if(process->pid == 0)
+	if(forcePanic || process->pid == 0)
 	{
 		panic(buffer);
+		return;
 	}
 
 	process->died = true;
