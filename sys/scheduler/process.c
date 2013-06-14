@@ -261,11 +261,11 @@ void process_switchExecutable(process_t *process, const char *file, int *errno)
 	process_block(process);
 
 	// Replace the linker...
-	//ld_destroyExecutable(process->image);
-	//process->image = ld_exectuableCreate(process->pdirectory);
+	ld_destroyExecutable(process->image);
+	process->image = ld_exectuableCreate(process->pdirectory);
 
 	// General clean up
-	//process_closeFiles(process);
+	process_closeFiles(process);
 	mmap_destroyMappings(process);
 
 	// Get rid of all threads except of the currently scheduled thread

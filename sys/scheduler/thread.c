@@ -130,17 +130,19 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, uint32_t
 	thread_t *thread = thread_createVoid(process, entry, errno);
 	if(thread)
 	{
-		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
+		uint8_t *kernelStack = (uint8_t *)pm_alloc(5);
 		__threadAssert(kernelStack, ENOMEM);
+
+		thread->userStackPages = 5;
 
 		// Create the kernel stack
 		thread->kernelStack     = kernelStack;
-		thread->kernelStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)kernelStack, 1, THREAD_STACK_LIMIT, VM_UPPER_LIMIT, VM_FLAGS_KERNEL);
+		thread->kernelStackVirt = (uint8_t *)vm_allocLimit(process->pdirectory, (uintptr_t)kernelStack, thread->userStackPages, THREAD_STACK_LIMIT, VM_UPPER_LIMIT, VM_FLAGS_KERNEL);
 
 		__threadAssert(thread->kernelStackVirt, ENOMEM);
 
-		uint32_t *stack = (uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE);
-		memset(thread->kernelStackVirt, 0, VM_PAGE_SIZE);
+		uint32_t *stack = (uint32_t *)(thread->kernelStackVirt + (thread->userStackPages * VM_PAGE_SIZE));
+		memset(thread->kernelStackVirt, 0, thread->userStackPages * VM_PAGE_SIZE);
 
 		if(argCount > 0)
 		{
@@ -284,12 +286,14 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 
 void thread_reentry(thread_t *thread, thread_entry_t entry, uint32_t argCount, ...)
 {
+	assert(thread->process->ring0 == false);
+
 	// Write the new user stack
 	size_t stackPages = thread->userStackPages;
 	uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, stackPages, VM_FLAGS_KERNEL);
 	memset(ustack, 0, stackPages * VM_PAGE_SIZE);
 
-	/*if(argCount > 0)
+	if(argCount > 0)
 	{
 		va_list args;
 		va_start(args, argCount);
@@ -305,7 +309,7 @@ void thread_reentry(thread_t *thread, thread_entry_t entry, uint32_t argCount, .
 
 		va_end(args);
 	}
-*/
+
 	vm_free(vm_getKernelDirectory(), (vm_address_t)ustack, stackPages);
 
 	// Reset the kernel stack as well
@@ -366,13 +370,13 @@ thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 	thread_t *thread = thread_createVoid(process, source->entry, errno);
 	if(thread)
 	{
-		uint8_t *userStack 	 = (uint8_t *)pm_alloc(1);
+		uint8_t *userStack 	 = (uint8_t *)pm_alloc(source->userStackPages);
 		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
 
 		if(!userStack || !kernelStack)
 		{
 			if(userStack)
-				pm_free((uintptr_t)userStack, 1);
+				pm_free((uintptr_t)userStack, source->userStackPages);
 			
 			if(kernelStack)
 				pm_free((uintptr_t)kernelStack, 1);
@@ -394,18 +398,18 @@ thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 		thread->userStackVirt  = source->userStackVirt;
 		thread->userStackPages = source->userStackPages;
 
-		vm_mapPageRange(process->pdirectory, (uintptr_t)userStack, (vm_address_t)thread->userStackVirt, 1, VM_FLAGS_USERLAND);
+		vm_mapPageRange(process->pdirectory, (uintptr_t)userStack, (vm_address_t)thread->userStackVirt, thread->userStackPages, VM_FLAGS_USERLAND);
 
-		void *ustackSource = (void *)vm_alloc(vm_getKernelDirectory(), vm_resolveVirtualAddress(source->process->pdirectory, (vm_address_t)source->userStackVirt), 1, VM_FLAGS_KERNEL);
-		void *ustackTarget = (void *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
+		void *ustackSource = (void *)vm_alloc(vm_getKernelDirectory(), vm_resolveVirtualAddress(source->process->pdirectory, (vm_address_t)source->userStackVirt), thread->userStackPages, VM_FLAGS_KERNEL);
+		void *ustackTarget = (void *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, thread->userStackPages, VM_FLAGS_KERNEL);
 
 		if(!ustackSource || !ustackTarget)
 		{
 			if(ustackSource)
-				vm_free(vm_getKernelDirectory(), (vm_address_t)ustackSource, 1);
+				vm_free(vm_getKernelDirectory(), (vm_address_t)ustackSource, thread->userStackPages);
 
 			if(ustackTarget)
-				vm_free(vm_getKernelDirectory(), (vm_address_t)ustackTarget, 1);
+				vm_free(vm_getKernelDirectory(), (vm_address_t)ustackTarget, thread->userStackPages);
 
 			spinlock_unlock(&source->lock);
 			thread_destroy(thread);
@@ -416,10 +420,10 @@ thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 			return NULL;
 		}
 
-		memcpy(ustackTarget, ustackSource, VM_PAGE_SIZE);
+		memcpy(ustackTarget, ustackSource, thread->userStackPages * VM_PAGE_SIZE);
 
-		vm_free(vm_getKernelDirectory(), (vm_address_t)ustackSource, 1);
-		vm_free(vm_getKernelDirectory(), (vm_address_t)ustackTarget, 1);
+		vm_free(vm_getKernelDirectory(), (vm_address_t)ustackSource, thread->userStackPages);
+		vm_free(vm_getKernelDirectory(), (vm_address_t)ustackTarget, thread->userStackPages);
 
 		// Kernel stack
 		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, 1, THREAD_STACK_LIMIT, VM_UPPER_LIMIT, VM_FLAGS_KERNEL);
@@ -438,9 +442,7 @@ thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 
 		memcpy(thread->kernelStackVirt, source->kernelStackVirt, VM_PAGE_SIZE);
 
-		// TLS
 		thread_copyTLSArea(thread, source, process->pdirectory);
-
 		thread_attachToProcess(process, thread);
 	}
 
@@ -466,8 +468,15 @@ void thread_destroy(thread_t *thread)
 	
 	if(thread->kernelStackVirt)
 	{
-		vm_free(process->pdirectory, (vm_address_t)thread->kernelStackVirt, 1);
-		vm_free(vm_getKernelDirectory(), (vm_address_t)thread->kernelStackVirt, 1);
+		if(process->ring0)
+		{
+			vm_free(vm_getKernelDirectory(), (vm_address_t)thread->kernelStackVirt, thread->userStackPages);
+		}
+		else
+		{
+			vm_free(process->pdirectory, (vm_address_t)thread->kernelStackVirt, 1);
+			vm_free(vm_getKernelDirectory(), (vm_address_t)thread->kernelStackVirt, 1);
+		}
 	}
 
 	if(thread->tlsVirtual)
