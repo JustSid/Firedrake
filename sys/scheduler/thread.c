@@ -125,15 +125,15 @@ void thread_attachToProcess(process_t *process, thread_t *thread)
 			return NULL; \
 		} \
 
-thread_t *thread_createKernel(process_t *process, thread_entry_t entry, uint32_t argCount, va_list args, int *errno)
+thread_t *thread_createKernel(process_t *process, thread_entry_t entry, size_t stackSize, uint32_t argCount, va_list args, int *errno)
 {
 	thread_t *thread = thread_createVoid(process, entry, errno);
 	if(thread)
 	{
-		uint8_t *kernelStack = (uint8_t *)pm_alloc(5);
-		__threadAssert(kernelStack, ENOMEM);
+		thread->userStackPages = MIN(32, MAX(5, VM_PAGE_COUNT(stackSize)));
 
-		thread->userStackPages = 5;
+		uint8_t *kernelStack = (uint8_t *)pm_alloc(thread->userStackPages);
+		__threadAssert(kernelStack, ENOMEM);
 
 		// Create the kernel stack
 		thread->kernelStack     = kernelStack;
@@ -195,7 +195,7 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 	thread_t *thread = thread_createVoid(process, entry, errno);
 	if(thread)
 	{
-		size_t stackPages = MAX(VM_PAGE_COUNT(stackSize), 32);
+		size_t stackPages = MIN(64, MAX(24, VM_PAGE_COUNT(stackSize)));
 
 		uint8_t *userStack 	 = (uint8_t *)pm_alloc(stackPages);
 		uint8_t *kernelStack = (uint8_t *)pm_alloc(1);
@@ -352,7 +352,7 @@ thread_t *thread_create(process_t *process, thread_entry_t entry, size_t stackSi
 	thread_t *thread;
 	if(process->ring0)
 	{
-		thread = thread_createKernel(process, entry, args, vlist, errno);
+		thread = thread_createKernel(process, entry, stackSize, args, vlist, errno);
 	}
 	else
 	{
