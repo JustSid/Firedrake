@@ -29,6 +29,9 @@
 extern void _process_setFirstProcess(process_t *process); // Scheduler.c
 extern process_t *process_getFirstProcess();
 
+extern thread_t *thread_clone(struct process_s *target, thread_t *source, int *errno);
+bool process_duplicateFiles(process_t *process, process_t *source, int *errno);
+
 void thread_destroy(thread_t *thread);
 void process_destroy(process_t *process);
 
@@ -45,10 +48,14 @@ process_t *process_createVoid(int *errno)
 	{
 		process_t *parent = process_getCurrentProcess();
 
-		process->pid   = _process_getUniqueID();
-		process->died  = false;
-		process->ring0 = false;
+		process->pid    = _process_getUniqueID();
+		process->died   = false;
+		process->ring0  = false;
+		process->blocks = 0;
+
 		process->lock  = SPINLOCK_INIT;
+
+		process->references = 1; // Each process is by default references by their parents
 
 		process->parent 	= parent ? parent->pid : PROCESS_NULL;
 		process->pprocess 	= parent;
@@ -61,21 +68,32 @@ process_t *process_createVoid(int *errno)
 		process->usedTime  = 0;
 
 		process->mappings = list_create(sizeof(mmap_description_t), offsetof(mmap_description_t, listNext), offsetof(mmap_description_t, listPrev));
+		if(!process->mappings)
+		{
+			hfree(NULL, process);
+			process = NULL;
+
+			goto process_outro;
+		}
 
 		memset(&process->files, 0, kSDMaxOpenFiles * sizeof(vfs_file_t *));
 		process->openFiles = 0;
 
-		process->threadLock    = SPINLOCK_INIT;
 		process->threadCounter = 0;
 		process->mainThread    = NULL;
 		process->next          = NULL;
 
 		if(!process->mappings)
 		{
+			list_destroy(process->mappings);
 			hfree(NULL, process);
 			process = NULL;
+
+			goto process_outro;
 		}
 	}
+
+process_outro:
 
 	if(!process && errno)
 		*errno = ENOMEM;
@@ -85,47 +103,37 @@ process_t *process_createVoid(int *errno)
 
 void process_insert(process_t *process)
 {
-	spinlock_lock(&_sd_lock);
+	sd_lock();
 
 	process_t *parent = process->pprocess;
 
 	process->next = parent->next;
 	parent->next  = process;
 
-	spinlock_unlock(&_sd_lock);
+	sd_unlock();
 }
 
-#define PROCESS_BAILWITHERROR(p, error) do { \
+#define __process_assert(condition, p, error) if(!(condition)) { \
+		warn("__process_assert(%s) failed!\n", #condition); \
 		process_destroy(p); \
 		if(errno) \
 			*errno = error; \
 		return NULL; \
-	} while(0)
-
-process_t *process_createWithFile(const char *name, int *errno)
-{
-	if(!name)
-	{
-		if(errno)
-			*errno = EINVAL;
-
-		return NULL;
 	}
 
+process_t *process_create(int *errno)
+{
 	process_t *process = process_createVoid(errno);
 	if(process)
 	{
 		process->pdirectory = vm_createDirectory();
-		if(!process->pdirectory)
-			PROCESS_BAILWITHERROR(process, ENOMEM);
+		__process_assert(process->pdirectory, process, ENOMEM);
 
-		process->image = ld_executableCreateWithFile(process->pdirectory, name);
-		if(!process->image)
-			PROCESS_BAILWITHERROR(process, ENOMEM);
+		process->image = ld_exectuableCreate(process->pdirectory);
+		__process_assert(process->image, process, ENOMEM);
 
 		process->context = vfs_contextCreate(process->pdirectory);
-		if(!process->context)
-			PROCESS_BAILWITHERROR(process, ENOMEM);
+		__process_assert(process->context, process, ENOMEM);
 
 		thread_t *thread = thread_create(process, (thread_entry_t)process->image->entry, 4 * 4096, errno, 0);
 		if(!thread)
@@ -134,13 +142,12 @@ process_t *process_createWithFile(const char *name, int *errno)
 			return NULL;
 		}
 
+		process->blocks = 1;
 		process_insert(process);
 	}
 
 	return process;
 }
-
-extern thread_t *thread_clone(struct process_s *target, thread_t *source, int *errno); 
 
 process_t *process_fork(process_t *parent, int *errno)
 {
@@ -148,15 +155,13 @@ process_t *process_fork(process_t *parent, int *errno)
 	if(child)
 	{
 		child->pdirectory = vm_createDirectory();
-		if(!child->pdirectory)
-			PROCESS_BAILWITHERROR(child, ENOMEM);
+		__process_assert(child->pdirectory, child, ENOMEM);
 
 		child->image = ld_exectuableCopy(child->pdirectory, parent->image);
-		child->ring0 = parent->ring0;
+		__process_assert(child->image, child, ENOMEM);
 
 		child->context = vfs_contextCreate(child->pdirectory);
-		if(!child->context)
-			PROCESS_BAILWITHERROR(child, ENOMEM);
+		__process_assert(child->context, child, ENOMEM);
 
 		child->context->chdir = parent->context->chdir;
 
@@ -167,9 +172,9 @@ process_t *process_fork(process_t *parent, int *errno)
 			return NULL;
 		}
 
-		// Copy the memory mappings right here
-		// TODO: Implement copy-on-write someday because thats going to be a performance bottleneck once processes actually start to copy things around...
+		process_duplicateFiles(child, parent, errno);
 		mmap_copyMappings(child, parent);
+
 		process_insert(child);
 	}
 
@@ -178,8 +183,6 @@ process_t *process_fork(process_t *parent, int *errno)
 
 process_t *process_forgeInitialProcess()
 {
-	spinlock_lock(&_sd_lock);
-
 	process_t *process = process_createVoid(NULL);
 	if(process)
 	{		
@@ -191,9 +194,9 @@ process_t *process_forgeInitialProcess()
 		_process_setFirstProcess(process);
 	}
 
-	spinlock_unlock(&_sd_lock);
 	return process;
 }
+
 
 process_t *process_getParent()
 {
@@ -203,7 +206,7 @@ process_t *process_getParent()
 
 process_t *process_getWithPid(pid_t pid)
 {
-	spinlock_lock(&_sd_lock);
+	sd_lock();
 
 	process_t *process = process_getFirstProcess();
 	while(process)
@@ -214,32 +217,46 @@ process_t *process_getWithPid(pid_t pid)
 		process = process->next;
 	}
 
-	spinlock_unlock(&_sd_lock);
+	sd_unlock();
 	return process;
 }
 
 
-
-void process_destroy(process_t *process)
+void process_closeFiles(process_t *process)
 {
-	thread_t *thread = process->mainThread;
-	thread_t *temp;
-	while(thread)
+	for(int i=0; i<kSDMaxOpenFiles; i++)
 	{
-		// Delete all threads...
-		temp = thread;
-		thread = thread->next;
-		
-		thread_destroy(temp);
+		if(process->files[i] && process->files[i] != kSDInvalidFile)
+		{
+			vfs_forceClose(process->context, process, process->files[i]);
+		}
+
+		process->files[i] = NULL;
+	}
+}
+
+bool process_duplicateFiles(process_t *process, process_t *source, int *errno)
+{
+	bool result = true;
+
+	for(int i=0; i<kSDMaxOpenFiles; i++)
+	{
+		if(source->files[i] && source->files[i] != kSDInvalidFile)
+		{
+			process->files[i] = vfs_duplicateFile(process->context, source, source->files[i], errno);
+			if(!process->files[i])
+			{
+				result = false;
+				break;
+			}
+		}
 	}
 
-	if(process->image)
-		ld_executableRelease(process->image);
+	return result;
+}
 
-	if(process->context)
-		vfs_contextDelete(process->context);
-
-	// Remove all mappings
+void process_cleanMappings(process_t *process)
+{
 	mmap_description_t *description = list_first(process->mappings);
 	while(description)
 	{
@@ -250,12 +267,102 @@ void process_destroy(process_t *process)
 
 		description = description->next;
 	}
+}
+
+
+void process_switchExecutable(process_t *process, const char *file, int *errno)
+{
+	process_lock(process);
+	process_block(process);
+
+	// Replace the linker...
+	//ld_destroyExecutable(process->image);
+	//process->image = ld_exectuableCreate(process->pdirectory);
+
+	// General clean up
+	//process_closeFiles(process);
+	//process_cleanMappings(process);
+
+	//list_destroy(process->mappings);
+	//process->mappings = list_create(sizeof(mmap_description_t), offsetof(mmap_description_t, listNext), offsetof(mmap_description_t, listPrev));
+
+	// Get rid of all threads except of the currently scheduled thread
+	thread_t *mthread = process->scheduledThread;
+	thread_t *thread = process->mainThread;
+	while(thread)
+	{
+		if(thread != mthread)
+		{
+			thread_t *temp = thread->next;
+			thread_destroy(thread);
+
+			thread = temp;
+			continue;
+		}
+
+		thread = thread->next;
+	}
+
+	// Make the scheduled thread the main thread
+	process->mainThread = mthread;
+	mthread->next = NULL;
+
+	thread_reentry(process->mainThread, (thread_entry_t)process->image->entry, 0);
+
+	// Last but not least, clean the thread
+	process_unlock(process);
+	process_unblock(process);
+}
+
+
+
+void process_destroy(process_t *process)
+{
+	// Dereference all children
+	{
+		process_t *temp = process_getFirstProcess();
+		while(temp)
+		{
+			if(temp->pprocess == process)
+				temp->references --;
+
+			temp = temp->next;
+		}
+	}
+
+	// Clean up all threads
+	{
+		thread_t *thread = process->mainThread;
+		thread_t *temp;
+		while(thread)
+		{
+			temp = thread;
+			thread = thread->next;
+			
+			thread_destroy(temp);
+		}
+	}
+
+	if(process->image)
+		ld_destroyExecutable(process->image);
+
+	if(process->context)
+	{
+		process_closeFiles(process);
+		vfs_contextDelete(process->context);
+	}
+
+	// Remove all mappings
+	if(process->mappings)
+	{
+		process_cleanMappings(process);
+		list_destroy(process->mappings);
+	}
 
 	vm_deleteDirectory(process->pdirectory);
-
-	list_destroy(process->mappings);
 	hfree(NULL, process);
 }
+
 
 void process_lock(process_t *process)
 {
@@ -264,6 +371,20 @@ void process_lock(process_t *process)
 void process_unlock(process_t *process)
 {
 	spinlock_unlock(&process->lock);
+}
+bool process_tryLock(process_t *process)
+{
+	return spinlock_tryLock(&process->lock);
+}
+
+
+void process_block(process_t *process)
+{
+	process->blocks ++;	
+}
+void process_unblock(process_t *process)
+{
+	process->blocks --;
 }
 
 
@@ -274,6 +395,8 @@ int process_allocateFiledescriptor(process_t *process)
 		if(process->files[i] == NULL)
 		{
 			process->files[i] = kSDInvalidFile;
+			process_unlock(process);
+
 			return i;
 		}
 	}
@@ -301,4 +424,3 @@ struct vfs_file_s *process_fileWithFiledescriptor(process_t *process, int fd)
 
 	return process->files[fd];
 }
-

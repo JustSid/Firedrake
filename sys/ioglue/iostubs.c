@@ -46,14 +46,8 @@ void __io_primitiveLog(char *message, bool appendNewline)
 // Thread management
 // ------
 
-void __io_threadEntry()
+void __io_threadEntry(__unused void *trash, io_libio_callback_t entry, void *owner, void *arg)
 {
-	thread_t *thread = thread_getCurrentThread();
-
-	io_libio_callback_t entry = (io_libio_callback_t)thread->arguments[0];
-	void *owner = thread->arguments[1];
-	void *arg = thread->arguments[2];
-
 	entry(owner, arg);
 	sd_threadExit();
 }

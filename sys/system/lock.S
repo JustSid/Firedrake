@@ -27,16 +27,10 @@ ENTRY(spinlock_lock)
 	movl 0x8(%esp), %edi
 	movb $0x1, %cl
 
-	jmp spinlock_tryObtain
-spinlock_wait:
-	// Spinlock code is exectued before interrupt handler are in place. Once they are in place, the nop's will be replaced by int $0x31 (0xcd 0x31) 
-	nop
-	nop
-
 spinlock_tryObtain:
 	xorb %al, %al
 	lock cmpxchgb %cl, (%edi)
-	jne spinlock_wait
+	jne spinlock_tryObtain
 
 	popl %edi
 	ret

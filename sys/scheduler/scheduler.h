@@ -24,11 +24,13 @@
 #include "process.h"
 #include "thread.h"
 
-extern spinlock_t _sd_lock;
-
 uint32_t sd_schedule(uint32_t esp);
+
 void sd_yield();
 void sd_threadExit() __attribute__ ((noinline, noreturn));
+
+void sd_lock();
+void sd_unlock();
 
 bool sd_init(void *ingored);
 

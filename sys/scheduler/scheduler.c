@@ -48,8 +48,8 @@ process_t *process_getCollectableProcesses()
 {
 	spinlock_lock(&_sd_lock);
 
-	process_t *process 	= _sd_deadProcess;
-	_sd_deadProcess 	= NULL;
+	process_t *process = _sd_deadProcess;
+	_sd_deadProcess    = NULL;
 
 	spinlock_unlock(&_sd_lock);
 	return process;
@@ -59,8 +59,8 @@ thread_t *thread_getCollectableThreads()
 {
 	spinlock_lock(&_sd_lock);
 
-	thread_t *thread 	= _sd_deadThread;
-	_sd_deadThread		= NULL;
+	thread_t *thread = _sd_deadThread;
+	_sd_deadThread	 = NULL;
 
 	spinlock_unlock(&_sd_lock);
 	return thread;
@@ -71,13 +71,25 @@ thread_t *thread_getCurrentThread()
 	return _process_currentProcess->scheduledThread;
 }
 
+
+
 void _process_setFirstProcess(process_t *process)
 {
-	_process_firstProcess = process;
+	_process_firstProcess   = process;
 	_process_currentProcess = process;
 }
 
+void _process_setDeadProcess(process_t *process)
+{
+	spinlock_lock(&_sd_lock);
+	_sd_deadProcess = process;
+	spinlock_unlock(&_sd_lock);
+}
+
+
 // MARK: Scheduler helper
+// Assume the scheduler to be locked
+
 static inline process_t *_sd_processPreviousProcess(process_t *process)
 {
 	process_t *previous = _process_firstProcess;
@@ -111,23 +123,11 @@ static inline thread_t *_sd_threadPreviousThread(thread_t *thread)
 
 // MARK: Scheduler
 
-uint32_t sd_schedule(uint32_t esp)
+#define sd_processIsSchedulable(process) (!process->died && process->blocks == 0)
+#define sd_threadIsSchedulable(thread) (!thread->died && thread->blocks == 0 && thread->usedTicks <= thread->wantedTicks)
+
+static inline process_t *sd_cleanUpPair(process_t *process, thread_t *thread)
 {
-	process_t *process = _process_currentProcess;
-	thread_t  *thread  = process->scheduledThread;
-
-	if(esp)
-	{
-		// Try to obtain the lock, if we can't, we simply return to the current process
-		// The reason behind this is that its possible that the currently scheduled thread holds the lock in which case we would deadlock ourself
-		bool result = spinlock_tryLock(&_sd_lock);
-		if(!result)
-			return esp;
-
-		thread->esp = esp;
-	}
-
-	// Check if the process or thread died
 	if(process->died || thread->died)
 	{
 		if(process->died || thread == process->mainThread)
@@ -155,46 +155,67 @@ uint32_t sd_schedule(uint32_t esp)
 		}
 	}
 
-	// Update the thread
-	thread->usedTicks ++;
-	while(thread->usedTicks >= thread->wantedTicks || thread->blocks > 0 || thread->died)
+	return process;
+}
+
+static inline thread_t *sd_scheduleThread()
+{
+	timestamp_t timestamp = time_getTimestamp();
+
+	thread_t *thread;
+	process_t *process = _process_currentProcess;
+
+	process->scheduledThread->usedTicks = 0;
+
+	while(1)
 	{
-		thread->usedTicks = 0;
+		process = process->next ? process->next : _process_firstProcess;
+		thread  = process->scheduledThread->next ? process->scheduledThread->next : process->mainThread;
 
-		if(thread->sleeping)
-		{
-			timestamp_t timestamp = time_getTimestamp();
-
-			if(timestamp >= thread->alarm)
-			{
-				thread->sleeping = false;
-				thread->blocks --;
-
-				if(thread->blocks == 0 && thread->died != false)
-					break;
-			}
-		}
-
-		// Update the scheduled thread
-		thread = thread->next ? thread->next : process->mainThread;
 		process->scheduledThread = thread;
 
-		// Find a new process
-		process = process->next ? process->next : _process_firstProcess;
+		process = sd_cleanUpPair(process, thread);
 		thread  = process->scheduledThread;
 
-		if(process->died) // Remotely killed process
-		{
-			_process_currentProcess = process;
-			return sd_schedule(0x0);
-		}
+		if(thread->sleeping && thread->alarm <= timestamp)
+			thread_wakeup(thread);
+
+		if(sd_processIsSchedulable(process) && sd_threadIsSchedulable(thread))
+			return thread;
 	}
+}
+
+uint32_t sd_schedule(uint32_t esp)
+{
+	process_t *process = _process_currentProcess;
+	thread_t  *thread  = process->scheduledThread;
+
+	if(esp)
+	{
+		// Try to obtain the lock, if we can't, we simply return to the current process
+		// The reason behind this is that its possible that the currently scheduled thread holds the lock in which case we would deadlock ourself
+		bool result = spinlock_tryLock(&_sd_lock);
+		if(!result)
+			return esp;
+
+		thread->esp = esp;
+	}
+
+	if(!sd_processIsSchedulable(process) || !sd_threadIsSchedulable(thread))
+	{
+		thread  = sd_scheduleThread();
+		process = thread->process;
+	}
+
+	//if(process->pid != 0)
+	//	dbg("Switching to %i:%i\n", process->pid, thread->id);
 
 	_process_currentProcess = process;
 	ir_trampoline_map->pagedir  = process->pdirectory;
 	ir_trampoline_map->tss.esp0 = thread->esp + sizeof(cpu_state_t);
 
 	thread->wasNice = false;
+	thread->usedTicks ++;
 
 	spinlock_unlock(&_sd_lock);
 	return thread->esp;
@@ -228,17 +249,16 @@ void sd_threadExit()
 }
 
 
-extern uintptr_t spinlock_wait;
-
-void sd_disableScheduler()
+void sd_lock()
 {
 	spinlock_lock(&_sd_lock);
-
-	// Also, since there is no rescheduling possible anymore, let's reinsert those nops back into the spinlock code
-	uint8_t *buffer = (uint8_t *)&spinlock_wait;
-	*(buffer ++) = 0x90;
-	*(buffer ++) = 0x90;
 }
+
+void sd_unlock()
+{
+	spinlock_unlock(&_sd_lock);
+}
+
 
 extern process_t *process_forgeInitialProcess();
 
@@ -255,12 +275,6 @@ bool sd_init(__unused void *data)
 	// Setup the interrupt handler and enable interrupts now that we have a stack for the interrupt handler
 	ir_setInterruptHandler(sd_schedule_kernel, 0x31);
 	ir_enableInterrupts(false);
-
-	// Now that the interrupt handler are in place, fixup spinlock_lock!
-	// See /system/lock.S for more details
-	uint8_t *buffer = (uint8_t *)&spinlock_wait;
-	*(buffer ++) = 0xcd;
-	*(buffer ++) = 0x31;
 
 	return (process != NULL);
 }

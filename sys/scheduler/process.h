@@ -46,8 +46,10 @@ typedef struct process_s
 
 	bool died; // True if the process can be collected by the scheduler.
 	bool ring0;
+	uint8_t blocks;
 
-	spinlock_t threadLock; // Must be obtained before changing something on the threads
+	uint32_t references; // References to the process
+
 	thread_t *mainThread; // The main thread, ie. the first spawned thread
 	thread_t *scheduledThread; // The thread that is currently scheduled
 	uint32_t threadCounter; // +1 for every created thread
@@ -68,15 +70,21 @@ typedef struct process_s
 
 #define PROCESS_NULL UINT32_MAX
 
-process_t *process_createWithFile(const char *name, int *errno);
+process_t *process_create(int *errno);
 process_t *process_fork(process_t *parent, int *errno);
 process_t *process_getWithPid(pid_t pid);
 
 process_t *process_getCurrentProcess();
 process_t *process_getParent();
 
+void process_switchExecutable(process_t *process, const char *file, int *errno);
+
 void process_lock(process_t *process);
 void process_unlock(process_t *process);
+bool process_tryLock(process_t *process);
+
+void process_block(process_t *process);
+void process_unblock(process_t *process);
 
 int process_allocateFiledescriptor(process_t *process);
 void process_setFileForFiledescriptor(process_t *process, int fd, struct vfs_file_s *file);

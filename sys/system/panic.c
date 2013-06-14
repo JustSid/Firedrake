@@ -27,7 +27,6 @@
 #include "syslog.h"
 #include "helper.h"
 
-extern void sd_disableScheduler();
 extern void syslogd_forceFlush();
 
 void panic_dumpCPUState()
@@ -87,7 +86,7 @@ void panic_dumpStacktraces()
 			thread_t *thread = process->scheduledThread;
 
 			dbg("Kernel backtrace of process %i thread %i (%s):\n", process->pid, thread->id, thread->name);
-			kern_printBacktraceForThread(thread, 15);
+			kern_printBacktraceForThread(thread, 12);
 		}
 	}
 }
@@ -136,7 +135,7 @@ void panic(const char *format, ...)
 {
 	// Make sure that no other thread on the system will be scheduled again
 	ir_disableInterrupts(true);
-	sd_disableScheduler();
+	sd_lock();
 
 	// Make sure that syslogd isn't locked
 	syslogd_forceFlush();

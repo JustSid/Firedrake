@@ -36,6 +36,7 @@ extern thread_t *thread_getCollectableThreads();
 
 extern void process_destroy(process_t *process);
 extern void thread_destroy(thread_t *thread);
+extern void _process_setDeadProcess(process_t *process);
 
 void kerneld_unitTests() __attribute__((noreturn));
 
@@ -46,27 +47,43 @@ void kerneld_main()
 
 	// Create system threads
 	process_t *self = process_getCurrentProcess();
-	thread_create(self, syslogd, 4096, NULL, 0);
-	thread_create(self, ioglued, 4096, NULL, 0);
+	//thread_create(self, syslogd, 4096, NULL, 0);
+	//thread_create(self, ioglued, 4096, NULL, 0);
 	thread_create(self, kerneld_unitTests, 4096, NULL, 0);
 
 #if CONF_RUNKUNIT == 0
-	// Spawn a test process
-	process_createWithFile("/bin/linkd.bin", NULL);
+	int error;
+	process_t *process = process_create(&error);
+	process_switchExecutable(process, "/bin/test.bin", &error);
+	process_unblock(process);
+
+	process->references --;
+
 #endif /* CONF_RUNKUNIT */
 
 	// Let's do some work
 	while(1)
 	{
 		// Collect dead processes
+		process_t *deadProcess = NULL;
 		process_t *process = process_getCollectableProcesses();
 		while(process)
 		{
 			process_t *temp = process;
 			process = process->next;
 
+			if(temp->references > 0)
+			{
+				temp->next  = deadProcess;
+				deadProcess = temp;
+				continue;
+			}
+
 			process_destroy(temp);
 		}
+
+		if(deadProcess)
+			_process_setDeadProcess(deadProcess);
 
 		// Collect dead threads
 		thread_t *thread = thread_getCollectableThreads();

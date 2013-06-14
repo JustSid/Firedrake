@@ -84,7 +84,8 @@ uint32_t _sc_execute(uint32_t esp)
 	thread->esp = esp;
 
 	// Map the userstack into the kernel
-	uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
+	// TODO: Don't map the whole stack but only a few pages (2?)
+	uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, thread->userStackPages, VM_FLAGS_KERNEL);
 	uint32_t offset = ((uint8_t *)state->esp) - thread->userStackVirt;
 
 	uint32_t *uesp = (uint32_t *)(((uint8_t *)ustack) + offset); // The mapped user stack
@@ -99,7 +100,7 @@ uint32_t _sc_execute(uint32_t esp)
 	state->ecx = (errno != 0) ? errno : state->ecx;
 	
 	// Unmap the userstack
-	vm_free(vm_getKernelDirectory(), (uintptr_t)ustack, 1);
+	vm_free(vm_getKernelDirectory(), (uintptr_t)ustack, thread->userStackPages);
 	return esp;
 }
 

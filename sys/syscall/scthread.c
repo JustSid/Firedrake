@@ -26,14 +26,14 @@ uint32_t _sc_sleep(uint32_t *esp, uint32_t *uesp, __unused int *errno)
 	thread_t *thread = thread_getCurrentThread();
 	uint32_t time = *(uint32_t *)(uesp + 0);
 
-	thread->blocks ++;
+	thread_block(thread);
 
 	if(time > 0)
 		thread_sleep(thread, time);
 
 	*esp = sd_schedule(*esp);
 
-	thread->blocks --;
+	thread_unblock(thread);
 	return 0;
 }
 

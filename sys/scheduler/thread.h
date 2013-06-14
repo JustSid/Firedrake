@@ -58,11 +58,6 @@ typedef struct thread_s
 
 	uint32_t esp;
 
-	// Arguments passed to the thread.
-	// Only valid for ring 0 threads, ring 3 threads get their arguments passed on the stack
-	uintptr_t **arguments;
-	uint32_t argumentCount;
-
 	// Debugging related
 	const char *name;
 	bool watched;
@@ -110,6 +105,15 @@ thread_t *thread_getWithID(uint32_t id);
 
 void thread_attachListener(thread_t *thread, thread_listener_t *listener);
 void thread_notify(thread_t *thread, thread_event_t event);
+
+void thread_lock(thread_t *thread);
+void thread_unlock(thread_t *thread);
+bool thread_tryLock(thread_t *thread);
+
+void thread_block(thread_t *thread);
+void thread_unblock(thread_t *thread);
+
+void thread_reentry(thread_t *thread, thread_entry_t entry, uint32_t argCount, ...);
 
 void thread_join(thread_t *thread, thread_t *toJoin, int *errno);
 void thread_sleep(thread_t *thread, uint64_t time);

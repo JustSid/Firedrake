@@ -32,6 +32,7 @@
 #define THREAD_WANTED_TICKS 4
 
 void thread_destroy(thread_t *thread);
+void thread_copyTLSArea(thread_t *thread, thread_t *source, vm_page_directory_t pdirectory);
 
 uint32_t _thread_getUniqueID(process_t *process)
 {
@@ -75,9 +76,6 @@ thread_t *thread_createVoid(process_t *process, thread_entry_t entry, int *errno
 		thread->kernelStack     = NULL;
 		thread->kernelStackVirt = NULL;
 
-		thread->arguments = NULL;
-		thread->argumentCount = 0;
-
 		// TLS
 		thread->tlsVirtual = 0;
 
@@ -100,8 +98,7 @@ thread_t *thread_createVoid(process_t *process, thread_entry_t entry, int *errno
 
 void thread_attachToProcess(process_t *process, thread_t *thread)
 {
-	spinlock_lock(&process->threadLock); // Acquire the process' thread lock so we don't end up doing bad things
-
+	process_lock(process);
 	thread->id = _thread_getUniqueID(process);
 
 	if(process->mainThread)
@@ -117,18 +114,16 @@ void thread_attachToProcess(process_t *process, thread_t *thread)
 		process->scheduledThread 	= thread;
 	}
 
-	spinlock_unlock(&process->threadLock);
+	process_unlock(process);
 }
 
-#define __threadAssert(condition, error) do { \
-		if(!(condition)) { \
-			warn("Assertion '%s' failed!\n", #condition); \
+#define __threadAssert(condition, error) if(!(condition)) { \
+			warn("__threadAssert(%s) failed!\n", #condition); \
 			thread_destroy(thread); \
 			if(errno) \
 				*errno = error; \
 			return NULL; \
 		} \
-	} while(0)
 
 thread_t *thread_createKernel(process_t *process, thread_entry_t entry, uint32_t argCount, va_list args, int *errno)
 {
@@ -144,28 +139,24 @@ thread_t *thread_createKernel(process_t *process, thread_entry_t entry, uint32_t
 
 		__threadAssert(thread->kernelStackVirt, ENOMEM);
 
-		uint32_t *stack = ((uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE)) - argCount;
-		memset(thread->kernelStackVirt, 0, 1 * VM_PAGE_SIZE);
-
-		// Push the arguments for the thread on its stack
-		thread->arguments = NULL;
-		thread->argumentCount = argCount;
+		uint32_t *stack = (uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE);
+		memset(thread->kernelStackVirt, 0, VM_PAGE_SIZE);
 
 		if(argCount > 0)
 		{
-			thread->arguments = (uintptr_t **)halloc(NULL, argCount * sizeof(uintptr_t *));
-			__threadAssert(thread->arguments, ENOMEM);
+			uint32_t *temp = stack - argCount;
+			stack = temp;
 
 			for(uint32_t i=0; i<argCount; i++)
 			{
-				uintptr_t *val = va_arg(args, uintptr_t *);
-				thread->arguments[i] = val;
+				uintptr_t val = va_arg(args, uintptr_t);
+				*(temp ++) = val;
 			}
 		}
 
 		// Forge initial kernel stackframe
 		*(-- stack) = 0x10; // ss
-		*(-- stack) = 0x0;  // esp, kernel threads use the TSS
+		*(-- stack) = 0x0;  // esp
 		*(-- stack) = 0x0200; // eflags
 		*(-- stack) = 0x8;    // cs
 		*(-- stack) = (uint32_t)entry; // eip
@@ -232,15 +223,15 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 
 		__threadAssert(thread->userStackVirt, ENOMEM);
 
-		uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, 1, VM_FLAGS_KERNEL);
+		uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, stackPages, VM_FLAGS_KERNEL);
 		__threadAssert(ustack, ENOMEM);
 
-		memset(ustack, 0, 1 * VM_PAGE_SIZE);
+		memset(ustack, 0, stackPages * VM_PAGE_SIZE);
 
 		// Push the arguments for the thread on its stack
 		if(argCount > 0)
 		{
-			uint32_t *vstack = ustack + 1024;
+			uint32_t *vstack = ustack + (stackPages * 1024);
 			vstack -= argCount;
 
 			for(uint32_t i=0; i<argCount; i++)
@@ -250,7 +241,7 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 			}
 		}
 
-		vm_free(vm_getKernelDirectory(), (vm_address_t)ustack, 1);
+		vm_free(vm_getKernelDirectory(), (vm_address_t)ustack, stackPages);
 
 		// Forge initial kernel stackframe
 		thread->kernelStackVirt = (uint8_t *)vm_allocTwoSidedLimit(process->pdirectory, (uintptr_t)kernelStack, 1, THREAD_STACK_LIMIT, VM_UPPER_LIMIT, VM_FLAGS_KERNEL);
@@ -259,7 +250,7 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 		uint32_t *stack = (uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE);
 
 		*(-- stack) = 0x23; // ss
-		*(-- stack) = (uint32_t)(thread->userStackVirt + 4092 - (argCount * sizeof(uint32_t))); // esp
+		*(-- stack) = (uint32_t)(thread->userStackVirt + ((thread->userStackPages * VM_PAGE_SIZE) - 4) - (argCount * sizeof(uint32_t))); // esp
 		*(-- stack) = 0x0200; // eflags
 		*(-- stack) = 0x1B;   // cs
 		*(-- stack) = (uint32_t)entry; // eip
@@ -289,6 +280,64 @@ thread_t *thread_createUserland(process_t *process, thread_entry_t entry, size_t
 	}
 
 	return thread;
+}
+
+void thread_reentry(thread_t *thread, thread_entry_t entry, uint32_t argCount, ...)
+{
+	// Write the new user stack
+	size_t stackPages = thread->userStackPages;
+	uint32_t *ustack = (uint32_t *)vm_alloc(vm_getKernelDirectory(), (uintptr_t)thread->userStack, stackPages, VM_FLAGS_KERNEL);
+	memset(ustack, 0, stackPages * VM_PAGE_SIZE);
+
+	/*if(argCount > 0)
+	{
+		va_list args;
+		va_start(args, argCount);
+
+		uint32_t *vstack = ustack + (stackPages * 1024);
+		vstack -= argCount;
+
+		for(uint32_t i=0; i<argCount; i++)
+		{
+			uint32_t val = va_arg(args, uint32_t);
+			*(vstack ++) = val;
+		}
+
+		va_end(args);
+	}
+*/
+	vm_free(vm_getKernelDirectory(), (vm_address_t)ustack, stackPages);
+
+	// Reset the kernel stack as well
+	uint32_t *stack = (uint32_t *)(thread->kernelStackVirt + VM_PAGE_SIZE);
+
+	*(-- stack) = 0x23; // ss
+	*(-- stack) = (uint32_t)(thread->userStackVirt + ((stackPages * VM_PAGE_SIZE) - 4)); // esp
+	*(-- stack) = 0x0200; // eflags
+	*(-- stack) = 0x1B;   // cs
+	*(-- stack) = (uint32_t)entry; // eip
+
+	// Interrupt number and error code
+	*(-- stack) = 0x0;
+	*(-- stack) = 0x0;
+
+	// General purpose register
+	*(-- stack) = 0x0;
+	*(-- stack) = 0x0;
+	*(-- stack) = 0x0;
+	*(-- stack) = 0x0;
+	*(-- stack) = 0x0;
+	*(-- stack) = 0x0;
+	*(-- stack) = 0x0;
+	*(-- stack) = 0x0;
+
+	// Segment registers
+	*(-- stack) = 0x23;
+	*(-- stack) = 0x23;
+	*(-- stack) = 0x23;
+	*(-- stack) = 0x23;
+
+	thread->esp = ((uint32_t)(thread->kernelStackVirt + VM_PAGE_SIZE)) - sizeof(cpu_state_t);
 }
 
 thread_t *thread_create(process_t *process, thread_entry_t entry, size_t stackSize, int *errno, uint32_t args, ...)
@@ -388,6 +437,10 @@ thread_t *thread_clone(struct process_s *process, thread_t *source, int *errno)
 		}
 
 		memcpy(thread->kernelStackVirt, source->kernelStackVirt, VM_PAGE_SIZE);
+
+		// TLS
+		thread_copyTLSArea(thread, source, process->pdirectory);
+
 		thread_attachToProcess(process, thread);
 	}
 
@@ -427,12 +480,6 @@ void thread_destroy(thread_t *thread)
 	if(thread->kernelStack)
 		pm_free((uintptr_t)thread->kernelStack, 1);
 
-	if(thread->arguments)
-	{
-		hfree(NULL, thread->arguments);
-		thread->arguments = NULL;
-	}
-
 	if(thread->name)
 	{
 		hfree(NULL, (void *)thread->name);
@@ -467,9 +514,34 @@ thread_t *thread_getWithID(uint32_t id)
 }
 
 
-void thread_attachListener(thread_t *thread, thread_listener_t *tlistener)
+void thread_lock(thread_t *thread)
 {
 	spinlock_lock(&thread->lock);
+}
+
+void thread_unlock(thread_t *thread)
+{
+	spinlock_unlock(&thread->lock);
+}
+
+bool thread_tryLock(thread_t *thread)
+{
+	return spinlock_tryLock(&thread->lock);
+}
+
+void thread_block(thread_t *thread)
+{
+	thread->blocks ++;
+}
+
+void thread_unblock(thread_t *thread)
+{
+	thread->blocks --;
+}
+
+void thread_attachListener(thread_t *thread, thread_listener_t *tlistener)
+{
+	thread_lock(thread);
 
 	thread_listener_t *listener = list_addBack(thread->listener);
 	listener->listener = tlistener->listener;
@@ -484,12 +556,12 @@ void thread_attachListener(thread_t *thread, thread_listener_t *tlistener)
 		listener->oneShot = true;
 	}
 
-	spinlock_unlock(&thread->lock);
+	thread_unlock(thread);
 }
 
 void thread_notify(thread_t *thread, thread_event_t event)
 {
-	spinlock_lock(&thread->lock);
+	thread_lock(thread);
 
 	thread_listener_t *listener = (thread_listener_t *)list_first(thread->listener);
 	while(listener)
@@ -515,7 +587,7 @@ void thread_notify(thread_t *thread, thread_event_t event)
 		listener = listener->next;
 	}
 
-	spinlock_unlock(&thread->lock);
+	thread_unlock(thread);
 }
 
 
@@ -537,7 +609,7 @@ void thread_sleep(thread_t *thread, uint64_t time)
 	{
 		thread->alarm = time_getTimestamp();
 		thread->sleeping = true;
-		thread->blocks ++;
+		thread_block(thread);
 	}
 
 	thread->alarm += time;
@@ -549,11 +621,35 @@ void thread_wakeup(thread_t *thread)
 	{
 		thread->sleeping = false;
 		thread->alarm = 0;
-		thread->blocks --;
+		thread_unblock(thread);
 	}
 }
 
 
+
+void thread_copyTLSArea(thread_t *thread, thread_t *source, vm_page_directory_t pdirectory)
+{
+	thread_block(source);
+
+	process_t *process = source->process;
+	uintptr_t pmemory = pm_alloc(source->tlsPages);
+
+	thread->tlsPages = source->tlsPages;
+	thread->tlsVirtual = source->tlsVirtual;
+
+	vm_mapPageRange(pdirectory, pmemory, thread->tlsVirtual, thread->tlsPages, VM_FLAGS_USERLAND);
+
+	uintptr_t sourcePmemory = vm_resolveVirtualAddress(process->pdirectory, source->tlsVirtual);
+	uint8_t *sourcePointer  = (uint8_t *)vm_alloc(vm_getKernelDirectory(), sourcePmemory, thread->tlsPages, VM_FLAGS_USERLAND);
+	uint8_t *targetPointer  = (uint8_t *)vm_alloc(vm_getKernelDirectory(), pmemory, thread->tlsPages, VM_FLAGS_USERLAND);
+
+	memcpy(targetPointer, sourcePointer, thread->tlsPages * VM_PAGE_SIZE);
+
+	vm_free(vm_getKernelDirectory(), (vm_address_t)sourcePointer, thread->tlsPages);
+	vm_free(vm_getKernelDirectory(), (vm_address_t)targetPointer, thread->tlsPages);
+
+	thread_unblock(source);
+}
 
 uintptr_t thread_getTLSArea(thread_t *thread, uint32_t pages, int *errno)
 {
@@ -606,7 +702,7 @@ uintptr_t thread_getTLSArea(thread_t *thread, uint32_t pages, int *errno)
 
 void thread_setName(thread_t *thread, const char *name, int *errno)
 {
-	spinlock_lock(&thread->lock);
+	thread_lock(thread);
 
 	if(thread->name)
 	{
@@ -629,15 +725,15 @@ void thread_setName(thread_t *thread, const char *name, int *errno)
 			*errno = ENOMEM;
 	}
 
-	spinlock_unlock(&thread->lock);
+	thread_unlock(thread);
 }
 
 void thread_setPriority(thread_t *thread, int priorityy)
 {
-	spinlock_lock(&thread->lock);
+	thread_lock(thread);
 
 	int result = MIN(thread->maxTicks, MAX(1, priorityy));
 	thread->wantedTicks = result;
 
-	spinlock_unlock(&thread->lock);
+	thread_unlock(thread);
 }
