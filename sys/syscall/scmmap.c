@@ -46,10 +46,9 @@ bool mmap_copyMappings(process_t *target, process_t *source)
 	uintptr_t pmemory = pm_alloc(pages);
 
 	mmap_description_t *description;
-	mmap_description_t *targetDescription = halloc(NULL, pages * sizeof(mmap_description_t));
 	iterator_t *iterator = atree_iterator(source->mappings);
 
-	assert(targetDescription && iterator && pmemory);
+	assert(iterator && pmemory);
 
 	vm_address_t targetPage = vm_alloc(vm_getKernelDirectory(), pmemory, 2, VM_FLAGS_KERNEL);
 	vm_address_t sourcePage = targetPage + VM_PAGE_SIZE;
@@ -63,6 +62,7 @@ bool mmap_copyMappings(process_t *target, process_t *source)
 
 		memcpy((void *)targetPage, (void *)sourcePage, VM_PAGE_SIZE);
 
+		mmap_description_t *targetDescription = halloc(NULL, sizeof(mmap_description_t));
 		targetDescription->paddress = pmemory;
 		targetDescription->vaddress = description->vaddress;
 		targetDescription->protection = description->protection;
@@ -107,13 +107,10 @@ void mmap_destroyMappings(process_t *process)
 
 int mmap_atreeLookup(void *key1, void *key2)
 {
-	vm_address_t t1 = (vm_address_t)key1;
-	vm_address_t t2 = (vm_address_t)key2;	
-
-	if(t1 > t2)
+	if(key1 > key2)
 		return kCompareGreaterThan;
 
-	if(t1 < t2)
+	if(key1 < key2)
 		return kCompareLesserThan;
 
 	return kCompareEqualTo;
@@ -212,22 +209,16 @@ uint32_t _sc_mmap(__unused uint32_t *esp, uint32_t *uesp, int *errno)
 	uintptr_t tpmemory = pmemory;
 	vm_address_t tvmemory = vmemory;
 
-	mmap_description_t *description = halloc(NULL, pages * sizeof(mmap_description_t));
-	if(!description)
-	{
-		*errno = ENOMEM;
-		goto mmap_failed;
-	}
-
 	for(size_t i=0; i<pages; i++)
 	{
+		mmap_description_t *description = halloc(NULL, sizeof(mmap_description_t));
+
 		description->vaddress = tvmemory;
 		description->paddress = tpmemory;
 		description->protection = protection;
 
 		atree_insert(process->mappings, description, (void *)tvmemory);
 
-		description ++;
 		tvmemory += VM_PAGE_SIZE;
 		tpmemory += VM_PAGE_SIZE;
 	}

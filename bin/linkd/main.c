@@ -115,7 +115,15 @@ library_t *map_program(uint8_t *begin, void **entry)
 
 		if(program->p_type == PT_LOAD)
 		{
-			memcpy(&target[program->p_vaddr - minAddress], &begin[program->p_offset], program->p_filesz);
+			uint8_t *dest = &target[program->p_vaddr - minAddress];
+			memcpy(dest, &begin[program->p_offset], program->p_filesz);
+
+			int protection = 0;
+			protection |= (program->p_flags & PF_R) ? PROT_READ : 0;
+			protection |= (program->p_flags & PF_W) ? PROT_WRITE : 0;
+			protection |= (program->p_flags & PF_X) ? PROT_EXEC : 0;
+
+			mprotect((void *)VM_PAGE_ALIGN_DOWN((uintptr_t)dest), VM_PAGE_COUNT(program->p_flags) * VM_PAGE_SIZE, protection);
 		}
 	}
 
