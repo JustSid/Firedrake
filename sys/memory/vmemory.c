@@ -572,21 +572,8 @@ void vm_deleteDirectory(vm_page_directory_t directory)
 	pm_free((uintptr_t)directory, 1);
 }
 
-
-#include <libc/backtrace.h>
-__noinline void vm_lock();
 void vm_lock()
 {
-	//dbg("!{lock}\n");
-
-	/*void *buffer[5];
-	int size = backtrace(buffer, 5);
-
-	for(int i=0; i<size; i++)
-	{
-		dbg(" %i: %p\n", i, buffer[i]);
-	}*/
-
 	spinlock_lock(&__vm_spinlock);
 }
 

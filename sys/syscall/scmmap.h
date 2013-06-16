@@ -27,13 +27,13 @@
 #define PROT_NONE   0x00
 #define PROT_READ   0x01
 #define PROT_WRITE  0x02
-#define PROT_EXEC	0x04
+#define PROT_EXEC   0x04
 
 #define MAP_SHARED      0x0001 // Not supported yet
 #define MAP_PRIVATE     0x0002
 #define MAP_ANONYMOUS 	0x0004 // Must be specified because of lack of file descriptors
 #define MAP_FIXED       0x0008
-#define MAP_FAILED		-1
+#define MAP_FAILED      -1
 
 typedef struct mmap_description_s
 {
