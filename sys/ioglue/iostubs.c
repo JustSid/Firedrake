@@ -55,7 +55,7 @@ void __io_threadEntry(__unused void *trash, io_libio_callback_t entry, void *own
 uint32_t __io_threadCreate(void *entry, void *owner, void *arg)
 {
 	process_t *process = process_getCurrentProcess();
-	thread_t *thread   = thread_create(process, __io_threadEntry, 4096, NULL, 3, entry, owner, arg);
+	thread_t *thread   = thread_create(process, __io_threadEntry, 0, NULL, 3, entry, owner, arg);
 
 	return thread->id;
 }

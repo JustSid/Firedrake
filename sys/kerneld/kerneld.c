@@ -47,9 +47,9 @@ void kerneld_main()
 
 	// Create system threads
 	process_t *self = process_getCurrentProcess();
-	thread_create(self, syslogd, 4096, NULL, 0);
-	thread_create(self, ioglued, 4096, NULL, 0);
-	thread_create(self, kerneld_unitTests, 4096, NULL, 0);
+	thread_create(self, syslogd, 0, NULL, 0);
+	thread_create(self, ioglued, 0, NULL, 0);
+	thread_create(self, kerneld_unitTests, 0, NULL, 0);
 
 #if CONF_RUNKUNIT == 0
 	int error;

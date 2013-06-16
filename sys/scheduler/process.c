@@ -135,7 +135,7 @@ process_t *process_create(int *errno)
 		process->context = vfs_contextCreate(process->pdirectory);
 		__process_assert(process->context, process, ENOMEM);
 
-		thread_t *thread = thread_create(process, (thread_entry_t)process->image->entry, 4 * 4096, errno, 0);
+		thread_t *thread = thread_create(process, (thread_entry_t)process->image->entry, 0, errno, 0);
 		if(!thread)
 		{
 			process_destroy(process);
@@ -190,7 +190,7 @@ process_t *process_forgeInitialProcess()
 		process->ring0      = true;
 		process->context    = vfs_getKernelContext();
 
-		thread_create(process, NULL, 4096, NULL, 0);
+		thread_create(process, NULL, 0, NULL, 0);
 		_process_setFirstProcess(process);
 	}
 
@@ -285,9 +285,12 @@ void process_switchExecutable(process_t *process, const char *file, int *errno)
 		thread = thread->next;
 	}
 
-	// Make the scheduled thread the main thread
+	// Make the scheduled thread the main thread, and reset the thread counter
 	process->mainThread = mthread;
 	mthread->next = NULL;
+	mthread->id   = 0;
+
+	process->threadCounter = 1;
 
 	thread_reentry(process->mainThread, (thread_entry_t)process->image->entry, 0);
 
