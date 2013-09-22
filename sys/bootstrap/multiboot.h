@@ -20,19 +20,20 @@
 #define _MULTIBOOT_H_
 
 #include <prefix.h>
+#include <libc/stdint.h>
 
 // http://www.gnu.org/software/grub/manual/multiboot/multiboot.html
 
-#define kMultibootFlagMemory 		(1 << 0)
-#define kMultibootFlagBootDevice 	(1 << 1)
-#define kMultibootFlagCommandLine 	(1 << 2)
-#define kMultibootFlagModules 		(1 << 3)
+#define kMultibootFlagMemory        (1 << 0)
+#define kMultibootFlagBootDevice    (1 << 1)
+#define kMultibootFlagCommandLine   (1 << 2)
+#define kMultibootFlagModules       (1 << 3)
 
-#define kMultibootFlagMmap 			(1 << 6)
-#define kMultibootFlagDrives 		(1 << 7)
-#define kMultibootFlagConfigTable 	(1 << 8)
-#define kMultibootFlagBootLoader 	(1 << 9)
-#define kMultibootFlagAPM 			(1 << 10)
+#define kMultibootFlagMmap          (1 << 6)
+#define kMultibootFlagDrives        (1 << 7)
+#define kMultibootFlagConfigTable   (1 << 8)
+#define kMultibootFlagBootLoader    (1 << 9)
+#define kMultibootFlagAPM           (1 << 10)
 
 struct multiboot_s
 {
@@ -99,6 +100,11 @@ struct multiboot_mmap_s
 	uint32_t type;
 } __attribute__((packed));
 
-extern struct multiboot_s *bootinfo;
+typedef struct multiboot_s         multiboot_t;
+typedef struct multiboot_module_s  multiboot_module_t;
+typedef struct multiboot_drive_s   multiboot_drive_t;
+typedef struct multiboot_mmap_s    multiboot_mmap_t;
+
+extern multiboot_t *bootinfo;
 
 #endif

@@ -1,5 +1,5 @@
 //
-//  ffs.h
+//  boot.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,17 +16,20 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _FFS_H_
-#define _FFS_H_
+#include "multiboot.h"
 
 #include <prefix.h>
-#include <container/hashset.h>
 
-typedef struct
-{
-	hashset_t *nodes;
-} ffs_instance_data_t;
+const char *kVersionBeast    = "Nidhogg";
+const char *kVersionAppendix = "";
 
-bool ffs_init();
+multiboot_t *bootinfo = nullptr;
 
-#endif
+extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
+
+void sys_boot(multiboot_t *info)
+{	
+	bootinfo = info;
+
+	while(1) {}
+}

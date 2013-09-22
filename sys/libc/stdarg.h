@@ -1,5 +1,5 @@
 //
-//  test_list.c
+//  stdarg.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,13 +16,14 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <container/list.h>
-#include "unittests.h"
+#ifndef _STDARG_H_
+#define _STDARG_H_
 
-void test_list()
-{
-	kunit_test_suite_t *listSuite = kunit_test_suiteCreate("List Tests", "List tests", true);
-	{
-	}
-	kunit_test_suiteRun(listSuite);
-}
+typedef __builtin_va_list va_list;
+
+#define va_start(v, l)  __builtin_va_start(v,l)
+#define va_end(v)       __builtin_va_end(v)
+#define va_arg(v, l)    __builtin_va_arg(v,l)
+#define va_copy(d, s)   __builtin_va_copy(d,s)
+
+#endif /* _STDARG_H_ */

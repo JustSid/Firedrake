@@ -19,23 +19,8 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#define CONF_RELEASE 0
-
-#if CONF_RELEASE == 0
-
-	// Unit testing
-	#define CONF_RUNKUNIT 0
-	#if CONF_RUNKUNIT
-		#define CONF_KUNITFAILSONLY 1
-		#define CONF_KUNITEXITATEND 1
-	#endif
-
-	// Inlining
-	#define CONF_NOINLINE 0
-	#if CONF_NOINLINE
-		#define CONF_VM_NOINLINE 1
-	#endif
-
+#ifndef CONFIG_RELEASE
+#define CONFIG_RELEASE 0
 #endif
 
 #endif /* _CONFIG_H_ */

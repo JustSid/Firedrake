@@ -1,5 +1,5 @@
 //
-//  ioglued.h
+//  stdbool.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,9 +16,14 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOGLUED_H_
-#define _IOGLUED_H_
+#ifndef _STDBOOL_H_
+#define _STDBOOL_H_
 
-void ioglued() __attribute__ ((noreturn));
+#define __bool_true_false_are_defined 1
 
-#endif /* _IOGLUED_H_ */
+#define bool _Bool
+
+#define true  1
+#define false 0
+
+#endif

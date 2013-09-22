@@ -16,14 +16,20 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <system/syslog.h>
+#include "stdarg.h"
 #include "stdio.h"
 #include "string.h"
-#include "stdlib.h"
+#include "stdbool.h"
+#include "stdint.h"
+
+extern int _itostr(int32_t i, int base, char *buffer, bool lowerCase);
+extern int _itostr64(int64_t i, int base, char *buffer, bool lowerCase);
+extern int _uitostr(uint32_t i, int base, char *buffer, bool lowerCase);
+extern int _uitostr64(uint64_t i, int base, char *buffer, bool lowerCase);
 
 #define kVsnprintfFlagRightAlign (1 << 0) // '-'
 #define kVsnprintfFlagForceSign  (1 << 1) // '+'
-#define kVsnprintfZeroPad		 (1 << 2) // '0'
+#define kVsnprintfZeroPad        (1 << 2) // '0'
 
 int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 {
@@ -166,7 +172,7 @@ int vsnprintf(char *buffer, size_t size, const char *format, va_list arg)
 					bool lowerCase = (specifier == 'x');
 					
 					char *prefix = (specifier == 'p') ? "0x" : "\0";
-					char string[STDLIBBUFFERLENGTH];
+					char string[128];
 
 					if(specifier == 'p')
 					{

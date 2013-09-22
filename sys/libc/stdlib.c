@@ -18,12 +18,13 @@
 
 #include "stdlib.h"
 #include "string.h"
+#include "stdbool.h"
+#include "stdint.h"
 
 int atoi(const char *string)
 {
 	while(isspace(*string))
 		string ++; // Skip any leading whitespace
-
 
 	int result = 0;
 	bool negative = (*string == '-');
@@ -49,61 +50,8 @@ int atoi(const char *string)
 	return negative ? -result : result;
 }
 
-double atof(const char *string)
-{
-	while(isspace(*string))
-		string ++; // Skip any leading whitespace
 
-	double result = 0.0;
-	bool negative = (*string == '-');
-	bool positive = (*string == '+');
-
-	int  exponent = 0;
-	char character;
-
-	if(negative || positive)
-		string ++; // Skip the '-' or '+' sign
-
-	while((character = *string++) != '\0' && isdigit(character)) 
-	{
-		double value = (double)character - '0';
-		result = (result * 10.0) + value;
-	}
-
-	if(character == '.')
-	{
-		string ++;
-
-		while((character = *string++) != '\0' && isdigit(character)) 
-		{
-			double value = (double)character - '0';
-			result = (result * 10.0) + value;
-
-			exponent --;
-	   }
-	}
-
-	if(character == 'e' || character == 'E')
-	{
-		// TODO: Could be made faster by using either an inlined atoi version or just reimplementing what we need from atoi!
-		exponent += atoi(string);
-	}
-
-	// Process the exponent
-	while(exponent > 0)
-	{
-		result *= 10.0;
-		exponent --;
-	}
-	while(exponent < 0)
-	{
-		result *= 0.1;
-		exponent ++;
-	}
-
-	return negative ? -result : result;
-}
-
+#define STDLIBBUFFERLENGTH 128
 
 int _itostr(int32_t i, int base, char *buffer, bool lowerCase)
 {
@@ -232,4 +180,3 @@ int _uitostr64(uint64_t i, int base, char *buffer, bool lowerCase)
 	strlcpy(buffer, (const char *)temp, (size_t)length);
 	return length;
 }
-

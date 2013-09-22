@@ -16,11 +16,6 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-/*
- * Overview:
- * Defines macros and constants to gather version information, useful only for displaying purposes,
- * since its very unlikely that anyone will ever link against the kernel...
- */
 #ifndef _VERSION_H_
 #define _VERSION_H_
 

@@ -27,6 +27,12 @@
 #define __inline   inline __attribute__((__always_inline__))
 #define __noinline __attribute__((noinline))
 
-#define offsetof(type, member) ((unsigned int)&(((type *)0)->member))
+#ifdef __cplusplus
+	#define BEGIN_EXTERNC extern "C" {
+	#define END_EXTERNC }
+#else
+	#define BEGIN_EXTERNC
+	#define END_EXTERNC
+#endif /* __cplusplus */
 
-#endif
+#endif /* _MACROS_H_ */

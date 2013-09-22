@@ -19,9 +19,15 @@
 #ifndef _SETJMP_H_
 #define _SETJMP_H_
 
+#include <prefix.h>
+
 typedef	int jmp_buf[6];
+
+BEGIN_EXTERNC
 
 int setjmp(jmp_buf jmp_buf);
 void longjmp(jmp_buf jmp_buf, int value);
+
+END_EXTERNC
 
 #endif /* _SETJMP_H_ */

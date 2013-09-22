@@ -26,16 +26,10 @@
 
 #include <prefix.h>
 
+BEGIN_EXTERNC
+
 int atoi(const char *string);
-double atof(const char *string);
 
-
-#define STDLIBBUFFERLENGTH 128
-
-int _itostr(int32_t i, int base, char *buffer, bool lowerCase); // Converts an integer to a string and copies the result into buffer
-int _itostr64(int64_t i, int base, char *buffer, bool lowerCase);
-
-int _uitostr(uint32_t i, int base, char *buffer, bool lowerCase);
-int _uitostr64(uint64_t i, int base, char *buffer, bool lowerCase);
+END_EXTERNC
 
 #endif /* _STDLIB_H_ */

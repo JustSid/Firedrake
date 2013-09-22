@@ -54,6 +54,7 @@
  */
 
 #include <prefix.h>
+#include <libc/stdint.h>
 
 typedef int64_t quad_t;
 typedef uint64_t u_quad_t;
@@ -105,8 +106,12 @@ union uu {
 
 typedef unsigned int	qshift_t;
 
+BEGIN_EXTERNC
+
 u_quad_t __udivdi3(u_quad_t a, u_quad_t b);
 u_quad_t __umoddi3(u_quad_t a, u_quad_t b);
 u_quad_t __qdivrem(u_quad_t uq, u_quad_t vq, u_quad_t *arq);
+
+END_EXTERNC
 
 #endif /* !_LIBKERN_QUAD_H_ */

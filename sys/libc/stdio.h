@@ -1,5 +1,5 @@
 //
-//  string.h
+//  stdio.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -20,6 +20,9 @@
 #define _STDIO_H_
 
 #include <prefix.h>
+#include "stddef.h"
+
+BEGIN_EXTERNC
 
 int vsnprintf(char *buffer, size_t size, const char *format, va_list arg);
 int vsprintf(char *buffer, const char *format, va_list arg);
@@ -27,7 +30,6 @@ int vsprintf(char *buffer, const char *format, va_list arg);
 int snprintf(char *dst, size_t size, const char *format, ...);
 int sprintf(char *dst, const char *format, ...);
 
-
-void sys_printf(const char *format, ...);
+END_EXTERNC
 
 #endif /* _STDIO_H_ */

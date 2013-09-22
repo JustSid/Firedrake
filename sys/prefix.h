@@ -20,11 +20,6 @@
 #define _PREFIX_H_
 
 #include "version.h"
-#include "config.h"
-
-#include "types.h"
 #include "macros.h"
 
-#include <libc/assert.h>
-
-#endif
+#endif /* _PREFIX_H_ */

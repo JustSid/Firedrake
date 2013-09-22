@@ -1,5 +1,5 @@
 //
-//  ffs_node.h
+//  stddef.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,23 +16,13 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _FFS_NODE_H_
-#define _FFS_NODE_H_
+#ifndef _STDDEF_H_
+#define _STDDEF_H_
 
-#include <prefix.h>
-#include <vfs/node.h>
-#include <vfs/context.h>
+#define NULL (void *)0
+#define offsetof(type, member) ((unsigned int)&(((type *)0)->member))
 
-typedef struct
-{
-	uint8_t *data;
-	size_t size;
-	size_t pages;
-} ffs_node_data_t;
+typedef unsigned int size_t;
+typedef int          ptrdiff_t;
 
-ffs_node_data_t *ffs_node_dataCreate();
-void ffs_node_dataDestroy(ffs_node_data_t *data);
-size_t ffs_node_writeData(ffs_node_data_t *data, vfs_context_t *context, size_t offset, const void *ptr, size_t size, int *errno);
-size_t ffs_node_readData(ffs_node_data_t *data, vfs_context_t *context, size_t offset, void *ptr, size_t size, int *errno);
-
-#endif
+#endif /* _STDDEF_H_ */

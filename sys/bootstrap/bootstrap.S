@@ -18,28 +18,35 @@
 
 #include <asm.h>
 
+// GRUB multiboot header
 .section multiboot
 .align 4
-	.int 0x1BADB002 // GRUBs magic number     
+	.int 0x1BADB002  
 	.int 0x0           
 	.int (-0x1BADB002)
-	
- 
-.section .text
+
+// Entry point
+.text
 
 ENTRY(_start)
 	movl $stack_top, %esp
- 
+
+	// Push an empty stack frame
+	pushl $0
+	pushl $0
+
+	// Call the sys_boot() entry function with the multiboot struct as argument
 	pushl %ebx
 	call sys_boot
  
 	jmp .
 
+// Stack
+.bss
 
 .global stack_bottom
 .global stack_top
 
-.section .bss
 stack_bottom:
-.space 131072
+.space 4096
 stack_top:

@@ -1,5 +1,5 @@
 //
-//  scmmap.h
+//  stdint.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,36 +16,49 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SCMMAP_H_
-#define _SCMMAP_H_
+#ifndef _STDINT_H_
+#define _STDINT_H_
 
-#include <prefix.h>
-#include <container/list.h>
-#include <memory/memory.h>
-#include <scheduler/scheduler.h>
+typedef signed char  int8_t;
+typedef short        int16_t;
+typedef int          int32_t;
+typedef long long    int64_t;
 
-#define PROT_NONE   0x00
-#define PROT_READ   0x01
-#define PROT_WRITE  0x02
-#define PROT_EXEC   0x04
+typedef unsigned char       uint8_t;
+typedef unsigned short      uint16_t;
+typedef unsigned int        uint32_t;
+typedef unsigned long long  uint64_t;
 
-#define MAP_SHARED      0x0001 // Not supported yet
-#define MAP_PRIVATE     0x0002
-#define MAP_ANONYMOUS 	0x0004 // Must be specified because of lack of file descriptors
-#define MAP_FIXED       0x0008
-#define MAP_FAILED      -1
+typedef int32_t  intptr_t;
+typedef uint32_t uintptr_t;
 
-typedef struct mmap_description_s
-{
-	vm_address_t vaddress;
-	uintptr_t paddress;
+#define INT8_C(v)  (v)
+#define INT16_C(v) (v)
+#define INT32_C(v) (v)
+#define INT64_C(v) (v ## LL)
 
-	int protection; // mmap flags, not vmemory flags!
-} mmap_description_t;
+#define UINT8_C(v)  (v ## U)
+#define UINT16_C(v) (v ## U)
+#define UINT32_C(v) (v ## U)
+#define UINT64_C(v) (v ## ULL)
 
-bool mmap_copyMappings(process_t *target, process_t *source);
-void mmap_destroyMappings(process_t *process);
+#define INTMAX_C(v)  (v ## LL)
+#define UINTMAX_C(v) (v ## ULL)
 
-int mmap_atreeLookup(void *key1, void *key2);
 
-#endif
+#define INT8_MAX  INT8_C(127)
+#define INT16_MAX INT16_C(32767)
+#define INT32_MAX INT32_C(2147483647)
+#define INT64_MAX INT64_C(9223372036854775807)
+
+#define INT8_MIN  INT8_C(-128)
+#define INT16_MIN INT16_C(-32768)
+#define INT32_MIN INT32_C((-INT32_MAX-1))
+#define INT64_MIN INT64_C((-INT64_MAX-1))
+
+#define UINT8_MAX  UINT8_C(255)
+#define UINT16_MAX UINT16_C(65535)
+#define UINT32_MAX UINT32_C(4294967295)
+#define UINT64_MAX UINT64_C(18446744073709551615)
+
+#endif /* _STDINT_H_ */
