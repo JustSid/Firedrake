@@ -1,4 +1,4 @@
-ALLDIRS = linkd test
+ALLDIRS = 
 
 all:
 	for i in $(ALLDIRS); do make -C $$i; done

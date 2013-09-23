@@ -1,4 +1,4 @@
-ALLDIRS = libcrt libc libdl
+ALLDIRS = 
 
 all:
 	for i in $(ALLDIRS); do make -C $$i; done

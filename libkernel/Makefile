@@ -1,5 +1,4 @@
-ALLDIRS = libkernel libio libPCI libRTL8139
-
+ALLDIRS = 
 all:
 	for i in $(ALLDIRS); do make -C $$i; done
 	
