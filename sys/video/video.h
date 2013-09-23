@@ -74,8 +74,6 @@ protected:
 	size_t cursorY;
 };
 
-bool vd_init();
-
 VideoDevice *vd_getActiveDevice();
 
 #endif /* _VIDEO_H_ */

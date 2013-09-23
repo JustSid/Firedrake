@@ -34,11 +34,9 @@ VideoDevice::~VideoDevice()
 VideoDevice *_vd_activeDevice = nullptr;
 TextVideoDevice _vd_coreDevice;
 
-bool vd_init()
+void vd_init()
 {
 	_vd_activeDevice = &_vd_coreDevice;
-
-	return true;
 }
 
 VideoDevice *vd_getActiveDevice()
