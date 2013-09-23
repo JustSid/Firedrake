@@ -1,5 +1,5 @@
 //
-//  boot.cpp
+//  video.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,28 +16,66 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "multiboot.h"
+#ifndef _VIDEO_H_
+#define _VIDEO_H_
 
-#include <prefix.h>
-#include <video/video.h>
+#include <libc/stdint.h>
+#include <libc/stddef.h>
 
-const char *kVersionBeast    = "Nidhogg";
-const char *kVersionAppendix = "";
+class VideoDevice
+{
+public:
+	enum class Color : char
+	{
+		Black = 0x0,
+		White = 0xf,
+		Blue = 0x1,
+		Green,
+		Cyan,
+		Red,
+		Magenta,
+		Brown,
+		LightGray,
+		DarkGray,
+		LightBlue,
+		LightGreen,
+		LightCyan,
+		LightRed,
+		LightMagenta,
+		Yellow
+	};
 
-multiboot_t *bootinfo = nullptr;
+	VideoDevice();
+	virtual ~VideoDevice();
 
-extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
-extern void cxa_init();
+	virtual bool IsText() = 0;
 
-void sys_boot(multiboot_t *info)
-{	
-	bootinfo = info;
+	virtual size_t GetWidth()  = 0;
+	virtual size_t GetHeight() = 0;
+	virtual size_t GetDepth() = 0;
 
-	cxa_init();
-	vd_init();
+	Color GetBackgroundColor() { return backgroundColor; }
+	Color GetForegroundColor() { return foregroundColor; }
+	size_t GetCursorX() { return cursorX; }
+	size_t GetCursorY() { return cursorY; }
 
-	VideoDevice *device = vd_getActiveDevice();
-	device->WriteString("Hello World");
+	virtual void SetColors(Color foreground, Color background) = 0;
+	virtual void SetCursor(size_t x, size_t y) = 0;
 
-	while(1) {}
-}
+	virtual void WriteString(const char *string) = 0;
+	virtual void ScrollLines(size_t numLines) = 0;
+	virtual void Clear() = 0;
+
+protected:
+	Color backgroundColor;
+	Color foregroundColor;
+
+	size_t cursorX;
+	size_t cursorY;
+};
+
+bool vd_init();
+
+VideoDevice *vd_getActiveDevice();
+
+#endif /* _VIDEO_H_ */

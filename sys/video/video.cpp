@@ -1,5 +1,5 @@
 //
-//  boot.cpp
+//  video.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,28 +16,32 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "multiboot.h"
+#include "video.h"
+#include "textdevice.h"
 
-#include <prefix.h>
-#include <video/video.h>
+VideoDevice::VideoDevice()
+{
+	backgroundColor = Color::Black;
+	foregroundColor = Color::LightGray;
 
-const char *kVersionBeast    = "Nidhogg";
-const char *kVersionAppendix = "";
+	cursorX = cursorY = 0;
+}
 
-multiboot_t *bootinfo = nullptr;
+VideoDevice::~VideoDevice()
+{}
 
-extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
-extern void cxa_init();
 
-void sys_boot(multiboot_t *info)
-{	
-	bootinfo = info;
+VideoDevice *_vd_activeDevice = nullptr;
+TextVideoDevice _vd_coreDevice;
 
-	cxa_init();
-	vd_init();
+bool vd_init()
+{
+	_vd_activeDevice = &_vd_coreDevice;
 
-	VideoDevice *device = vd_getActiveDevice();
-	device->WriteString("Hello World");
+	return true;
+}
 
-	while(1) {}
+VideoDevice *vd_getActiveDevice()
+{
+	return _vd_activeDevice;
 }

@@ -1,5 +1,5 @@
 //
-//  boot.cpp
+//  textdevice.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,28 +16,36 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "multiboot.h"
+#include "video.h"
 
-#include <prefix.h>
-#include <video/video.h>
+#ifndef _TEXTDEVICE_H_
+#define _TEXTDEVICE_H_
 
-const char *kVersionBeast    = "Nidhogg";
-const char *kVersionAppendix = "";
+class TextVideoDevice : public VideoDevice
+{
+public:
+	TextVideoDevice();
 
-multiboot_t *bootinfo = nullptr;
+	bool IsText() { return true; }
 
-extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
-extern void cxa_init();
+	size_t GetWidth() override { return _width; }
+	size_t GetHeight() override { return _height; }
+	size_t GetDepth() override { return 0; }
 
-void sys_boot(multiboot_t *info)
-{	
-	bootinfo = info;
+	void SetColors(Color foreground, Color background);
+	void SetCursor(size_t x, size_t y);
 
-	cxa_init();
-	vd_init();
+	void WriteString(const char *string);
+	void ScrollLines(size_t lines);
+	void Clear();
 
-	VideoDevice *device = vd_getActiveDevice();
-	device->WriteString("Hello World");
+private:
+	void Putc(char character);
+	void ColorPoint(size_t x, size_t y, Color foreground, Color background);
 
-	while(1) {}
-}
+	uint8_t *_base;
+	size_t _width;
+	size_t _height;
+};
+
+#endif /* _TEXTDEVICE_H_ */
