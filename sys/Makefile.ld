@@ -26,6 +26,16 @@ SECTIONS
 	}
 
 	. = ALIGN(4096);
+	ctorsBegin = .;
+
+	.ctors :
+	{
+		*(.ctors)
+	}
+
+	ctorsEnd = .;
+
+	. = ALIGN(4096);
 	kernelEnd = .;
 }
 

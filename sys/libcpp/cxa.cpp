@@ -1,5 +1,5 @@
 //
-//  boot.cpp
+//  cxa.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,22 +16,47 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "multiboot.h"
-
 #include <prefix.h>
 
-const char *kVersionBeast    = "Nidhogg";
-const char *kVersionAppendix = "";
+void *__dso_handle;
 
-multiboot_t *bootinfo = nullptr;
+extern "C"
+{
+	void __cxa_pure_virtual()
+	{
+		// TODO: Panic
+		while(1)
+		{
+			__asm__ volatile("cli; hlt;");
+		}
+	}
 
-extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
-extern void cxa_init();
 
-void sys_boot(multiboot_t *info)
-{	
-	bootinfo = info;
+	int __cxa_atexit(__unused void (*f)(void *), __unused void *p, __unused void *d)
+	{
+		// The kernel will be alive for the whole livetime of the machine
+		// so there is not much sense in actually destructing anything in __cxa_finalize
+		// so no need to track anything here.
+		return 0;
+	}
 
-	cxa_init();
-	while(1) {}
+	void __cxa_finalize(__unused void *d)
+	{}
+};
+
+typedef void (*cxa_constructor)();
+
+extern "C" cxa_constructor ctorsBegin;
+extern "C" cxa_constructor ctorsEnd;
+
+void cxa_init()
+{
+	cxa_constructor *iterator = &ctorsBegin;
+	cxa_constructor *end   = &ctorsEnd;
+
+	while(iterator != end)
+	{
+		(*iterator)();
+		iterator ++;
+	}
 }

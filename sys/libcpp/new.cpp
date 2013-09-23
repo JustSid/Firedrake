@@ -1,5 +1,5 @@
 //
-//  boot.cpp
+//  new.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,22 +16,20 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "multiboot.h"
+#include <libc/stddef.h>
 
-#include <prefix.h>
-
-const char *kVersionBeast    = "Nidhogg";
-const char *kVersionAppendix = "";
-
-multiboot_t *bootinfo = nullptr;
-
-extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
-extern void cxa_init();
-
-void sys_boot(multiboot_t *info)
-{	
-	bootinfo = info;
-
-	cxa_init();
-	while(1) {}
+void *operator new(size_t size)
+{
+	return nullptr;
 }
+
+void *operator new[](size_t  size)
+{
+	return nullptr;
+}
+
+void operator delete(void *obj)
+{}
+
+void operator delete[](void *obj)
+{}
