@@ -1,5 +1,5 @@
 //
-//  boot.cpp
+//  kprintf.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,29 +16,21 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "multiboot.h"
-
 #include <prefix.h>
+#include <libc/stdio.h>
+#include <libc/stdarg.h>
 #include <video/video.h>
 
-#include <kern/kprintf.h>
+void kprintf(const char *format, ...)
+{
+	va_list args;
+	va_start(args, format);
 
-const char *kVersionBeast    = "Nidhogg";
-const char *kVersionAppendix = "";
+	char buffer[512];
+	vsnprintf(buffer, 512, format, args);
 
-multiboot_t *bootinfo = nullptr;
+	VideoDevice *device = vd_getActiveDevice();
+	device->WriteString(buffer);
 
-extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
-extern void cxa_init();
-
-void sys_boot(multiboot_t *info)
-{	
-	bootinfo = info;
-
-	cxa_init();
-	vd_init();
-
-	kprintf("Hello World\n");
-
-	while(1) {}
+	va_end(args);
 }
