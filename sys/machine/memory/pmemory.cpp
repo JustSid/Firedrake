@@ -20,6 +20,7 @@
 #include <libc/string.h>
 #include <libcpp/algorithm.h>
 #include <kern/spinlock.h>
+#include <kern/kprintf.h>
 #include <kern/kern_return.h>
 #include "pmemory.h"
 #include "vmemory.h"
@@ -156,7 +157,10 @@ kern_return_t pm_init(multiboot_t *info)
 
 	// Mark all free pages
 	if(!(info->flags & kMultibootFlagMmap))
+	{
+		kprintf("No mmap info present!");
 		return KERN_INVALID_ARGUMENT;
+	}
 
 	uint8_t *mmapPtr = reinterpret_cast<uint8_t *>(info->mmap_addr);
 	uint8_t *mmapEnd = mmapPtr + info->mmap_length;

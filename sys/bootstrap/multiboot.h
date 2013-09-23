@@ -105,6 +105,4 @@ typedef struct multiboot_module_s  multiboot_module_t;
 typedef struct multiboot_drive_s   multiboot_drive_t;
 typedef struct multiboot_mmap_s    multiboot_mmap_t;
 
-extern multiboot_t *bootinfo;
-
 #endif
