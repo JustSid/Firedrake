@@ -21,6 +21,7 @@
 
 #include <prefix.h>
 #include "stddef.h"
+#include "stdarg.h"
 
 BEGIN_EXTERNC
 
