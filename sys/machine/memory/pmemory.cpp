@@ -21,7 +21,6 @@
 #include <libcpp/algorithm.h>
 #include <kern/spinlock.h>
 #include <kern/kprintf.h>
-#include <kern/kern_return.h>
 #include "pmemory.h"
 #include "vmemory.h"
 
@@ -65,7 +64,7 @@ static inline uintptr_t _pm_findFreePages(size_t pages, uintptr_t lowerLimit, ui
 		if(_pm_heapBitmap[i] == 0xffffffff)
 		{
 			if(found == 0)
-				page = i * VM_PAGE_SIZE * 32;
+				page = i * 32 * VM_PAGE_SIZE;
 
 			found += 32;
 		}
@@ -76,7 +75,7 @@ static inline uintptr_t _pm_findFreePages(size_t pages, uintptr_t lowerLimit, ui
 				if(_pm_heapBitmap[i] & (1 << j))
 				{
 					if(found == 0)
-						page = i * VM_PAGE_SIZE * 32;
+						page = (i * 32 + j) * VM_PAGE_SIZE;
 
 					if((++ found) >= pages)
 						return page;
@@ -97,8 +96,23 @@ static inline uintptr_t _pm_findFreePages(size_t pages, uintptr_t lowerLimit, ui
 
 
 
-uintptr_t pm_allocLimit(size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit)
+kern_return_t pm_alloc(uintptr_t& address, size_t pages)
 {
+	return pm_allocLimit(address, pages, VM_LOWER_LIMIT, VM_UPPER_LIMIT);
+}
+
+kern_return_t pm_allocLimit(uintptr_t& address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit)
+{
+#if CONFIG_STRICT
+
+	if(pages == 0 || lowerLimit < VM_LOWER_LIMIT || upperLimit > VM_UPPER_LIMIT)
+		return KERN_INVALID_ARGUMENT;
+
+	if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
+		return KERN_INVLIAD_ADDRESS;
+
+#endif
+
 	spinlock_lock(&_pm_heapLock);
 
 	uintptr_t page = _pm_findFreePages(pages, lowerLimit, upperLimit);
@@ -114,31 +128,20 @@ uintptr_t pm_allocLimit(size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit
 	}
 
 	spinlock_unlock(&_pm_heapLock);
-	return page;
+	address = page;
+	
+	return page ? KERN_SUCCESS : KERN_NO_MEMORY;
 }
 
-uintptr_t pm_alloc(size_t pages)
+kern_return_t pm_free(uintptr_t page, size_t pages)
 {
-	spinlock_lock(&_pm_heapLock);
+#if CONFIG_STRICT
 
-	uintptr_t page = _pm_findFreePages(pages, VM_LOWER_LIMIT, VM_UPPER_LIMIT);
-	if(page)
-	{
-		uintptr_t temp = page;
+	if(page == 0 || (page % VM_PAGE_SIZE) != 0)
+		return KERN_INVLIAD_ADDRESS;
 
-		for(size_t i = 0; i < pages; i ++)
-		{
-			_pm_markUsed(temp);
-			temp += VM_PAGE_SIZE;
-		}
-	}
+#endif
 
-	spinlock_unlock(&_pm_heapLock);
-	return page;
-}
-
-void pm_free(uintptr_t page, size_t pages)
-{
 	spinlock_lock(&_pm_heapLock);
 
 	for(size_t i = 0; i < pages; i ++)
@@ -148,7 +151,9 @@ void pm_free(uintptr_t page, size_t pages)
 	}
 
 	spinlock_unlock(&_pm_heapLock);
+	return KERN_SUCCESS;
 }
+
 
 
 kern_return_t pm_init(multiboot_t *info)

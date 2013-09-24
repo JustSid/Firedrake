@@ -23,4 +23,8 @@
 #define CONFIG_RELEASE 0
 #endif
 
+#ifndef CONFIG_STRICT
+#define CONFIG_STRICT 1
+#endif
+
 #endif /* _CONFIG_H_ */

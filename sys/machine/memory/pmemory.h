@@ -19,12 +19,13 @@
 #include <prefix.h>
 #include <libc/stddef.h>
 #include <libc/stdint.h>
+#include <kern/kern_return.h>
 
 #ifndef _PMEMORY_H_
 #define _PMEMORY_H_
 
-uintptr_t pm_allocLimit(size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit);
-uintptr_t pm_alloc(size_t pages);
-void pm_free(uintptr_t page, size_t pages);
+kern_return_t pm_alloc(uintptr_t& address, size_t pages);
+kern_return_t pm_allocLimit(uintptr_t& address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit);
+kern_return_t pm_free(uintptr_t page, size_t pages);
 
 #endif /* _PMEMORY_H_ */
