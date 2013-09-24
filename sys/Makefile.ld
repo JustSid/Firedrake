@@ -5,7 +5,7 @@ OUTPUT_ARCH(i386:i386)
 SECTIONS
 {
 	. = 0x100000;
-	kernelBegin = .;
+	kernel_begin = .;
 
 	.text : 
 	{
@@ -26,16 +26,16 @@ SECTIONS
 	}
 
 	. = ALIGN(4096);
-	ctorsBegin = .;
+	ctors_begin = .;
 
 	.ctors :
 	{
 		*(.ctors)
 	}
 
-	ctorsEnd = .;
+	ctors_end = .;
 
 	. = ALIGN(4096);
-	kernelEnd = .;
+	kernel_end = .;
 }
 

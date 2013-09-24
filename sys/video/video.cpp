@@ -19,27 +19,31 @@
 #include "video.h"
 #include "textdevice.h"
 
-VideoDevice::VideoDevice()
+namespace vd
 {
-	backgroundColor = Color::Black;
-	foregroundColor = Color::LightGray;
+	static video_device *_vd_activeDevice = nullptr;
+	static text_device _vd_coreDevice;
 
-	cursorX = cursorY = 0;
-}
+	video_device::video_device()
+	{
+		backgroundColor = color::black;
+		foregroundColor = color::light_gray;
 
-VideoDevice::~VideoDevice()
-{}
+		cursorX = cursorY = 0;
+	}
+
+	video_device::~video_device()
+	{}
 
 
-VideoDevice *_vd_activeDevice = nullptr;
-TextVideoDevice _vd_coreDevice;
 
-void vd_init()
-{
-	_vd_activeDevice = &_vd_coreDevice;
-}
+	void init()
+	{
+		_vd_activeDevice = &_vd_coreDevice;
+	}
 
-VideoDevice *vd_getActiveDevice()
-{
-	return _vd_activeDevice;
+	video_device *get_active_device()
+	{
+		return _vd_activeDevice;
+	}
 }

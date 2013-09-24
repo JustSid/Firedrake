@@ -19,4 +19,7 @@
 #ifndef _MEMORY_H_
 #define _MEMORY_H_
 
+#include "physical.h"
+#include "virtual.h"
+
 #endif /* _MEMORY_H_ */

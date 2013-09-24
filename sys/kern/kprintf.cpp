@@ -29,8 +29,8 @@ void kprintf(const char *format, ...)
 	char buffer[512];
 	vsnprintf(buffer, 512, format, args);
 
-	VideoDevice *device = vd_getActiveDevice();
-	device->WriteString(buffer);
+	vd::video_device *device = vd::get_active_device();
+	device->write_string(buffer);
 
 	va_end(args);
 }

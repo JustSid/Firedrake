@@ -1,5 +1,5 @@
 //
-//  vmemory.h
+//  virtual.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,8 +16,12 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _VMEMORY_H_
-#define _VMEMORY_H_
+#ifndef _VIRTUAL_H_
+#define _VIRTUAL_H_
+
+#include <libc/stdint.h>
+#include <kern/kern_return.h>
+#include <kern/spinlock.h>
 
 #define VM_PAGE_SHIFT 12
 #define VM_DIRECTORY_SHIFT 22
@@ -32,4 +36,4 @@
 #define VM_LOWER_LIMIT 0x1000
 #define VM_UPPER_LIMIT 0xfffff000
 
-#endif /* _VMEMORY_H_ */
+#endif /* _VIRTUAL_H_ */

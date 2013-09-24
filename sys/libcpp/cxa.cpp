@@ -44,15 +44,15 @@ extern "C"
 	{}
 };
 
-typedef void (*cxa_constructor)();
+typedef void (*cxa_constructor_t)();
 
-extern "C" cxa_constructor ctorsBegin;
-extern "C" cxa_constructor ctorsEnd;
+extern "C" cxa_constructor_t ctors_begin;
+extern "C" cxa_constructor_t ctors_end;
 
 void cxa_init()
 {
-	cxa_constructor *iterator = &ctorsBegin;
-	cxa_constructor *end   = &ctorsEnd;
+	cxa_constructor_t *iterator = &ctors_begin;
+	cxa_constructor_t *end = &ctors_end;
 
 	while(iterator != end)
 	{

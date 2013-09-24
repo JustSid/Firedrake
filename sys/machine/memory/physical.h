@@ -1,5 +1,5 @@
 //
-//  pmemory.h
+//  physical.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -20,12 +20,18 @@
 #include <libc/stddef.h>
 #include <libc/stdint.h>
 #include <kern/kern_return.h>
+#include <bootstrap/multiboot.h>
 
-#ifndef _PMEMORY_H_
-#define _PMEMORY_H_
+#ifndef _PHYSICAL_H_
+#define _PHYSICAL_H_
 
-kern_return_t pm_alloc(uintptr_t& address, size_t pages);
-kern_return_t pm_allocLimit(uintptr_t& address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit);
-kern_return_t pm_free(uintptr_t page, size_t pages);
+namespace pm
+{
+	kern_return_t alloc(uintptr_t& address, size_t pages);
+	kern_return_t alloc_limit(uintptr_t& address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit);
+	kern_return_t free(uintptr_t page, size_t pages);
 
-#endif /* _PMEMORY_H_ */
+	kern_return_t init(multiboot_t *info);
+}
+
+#endif /* _PHYSICAL_H_ */

@@ -22,58 +22,62 @@
 #include <libc/stdint.h>
 #include <libc/stddef.h>
 
-class VideoDevice
+namespace vd
 {
-public:
-	enum class Color : char
+	class video_device
 	{
-		Black = 0x0,
-		White = 0xf,
-		Blue = 0x1,
-		Green,
-		Cyan,
-		Red,
-		Magenta,
-		Brown,
-		LightGray,
-		DarkGray,
-		LightBlue,
-		LightGreen,
-		LightCyan,
-		LightRed,
-		LightMagenta,
-		Yellow
+	public:
+		enum class color : char
+		{
+			black = 0x0,
+			white = 0xf,
+			blue = 0x1,
+			green,
+			cyan,
+			red,
+			magenta,
+			brown,
+			light_gray,
+			dark_ray,
+			light_blue,
+			light_green,
+			light_cyan,
+			light_red,
+			light_magenta,
+			yellow
+		};
+
+		video_device();
+		virtual ~video_device();
+
+		virtual bool is_text() = 0;
+
+		virtual size_t get_width()  = 0;
+		virtual size_t get_height() = 0;
+		virtual size_t get_depth() = 0;
+
+		color get_background_color() { return backgroundColor; }
+		color get_foreground_color() { return foregroundColor; }
+		size_t get_cursor_x() { return cursorX; }
+		size_t get_cursor_y() { return cursorY; }
+
+		virtual void set_colors(color foreground, color background) = 0;
+		virtual void set_cursor(size_t x, size_t y) = 0;
+
+		virtual void write_string(const char *string) = 0;
+		virtual void scroll_lines(size_t numLines) = 0;
+		virtual void clear() = 0;
+
+	protected:
+		color backgroundColor;
+		color foregroundColor;
+
+		size_t cursorX;
+		size_t cursorY;
 	};
 
-	VideoDevice();
-	virtual ~VideoDevice();
-
-	virtual bool IsText() = 0;
-
-	virtual size_t GetWidth()  = 0;
-	virtual size_t GetHeight() = 0;
-	virtual size_t GetDepth() = 0;
-
-	Color GetBackgroundColor() { return backgroundColor; }
-	Color GetForegroundColor() { return foregroundColor; }
-	size_t GetCursorX() { return cursorX; }
-	size_t GetCursorY() { return cursorY; }
-
-	virtual void SetColors(Color foreground, Color background) = 0;
-	virtual void SetCursor(size_t x, size_t y) = 0;
-
-	virtual void WriteString(const char *string) = 0;
-	virtual void ScrollLines(size_t numLines) = 0;
-	virtual void Clear() = 0;
-
-protected:
-	Color backgroundColor;
-	Color foregroundColor;
-
-	size_t cursorX;
-	size_t cursorY;
-};
-
-VideoDevice *vd_getActiveDevice();
+	void init();
+	video_device *get_active_device();
+}
 
 #endif /* _VIDEO_H_ */

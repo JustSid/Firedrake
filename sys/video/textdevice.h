@@ -21,31 +21,34 @@
 #ifndef _TEXTDEVICE_H_
 #define _TEXTDEVICE_H_
 
-class TextVideoDevice : public VideoDevice
+namespace vd
 {
-public:
-	TextVideoDevice();
+	class text_device : public video_device
+	{
+	public:
+		text_device();
 
-	bool IsText() { return true; }
+		bool is_text() override { return true; }
 
-	size_t GetWidth() override { return _width; }
-	size_t GetHeight() override { return _height; }
-	size_t GetDepth() override { return 0; }
+		size_t get_width() override { return _width; }
+		size_t get_height() override { return _height; }
+		size_t get_depth() override { return 0; }
 
-	void SetColors(Color foreground, Color background);
-	void SetCursor(size_t x, size_t y);
+		void set_colors(color foreground, color background);
+		void set_cursor(size_t x, size_t y);
 
-	void WriteString(const char *string);
-	void ScrollLines(size_t lines);
-	void Clear();
+		void write_string(const char *string);
+		void scroll_lines(size_t lines);
+		void clear();
 
-private:
-	void Putc(char character);
-	void ColorPoint(size_t x, size_t y, Color foreground, Color background);
+	private:
+		void putc(char character);
+		void color_point(size_t x, size_t y, color foreground, color background);
 
-	uint8_t *_base;
-	size_t _width;
-	size_t _height;
-};
+		uint8_t *_base;
+		size_t _width;
+		size_t _height;
+	};
+}
 
 #endif /* _TEXTDEVICE_H_ */

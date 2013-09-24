@@ -21,125 +21,126 @@
 #include <libcpp/algorithm.h>
 #include "textdevice.h"
 
-TextVideoDevice::TextVideoDevice()
+namespace vd
 {
-	_base = (uint8_t *)0xb8000;
-	_width  = 80;
-	_height = 25;
-
-	Clear();
-}
-
-void TextVideoDevice::SetColors(Color foreground, Color background)
-{
-	foregroundColor = foreground;
-	backgroundColor = background;
-}
-
-void TextVideoDevice::SetCursor(size_t x, size_t y)
-{
-	uint16_t pos = y * _width + x;
-
-	cursorX = x;
-	cursorY = y;
-
-	outb(0x3d4, 0x0f);
-	outb(0x3d5, (uint8_t)(pos & 0xff));
-
-	outb(0x3d4, 0x0e);
-	outb(0x3d5, (uint8_t)((pos >> 8) & 0xff));
-
-	ColorPoint(x, y, Color::LightGray, backgroundColor);
-}
-
-void TextVideoDevice::ColorPoint(size_t x, size_t y, Color foreground, Color background)
-{
-	uint32_t index = (y * _width + x) * 2;
-
-	uint8_t tForeground = (uint8_t)foreground;
-	uint8_t tBackground = (uint8_t)background;
-
-	uint8_t color = (tBackground << 4) | (tForeground & 0x0f);
-	_base[index + 1] = color;
-}
-
-void TextVideoDevice::Putc(char character)
-{
-	uint32_t index = (cursorY * _width + cursorX) * 2;
-	_base[index] = character;
-}
-
-
-void TextVideoDevice::WriteString(const char *string)
-{
-	while(*string)
+	text_device::text_device()
 	{
-		char character = *(string ++);
+		_base = (uint8_t *)0xb8000;
+		_width  = 80;
+		_height = 25;
 
-		if(character == '\n')
-		{
-			cursorX = 0;
-			cursorY ++;
-
-			if(cursorY >= _height)
-				ScrollLines(1);
-
-			continue;
-		}
-
-		Putc(character);
-		ColorPoint(cursorX, cursorY, foregroundColor, backgroundColor);
-
-		cursorX ++;
-
-		if(cursorX >= _width)
-		{
-			cursorX = 0;
-			cursorY ++;
-
-			if(cursorY >= _height)
-				ScrollLines(1);
-		}
+		clear();
 	}
 
-	SetCursor(cursorX, cursorY);
-}
-
-void TextVideoDevice::ScrollLines(size_t lines)
-{
-	for(size_t i = 0; i < lines; i ++)
+	void text_device::set_colors(color foreground, color background)
 	{
-		for(size_t y = 0; y < _height; y ++)
-		{
-			memcpy(&_base[(y * _width) * 2], &_base[((y + 1) * _width) * 2], _width * 2);
-		}
-
-		uint8_t color  = ((uint8_t)backgroundColor << 4) | ((uint8_t)foregroundColor & 0x0f);
-		uint32_t index = ((_height - 1) * _width) * 2;
-
-		for(size_t x = 0; x < _width; x ++)
-		{
-			_base[index ++] = '\0';
-			_base[index ++] = color;
-		}
-
-		if(cursorY > 0)
-			cursorY --;
+		foregroundColor = foreground;
+		backgroundColor = background;
 	}
 
-	SetCursor(cursorX, cursorY);
-}
-
-void TextVideoDevice::Clear()
-{
-	uint8_t color = ((uint8_t)backgroundColor << 4) | ((uint8_t)foregroundColor & 0x0f);
-	size_t length = _width * _height * 2;
-
-	for(size_t i = 0; i < length;)
+	void text_device::set_cursor(size_t x, size_t y)
 	{
-		_base[i ++] = '\0';
-		_base[i ++] = color;
+		uint16_t pos = y * _width + x;
+
+		cursorX = x;
+		cursorY = y;
+
+		outb(0x3d4, 0x0f);
+		outb(0x3d5, (uint8_t)(pos & 0xff));
+
+		outb(0x3d4, 0x0e);
+		outb(0x3d5, (uint8_t)((pos >> 8) & 0xff));
+
+		color_point(x, y, foregroundColor, backgroundColor);
 	}
 
-	SetCursor(0, 0);
+	void text_device::color_point(size_t x, size_t y, color foreground, color background)
+	{
+		uint32_t index = (y * _width + x) * 2;
+
+		uint8_t color = ((uint8_t)background << 4) | ((uint8_t)foreground & 0x0f);
+		_base[index + 1] = color;
+	}
+
+	void text_device::putc(char character)
+	{
+		uint32_t index = (cursorY * _width + cursorX) * 2;
+		_base[index] = character;
+	}
+
+
+
+	void text_device::write_string(const char *string)
+	{
+		while(*string)
+		{
+			char character = *(string ++);
+
+			if(character == '\n')
+			{
+				cursorX = 0;
+				cursorY ++;
+
+				if(cursorY >= _height)
+					scroll_lines(1);
+
+				continue;
+			}
+
+			putc(character);
+			color_point(cursorX, cursorY, foregroundColor, backgroundColor);
+
+			cursorX ++;
+
+			if(cursorX >= _width)
+			{
+				cursorX = 0;
+				cursorY ++;
+
+				if(cursorY >= _height)
+					scroll_lines(1);
+			}
+		}
+
+		set_cursor(cursorX, cursorY);
+	}
+
+	void text_device::scroll_lines(size_t lines)
+	{
+		for(size_t i = 0; i < lines; i ++)
+		{
+			for(size_t y = 0; y < _height; y ++)
+			{
+				memcpy(&_base[(y * _width) * 2], &_base[((y + 1) * _width) * 2], _width * 2);
+			}
+
+			uint8_t color  = ((uint8_t)backgroundColor << 4) | ((uint8_t)foregroundColor & 0x0f);
+			uint32_t index = ((_height - 1) * _width) * 2;
+
+			for(size_t x = 0; x < _width; x ++)
+			{
+				_base[index ++] = '\0';
+				_base[index ++] = color;
+			}
+
+			if(cursorY > 0)
+				cursorY --;
+		}
+
+		set_cursor(cursorX, cursorY);
+	}
+
+	void text_device::clear()
+	{
+		uint8_t color = ((uint8_t)backgroundColor << 4) | ((uint8_t)foregroundColor & 0x0f);
+		size_t length = _width * _height * 2;
+
+		for(size_t i = 0; i < length;)
+		{
+			_base[i ++] = '\0';
+			_base[i ++] = color;
+		}
+
+		set_cursor(0, 0);
+	}
 }

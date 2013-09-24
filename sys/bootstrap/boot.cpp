@@ -19,8 +19,11 @@
 #include "multiboot.h"
 
 #include <prefix.h>
+#include <video/video.h>
 #include <kern/kprintf.h>
 #include <kern/kern_return.h>
+
+#include <machine/memory/memory.h>
 
 const char *kVersionBeast    = "Nidhogg";
 const char *kVersionAppendix = "";
@@ -30,14 +33,13 @@ void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
 END_EXTERNC
 
 extern void cxa_init();
-extern void vd_init();
 extern kern_return_t pm_init(multiboot_t *info);
 
-#define sys_init(name, function, data) \
+#define sys_init(name, function, ...) \
 	do { \
 		kprintf("Initializing %s... {", name); \
 		kern_return_t result; \
-		if((result = function(data)) != KERN_SUCCESS) \
+		if((result = function(__VA_ARGS__)) != KERN_SUCCESS) \
 		{ \
 			kprintf("} failed"); /* This should probably be handled better ;) */ \
 		} \
@@ -51,13 +53,13 @@ void sys_boot(multiboot_t *info)
 {
 	// Get the C++ runtime and a basic video output ready
 	cxa_init();
-	vd_init();
+	vd::init();
 
 	// Print the hello world message
 	kprintf("Firedrake v%i.%i.%i:%i (%s)\nHere be dragons\n\n", kVersionMajor, kVersionMinor, kVersionPatch, VersionCurrent(), kVersionBeast);
 
 	// Run the low level initialization process
-	sys_init("physical memory", pm_init, info);
+	sys_init("physical memory", pm::init, info);
 
 	while(1) {}
 }
