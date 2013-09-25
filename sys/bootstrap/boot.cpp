@@ -22,6 +22,7 @@
 #include <video/video.h>
 #include <kern/kprintf.h>
 #include <kern/kern_return.h>
+#include <libc/string.h>
 
 #include <machine/memory/memory.h>
 
@@ -60,6 +61,7 @@ void sys_boot(multiboot_t *info)
 
 	// Run the low level initialization process
 	sys_init("physical memory", pm::init, info);
+	sys_init("virtual memory", vm::init, info);
 
 	while(1) {}
 }
