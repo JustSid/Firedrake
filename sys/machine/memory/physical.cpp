@@ -108,10 +108,10 @@ namespace pm
 #if CONFIG_STRICT
 
 		if(pages == 0 || lowerLimit < VM_LOWER_LIMIT || upperLimit > VM_UPPER_LIMIT)
-			return KERN_INVLIAD_ARGUMENT;
+			return KERN_INVALID_ARGUMENT;
 
 		if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-			return KERN_INVLIAD_ADDRESS;
+			return KERN_INVALID_ADDRESS;
 
 #endif
 
@@ -140,7 +140,7 @@ namespace pm
 #if CONFIG_STRICT
 
 		if(page == 0 || (page % VM_PAGE_SIZE) != 0)
-			return KERN_INVLIAD_ADDRESS;
+			return KERN_INVALID_ADDRESS;
 
 #endif
 
@@ -166,7 +166,7 @@ namespace pm
 		if(!(info->flags & kMultibootFlagMmap))
 		{
 			kprintf("No mmap info present!");
-			return KERN_INVLIAD_ARGUMENT;
+			return KERN_INVALID_ARGUMENT;
 		}
 
 		uint8_t *mmapPtr = reinterpret_cast<uint8_t *>(info->mmap_addr);

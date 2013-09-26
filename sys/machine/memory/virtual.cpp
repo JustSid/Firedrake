@@ -273,10 +273,10 @@ namespace vm
 	kern_return_t find_free_pages_user(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
 	{
 		if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-			return KERN_INVLIAD_ADDRESS;
+			return KERN_INVALID_ADDRESS;
 
 		if(pages == 0 || lowerLimit < VM_LOWER_LIMIT || upperLimit > VM_UPPER_LIMIT)
-			return KERN_INVLIAD_ARGUMENT;
+			return KERN_INVALID_ARGUMENT;
 
 
 		size_t found = 0;
@@ -346,10 +346,10 @@ namespace vm
 	kern_return_t find_free_pages_kernel(vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
 	{
 		if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-			return KERN_INVLIAD_ADDRESS;
+			return KERN_INVALID_ADDRESS;
 
 		if(pages == 0 || lowerLimit < VM_LOWER_LIMIT || upperLimit > VM_UPPER_LIMIT)
-			return KERN_INVLIAD_ARGUMENT;
+			return KERN_INVALID_ARGUMENT;
 
 		size_t found = 0;
 		vm_address_t regionStart = 0;
@@ -417,7 +417,7 @@ namespace vm
 	{
 		uint32_t index = vaddress / VM_PAGE_SIZE;
 		if(!(pageDirectory[index / VM_PAGETABLE_LENGTH] & VM_PAGETABLEFLAG_PRESENT))
-			return KERN_INVLIAD_ADDRESS;
+			return KERN_INVALID_ADDRESS;
 
 		uintptr_t physPageTable = (pageDirectory[index / VM_PAGETABLE_LENGTH] & ~0xfff);
 		temporary_mapping temp(_kernel_directory, physPageTable, 1);
@@ -429,7 +429,7 @@ namespace vm
 			return KERN_SUCCESS;
 		}
 
-		return KERN_INVLIAD_ADDRESS;
+		return KERN_INVALID_ADDRESS;
 	}
 
 	kern_return_t map_page_noCheck(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags)
@@ -505,13 +505,13 @@ namespace vm
 	kern_return_t map_page(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags)
 	{
 		if((paddress % VM_PAGE_SIZE) || (vaddress % VM_PAGE_SIZE))
-			return KERN_INVLIAD_ADDRESS;
+			return KERN_INVALID_ADDRESS;
 
 		if(vaddress == 0 || (paddress == 0 && flags != 0))
-			return KERN_INVLIAD_ADDRESS;
+			return KERN_INVALID_ADDRESS;
 
-		if(pages == 0)
-			return KERN_INVLIAD_ARGUMENT;
+		if(flags > VM_PAGETABLEFLAG_ALL)
+			return KERN_INVALID_ARGUMENT;
 
 		return map_page_noCheck(pageDirectory, paddress, vaddress, flags);
 	}
@@ -519,13 +519,13 @@ namespace vm
 	kern_return_t map_page_range(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, size_t pages, uint32_t flags)
 	{
 		if((paddress % VM_PAGE_SIZE) || (vaddress % VM_PAGE_SIZE))
-			return KERN_INVLIAD_ADDRESS;
+			return KERN_INVALID_ADDRESS;
 
 		if(vaddress == 0 || (paddress == 0 && flags != 0))
-			return KERN_INVLIAD_ADDRESS;
+			return KERN_INVALID_ADDRESS;
 
 		if(pages == 0 || flags > VM_PAGETABLEFLAG_ALL)
-			return KERN_INVLIAD_ARGUMENT;
+			return KERN_INVALID_ARGUMENT;
 
 		for(size_t i = 0; i < pages; i ++)
 		{
