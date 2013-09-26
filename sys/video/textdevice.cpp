@@ -109,7 +109,7 @@ namespace vd
 	{
 		for(size_t i = 0; i < lines; i ++)
 		{
-			for(size_t y = 0; y < _height; y ++)
+			for(size_t y = 0; y < _height - 1; y ++)
 			{
 				memcpy(&_base[(y * _width) * 2], &_base[((y + 1) * _width) * 2], _width * 2);
 			}
