@@ -62,6 +62,7 @@ void sys_boot(multiboot_t *info)
 	// Run the low level initialization process
 	sys_init("physical memory", pm::init, info);
 	sys_init("virtual memory", vm::init, info);
+	sys_init("heap", mm::heap_init);
 
 	while(1) {}
 }

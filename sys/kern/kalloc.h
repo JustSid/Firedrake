@@ -1,5 +1,5 @@
 //
-//  new.cpp
+//  kalloc.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,27 +16,13 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#ifndef _KALLOC_H_
+#define _KALLOC_H_
+
+#include <prefix.h>
 #include <libc/stddef.h>
-#include <kern/kalloc.h>
 
-void *operator new(size_t size)
-{
-	return kalloc(size);
-}
+void *kalloc(size_t size);
+void kfree(void *ptr);
 
-void *operator new[](size_t  size)
-{
-	return kalloc(size);
-}
-
-void operator delete(void *obj)
-{
-	if(obj)
-		kfree(obj);
-}
-
-void operator delete[](void *obj)
-{
-	if(obj)
-		kfree(obj);
-}
+#endif /* _KALLOC_H_ */

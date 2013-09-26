@@ -1,5 +1,5 @@
 //
-//  new.cpp
+//  kalloc.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,27 +16,17 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/stddef.h>
-#include <kern/kalloc.h>
+#include <machine/memory/heap.h>
+#include "kalloc.h"
 
-void *operator new(size_t size)
+void *kalloc(size_t size)
 {
-	return kalloc(size);
+	mm::heap *heap = mm::get_generic_heap();
+	return heap->allocate(size);
 }
 
-void *operator new[](size_t  size)
+void kfree(void *ptr)
 {
-	return kalloc(size);
-}
-
-void operator delete(void *obj)
-{
-	if(obj)
-		kfree(obj);
-}
-
-void operator delete[](void *obj)
-{
-	if(obj)
-		kfree(obj);
+	mm::heap *heap = mm::get_generic_heap();
+	heap->free(ptr);
 }
