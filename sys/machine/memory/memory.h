@@ -19,7 +19,54 @@
 #ifndef _MEMORY_H_
 #define _MEMORY_H_
 
+// This header also works as umbrella header for the other memory headers
 #include "physical.h"
 #include "virtual.h"
+#include "heap.h"
+
+namespace mm
+{
+	template<class T=void>
+	T *alloc(vm::directory *dir, size_t pages, uint32_t flags)
+	{
+		uintptr_t pmemory    = 0;
+		vm_address_t vmemory = 0;
+
+		kern_return_t result;
+
+		result = pm::alloc(pmemory, pages);
+		if(result != KERN_SUCCESS)
+			goto alloc_failed;
+
+		result = dir->alloc(vmemory, pmemory, pages, flags);
+		if(result != KERN_SUCCESS)
+			goto alloc_failed;
+
+		return reinterpret_cast<T *>(vmemory);
+
+	alloc_failed:
+		if(pmemory)
+			pm::free(pmemory, pages);
+
+		if(vmemory)
+			dir->free(vmemory, pages);
+
+		return nullptr;
+	}
+
+	template<class T>
+	void free(T *ptr, vm::directory *dir, size_t pages)
+	{
+		kern_return_t result;
+		uintptr_t pmemory;
+
+		result = dir->resolve_virtual_address(pmemory, reinterpret_cast<vm_address_t>(ptr));
+		if(result == KERN_SUCCESS)
+		{
+			dir->free(reinterpret_cast<vm_address_t>(ptr), pages);
+			pm::free(pmemory, pages);
+		}
+	}
+}
 
 #endif /* _MEMORY_H_ */
