@@ -26,4 +26,7 @@
 
 #define	ENTRY(x) .global EXT(x); .align FALIGN; LEXT(x)
 
+#define TEXT() .text; .align 4096
+#define GLOBAL(x) .global EXT(x); LEXT(x)
+
 #endif /* _ASM_H_ */

@@ -18,7 +18,7 @@
 
 #include <asm.h>
 
-.text
+TEXT()
 
 ENTRY(setjmp)
 	movl 4(%esp), %ecx

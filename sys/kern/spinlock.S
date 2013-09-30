@@ -18,6 +18,8 @@
 
 #include <asm.h>
 
+TEXT()
+
 ENTRY(spinlock_lock)
 	pushl %edi
 	movl 0x8(%esp), %edi

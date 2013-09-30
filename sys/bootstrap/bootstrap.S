@@ -26,7 +26,7 @@
 	.int (-0x1BADB002)
 
 // Entry point
-.text
+TEXT()
 
 ENTRY(_start)
 	movl $stack_top, %esp
