@@ -24,8 +24,10 @@
 typedef uint32_t kern_return_t;
 
 #define KERN_SUCCESS 0
-#define KERN_INVALID_ADDRESS  1
-#define KERN_INVALID_ARGUMENT 2
-#define KERN_NO_MEMORY        3
+#define KERN_INVALID_ADDRESS   1
+#define KERN_INVALID_ARGUMENT  2
+#define KERN_NO_MEMORY         3
+#define KERN_FAILURE           4
+#define KERN_RESOURCES_MISSING 5
 
 #endif /* _KERNRETURN_H_ */
