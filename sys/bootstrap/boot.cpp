@@ -24,7 +24,9 @@
 #include <kern/kern_return.h>
 #include <libc/string.h>
 
+#include <machine/cpu.h>
 #include <machine/memory/memory.h>
+#include <machine/interrupts/interrupts.h>
 
 const char *kVersionBeast    = "Nidhogg";
 const char *kVersionAppendix = "";
@@ -36,17 +38,31 @@ END_EXTERNC
 extern void cxa_init();
 extern kern_return_t pm_init(multiboot_t *info);
 
-#define sys_init(name, function, ...) \
+#define sys_init0(name, function) \
 	do { \
-		kprintf("Initializing %s... {", name); \
+		kprintf("Initializing %s... { ", name); \
 		kern_return_t result; \
-		if((result = function(__VA_ARGS__)) != KERN_SUCCESS) \
+		if((result = function()) != KERN_SUCCESS) \
 		{ \
-			kprintf("} failed"); /* This should probably be handled better ;) */ \
+			kprintf(" } failed\n"); /* This should probably be handled better ;) */ \
 		} \
 		else \
 		{ \
-			kprintf("} ok\n"); \
+			kprintf(" } ok\n"); \
+		} \
+	} while(0)
+
+#define sys_initN(name, function, ...) \
+	do { \
+		kprintf("Initializing %s... { ", name); \
+		kern_return_t result; \
+		if((result = function(__VA_ARGS__)) != KERN_SUCCESS) \
+		{ \
+			kprintf(" } failed\n"); /* This should probably be handled better ;) */ \
+		} \
+		else \
+		{ \
+			kprintf(" } ok\n"); \
 		} \
 	} while(0)
 
@@ -60,9 +76,22 @@ void sys_boot(multiboot_t *info)
 	kprintf("Firedrake v%i.%i.%i:%i (%s)\nHere be dragons\n\n", kVersionMajor, kVersionMinor, kVersionPatch, VersionCurrent(), kVersionBeast);
 
 	// Run the low level initialization process
-	sys_init("physical memory", pm::init, info);
-	sys_init("virtual memory", vm::init, info);
-	sys_init("heap", mm::heap_init);
+	sys_init0("cpu", cpu_init);
+	sys_initN("physical memory", pm::init, info);
+	sys_initN("virtual memory", vm::init, info);
+	sys_init0("heap", mm::heap_init);
+	sys_init0("interrupts", ir::init);
+
+	kprintf("\n\n");
+
+	for(uint32_t i = 0; i < 32; i ++)
+	{
+		cpu_t *cpu = cpu_get_cpu_with_id(i);
+		if(!cpu)
+			break;
+
+		kprintf("CPU ID: %i, APIC: %i, flags: %i\n", cpu->id, cpu->apic_id, cpu->flags);
+	}
 
 	while(1) {}
 }
