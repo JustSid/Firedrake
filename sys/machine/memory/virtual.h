@@ -36,6 +36,7 @@
 
 #define VM_LOWER_LIMIT 0x1000
 #define VM_UPPER_LIMIT 0xfffff000
+#define VM_KERNEL_LIMIT 0x0ffff000
 
 
 #define VM_PAGETABLEFLAG_PRESENT      (1 << 0)
@@ -48,9 +49,10 @@
 
 #define VM_PAGETABLEFLAG_ALL ((1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6))
 
-#define VM_FLAGS_KERNEL     (VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE)
-#define VM_FLAGS_USERLAND   (VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE | VM_PAGETABLEFLAG_USERSPACE)
-#define VM_FLAGS_USERLAND_R (VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_USERSPACE)
+#define VM_FLAGS_KERNEL         (VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE)
+#define VM_FLAGS_KERNEL_NOCACHE (VM_FLAGS_KERNEL | VM_PAGETABLEFLAG_CACHEDISABLE)
+#define VM_FLAGS_USERLAND       (VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE | VM_PAGETABLEFLAG_USERSPACE)
+#define VM_FLAGS_USERLAND_R     (VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_USERSPACE)
 
 typedef uintptr_t vm_address_t;
 
@@ -69,6 +71,8 @@ namespace vm
 		kern_return_t alloc(vm_address_t& address, uintptr_t physical, size_t pages, uint32_t flags);
 		kern_return_t alloc_limit(vm_address_t& address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, uint32_t flags);
 		kern_return_t free(vm_address_t address, size_t pages);
+
+		uint32_t *get_physical_directory() const { return _directory; }
 
 		static kern_return_t create(directory *&result);
 

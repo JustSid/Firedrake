@@ -29,8 +29,9 @@
 
 namespace vm
 {
+	extern "C" uint32_t *_kernel_page_directory = nullptr;
+
 	static directory *_kernel_directory = nullptr;
-	static uint32_t *_kernel_pageDirectory = nullptr;
 	static bool _use_physical_kernel_pages;
 
 	__inline kern_return_t find_free_pages_user(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
@@ -53,7 +54,7 @@ namespace vm
 			_mapped(nullptr),
 			_isKernelDirectory(false)
 		{
-			if(dir == _kernel_pageDirectory)
+			if(dir == _kernel_page_directory)
 			{
 				_isKernelDirectory = true;
 				return;
@@ -73,7 +74,7 @@ namespace vm
 
 		uint32_t *get_directory() const
 		{
-			return _isKernelDirectory ? _kernel_pageDirectory : _mapped;
+			return _isKernelDirectory ? _kernel_page_directory : _mapped;
 		}
 
 	private:
@@ -365,7 +366,7 @@ namespace vm
 				break;
 			}
 
-			if(_kernel_pageDirectory[pageTableIndex] & VM_PAGETABLEFLAG_PRESENT)
+			if(_kernel_page_directory[pageTableIndex] & VM_PAGETABLEFLAG_PRESENT)
 			{
 				uint32_t *table = reinterpret_cast<uint32_t *>(VM_KERNEL_PAGE_TABLES + (pageTableIndex << VM_PAGE_SHIFT));
 
@@ -409,7 +410,7 @@ namespace vm
 	kern_return_t find_free_pages(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
 	{
 		kern_return_t result;
-		result = (pageDirectory == _kernel_pageDirectory) ? find_free_pages_kernel(address, pages, lowerLimit, upperLimit) : find_free_pages_user(pageDirectory, address, pages, lowerLimit, upperLimit);
+		result = (pageDirectory == _kernel_page_directory) ? find_free_pages_kernel(address, pages, lowerLimit, upperLimit) : find_free_pages_user(pageDirectory, address, pages, lowerLimit, upperLimit);
 		return result;
 	}
 
@@ -439,7 +440,7 @@ namespace vm
 		uint32_t *pageTable;
 		vm_address_t temporaryPage = 0x0;
 
-		if(pageDirectory != _kernel_pageDirectory)
+		if(pageDirectory != _kernel_page_directory)
 		{
 			kern_return_t result = _kernel_directory->alloc(temporaryPage, 0xdeadbeef, 1, VM_FLAGS_KERNEL);
 
@@ -458,7 +459,7 @@ namespace vm
 			pageTable = reinterpret_cast<uint32_t *>(physical);
 			pageDirectory[index / VM_DIRECTORY_LENGTH] = physical | VM_FLAGS_KERNEL;
 
-			if(pageDirectory != _kernel_pageDirectory)
+			if(pageDirectory != _kernel_page_directory)
 			{
 				_kernel_directory->map_page(physical, temporaryPage, VM_FLAGS_KERNEL);
 				pageTable = reinterpret_cast<uint32_t *>(temporaryPage);
@@ -480,7 +481,7 @@ namespace vm
 		}
 		else
 		{
-			if(pageDirectory != _kernel_pageDirectory)
+			if(pageDirectory != _kernel_page_directory)
 			{
 				uintptr_t physical = (pageDirectory[index / VM_DIRECTORY_LENGTH] & ~0xfff);
 
@@ -570,13 +571,13 @@ namespace vm
 
 		uint8_t *buffer = reinterpret_cast<uint8_t *>(address + VM_PAGE_SIZE);
 
-		_kernel_pageDirectory = reinterpret_cast<uint32_t *>(address);
-		_kernel_directory = new(buffer) directory(_kernel_pageDirectory);
+		_kernel_page_directory = reinterpret_cast<uint32_t *>(address);
+		_kernel_directory = new(buffer) directory(_kernel_page_directory);
 
-		memset(_kernel_pageDirectory, 0, VM_DIRECTORY_LENGTH * sizeof(uint32_t));
+		memset(_kernel_page_directory, 0, VM_DIRECTORY_LENGTH * sizeof(uint32_t));
 
 		// Initialize and map the kernel directory
-		_kernel_pageDirectory[0xff] = address | VM_FLAGS_KERNEL;
+		_kernel_page_directory[0xff] = address | VM_FLAGS_KERNEL;
 		_kernel_directory->map_page_range(address, address, 2, VM_FLAGS_KERNEL); // This call can't fail because of _use_physical_kernel_pages
 
 		return KERN_SUCCESS;
@@ -608,7 +609,7 @@ namespace vm
 
 		// Activate the kernel directory and virtual memory
 		uint32_t cr0;
-		__asm__ volatile("mov %0, %%cr3" : : "r" (reinterpret_cast<uint32_t>(_kernel_pageDirectory)));
+		__asm__ volatile("mov %0, %%cr3" : : "r" (reinterpret_cast<uint32_t>(_kernel_page_directory)));
 		__asm__ volatile("mov %%cr0, %0" : "=r" (cr0));
 		__asm__ volatile("mov %0, %%cr0" : : "r" (cr0 | (1 << 31)));
 
