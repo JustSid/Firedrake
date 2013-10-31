@@ -80,6 +80,16 @@ cpu_t *cpu_get_current_cpu()
 	return cpu_get_cpu_with_apic(apic);
 }
 
+uint8_t cpu_get_cpu_number()
+{
+	cpu_t *cpu = cpu_get_current_cpu();
+	return cpu->id;
+}
+
+uint32_t cpu_get_cpu_count()
+{
+	return _cpu_cpu_count;
+}
 
 
 void cpuid(cpuid_registers_t &registers)

@@ -194,6 +194,16 @@ static inline uint64_t cpu_read_msr(uint32_t msr)
 	return (low | (high << 31));
 }
 
+static inline void cpu_pause()
+{
+	__asm__ volatile("rep; nop");
+}
+
+static inline void cpu_halt()
+{
+	__asm__ volatile("hlt");
+}
+
 void cpuid(cpuid_registers_t &registers);
 
 cpu_info_t *cpu_get_info();
@@ -201,6 +211,8 @@ cpu_info_t *cpu_get_info();
 cpu_t *cpu_get_cpu_with_id(uint32_t id);
 cpu_t *cpu_get_cpu_with_apic(uint8_t apic);
 cpu_t *cpu_get_current_cpu();
+uint8_t cpu_get_cpu_number();
+uint32_t cpu_get_cpu_count();
 
 kern_return_t cpu_add_cpu(cpu_t *cpu);
 kern_return_t cpu_init();
