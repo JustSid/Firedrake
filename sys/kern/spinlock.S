@@ -26,6 +26,7 @@ ENTRY(spinlock_lock)
 	movb $0x1, %cl
 
 spinlock_tryObtain:
+	rep; nop
 	xorb %al, %al
 	lock cmpxchgb %cl, (%edi)
 	jne spinlock_tryObtain
