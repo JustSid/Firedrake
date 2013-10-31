@@ -27,12 +27,21 @@
 #include "trampoline.h"
 #include "apic.h"
 
+static inline void cli()
+{
+	__asm__ volatile("cli");
+}
+
+static inline void sti()
+{
+	__asm__ volatile("sti");
+}
+
 namespace ir
 {
 	typedef void (*interrupt_handler_t)(uint8_t, cpu_t *);
 
 	kern_return_t set_interrupt_handler(uint8_t vector, interrupt_handler_t handler);
-
 	kern_return_t init();
 }
 

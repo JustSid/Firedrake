@@ -167,7 +167,7 @@ namespace ir
 		if((result = apic_init()) != KERN_SUCCESS)
 			return result;
 
-		__asm__ volatile("sti;");
+		sti();
 		return KERN_SUCCESS;
 	}
 }
