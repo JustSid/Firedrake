@@ -51,8 +51,27 @@
 #define APIC_REGISTER_TIMER_CURRENT_COUNT  0x390
 #define APIC_REGISTER_TIMER_DIVIDE_CONFIG  0x3e0
 
+#define APIC_DFR_FLAT    0xffffffff
+#define APIC_DFR_CLUSTER 0x0fffffff
+
 #define APIC_LVT_MASKED   (1 << 16)
 #define APIC_LVT_PERIODIC (1 << 17)
+
+#define APIC_ICR_DM_FIXED   (0 << 8)
+#define APIC_ICR_DM_LOWEST  (1 << 8)
+#define APIC_ICR_DM_SMI     (2 << 8)
+#define APIC_ICR_DM_NMI     (4 << 8)
+#define APIC_ICR_DM_INIT    (5 << 8)
+#define APIC_ICR_DM_STARTUP (6 << 8)
+
+#define APIC_ICR_DS_PENDING  (1 << 12)
+#define APIC_ICR_LV_ASSERT   (1 << 14)
+#define APIC_ICR_TM_LEVEL    (1 << 15)
+
+#define APIC_ICR_DSS_DEST   (0 << 18)
+#define APIC_ICR_DSS_SELF   (1 << 18)
+#define APIC_ICR_DSS_ALL    (2 << 18)
+#define APIC_ICR_DSS_OTHERS (3 << 18)
 
 namespace ir
 {
@@ -101,6 +120,11 @@ namespace ir
 
 	bool apic_is_interrupt_pending();
 	bool apic_is_interrupting(uint8_t vector);
+
+	void apic_send_ipi(uint8_t vector, cpu_t *cpu);
+	void apic_send_ipi(uint8_t vector, cpu_t *cpu, uint32_t flags);
+	void apic_broadcast_ipi(uint8_t vector, bool self);
+	void apic_broadcast_ipi(uint8_t vector, bool self, uint32_t flags);
 
 	uint8_t apic_iopaic_resolve_interrupt(uint8_t irq);
 	ioapic_t *apic_ioapic_servicing_interrupt(uint8_t irq);

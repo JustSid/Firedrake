@@ -253,7 +253,7 @@ namespace ir
 	{
 		uint32_t vector = interrupt;
 		if(masked)
-			vector |= (1 << 16);
+			vector |= APIC_LVT_MASKED;
 
 		return vector;
 	}
@@ -295,6 +295,46 @@ namespace ir
 
 	// --------------------
 	// MARK: -
+	// MARK: IPI
+	// --------------------
+
+	static inline void apic_finish_pending_ipi()
+	{
+		while(apic_read(APIC_REGISTER_ICRL) & APIC_ICR_DS_PENDING)
+			cpu_pause();
+	}
+
+	void apic_send_ipi(uint8_t vector, cpu_t *cpu)
+	{
+		apic_send_ipi(vector, cpu, APIC_ICR_DM_FIXED);
+	}
+
+	void apic_send_ipi(uint8_t vector, cpu_t *cpu, uint32_t flags)
+	{
+		apic_finish_pending_ipi();
+
+		apic_write(APIC_REGISTER_ICRH, cpu->apic_id << 24);
+		apic_write(APIC_REGISTER_ICRL, vector | flags);
+	}
+
+
+	void apic_broadcast_ipi(uint8_t vector, bool self)
+	{
+		apic_broadcast_ipi(vector, self, APIC_ICR_LV_ASSERT);
+	}
+
+	void apic_broadcast_ipi(uint8_t vector, bool self, uint32_t flags)
+	{
+		uint32_t deliveryMode = self ? APIC_ICR_DSS_ALL : APIC_ICR_DSS_OTHERS;
+
+		apic_finish_pending_ipi();
+
+		apic_write(APIC_REGISTER_ICRH, 0);
+		apic_write(APIC_REGISTER_ICRL, vector | flags | deliveryMode);
+	}
+
+	// --------------------
+	// MARK: -
 	// MARK: Initialization
 	// --------------------
 
@@ -325,11 +365,14 @@ namespace ir
 		apic_write(APIC_REGISTER_TPR, 0);
 		apic_write(APIC_REGISTER_SVR, (1 << 8) | 0x32);
 
-		apic_write(APIC_REGISTER_LVT_PMC,     apic_vector(0x30, true));
-		apic_write(APIC_REGISTER_LVT_CMCI,    apic_vector(0x31, true));
-		apic_write(APIC_REGISTER_LVT_ERROR,   apic_vector(0x33, true));
-		apic_write(APIC_REGISTER_LVT_THERMAL, apic_vector(0x34, true));
-		apic_write(APIC_REGISTER_LVT_TIMER,   apic_vector(0x35, true));
+		apic_write(APIC_REGISTER_DFR, APIC_DFR_FLAT);
+		apic_write(APIC_REGISTER_LDR, cpu_get_cpu_number() << 24);
+
+		apic_write(APIC_REGISTER_LVT_PMC,     apic_vector(0x30, false));
+		apic_write(APIC_REGISTER_LVT_CMCI,    apic_vector(0x31, false));
+		apic_write(APIC_REGISTER_LVT_ERROR,   apic_vector(0x33, false));
+		apic_write(APIC_REGISTER_LVT_THERMAL, apic_vector(0x34, false));
+		apic_write(APIC_REGISTER_LVT_TIMER,   apic_vector(0x35, false));
 
 		apic_write(APIC_REGISTER_LVT_LINT0,   apic_vector(0x37, false));
 		apic_write(APIC_REGISTER_LVT_LINT1,   apic_vector(0x38, false));
