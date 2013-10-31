@@ -27,6 +27,7 @@
 #include <machine/cpu.h>
 #include <machine/memory/memory.h>
 #include <machine/interrupts/interrupts.h>
+#include <machine/smp/smp.h>
 
 const char *kVersionBeast    = "Nidhogg";
 const char *kVersionAppendix = "";
@@ -81,6 +82,7 @@ void sys_boot(multiboot_t *info)
 	sys_initN("virtual memory", vm::init, info);
 	sys_init0("heap", mm::heap_init);
 	sys_init0("interrupts", ir::init);
+	sys_init0("smp", smp_init);
 
 	kprintf("\n\n");
 
@@ -93,5 +95,6 @@ void sys_boot(multiboot_t *info)
 		kprintf("CPU ID: %i, APIC: %i, flags: %i\n", cpu->id, cpu->apic_id, cpu->flags);
 	}
 
-	while(1) {}
+	while(1)
+		cpu_halt();
 }
