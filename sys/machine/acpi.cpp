@@ -72,7 +72,7 @@ acpi_rsdt_t *acpi_get_rsdt()
 acpi_rsdt_header_t *acpi_find_header(const char *signature)
 {
 	acpi_rsdt_t *rsdt = acpi_get_rsdt();
-	size_t entries = (rsdt->header.length - sizeof(acpi_rsdt_header_t)) / 4;
+	size_t entries = (rsdt->length - sizeof(acpi_rsdt_header_t)) / 4;
 
 	for(size_t i = 0; i < entries; i ++)
 	{
@@ -91,7 +91,7 @@ kern_return_t acpi_parse_madt()
 	acpi_madt_t *madt = reinterpret_cast<acpi_madt_t *>(acpi_find_header("APIC"));
 	if(madt)
 	{
-		size_t entries = (madt->header.length - sizeof(acpi_madt_t)) / 4;
+		size_t entries = (madt->length - sizeof(acpi_madt_t)) / 4;
 		uint8_t *temp = reinterpret_cast<uint8_t *>(madt + 1);
 
 		for(size_t i = 0; i < entries; i ++)

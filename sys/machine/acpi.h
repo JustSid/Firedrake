@@ -24,16 +24,16 @@
 #include <libc/stdint.h>
 #include <libc/stddef.h>
 
-typedef struct
+struct acpi_rsdp_t
 {
 	uint64_t signature;
 	uint8_t checksum;
 	int8_t oem_id[6];
 	uint8_t revision;
 	uint32_t rsdt_address;
-} __attribute__((packed)) acpi_rsdp_t;
+} __attribute__((packed));
 
-typedef struct
+struct acpi_rsdt_header_t
 {
 	int8_t signature[4];
 	uint32_t length;
@@ -44,52 +44,49 @@ typedef struct
 	uint32_t oem_revision;
 	uint32_t creator_id;
 	uint32_t creator_revision;
-} __attribute__((packed)) acpi_rsdt_header_t;
+} __attribute__((packed));
 
-typedef struct
+struct acpi_rsdt_t : public acpi_rsdt_header_t
 {
-	acpi_rsdt_header_t header;
 	uint32_t *other_sdt;
-} __attribute__((packed)) acpi_rsdt_t;
+} __attribute__((packed));
 
-typedef struct
+struct acpi_madt_t : public acpi_rsdt_header_t
 {
-	acpi_rsdt_header_t header;
 	uint32_t interrupt_controller_address;
 	uint32_t flags;
-} __attribute__((packed)) acpi_madt_t;
+} __attribute__((packed));
 
-typedef struct
+struct acpi_madt_entry_t
 {
 	uint8_t type;
 	uint8_t length;
-} __attribute__((packed)) acpi_madt_entry_t;
+} __attribute__((packed));
 
-typedef struct
+
+
+struct acpi_madt_apic_t : public acpi_madt_entry_t
 {
-	acpi_madt_entry_t header;
 	uint8_t acpi_processor_id;
 	uint8_t apic_id;
 	uint32_t flags;
-} __attribute__((packed)) acpi_madt_apic_t;
+} __attribute__((packed));
 
-typedef struct
+struct acpi_madt_ioapic_t : public acpi_madt_entry_t
 {
-	acpi_madt_entry_t header;
 	uint8_t ioapic_id;
 	uint8_t reserved;
 	uint32_t ioapic_address;
 	uint32_t interrupt_base;
-} __attribute__((packed)) acpi_madt_ioapic_t;
+} __attribute__((packed));
 
-typedef struct
+struct acpi_madt_interrupt_source_override_t : public acpi_madt_entry_t
 {
-	acpi_madt_entry_t header;
 	uint8_t bus;
 	uint8_t source;
 	uint32_t global_system_interrupt;
 	uint16_t flags;
-} __attribute__((packed)) acpi_madt_interrupt_source_override_t;
+} __attribute__((packed));
 
 kern_return_t acpi_init();
 
