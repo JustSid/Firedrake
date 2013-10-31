@@ -20,6 +20,7 @@
 #include <libc/string.h>
 #include <machine/gdt.h>
 #include <machine/memory/virtual.h>
+#include <machine/cme.h>
 #include "trampoline.h"
 #include "interrupts.h"
 
@@ -34,34 +35,7 @@ END_EXTERNC
 namespace ir
 {
 	trampoline_map_t *trampoline_map = nullptr;
-
-	static inline uint32_t trampoline_resolve_call(uint8_t *buffer, uintptr_t function)
-	{
-		uint32_t base = reinterpret_cast<uint32_t>(buffer);
-		return function - base;
-	}
-
-	void trampoline_fix_entry_call(uint32_t offset, size_t limit)
-	{
-		uint8_t *buffer = trampoline_map->buffer + offset;
-		size_t index = 0;
-
-		while(*buffer != 0xe8)
-		{
-			buffer ++;
-			index  ++;
-
-			if(index >= limit)
-			{
-				kprintf("Fix your shit!\n");
-				while(1) { __asm__ volatile ("cli; hlt;"); }
-			}
-		}
-
-		uint32_t *call = reinterpret_cast<uint32_t *>(buffer + 1);
-		*call = trampoline_resolve_call(reinterpret_cast<uint8_t *>(call + 1), reinterpret_cast<uintptr_t>(ir_handle_interrupt));
-	}
-
+	
 	trampoline_map_t *get_trampoline_map()
 	{
 		return trampoline_map;
@@ -97,7 +71,7 @@ namespace ir
 		uintptr_t idtEntryHandler = reinterpret_cast<uintptr_t>(&idt_entry_handler);
 
 		memcpy(trampoline_map->buffer, &idt_begin, idtEnd - idtBegin);
-		trampoline_fix_entry_call(idtEntryHandler - idtBegin, idtEnd - idtEntryHandler);
+		cme_fix_call_simple(trampoline_map->buffer + (idtEntryHandler - idtBegin), idtEnd - idtEntryHandler, reinterpret_cast<void *>(&ir_handle_interrupt));
 
 		// Set up the IDT and GDT
 		idt_init(trampoline_map->idt, IR_TRAMPOLINE_BEGIN - idtBegin);
