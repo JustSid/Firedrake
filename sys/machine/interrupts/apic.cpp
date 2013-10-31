@@ -172,7 +172,7 @@ namespace ir
 		}
 
 		uint8_t offset = APIC_IOREDTBL0 + (irq * 2);
-		ioapic_t *ioapic = &_apic_ioapic[0];
+		ioapic_t *ioapic = apic_ioapic_servicing_interrupt(irq);
 
 		apic_write_ioapic(ioapic, offset + 0, data);
 		apic_write_ioapic(ioapic, offset + 1, 0);
