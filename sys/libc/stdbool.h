@@ -19,11 +19,13 @@
 #ifndef _STDBOOL_H_
 #define _STDBOOL_H_
 
+#ifndef __bool_true_false_are_defined
 #define __bool_true_false_are_defined 1
 
-#define bool _Bool
+#define bool int
 
 #define true  1
 #define false 0
 
-#endif
+#endif /* __bool_true_false_are_defined */
+#endif /* _STDBOOL_H_ */
