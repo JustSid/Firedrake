@@ -24,8 +24,7 @@
 #if CONFIG_RELEASE
 	#define __assert(e) (void)0
 #else
-//	#define assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed.", __func__, __LINE__, #e) : (void)0
-	#define __assert(e) (void)0
+	#define assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed.", __func__, __LINE__, #e) : (void)0
 #endif
 
 #define assert(e) __assert(e)

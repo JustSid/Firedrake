@@ -1,5 +1,5 @@
 //
-//  new.cpp
+//  panic.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,36 +16,10 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/stddef.h>
-#include <kern/kalloc.h>
-#include <kern/panic.h>
+#ifndef _PANIC_H_
+#define _PANIC_H_
 
-void *operator new(size_t size)
-{
-	void *ptr = kalloc(size);
-	if(!ptr)
-		panic("new(%i) failed to allocate memory\n", size);
+void panic(const char *reason, ...) __attribute__((noreturn));
+void panic_init();
 
-	return ptr;
-}
-
-void *operator new[](size_t  size)
-{
-	void *ptr = kalloc(size);
-	if(!ptr)
-		panic("new[](%i) failed to allocate memory\n", size);
-
-	return ptr;
-}
-
-void operator delete(void *obj)
-{
-	if(obj)
-		kfree(obj);
-}
-
-void operator delete[](void *obj)
-{
-	if(obj)
-		kfree(obj);
-}
+#endif /* _PANIC_H_ */

@@ -21,6 +21,7 @@
 #include <prefix.h>
 #include <video/video.h>
 #include <kern/kprintf.h>
+#include <kern/panic.h>
 #include <kern/kern_return.h>
 #include <libc/string.h>
 
@@ -45,7 +46,8 @@ extern kern_return_t pm_init(multiboot_t *info);
 		kern_return_t result; \
 		if((result = function()) != KERN_SUCCESS) \
 		{ \
-			kprintf(" } failed\n"); /* This should probably be handled better ;) */ \
+			kprintf(" } failed\n"); \
+			panic("Failed to initialize %s\n", name); \
 		} \
 		else \
 		{ \
@@ -59,7 +61,8 @@ extern kern_return_t pm_init(multiboot_t *info);
 		kern_return_t result; \
 		if((result = function(__VA_ARGS__)) != KERN_SUCCESS) \
 		{ \
-			kprintf(" } failed\n"); /* This should probably be handled better ;) */ \
+			kprintf(" } failed\n"); \
+			panic("Failed to initialize %s\n", name); \
 		} \
 		else \
 		{ \
@@ -84,16 +87,8 @@ void sys_boot(multiboot_t *info)
 	sys_init0("interrupts", ir::init);
 	sys_init0("smp", smp_init);
 
+	panic_init();
 	kprintf("\n\n");
-
-	for(uint32_t i = 0; i < 32; i ++)
-	{
-		cpu_t *cpu = cpu_get_cpu_with_id(i);
-		if(!cpu)
-			break;
-
-		kprintf("CPU ID: %i, APIC: %i, flags: %i\n", cpu->id, cpu->apic_id, cpu->flags);
-	}
 
 	while(1)
 		cpu_halt();
