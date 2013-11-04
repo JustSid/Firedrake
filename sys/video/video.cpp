@@ -30,10 +30,33 @@ namespace vd
 		foregroundColor = color::light_gray;
 
 		cursorX = cursorY = 0;
+
+		pendingChange = false;
 	}
 
 	video_device::~video_device()
 	{}
+
+	bool video_device::interpret_character(char character)
+	{
+		if(character == 14 || character == 15)
+		{
+			pendingChange = true;
+			foregroundChange = (character == 14);
+			
+			return true;
+		}
+
+		if(pendingChange && character >= 16 && character <= 31)
+		{
+			color nColor = static_cast<color>(character - 16);
+			set_colors(foregroundChange ? nColor : get_foreground_color(), foregroundChange ? get_background_color() : nColor);
+
+			return true;
+		}
+
+		return false;
+	}
 
 
 

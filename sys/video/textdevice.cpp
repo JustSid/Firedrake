@@ -75,6 +75,9 @@ namespace vd
 		while(*string)
 		{
 			char character = *(string ++);
+			
+			if(interpret_character(character))
+				continue;
 
 			if(character == '\n')
 			{

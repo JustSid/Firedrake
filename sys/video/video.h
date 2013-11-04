@@ -21,6 +21,7 @@
 
 #include <libc/stdint.h>
 #include <libc/stddef.h>
+#include <libc/stdbool.h>
 
 namespace vd
 {
@@ -69,11 +70,17 @@ namespace vd
 		virtual void clear() = 0;
 
 	protected:
+		bool interpret_character(char character);
+
 		color backgroundColor;
 		color foregroundColor;
 
 		size_t cursorX;
 		size_t cursorY;
+
+	private:
+		bool pendingChange;
+		bool foregroundChange;
 	};
 
 	void init();
