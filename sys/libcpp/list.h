@@ -36,7 +36,19 @@ namespace cpp
 			virtual ~node()
 			{
 				if(_list)
-					_list->erase(this);
+				{
+					if(_next)
+						_next->_prev = _prev;
+					if(_prev)
+						_prev->_next = _next;
+
+					if(static_cast<node *>(_list->_tail) == this)
+						_list->_tail = _prev;
+					if(static_cast<node *>(_list->_head) == this)
+						_list->_head = _next;
+
+					_list->_count --;
+				}
 			}
 
 			T *get_next() const
@@ -75,7 +87,7 @@ namespace cpp
 		{
 			while(_head != _tail)
 			{
-				node *temp = _head;
+				T *temp = _head;
 				_head = _head->_next;
 
 				temp->_list = nullptr;
@@ -126,7 +138,7 @@ namespace cpp
 			val->_list = this;
 		}
 
-		void erase(node *val)
+		void erase(T *val)
 		{
 			if(val->_list == this)
 			{
