@@ -46,10 +46,16 @@ namespace std
 		};
 
 	public:
-		class iterator : public std::iterator<std::input_iterator_tag, Val>
+		class iterator : public std::iterator<std::forward_iterator_tag, Val>
 		{
 		public:
 			friend class hash_map;
+
+			iterator(const iterator& it) :
+				_map(it._map),
+				_bucket(it._bucket),
+				_index(it._index)
+			{}
 
 			typename iterator::reference operator* () const
 			{
@@ -71,12 +77,51 @@ namespace std
 			}
 
 
+			iterator& operator++ ()
+			{
+				move_forward();
+				return *this;
+			}
+
+			iterator operator++ (int)
+			{
+				iterator it(*this);
+				move_forward();
+				return it;
+			}
+
 		private:
-			iterator(bucket *tbucket) :
-				_bucket(tbucket)
+			iterator(const hash_map *map, bucket *tbucket, size_t index) :
+				_map(map),
+				_bucket(tbucket),
+				_index(index)
 			{}
 
+			void move_forward()
+			{
+				while(_bucket && _bucket->next)
+				{
+					_bucket = _bucket->next;
+
+					if(_bucket->valid)
+						return;
+				}
+
+				while((_index + 1) < _map->_capacity)
+				{
+					_index ++;
+					_bucket = _map->_buckets[_index];
+
+					if(!_bucket || !_bucket->valid)
+						move_forward();
+
+					return;
+				}
+			}
+
+			const hash_map *_map;
 			bucket *_bucket;
+			size_t _index;
 		};
 
 		friend class iterator;
@@ -109,14 +154,25 @@ namespace std
 
 		iterator find(const Key& key)
 		{
-			bucket *tbucket = find_bucket(key, true);
-			return tbucket ? iterator(tbucket) : end();
+			size_t index;
+			bucket *tbucket = find_bucket(key, index, true);
+			return tbucket ? iterator(this, tbucket, index) : end();
+		}
+
+		iterator begin() const
+		{
+			iterator it(this, _buckets[0], 0);
+			if(!it._bucket)
+				it.move_forward();
+
+			return it;
 		}
 
 		iterator end() const
 		{
-			return iterator(nullptr);
+			return iterator(this, nullptr, 0);
 		}
+
 
 		void insert(const Key& key, const Val& value)
 		{
@@ -125,7 +181,6 @@ namespace std
 
 			grow_buckets();
 		}
-
 
 		void erase(const Key& key)
 		{
@@ -138,6 +193,7 @@ namespace std
 				collapse_buckets();
 			}
 		}
+
 		void erase(const iterator& it)
 		{
 			if(it->_bucket)
@@ -148,6 +204,7 @@ namespace std
 				collapse_buckets();
 			}
 		}
+
 
 		size_t get_count() const
 		{
@@ -208,7 +265,13 @@ namespace std
 
 		bucket *find_bucket(const Key& key, bool lookup)
 		{
-			size_t index = _hasher(key) % _capacity;
+			size_t index;
+			return find_bucket(key, index, lookup);
+		}
+
+		bucket *find_bucket(const Key& key, size_t& index, bool lookup)
+		{
+			index = _hasher(key) % _capacity;
 			bucket *tbucket = _buckets[index];
 
 			if(lookup)
