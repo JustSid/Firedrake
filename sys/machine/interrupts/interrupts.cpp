@@ -161,10 +161,14 @@ namespace ir
 	{
 		kern_return_t result;
 
-		if((result = trampoline_init()) != KERN_SUCCESS)
+		cli();
+
+		kprintf("apic");
+		if((result = apic_init()) != KERN_SUCCESS)
 			return result;
 
-		if((result = apic_init()) != KERN_SUCCESS)
+		kprintf(" trampoline");
+		if((result = trampoline_init()) != KERN_SUCCESS)
 			return result;
 
 		sti();

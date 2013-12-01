@@ -22,25 +22,30 @@
 #include <prefix.h>
 #include <libc/stdint.h>
 #include <machine/cpu.h>
-#include <machine/memory/memory.h>
 #include <machine/gdt.h>
+#include <machine/memory/memory.h>
 #include "idt.h"
 
 namespace ir
 {
+	struct trampoline_cpu_data_t
+	{
+		uint32_t *page_directory;
+
+		uint64_t idt[IDT_ENTRIES];
+		uint64_t gdt[GDT_ENTRIES];
+		tss_t tss;
+	};
+
 	typedef struct
 	{
 		uint8_t buffer[VM_PAGE_SIZE];
-
-		uint32_t *page_directory;
-
-		uint64_t gdt[GDT_ENTRIES];
-		uint64_t idt[IDT_ENTRIES];
-
-		tss_t tss;
+		trampoline_cpu_data_t data[CPU_MAX_CPUS];
 	} trampoline_map_t;
 
 	trampoline_map_t *get_trampoline_map();
+
+	kern_return_t trampoline_init_cpu();
 	kern_return_t trampoline_init();
 }
 

@@ -18,9 +18,11 @@
 
 #include <kern/kprintf.h>
 #include <libc/string.h>
+#include <libc/assert.h>
 #include <machine/gdt.h>
-#include <machine/memory/virtual.h>
+#include <machine/memory/memory.h>
 #include <machine/cme.h>
+#include <machine/cpu.h>
 #include "trampoline.h"
 #include "interrupts.h"
 
@@ -43,6 +45,8 @@ namespace ir
 
 	kern_return_t trampoline_init()
 	{
+		assert(sizeof(trampoline_map_t) <= IR_TRAMPOLINE_PAGES * VM_PAGE_SIZE);
+
 		kern_return_t result;
 		vm_address_t vaddress;
 		uintptr_t paddress;
@@ -56,26 +60,44 @@ namespace ir
 		}
 
 		result = vm::get_kernel_directory()->alloc_limit(vaddress, paddress, IR_TRAMPOLINE_BEGIN, VM_UPPER_LIMIT, IR_TRAMPOLINE_PAGES, VM_FLAGS_KERNEL);
-		if(result != KERN_SUCCESS)
+		if(result != KERN_SUCCESS || vaddress != IR_TRAMPOLINE_BEGIN)
 		{
 			kprintf("failed to allocate trampoline area");
 			return result;
 		}
 
 		trampoline_map = reinterpret_cast<trampoline_map_t *>(IR_TRAMPOLINE_BEGIN);
-		trampoline_map->page_directory = vm::get_kernel_directory()->get_physical_directory();
 
 		// Fix up the idt section
 		uintptr_t idtBegin        = reinterpret_cast<uintptr_t>(&idt_begin);
 		uintptr_t idtEnd          = reinterpret_cast<uintptr_t>(&idt_end);
 		uintptr_t idtEntryHandler = reinterpret_cast<uintptr_t>(&idt_entry_handler);
 
+		size_t size = static_cast<size_t>(idtEnd - idtBegin);
+		assert(size <= VM_PAGE_SIZE);
+
 		memcpy(trampoline_map->buffer, &idt_begin, idtEnd - idtBegin);
 		cme_fix_call_simple(trampoline_map->buffer + (idtEntryHandler - idtBegin), idtEnd - idtEntryHandler, reinterpret_cast<void *>(&ir_handle_interrupt));
 
-		// Set up the IDT and GDT
-		idt_init(trampoline_map->idt, IR_TRAMPOLINE_BEGIN - idtBegin);
-		gdt_init(trampoline_map->gdt, &trampoline_map->tss);
+		return trampoline_init_cpu();
+	}
+
+	kern_return_t trampoline_init_cpu()
+	{
+		cpu_t *cpu = cpu_get_current_cpu_slow();
+		trampoline_cpu_data_t *data = &trampoline_map->data[cpu->id];
+
+		cpu->data = data;
+		data->page_directory = vm::get_kernel_directory()->get_physical_directory();
+
+		uintptr_t idtBegin = reinterpret_cast<uintptr_t>(&idt_begin);
+		idt_init(data->idt, IR_TRAMPOLINE_BEGIN - idtBegin);
+		gdt_init(data->gdt, &data->tss);
+
+		// Hacky hackery hack
+		uint32_t *esp = mm::alloc<uint32_t>(vm::get_kernel_directory(), 1, VM_FLAGS_KERNEL);
+		data->tss.esp0 = reinterpret_cast<uint32_t>(esp) + (VM_PAGE_SIZE - sizeof(cpu_state_t));
+		data->tss.ss0  = 0x10;
 
 		return KERN_SUCCESS;
 	}

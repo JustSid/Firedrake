@@ -16,10 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#define __IDT_S__
 #include <asm.h>
-#include "idt.h"
-#undef __IDT_S__
 
 .global _kernel_page_directory
 .global ir_handl_interrupt
@@ -104,29 +101,43 @@ ENTRY(idt_entry_handler)
 	pushl %fs
 	pushl %gs
 
+	// Switch to the kernel segments (ss is already set upon entry)
 	movl $0x10, %eax
 	movl %eax, %ds
 	movl %eax, %es
 
 	cld
 
+	// Load the current page directory and the kernel ones into eax and ecx respectively
 	movl (_kernel_page_directory), %ecx
 	movl %cr3, %eax
 
+	// Load the kernels page directory if it isn't active yet
 	cmpl %eax, %ecx
 	jz idt_entry_handler_call_handler
 
 	movl %ecx, %cr3
 
 idt_entry_handler_call_handler:
+	// Call the high level interrupt handler
 	pushl %esp
 	call ir_handle_interrupt
 	addl $4, %esp
 
+	// Load the new stack
 	movl %eax, %esp
 
-	movl (IR_TRAMPOLINE_BEGIN + IR_TRAMPOLINE_PAGEDIR_OFFSET), %ecx
+	// Get the address of the new page directory
+	movl %fs, %eax
+	imull $0x89c, %eax // 0x89c == sizeof(ir::trampoline_data_t)
 
+	movl $0xffb00000, %ecx
+	addl %eax, %ecx
+
+	movl (%ecx), %ecx
+
+	// Load the new page directory if it is NOT the kernels page directory
+	// This potentially saves trashing the TLB a few times
 	cmpl (_kernel_page_directory), %ecx
 	jz idt_entry_handler_outro
 

@@ -23,6 +23,8 @@
 #include <libc/stdint.h>
 #include <kern/kern_return.h>
 
+#define CPU_MAX_CPUS 32
+
 typedef struct
 {
 	uint32_t back_link;	/* segment number of previous task, if nested */
@@ -96,14 +98,18 @@ typedef struct
 #define CPU_FLAG_BOOTSTRAP (1 << 0)
 #define CPU_FLAG_RUNNING   (1 << 1)
 
+namespace ir
+{
+	struct trampoline_cpu_data_t;
+}
+
 typedef struct
 {
 	uint8_t id;
 	uint8_t apic_id;
 
 	uint16_t flags;
-
-	tss_t tss; // This one isn't used yet!
+	ir::trampoline_cpu_data_t *data;
 } cpu_t;
 
 typedef struct
@@ -211,6 +217,7 @@ cpu_info_t *cpu_get_info();
 cpu_t *cpu_get_cpu_with_id(uint32_t id);
 cpu_t *cpu_get_cpu_with_apic(uint8_t apic);
 cpu_t *cpu_get_current_cpu();
+cpu_t *cpu_get_current_cpu_slow();
 uint8_t cpu_get_cpu_number();
 uint32_t cpu_get_cpu_count();
 

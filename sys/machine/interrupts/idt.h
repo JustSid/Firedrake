@@ -19,9 +19,8 @@
 #ifndef _IDT_H_
 #define _IDT_H_
 
-#define IR_TRAMPOLINE_BEGIN          0xffaff000
-#define IR_TRAMPOLINE_PAGES          2
-#define IR_TRAMPOLINE_PAGEDIR_OFFSET 0x1000
+#define IR_TRAMPOLINE_BEGIN 0xffaff000 // When changing, also update idt.S
+#define IR_TRAMPOLINE_PAGES 256
 
 #define IDT_FLAG_TASK_GATE      0x5
 #define IDT_FLAG_INTERRUPT_GATE 0xe
@@ -32,8 +31,6 @@
 #define IDT_FLAG_RING3          0x60
 
 #define IDT_ENTRIES 256
-
-#ifndef __IDT_S__
 
 BEGIN_EXTERNC
 void idt_exception_divbyzero(); // 0
@@ -121,7 +118,5 @@ namespace ir
 {
 	void idt_init(uint64_t *idt, uint32_t offset);
 }
-
-#endif /* __IDT_S__ */
 
 #endif /* _IDT_H_ */

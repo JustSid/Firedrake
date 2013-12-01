@@ -17,12 +17,12 @@
 //
 
 #include <machine/interrupts/apic.h>
+#include <machine/memory/memory.h>
 #include <kern/kprintf.h>
 #include <libc/string.h>
 #include "cpu.h"
 #include "acpi.h"
-
-#define CPU_MAX_CPUS 32
+#include "gdt.h"
 
 static cpu_info_t _cpu_info;
 
@@ -74,6 +74,12 @@ cpu_t *cpu_get_cpu_with_apic(uint8_t apic)
 
 cpu_t *cpu_get_current_cpu()
 {
+	uint8_t id = cpu_get_cpu_number();
+	return &_cpu_cpu[id];
+}
+
+cpu_t *cpu_get_current_cpu_slow()
+{
 	uint32_t id = ir::apic_read(APIC_REGISTER_ID);
 	uint8_t apic = (id >> 24) & 0xff;
 
@@ -82,8 +88,10 @@ cpu_t *cpu_get_current_cpu()
 
 uint8_t cpu_get_cpu_number()
 {
-	cpu_t *cpu = cpu_get_current_cpu();
-	return cpu->id;
+	uint16_t fs;
+	__asm__ volatile("movw %%fs, %0" : "=a" (fs));
+
+	return static_cast<uint8_t>(fs);
 }
 
 uint32_t cpu_get_cpu_count()

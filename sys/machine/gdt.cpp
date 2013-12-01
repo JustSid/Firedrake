@@ -17,11 +17,10 @@
 //
 
 #include "gdt.h"
-#include <machine/memory/memory.h>
 #include "cpu.h"
+#include <machine/memory/memory.h>
 #include <kern/kprintf.h>
 
-void gdt_set_entry(uint64_t *gdt, int16_t index, uint32_t base, uint32_t limit, int32_t flags) __attribute__ ((noinline));
 void gdt_set_entry(uint64_t *gdt, int16_t index, uint32_t base, uint32_t limit, int32_t flags)
 {
 	gdt[index] = limit & INT64_C(0xffff);
@@ -30,9 +29,22 @@ void gdt_set_entry(uint64_t *gdt, int16_t index, uint32_t base, uint32_t limit, 
 	gdt[index] |= ((limit >> 16) & INT64_C(0xf)) << 48;
 	gdt[index] |= ((flags >> 8 )& INT64_C(0xff)) << 52;
 	gdt[index] |= ((base >> 24) & INT64_C(0xff)) << 56;
-
-	__asm__ volatile(""); 
 }
+
+void gdt_set_tss_entry(uint64_t *gdt, int16_t index, tss_t *tss)
+{
+	uint32_t base  = reinterpret_cast<uint32_t>(tss);
+	uint32_t limit = sizeof(tss_t);
+	int32_t  flags = GDT_FLAG_TSS | GDT_FLAG_PRESENT | GDT_FLAG_RING3;
+
+	gdt[index] = limit & INT64_C(0xffff);
+	gdt[index] |= (base & INT64_C(0xffffff)) << 16;
+	gdt[index] |= (flags & INT64_C(0xff)) << 40;
+	gdt[index] |= (((limit >> 16) & INT64_C(0xf)) | 0x40) << 48;
+	gdt[index] |= ((flags >> 8) & INT64_C(0xff)) << 52;
+	gdt[index] |= ((base >> 24) & INT64_C(0xff)) << 56;
+}
+
 
 void gdt_init(uint64_t *gdt, tss_t *tss)
 {
@@ -51,21 +63,25 @@ void gdt_init(uint64_t *gdt, tss_t *tss)
 	gdt_set_entry(gdt, 2, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_DATASEG | GDT_FLAG_4K | GDT_FLAG_PRESENT);
 	gdt_set_entry(gdt, 3, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_CODESEG | GDT_FLAG_4K | GDT_FLAG_PRESENT | GDT_FLAG_RING3);
 	gdt_set_entry(gdt, 4, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_DATASEG | GDT_FLAG_4K | GDT_FLAG_PRESENT | GDT_FLAG_RING3);
+	gdt_set_tss_entry(gdt, 5, tss);
 
-	gdt_set_entry(gdt, 5, reinterpret_cast<uint32_t>(tss), sizeof(tss_t), GDT_FLAG_TSS | GDT_FLAG_PRESENT | GDT_FLAG_RING3);
+	__asm__ volatile("lgdtl %0\r\n"
+	                 "ljmpl %1, $_fakeLabel \n\t _fakeLabel: \n\t" : : "m" (gdtp), "i" (0x8));
 
-	__asm__ volatile("lgdt %0" : : "m" (gdtp));
-	__asm__ volatile("ljmp %0, $_fakeLabel \n\t _fakeLabel: \n\t" : : "i" (0x8));
+	__asm__ volatile("mov $0x10, %ax;\r\n"
+	                 "mov %ax, %ds;\r\n"
+	                 "mov %ax, %es;\r\n"
+	                 "mov %ax, %ss;");
 
-	__asm__ volatile("mov $0x10, %ax;");
-	__asm__ volatile("mov %ax, %ds;");
-	__asm__ volatile("mov %ax, %es;");
-	__asm__ volatile("mov %ax, %ss;");
+	// Since it's common, Firedrake also abuses the fs and gs segments (instead of just not using them)
+	// fs contains the CPU id (not necessarily equal to the APIC id) and gs is going to hold the thread local storage
+	// but for now is zeroed out.
+	// TODO: Should probably moved somewhere else
+	cpu_t *cpu  = cpu_get_current_cpu_slow();
+	uint16_t id = static_cast<uint16_t>(cpu->id);
+
+	__asm__ volatile("mov %%ax, %%fs" :: "a" (id));
+	__asm__ volatile("mov %%ax, %%gs" :: "a" (0x0));
 
 	__asm__ volatile("ltr %%ax" : : "a" (0x28));
-
-
-	uint32_t *esp = mm::alloc<uint32_t>(vm::get_kernel_directory(), 1, VM_FLAGS_KERNEL);
-	tss->esp0 = reinterpret_cast<uint32_t>(esp) + (VM_PAGE_SIZE - sizeof(cpu_state_t));
-	tss->ss0  = 0x10;
 }
