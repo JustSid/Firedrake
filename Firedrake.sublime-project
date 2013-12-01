@@ -43,8 +43,12 @@
 					"cmd": ["exec ./build.sh --run"]
 				},
 				{
-					"name": "Instrument",
+					"name": "Logging",
 					"cmd": ["exec ./build.sh --debug"]
+				},
+				{
+					"name": "Debug",
+					"cmd": ["exec ./build.sh --debug-gdb"]
 				},
 				{
 					"name": "Clean",

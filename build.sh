@@ -14,6 +14,7 @@ REMOTE_PATH="/mnt/hgfs/Firedrake"
 BASEDIR=$(dirname $0)
 QEMU_NET="-net nic,model=rtl8139 -net user"
 QEMU_CPU="-cpu core2duo -smp cores=2"
+QEMU_ARGS="$QEMU_CPU $QEMU_NET"
 
 if [ $# -eq 0 ]; then
 	if $USESSH ; then
@@ -34,12 +35,17 @@ if [ "$@" == "--clean" ]; then
 fi
 
 if [ "$@" == "--run" ]; then
-	qemu-system-i386 $QEMU_CPU $QEMU_NET "$BASEDIR/boot/Firedrake.iso"
+	qemu-system-i386 $QEMU_ARGS "$BASEDIR/boot/Firedrake.iso"
 	exit 0
 fi
 
 if [ "$@" == "--debug" ]; then
-	qemu-system-i386 -d int -D "/tmp/qemu.log" -no-reboot -no-shutdown $QEMU_CPU $QEMU_NET "$BASEDIR/boot/Firedrake.iso"
+	qemu-system-i386 -d int -D "/tmp/qemu.log" -no-reboot -no-shutdown $QEMU_ARGS "$BASEDIR/boot/Firedrake.iso"
+	exit 0
+fi
+
+if [ "$@" == "--debug-gdb" ]; then
+	qemu-system-i386 -d int -D "/tmp/qemu.log" -no-reboot -no-shutdown -s -S $QEMU_ARGS "$BASEDIR/boot/Firedrake.iso"
 	exit 0
 fi
 
