@@ -22,7 +22,9 @@
 #ifndef __bool_true_false_are_defined
 #define __bool_true_false_are_defined 1
 
+#ifndef __cplusplus
 #define bool int
+#endif
 
 #define true  1
 #define false 0
