@@ -39,7 +39,7 @@ if [ "$@" == "--run" ]; then
 fi
 
 if [ "$@" == "--debug" ]; then
-	qemu-system-i386 -d int,cpu_reset -no-reboot -no-shutdown $QEMU_CPU $QEMU_NET "$BASEDIR/boot/Firedrake.iso"
+	qemu-system-i386 -d int -D "/tmp/qemu.log" -no-reboot -no-shutdown $QEMU_CPU $QEMU_NET "$BASEDIR/boot/Firedrake.iso"
 	exit 0
 fi
 
