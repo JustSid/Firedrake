@@ -47,7 +47,7 @@ extern kern_return_t pm_init(multiboot_t *info);
 		if((result = function()) != KERN_SUCCESS) \
 		{ \
 			kprintf(" } failed\n"); \
-			panic("Failed to initialize %s\n", name); \
+			panic("Failed to initialize %s", name); \
 		} \
 		else \
 		{ \
@@ -62,7 +62,7 @@ extern kern_return_t pm_init(multiboot_t *info);
 		if((result = function(__VA_ARGS__)) != KERN_SUCCESS) \
 		{ \
 			kprintf(" } failed\n"); \
-			panic("Failed to initialize %s\n", name); \
+			panic("Failed to initialize %s", name); \
 		} \
 		else \
 		{ \
