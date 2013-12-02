@@ -54,7 +54,7 @@ void idt_exception_simd(); // 19
 
 // Devices
 void idt_interrupt_0x02(); // NMI
-void idt_interrupt_0x20();
+void idt_interrupt_0x20(); // PIT
 void idt_interrupt_0x21();
 void idt_interrupt_0x22();
 void idt_interrupt_0x23();
@@ -71,7 +71,6 @@ void idt_interrupt_0x2d();
 void idt_interrupt_0x2e();
 void idt_interrupt_0x2f();
 
-// APIC
 void idt_interrupt_0x30(); // Performance counter
 void idt_interrupt_0x31(); // CMCI
 void idt_interrupt_0x32(); // Spurious
@@ -82,9 +81,12 @@ void idt_interrupt_0x36(); // IPI
 void idt_interrupt_0x37(); // LINT0
 void idt_interrupt_0x38(); // LINT1
 void idt_interrupt_0x39(); // Panic / Stop CPU
-
-// System call
-void idt_interrupt_0x80();
+void idt_interrupt_0x3a();
+void idt_interrupt_0x3b();
+void idt_interrupt_0x3c();
+void idt_interrupt_0x3d();
+void idt_interrupt_0x3e();
+void idt_interrupt_0x3f();
 
 // General purpose interrupts
 #define idt_interrupt_set(n) \
@@ -104,7 +106,12 @@ void idt_interrupt_0x80();
 	void idt_interrupt_## n ## d(); \
 	void idt_interrupt_## n ## e(); \
 	void idt_interrupt_## n ## f()
-	
+
+idt_interrupt_set(0x4);
+idt_interrupt_set(0x5);
+idt_interrupt_set(0x6);
+idt_interrupt_set(0x7);
+idt_interrupt_set(0x8);
 idt_interrupt_set(0x9);
 idt_interrupt_set(0xa);
 idt_interrupt_set(0xb);

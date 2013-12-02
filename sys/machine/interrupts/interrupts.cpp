@@ -107,6 +107,24 @@ namespace ir
 #define idt_set_interrupt_entry(num, flags) \
 	do{ idt_set_entry(idt, num, (reinterpret_cast<uint32_t>(idt_interrupt_ ## num)) + offset, 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_PRESENT | flags); } while(0)
 
+#define idt_set_interrupt_set(num, flags) \
+		idt_set_interrupt_entry(num ## 0, flags); \
+		idt_set_interrupt_entry(num ## 1, flags); \
+		idt_set_interrupt_entry(num ## 2, flags); \
+		idt_set_interrupt_entry(num ## 3, flags); \
+		idt_set_interrupt_entry(num ## 4, flags); \
+		idt_set_interrupt_entry(num ## 5, flags); \
+		idt_set_interrupt_entry(num ## 6, flags); \
+		idt_set_interrupt_entry(num ## 7, flags); \
+		idt_set_interrupt_entry(num ## 8, flags); \
+		idt_set_interrupt_entry(num ## 9, flags); \
+		idt_set_interrupt_entry(num ## a, flags); \
+		idt_set_interrupt_entry(num ## b, flags); \
+		idt_set_interrupt_entry(num ## c, flags); \
+		idt_set_interrupt_entry(num ## d, flags); \
+		idt_set_interrupt_entry(num ## e, flags); \
+		idt_set_interrupt_entry(num ## f, flags)
+
 	void idt_init(uint64_t *idt, uint32_t offset)
 	{
 		// Excpetion-Handler
@@ -148,20 +166,19 @@ namespace ir
 		idt_set_interrupt_entry(0x2e, IDT_FLAG_RING0);
 		idt_set_interrupt_entry(0x2f, IDT_FLAG_RING0);
 
-		// APIC
-		idt_set_interrupt_entry(0x30, IDT_FLAG_RING0);
-		idt_set_interrupt_entry(0x31, IDT_FLAG_RING0);
-		idt_set_interrupt_entry(0x32, IDT_FLAG_RING0);
-		idt_set_interrupt_entry(0x33, IDT_FLAG_RING0);
-		idt_set_interrupt_entry(0x34, IDT_FLAG_RING0);
-		idt_set_interrupt_entry(0x35, IDT_FLAG_RING0);
-		idt_set_interrupt_entry(0x36, IDT_FLAG_RING0);
-		idt_set_interrupt_entry(0x37, IDT_FLAG_RING0);
-		idt_set_interrupt_entry(0x38, IDT_FLAG_RING0);
-		idt_set_interrupt_entry(0x39, IDT_FLAG_RING0);
-
-		// System calls
-		idt_set_interrupt_entry(0x80, IDT_FLAG_RING3);
+		idt_set_interrupt_set(0x3, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0x4, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0x5, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0x6, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0x7, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0x8, IDT_FLAG_RING3);
+		idt_set_interrupt_set(0x9, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0xa, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0xb, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0xc, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0xd, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0xe, IDT_FLAG_RING0);
+		idt_set_interrupt_set(0xf, IDT_FLAG_RING0);
 
 		// Reload the IDT
 		struct 
