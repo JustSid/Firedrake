@@ -128,7 +128,8 @@ namespace ir
 
 	uint8_t apic_iopaic_resolve_interrupt(uint8_t irq);
 	ioapic_t *apic_ioapic_servicing_interrupt(uint8_t irq);
-	void apic_ioapic_set_interrupt(uint8_t irq, uint8_t vector, bool masked);
+	
+	void apic_ioapic_mask_interrupt(uint8_t irq, bool masked);
 
 	void apic_set_timer(bool masked, apic_timer_divisor_t divisor, apic_timer_mode_t mode, uint32_t initial_count);
 	void apic_get_timer(apic_timer_divisor_t *divisor, apic_timer_mode_t *mode, uint32_t *initial, uint32_t *current);

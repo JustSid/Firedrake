@@ -146,12 +146,13 @@ void smp_kickoff(uintptr_t entry)
 {
 	// Set up the SMP timer used to keep track of timeouts
 	// We use the old PIT at 100hz
+	ir::apic_ioapic_mask_interrupt(0x20, false);
+	ir::set_interrupt_handler(0x20, &smp_clock_tick);
+
 	int divisor = 11931;
 	outb(0x43, 0x36);
 	outb(0x40, divisor & 0xff);
 	outb(0x40, divisor >> 8);
-
-	ir::set_interrupt_handler(0x20, &smp_clock_tick);
 
 	// Start up all CPUs
 	size_t count = cpu_get_cpu_count();
@@ -165,6 +166,7 @@ void smp_kickoff(uintptr_t entry)
 	}
 
 	ir::set_interrupt_handler(0x20, nullptr);
+	ir::apic_ioapic_mask_interrupt(0x20, true);
 }
 
 uint8_t *smp_forge_gdt(uint8_t *buffer, void *paddress)

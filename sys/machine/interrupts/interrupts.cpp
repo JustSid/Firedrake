@@ -209,11 +209,6 @@ namespace ir
 	// MARK: Initialization
 	// --------------------
 
-	void remap_irqs()
-	{
-		apic_ioapic_set_interrupt(0, 0x20, false);
-	}
-
 	kern_return_t init()
 	{
 		kern_return_t result;
@@ -224,13 +219,11 @@ namespace ir
 		if((result = apic_init()) != KERN_SUCCESS)
 			return result;
 
-		kprintf(" trampoline");
+		kprintf(", trampoline");
 		if((result = trampoline_init()) != KERN_SUCCESS)
 			return result;
 
-		remap_irqs();
 		sti();
-
 		return KERN_SUCCESS;
 	}
 
@@ -246,9 +239,7 @@ namespace ir
 		if((result = trampoline_init_cpu()) != KERN_SUCCESS)
 			return result;
 
-		remap_irqs();
 		sti();
-
 		return KERN_SUCCESS;
 	}
 }

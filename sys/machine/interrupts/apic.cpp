@@ -19,6 +19,7 @@
 #include <machine/port.h>
 #include <machine/memory/memory.h>
 #include <kern/kprintf.h>
+#include <libc/assert.h>
 #include <libc/string.h>
 #include "apic.h"
 
@@ -29,6 +30,8 @@
 #define APIC_IOAPICVER 0x1
 #define APIC_IOAPICARB 0x2
 #define APIC_IOREDTBL0 0x10
+
+#define APIC_PIC_RELCOATION_OFFSET 0x20
 
 namespace ir
 {
@@ -159,8 +162,11 @@ namespace ir
 		return nullptr;
 	}
 
-	void apic_ioapic_set_interrupt(uint8_t irq, uint8_t vector, bool masked)
+	void apic_ioapic_mask_interrupt(uint8_t vector, bool masked)
 	{
+		assert(vector >= 0x20 && vector <= 0x2f);
+
+		uint8_t irq   = vector - APIC_PIC_RELCOATION_OFFSET;
 		uint32_t data = vector;
 		data |= masked ? (1 << 16) : 0;
 
@@ -350,7 +356,7 @@ namespace ir
 		outb(0x21, 0x04);
 		outb(0x21, 0x01);
 
-		outb(0xA0, 0x11);
+		outb(0xa0, 0x11);
 		outb(0xa1, 0x28);
 		outb(0xa1, 0x02);
 		outb(0xa1, 0x01);
