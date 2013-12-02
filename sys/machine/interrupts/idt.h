@@ -81,6 +81,7 @@ void idt_interrupt_0x35(); // Timer
 void idt_interrupt_0x36(); // IPI
 void idt_interrupt_0x37(); // LINT0
 void idt_interrupt_0x38(); // LINT1
+void idt_interrupt_0x39(); // Panic / Stop CPU
 
 // System call
 void idt_interrupt_0x80();

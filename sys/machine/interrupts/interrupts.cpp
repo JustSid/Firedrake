@@ -53,6 +53,16 @@ uint32_t ir_handle_interrupt(uint32_t esp)
 			needsEOI = false; // Spurious interrupts
 			break;
 
+		case 0x39:
+			// Shutdown CPU
+			while(1)
+			{
+				cli();
+				cpu_halt();
+			}
+
+			break;
+
 		case 0x8:
 			panic("Double fault!\n");
 			break;
@@ -148,6 +158,7 @@ namespace ir
 		idt_set_interrupt_entry(0x36, IDT_FLAG_RING0);
 		idt_set_interrupt_entry(0x37, IDT_FLAG_RING0);
 		idt_set_interrupt_entry(0x38, IDT_FLAG_RING0);
+		idt_set_interrupt_entry(0x39, IDT_FLAG_RING0);
 
 		// System calls
 		idt_set_interrupt_entry(0x80, IDT_FLAG_RING3);
@@ -202,7 +213,7 @@ namespace ir
 
 		remap_irqs();
 		sti();
-		
+
 		return KERN_SUCCESS;
 	}
 

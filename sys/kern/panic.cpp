@@ -99,8 +99,9 @@ void panic(const char *reason, ...)
 {
 	if(_panic_initialized)
 	{
-		// TODO: SMP requires a different handling... A special IPI would probably be the way to halt the other CPUs
+		// Tear down the system properly to avoid other code to be executed
 		cli();
+		ir::apic_broadcast_ipi(0x39, false);
 	}
 
 	va_list args;
