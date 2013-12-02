@@ -71,7 +71,7 @@ static inline void memory_barrier()
 {
 	// See: http://stackoverflow.com/questions/2599238
 	// Basically: The lock prefix is faster and acts as a memory barrier just as well as mfence
-	__asm__ volatile("lock orl $0, %esp");
+	__asm__ volatile("lock orl $0, (%esp)");
 }
 
 END_EXTERNC

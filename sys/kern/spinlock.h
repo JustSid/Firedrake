@@ -30,7 +30,7 @@ typedef uint8_t spinlock_t;
 BEGIN_EXTERNC
 
 void spinlock_lock(spinlock_t *lock);
-bool spinlock_tryLock(spinlock_t *lock);
+bool spinlock_try_lock(spinlock_t *lock);
 void spinlock_unlock(spinlock_t *lock);
 
 END_EXTERNC

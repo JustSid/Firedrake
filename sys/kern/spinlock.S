@@ -25,28 +25,29 @@ ENTRY(spinlock_lock)
 	movl 0x8(%esp), %edi
 	movb $0x1, %cl
 
-spinlock_tryObtain:
-	rep; nop
+spinlock_try_obtain:
+	rep
+	nop
 	xorb %al, %al
 	lock cmpxchgb %cl, (%edi)
-	jne spinlock_tryObtain
+	jne spinlock_try_obtain
 
 	popl %edi
 	ret
 
 
-ENTRY(spinlock_tryLock)
+ENTRY(spinlock_try_lock)
 	pushl %edi
 	movl 0x8(%esp), %edi
 	movb $0x1, %cl
 	xorb %al, %al
 	lock cmpxchgb %cl, (%edi)
-	jne spinlock_failedObtain
+	jne spinlock_failed_obtain
 	movl $0x1, %eax
 	popl %edi
 	ret
 
-spinlock_failedObtain:
+spinlock_failed_obtain:
 	xorl %eax, %eax
 	popl %edi
 	ret
@@ -55,4 +56,5 @@ spinlock_failedObtain:
 ENTRY(spinlock_unlock)
 	movl 0x4(%esp), %eax
 	movb $0x0, (%eax)
+	lock orl $0, (%esp)
 	ret
