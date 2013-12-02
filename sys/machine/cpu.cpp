@@ -133,6 +133,15 @@ void cpu_read_info()
 kern_return_t cpu_init()
 {
 	cpu_read_info();
+	memset(_cpu_cpu, 0, CPU_MAX_CPUS * sizeof(cpu_t));
+
+	for(size_t i = 0; i < CPU_MAX_CPUS; i ++)
+	{
+		cpu_t *cpu = &_cpu_cpu[i];
+
+		cpu->apic_id = 0xff;
+		cpu->id      = 0xff;
+	}
 
 	// We need need an APIC and MSRs to run Firedrake
 	if(!(_cpu_info.features & CPUID_FLAG_APIC) && !(_cpu_info.features & CPUID_FLAG_MSR))
@@ -151,5 +160,6 @@ kern_return_t cpu_init()
 		return KERN_FAILURE;
 	}
 
+	kprintf("%i %s", _cpu_cpu_count, (_cpu_cpu_count == 1) ? "CPU" : "CPUs");
 	return KERN_SUCCESS;
 }
