@@ -19,6 +19,7 @@
 #include <machine/port.h>
 #include <machine/cpu.h>
 #include <kern/kprintf.h>
+#include <kern/panic.h>
 #include "interrupts.h"
 #include "trampoline.h"
 #include "apic.h"
@@ -26,10 +27,23 @@
 extern "C" uint32_t ir_handle_interrupt(uint32_t esp);
 static ir::interrupt_handler_t _ir_interrupt_handler[IDT_ENTRIES];
 
+void ir_panic_segfault()
+{
+	uint32_t address;
+	__asm__ volatile("movl %%cr2, %0" : "=r" (address));
+
+	panic("Segfault at address %p", (void *)address);
+}
+
 uint32_t ir_handle_interrupt(uint32_t esp)
 {
 	cpu_state_t *state = reinterpret_cast<cpu_state_t *>(esp);
+	cpu_t *cpu = cpu_get_current_cpu();
+
 	bool needsEOI = true;
+
+	cpu_state_t *prev = cpu->last_state;
+	cpu->last_state = state;
 
 	switch(state->interrupt)
 	{
@@ -39,15 +53,25 @@ uint32_t ir_handle_interrupt(uint32_t esp)
 			needsEOI = false; // Spurious interrupts
 			break;
 
+		case 0x8:
+			panic("Double fault!\n");
+			break;
+
+		case 0xe:
+			ir_panic_segfault();
+			break;
+
 		default:
 		{
 			ir::interrupt_handler_t handler = _ir_interrupt_handler[state->interrupt];
 			if(handler)
-				handler(state->interrupt, cpu_get_current_cpu());
+				handler(state->interrupt, cpu);
 
 			break;
 		}
 	}
+
+	cpu->last_state = prev;
 
 	if(needsEOI)
 		ir::apic_write(APIC_REGISTER_EOI, 0);
@@ -170,6 +194,9 @@ namespace ir
 		kprintf(" trampoline");
 		if((result = trampoline_init()) != KERN_SUCCESS)
 			return result;
+
+		// Remap all irqs
+		apic_ioapic_set_interrupt(0, 0x20, false);
 
 		sti();
 		return KERN_SUCCESS;

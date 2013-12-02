@@ -1,5 +1,5 @@
 //
-//  gdt.h
+//  smp_bootstrap.S
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,30 +16,36 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _GDT_H_
-#define _GDT_H_
+#include <asm.h>
 
-#include <prefix.h>
-#include <libc/stdint.h>
-#include "cpu.h"
+.global smp_rendezvous_point
 
-#define GDT_FLAG_DATASEG  0x02
-#define GDT_FLAG_CODESEG  0x0a
-#define GDT_FLAG_TSS      0x09
+TEXT()
+ENTRY(smp_bootstrap_begin)
+	movl $0x10, %eax
+	movl %eax, %ss
+	movl %eax, %ds
+	movl %eax, %es
 
-#define GDT_FLAG_SEGMENT  0x10
-#define GDT_FLAG_RING0    0x00
-#define GDT_FLAG_RING3    0x60
-#define GDT_FLAG_PRESENT  0x80
+	movl $smp_bootstrap_finish, %eax
+	jmp *%eax
 
-#define GDT_FLAG_4K       0x800
-#define GDT_FLAG_32_BIT   0x400
+ENTRY(smp_bootstrap_finish)
+	movl $smp_stack_top, %esp
+	
+	// Push an empty stack frame
+	pushl $0
+	pushl $0
 
-#define GDT_ENTRIES 6
+	call smp_rendezvous_point
 
-void gdt_set_entry(uint64_t *gdt, int16_t index, uint32_t base, uint32_t limit, int32_t flags);
-void gdt_set_tss_entry(uint64_t *gdt, int16_t index, tss_t *tss);
+GLOBAL(smp_bootstrap_end)
 
-void gdt_init(uint64_t *gdt, tss_t *tss);
+.bss
 
-#endif /* _GDT_H_ */
+.global smp_stack_bottom
+.global smp_stack_top
+
+smp_stack_bottom:
+.space 4096
+smp_stack_top:

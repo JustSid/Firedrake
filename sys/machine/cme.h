@@ -29,20 +29,54 @@ static inline uint32_t cme_resolve_call(uint8_t *buffer, uintptr_t function)
 	return function - base;
 }
 
-static inline kern_return_t cme_fix_call_simple(uint8_t *buffer, size_t limit, void *func)
+static inline uint8_t *cme_find_instruction(uint8_t *buffer, size_t limit, uint8_t instruction)
 {
 	size_t index = 0;
-	while(*buffer != 0xe8)
+	while(*buffer != instruction)
 	{
 		buffer ++;
 		index  ++;
 
 		if(index >= limit)
-			return KERN_FAILURE;
+			return nullptr;
 	}
+
+	return buffer;
+}
+
+
+static inline kern_return_t cme_fix_call_simple(uint8_t *buffer, size_t limit, void *func)
+{
+	buffer = cme_find_instruction(buffer, limit, 0xe8);
+	if(!buffer)
+		return KERN_FAILURE;
 
 	uint32_t *call = reinterpret_cast<uint32_t *>(buffer + 1);
 	*call = cme_resolve_call(reinterpret_cast<uint8_t *>(call + 1), reinterpret_cast<uintptr_t>(func));
+
+	return KERN_SUCCESS;
+}
+
+static inline kern_return_t cme_fix_ljump16(uint8_t *buffer, size_t limit, void *target)
+{
+	buffer = cme_find_instruction(buffer, limit, 0xea);
+	if(!buffer)
+		return KERN_FAILURE;
+
+	uint16_t *jump = reinterpret_cast<uint16_t *>(buffer + 1);
+	*jump ++ = static_cast<uint16_t>(reinterpret_cast<uint32_t>(target));
+
+	return KERN_SUCCESS;
+}
+
+static inline kern_return_t cme_fix_inst16(uint8_t *buffer, size_t limit, uint8_t instruction, uint16_t value)
+{
+	buffer = cme_find_instruction(buffer, limit, instruction);
+	if(!buffer)
+		return KERN_FAILURE;
+
+	uint16_t *inst = reinterpret_cast<uint16_t *>(buffer + 1);
+	*inst = value;
 
 	return KERN_SUCCESS;
 }

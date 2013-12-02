@@ -1,6 +1,6 @@
 include ../Makefile.rules
 
-SRCS = $(shell find $(CURDIR) -type f \( -name "*.cpp" -o -name "*.c" -o -name "*.S" -o -name "*.asm" \))
+SRCS = $(shell find $(CURDIR) -type f \( -name "*.cpp" -o -name "*.c" -o -name "*.S" \))
 OBJS = $(addsuffix .o, $(basename $(SRCS)))
 
 ASFLAGS  = -m32 -I. -no-integrated-as
@@ -19,9 +19,6 @@ firedrake: $(OBJS)
 
 %.o: %.S
 	$(CC) $(ASFLAGS) -c -o $@ $^
-
-%.o: %.asm
-	nasm -f elf32 $^ -o $@
 
 clean:
 	rm $(OBJS)

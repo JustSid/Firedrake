@@ -78,7 +78,7 @@ namespace ir
 
 		memcpy(trampoline_map->buffer, &idt_begin, idtEnd - idtBegin);
 		cme_fix_call_simple(trampoline_map->buffer + (idtEntryHandler - idtBegin), idtEnd - idtEntryHandler, reinterpret_cast<void *>(&ir_handle_interrupt));
-
+		
 		return trampoline_init_cpu();
 	}
 

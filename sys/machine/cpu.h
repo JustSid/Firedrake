@@ -97,6 +97,7 @@ typedef struct
 
 #define CPU_FLAG_BOOTSTRAP (1 << 0)
 #define CPU_FLAG_RUNNING   (1 << 1)
+#define CPU_FLAG_TIMEDOUT  (1 << 2)
 
 namespace ir
 {
@@ -110,6 +111,7 @@ typedef struct
 
 	uint16_t flags;
 	ir::trampoline_cpu_data_t *data;
+	cpu_state_t *last_state;
 } cpu_t;
 
 typedef struct
