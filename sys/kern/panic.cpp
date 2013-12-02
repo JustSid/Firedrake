@@ -32,16 +32,25 @@ static bool _panic_initialized = false;
 
 void panic_die_fancy(const char *buffer)
 {
-	cpu_t *cpu = cpu_get_current_cpu();
+	cpu_t *cpu = cpu_get_current_cpu_slow();
+	cpu_state_t *state = cpu->last_state;
 
 	vd::video_device *device = vd::get_active_device();
-	device->write_string("\16\24Kernel Panic!\16\27\n");
+	device->write_string("\n\16\24Kernel Panic!\16\27\n");
 	device->write_string("Reason: \"");
 	device->write_string(buffer);
-	device->write_string("\"\n\n");
+	device->write_string("\"\n");
 
 	// Use kprintf for small strings for convinience
 	kprintf("Crashing CPU: \16\031%i\16\27\n", cpu->id);
+
+	if(state)
+	{
+		kprintf("CPU State (interrupt vector \16\0310x%x\16\27):\n", state->interrupt);
+		kprintf("  eax: \16\031%08x\16\27, ecx: \16\031%08x\16\27, edx: \16\031%08x\16\27, ebx: \16\031%08x\16\27\n", state->eax, state->ecx, state->edx, state->ebx);
+		kprintf("  esp: \16\031%08x\16\27, ebp: \16\031%08x\16\27, esi: \16\031%08x\16\27, edi: \16\031%08x\16\27\n", state->esp, state->ebp, state->esi, state->edi);
+		kprintf("  eip: \16\031%08x\16\27, eflags: \16\031%08x\16\27.\n", state->eip, state->eflags);
+	}
 
 	kprintf("CPU halt");
 }
@@ -49,7 +58,7 @@ void panic_die_fancy(const char *buffer)
 void panic_die_barebone(const char *buffer)
 {
 	vd::video_device *device = vd::get_active_device();
-	device->write_string("\16\24Kernel Panic!\16\27\n");
+	device->write_string("\n\16\24Kernel Panic!\16\27\n");
 	device->write_string("Reason: \"");
 	device->write_string(buffer);
 	device->write_string("\"\n\nCPU halt");

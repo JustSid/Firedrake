@@ -84,6 +84,7 @@ void sys_boot(multiboot_t *info)
 	sys_initN("physical memory", pm::init, info);
 	sys_initN("virtual memory", vm::init, info);
 	sys_init0("heap", mm::heap_init);
+	panic_init();
 	sys_init0("interrupts", ir::init);
 	sys_init0("smp", smp_init);
 
