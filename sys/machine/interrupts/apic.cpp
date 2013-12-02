@@ -112,16 +112,18 @@ namespace ir
 		return KERN_SUCCESS;
 	}
 
+	void apic_write_ioapic(ioapic_t *ioapic, uint8_t offset, uint32_t value) __attribute__((noinline));
 	void apic_write_ioapic(ioapic_t *ioapic, uint8_t offset, uint32_t value)
 	{
-		*(uint32_t *)(ioapic->address) = offset;
-		*(uint32_t *)(ioapic->address + 0x10) = value;
+		*(volatile uint32_t *)(ioapic->address) = offset;
+		*(volatile uint32_t *)(ioapic->address + 0x10) = value;
 	}
 
+	uint32_t apic_read_ioapic(ioapic_t *ioapic, uint8_t offset) __attribute__((noinline));
 	uint32_t apic_read_ioapic(ioapic_t *ioapic, uint8_t offset)
 	{
-		*(uint32_t *)(ioapic->address) = offset;
-		return *(uint32_t *)(ioapic->address + 0x10);
+		*(volatile uint32_t *)(ioapic->address) = offset;
+		return *(volatile uint32_t *)(ioapic->address + 0x10);
 	}
 
 	kern_return_t apic_map_ioapics()
@@ -150,7 +152,7 @@ namespace ir
 		{
 			ioapic_t *ioapic = &_apic_ioapic[i];
 
-			if(ioapic->interrupt_base >= irq && ioapic->interrupt_base + ioapic->maxiumum_redirection_entry < irq)
+			if(ioapic->interrupt_base <= irq && ioapic->maxiumum_redirection_entry >= irq)
 				return ioapic;
 		}
 
