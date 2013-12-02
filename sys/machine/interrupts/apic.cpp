@@ -375,7 +375,12 @@ namespace ir
 			kprintf("failed to map I/O APIC(s)");
 			return result;
 		}
+		
+		return apic_init_cpu();
+	}
 
+	kern_return_t apic_init_cpu()
+	{
 		// Initialize the APIC
 		apic_write(APIC_REGISTER_TPR, 0);
 		apic_write(APIC_REGISTER_SVR, (1 << 8) | 0x32);

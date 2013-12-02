@@ -27,6 +27,7 @@
 extern "C" void smp_rendezvous_point();
 extern "C" uintptr_t smp_bootstrap_begin;
 extern "C" uintptr_t smp_bootstrap_end;
+extern "C" uint32_t *_kernel_page_directory;
 
 static spinlock_t _smp_rendezvous_lock = SPINLOCK_INIT;
 static size_t _smp_ticks = 0;
@@ -59,10 +60,44 @@ void smp_clock_tick(__unused uint8_t vector, __unused cpu_t *cpu)
 
 
 
+void smp_rendezvous_fail()
+{
+	sti();
+	spinlock_unlock(&_smp_rendezvous_lock);
+
+	while(1)
+		cpu_halt();
+}
 
 void smp_rendezvous_point()
 {
-	// TODO: Implement an actual function here
+	spinlock_lock(&_smp_rendezvous_lock);
+
+	// Activate the kernel directory and virtual memory
+	uint32_t cr0;
+	__asm__ volatile("mov %0, %%cr3" : : "r" (reinterpret_cast<uint32_t>(_kernel_page_directory)));
+	__asm__ volatile("mov %%cr0, %0" : "=r" (cr0));
+	__asm__ volatile("mov %0, %%cr0" : : "r" (cr0 | (1 << 31)));
+
+	// Bootstrap Interrupts
+	kern_return_t result = ir::init_application_cpu();
+
+	if(result != KERN_SUCCESS)
+		smp_rendezvous_fail();
+	
+	cpu_t *cpu = cpu_get_current_cpu();
+
+	if(cpu->flags & CPU_FLAG_TIMEDOUT)
+	{
+		// Well, too late...
+		smp_rendezvous_fail();
+	}
+
+	cpu->flags |= CPU_FLAG_RUNNING;
+
+	spinlock_unlock(&_smp_rendezvous_lock);
+
+	// Wait for work
 	while(1)
 		cpu_halt();
 }
@@ -81,17 +116,20 @@ void smp_kickoff_cpu(cpu_t *cpu, uintptr_t entry)
 	ir::apic_send_ipi(0x0, cpu, vector);
 
 	// Wait up to 100ms for the rendezvous to happen
-	bool rendezvoused = false;
-
 	ticksEnd = _smp_ticks + 10;
 	while(_smp_ticks <= ticksEnd)
 	{
 		cpu_halt();
 
-		if(cpu->flags & CPU_FLAG_RUNNING)
+		if(spinlock_try_lock(&_smp_rendezvous_lock))
 		{
-			rendezvoused = true;
-			break;
+			if(cpu->flags & CPU_FLAG_RUNNING)
+			{
+				spinlock_unlock(&_smp_rendezvous_lock);
+				break;
+			}
+
+			spinlock_unlock(&_smp_rendezvous_lock);
 		}
 	}
 

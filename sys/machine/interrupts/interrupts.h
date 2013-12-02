@@ -43,6 +43,7 @@ namespace ir
 
 	kern_return_t set_interrupt_handler(uint8_t vector, interrupt_handler_t handler);
 	kern_return_t init();
+	kern_return_t init_application_cpu();
 }
 
 #endif /* _INTERRUPTS_H_ */

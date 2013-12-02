@@ -136,6 +136,7 @@ namespace ir
 	kern_return_t apic_add_interrupt_override(ioapic_interrupt_override_t *override);
 	kern_return_t apic_add_ioapic(ioapic_t *ioapic);
 	kern_return_t apic_init();
+	kern_return_t apic_init_cpu();
 }
 
 #endif /* _APIC_H_ */
