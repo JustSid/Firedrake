@@ -342,6 +342,19 @@ namespace ir
 
 	void apic_mask_pic()
 	{
+		// The PIC is completely masked, so there shouldn't be any interrupts
+		// Well, BOCHS thinks differently, so we remap the interrupts to avoid the PIT showing up
+		// as double fault...
+		outb(0x20, 0x11);
+		outb(0x21, 0x20);
+		outb(0x21, 0x04);
+		outb(0x21, 0x01);
+
+		outb(0xA0, 0x11);
+		outb(0xa1, 0x28);
+		outb(0xa1, 0x02);
+		outb(0xa1, 0x01);
+
 		outb(0x21, 0xff);
 		outb(0xa1, 0xff);
 	}
@@ -371,7 +384,7 @@ namespace ir
 		apic_write(APIC_REGISTER_LDR, cpu_get_cpu_number() << 24);
 
 		apic_write(APIC_REGISTER_LVT_PMC,     apic_vector(0x30, false));
-		apic_write(APIC_REGISTER_LVT_CMCI,    apic_vector(0x31, false));
+		//apic_write(APIC_REGISTER_LVT_CMCI,    apic_vector(0x31, false));
 		apic_write(APIC_REGISTER_LVT_ERROR,   apic_vector(0x33, false));
 		apic_write(APIC_REGISTER_LVT_THERMAL, apic_vector(0x34, false));
 		apic_write(APIC_REGISTER_LVT_TIMER,   apic_vector(0x35, false));
