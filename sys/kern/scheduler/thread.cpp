@@ -88,8 +88,6 @@ namespace sd
 		}
 
 		initialize_kernel_stack(_task->_ring3);
-
-		_task->attach_thread(this);
 		return KERN_SUCCESS;
 	}
 
@@ -122,5 +120,23 @@ namespace sd
 		*(-- stack) = 0x0;
 
 		_esp = ring3 ? reinterpret_cast<uint32_t>(_kernel_stack_virtual + size) - sizeof(cpu_state_t) : reinterpret_cast<uint32_t>(stack);
+	}
+
+	bool thread_t::is_schedulable(cpu_t *cpu) const
+	{
+		if(_running_cpu || (_pinned_cpu && _pinned_cpu != cpu))
+			return false;
+
+		return true;
+	}
+
+	void thread_t::lock()
+	{
+		spinlock_lock(&_lock);
+	}
+
+	void thread_t::unlock()
+	{
+		spinlock_unlock(&_lock);
 	}
 }

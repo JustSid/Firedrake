@@ -29,6 +29,7 @@
 #include <machine/memory/memory.h>
 #include <machine/interrupts/interrupts.h>
 #include <machine/smp/smp.h>
+#include <kern/scheduler/scheduler.h>
 
 const char *kVersionBeast    = "Nidhogg";
 const char *kVersionAppendix = "";
@@ -87,9 +88,14 @@ void sys_boot(multiboot_t *info)
 	panic_init();
 	sys_init0("interrupts", ir::init);
 	sys_init0("smp", smp_init);
+	sys_init0("scheduler", sd::init);
 
-	panic_init();
 	kprintf("\n\n");
+
+	// Kick off into the scheduler
+	// Once the IPI is handled by a CPU, it won't return to its current thread of execution ever again
+	// This means that whatever bootstrapping you want to do, MUST be done before this call
+	ir::apic_broadcast_ipi(0x3a, true);
 
 	while(1)
 		cpu_halt();

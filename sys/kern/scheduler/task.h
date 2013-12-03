@@ -55,7 +55,11 @@ namespace sd
 
 		kern_return_t attach_thread(thread_t **outthread, thread_t::entry_t entry, size_t stack);
 
+		void lock();
+		void unlock();
+
 		pid_t get_pid() const { return _pid; }
+		vm::directory *get_directory() const { return _directory; }
 
 	private:
 		void attach_thread(thread_t *thread);

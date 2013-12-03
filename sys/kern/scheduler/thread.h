@@ -46,6 +46,14 @@ namespace sd
 		thread_t(task_t *task, entry_t entry, size_t stackPages);
 		~thread_t();
 
+		void lock();
+		void unlock();
+
+		task_t *get_task() const { return _task; }
+		tid_t get_tid() const { return _tid; }
+
+		bool is_schedulable(cpu_t *cpu) const;
+
 	private:
 		kern_return_t initialize();
 		void initialize_kernel_stack(bool ring3);
@@ -60,7 +68,7 @@ namespace sd
 		cpp::queue<thread_t>::entry _scheduler_entry;
 		cpp::queue<thread_t>::entry _task_entry;
 
-		size_t _quantum;
+		int8_t _quantum;
 
 		size_t _user_stack_pages;
 		uint8_t *_user_stack;

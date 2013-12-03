@@ -21,6 +21,7 @@
 
 #include <prefix.h>
 #include <kern/kern_return.h>
+#include <kern/spinlock.h>
 #include <libcpp/singleton.h>
 #include <libcpp/queue.h>
 #include <machine/cpu.h>
@@ -33,12 +34,14 @@ namespace sd
 	class scheduler_t : public cpp::singleton<scheduler_t>
 	{
 	public:
+		friend class task_t;
+
 		scheduler_t();
+		void initialize();
 
 		uint32_t schedule_on_cpu(uint32_t esp, cpu_t *cpu);
 
 		void activate_cpu(cpu_t *cpu);
-		void deactivate_cpu(cpu_t *cpu);
 
 	private:
 		struct cpu_proxy_t
@@ -60,6 +63,7 @@ namespace sd
 
 		void create_kernel_task();
 		void create_idle_task();
+		void add_thread(thread_t *thread);
 
 		cpu_proxy_t *_proxy_cpus[CPU_MAX_CPUS];
 		size_t _proxy_cpu_count;
@@ -67,9 +71,8 @@ namespace sd
 		task_t *_kernel_task;
 		task_t *_idle_task;
 
+		spinlock_t _thread_lock;
 		cpp::queue<thread_t> _active_threads;
-		cpp::queue<thread_t> _sleeping_threads;
-		cpp::queue<thread_t> _blocked_threads;
 	};
 
 	kern_return_t init();

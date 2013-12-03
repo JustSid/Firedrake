@@ -44,7 +44,8 @@ namespace sd
 
 
 	scheduler_t::scheduler_t() :
-		_proxy_cpu_count(cpu_get_cpu_count())
+		_proxy_cpu_count(cpu_get_cpu_count()),
+		_thread_lock(SPINLOCK_INIT)
 	{
 		std::fill(_proxy_cpus, _proxy_cpus + CPU_MAX_CPUS, nullptr);
 
@@ -53,7 +54,10 @@ namespace sd
 			cpu_proxy_t *proxy = new cpu_proxy_t(cpu_get_cpu_with_id(i));
 			_proxy_cpus[i] = proxy;
 		}
+	}
 
+	void scheduler_t::initialize()
+	{
 		create_kernel_task();
 		create_idle_task();
 	}
@@ -85,6 +89,13 @@ namespace sd
 	}
 
 
+	void scheduler_t::add_thread(thread_t *thread)
+	{
+		spinlock_lock(&_thread_lock);
+		_active_threads.insert_back(thread->_scheduler_entry);
+		spinlock_unlock(&_thread_lock);
+	}
+
 	uint32_t scheduler_t::schedule_on_cpu(uint32_t esp, cpu_t *cpu)
 	{
 		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
@@ -94,13 +105,67 @@ namespace sd
 		if(__expect_false(!proxy->first_run))
 			proxy->active_thread->_esp = esp;
 		
-
 		thread_t *thread = proxy->active_thread;
-		task_t *task     = thread->_task;
 
+		thread->lock();
+		thread->_quantum --;
+
+		if(thread->_quantum <= 0 || !thread->is_schedulable(cpu))
+		{
+			// Take the thread off this CPU
+			proxy->active_thread = nullptr;
+			thread->_running_cpu = nullptr;
+
+			// Find a new thread/task pair
+			thread_t *original = thread;
+			cpp::queue<thread_t>::entry *entry = &thread->_scheduler_entry;
+			bool found = false;
+
+			thread->unlock();
+
+			do {
+				spinlock_lock(&_thread_lock);
+
+				entry = entry->get_next();
+				if(!entry)
+					entry = _active_threads.get_head();
+
+				spinlock_unlock(&_thread_lock);
+
+				thread = entry->get();
+				thread->lock();
+
+				if(thread->is_schedulable(cpu))
+				{
+					found = true;
+					break;
+				}
+
+				thread->unlock();
+			} while(thread != original);
+
+			if(!found) // Default to the idle thread if we are starved of threads
+			{
+				thread = proxy->idle_thread;
+				thread->lock();
+			}
+
+			// Move the thread onto this CPU
+			proxy->active_thread = thread;
+			thread->_running_cpu = cpu;
+			thread->_quantum     = 5;
+
+			thread->unlock();
+		}
+		else
+		{
+			thread->unlock();
+		}
+
+		task_t *task = thread->get_task();
 		ir::trampoline_cpu_data_t *data = cpu->data;
 
-		data->page_directory = task->_directory->get_physical_directory();
+		data->page_directory = task->get_directory()->get_physical_directory();
 		data->tss.esp0       = thread->_esp + sizeof(cpu_state_t);
 
 		proxy->first_run = false;
@@ -133,7 +198,7 @@ namespace sd
 
 	kern_return_t init()
 	{
-		scheduler_t::get_shared_instance();
+		scheduler_t::get_shared_instance()->initialize();
 
 		ir::set_interrupt_handler(0x35, &timer_interrupt_stub);
 		ir::set_interrupt_handler(0x3a, &activate_cpu);

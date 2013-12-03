@@ -18,6 +18,7 @@
 
 #include <kern/kprintf.h>
 #include <kern/panic.h>
+#include "scheduler.h"
 #include "task.h"
 
 namespace sd
@@ -42,12 +43,16 @@ namespace sd
 
 	kern_return_t task_t::attach_thread(thread_t **outthread, thread_t::entry_t entry, size_t stack)
 	{
+		spinlock_lock(&_lock);
+
 		thread_t *thread = new thread_t(this, entry, stack);
 		kern_return_t result = thread->initialize();
 
 		if(result != KERN_SUCCESS)
 		{
 			delete thread;
+			spinlock_unlock(&_lock);
+
 			return result;
 		}
 
@@ -57,15 +62,11 @@ namespace sd
 		if(outthread)
 			*outthread = thread;
 
-		return result;
-	}
-
-
-	void task_t::attach_thread(thread_t *thread)
-	{
-		spinlock_lock(&_lock);
 		_threads.insert_back(thread->_task_entry);
 		spinlock_unlock(&_lock);
+		
+		scheduler_t::get_shared_instance()->add_thread(thread);
+		return result;
 	}
 
 	void task_t::remove_thread(thread_t *thread)
