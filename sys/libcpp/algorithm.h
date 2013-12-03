@@ -30,7 +30,25 @@ namespace std
 	template<class T>
 	const T& max(const T& a, const T& b)
 	{
-		return (b < a) ? b : a;
+		return (a > b) ? a : b;
+	}
+
+	template<class ForwardIt, class T>
+	void fill(ForwardIt first, ForwardIt last, const T& value)
+	{
+		while(first != last)
+		{
+			*first ++ = value;
+		}
+	}
+
+	template<class InputIt, class OutputIt>
+	OutputIt copy(InputIt first, InputIt last, OutputIt dest)
+	{
+		while(first != last)
+			*dest ++ = *first ++;
+
+		return dest;
 	}
 }
 
