@@ -1,5 +1,5 @@
 //
-//  macros.h
+//  task.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,26 +16,62 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _MACROS_H_
-#define _MACROS_H_
+#include <kern/kprintf.h>
+#include <kern/panic.h>
+#include "task.h"
 
-#define __unused      __attribute__((unused))
-#define __used        __attribute__((used))
-#define __deprecated  __attribute__((deprecated))
-#define __unavailable __attribute__((unavailable))
+namespace sd
+{
+	static std::atomic<pid_t> _task_pid_counter;
 
-#define __inline   inline __attribute__((__always_inline__))
-#define __noinline __attribute__((noinline))
+	task_t::task_t(vm::directory *directory) :
+		_lock(SPINLOCK_INIT),
+		_state(state::waiting),
+		_pid(_task_pid_counter.fetch_add(1)),
+		_tid_counter(0),
+		_main_thread(nullptr),
+		_directory(directory)
+	{
+		_ring3 = false;
+		_main_thread = false;
+	}
 
-#define __expect_true(x)  __builtin_expect(!!(x), 1)
-#define __expect_false(x) __builtin_expect(!!(x), 0)
+	task_t::~task_t()
+	{}
 
-#ifdef __cplusplus
-	#define BEGIN_EXTERNC extern "C" {
-	#define END_EXTERNC }
-#else
-	#define BEGIN_EXTERNC
-	#define END_EXTERNC
-#endif /* __cplusplus */
 
-#endif /* _MACROS_H_ */
+	kern_return_t task_t::attach_thread(thread_t **outthread, thread_t::entry_t entry, size_t stack)
+	{
+		thread_t *thread = new thread_t(this, entry, stack);
+		kern_return_t result = thread->initialize();
+
+		if(result != KERN_SUCCESS)
+		{
+			delete thread;
+			return result;
+		}
+
+		if(!_main_thread)
+			_main_thread = thread;
+
+		if(outthread)
+			*outthread = thread;
+
+		return result;
+	}
+
+
+	void task_t::attach_thread(thread_t *thread)
+	{
+		spinlock_lock(&_lock);
+		_threads.insert_back(thread->_task_entry);
+		spinlock_unlock(&_lock);
+	}
+
+	void task_t::remove_thread(thread_t *thread)
+	{
+		spinlock_lock(&_lock);
+		_threads.erase(thread->_task_entry);
+		spinlock_unlock(&_lock);
+	}
+}

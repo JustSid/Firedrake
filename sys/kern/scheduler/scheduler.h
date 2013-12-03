@@ -1,5 +1,5 @@
 //
-//  macros.h
+//  scheduler.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,26 +16,63 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _MACROS_H_
-#define _MACROS_H_
+#ifndef _SCHEDULER_H_
+#define _SCHEDULER_H_
 
-#define __unused      __attribute__((unused))
-#define __used        __attribute__((used))
-#define __deprecated  __attribute__((deprecated))
-#define __unavailable __attribute__((unavailable))
+#include <prefix.h>
+#include <kern/kern_return.h>
+#include <libcpp/singleton.h>
+#include <libcpp/queue.h>
+#include <machine/cpu.h>
 
-#define __inline   inline __attribute__((__always_inline__))
-#define __noinline __attribute__((noinline))
+#include "task.h"
+#include "thread.h"
 
-#define __expect_true(x)  __builtin_expect(!!(x), 1)
-#define __expect_false(x) __builtin_expect(!!(x), 0)
+namespace sd
+{
+	class scheduler_t : public cpp::singleton<scheduler_t>
+	{
+	public:
+		scheduler_t();
 
-#ifdef __cplusplus
-	#define BEGIN_EXTERNC extern "C" {
-	#define END_EXTERNC }
-#else
-	#define BEGIN_EXTERNC
-	#define END_EXTERNC
-#endif /* __cplusplus */
+		uint32_t schedule_on_cpu(uint32_t esp, cpu_t *cpu);
 
-#endif /* _MACROS_H_ */
+		void activate_cpu(cpu_t *cpu);
+		void deactivate_cpu(cpu_t *cpu);
+
+	private:
+		struct cpu_proxy_t
+		{
+			cpu_proxy_t(cpu_t *tcpu) :
+				cpu(tcpu),
+				idle_thread(nullptr),
+				active_thread(nullptr),
+				active(false),
+				first_run(true)
+			{}
+
+			cpu_t *cpu;
+			thread_t *idle_thread;
+			thread_t *active_thread;
+			bool active;
+			bool first_run;
+		};
+
+		void create_kernel_task();
+		void create_idle_task();
+
+		cpu_proxy_t *_proxy_cpus[CPU_MAX_CPUS];
+		size_t _proxy_cpu_count;
+
+		task_t *_kernel_task;
+		task_t *_idle_task;
+
+		cpp::queue<thread_t> _active_threads;
+		cpp::queue<thread_t> _sleeping_threads;
+		cpp::queue<thread_t> _blocked_threads;
+	};
+
+	kern_return_t init();
+}
+
+#endif

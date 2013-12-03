@@ -1,5 +1,5 @@
 //
-//  macros.h
+//  task.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,26 +16,63 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _MACROS_H_
-#define _MACROS_H_
+#ifndef _TASK_H_
+#define _TASK_H_
 
-#define __unused      __attribute__((unused))
-#define __used        __attribute__((used))
-#define __deprecated  __attribute__((deprecated))
-#define __unavailable __attribute__((unavailable))
+#include <prefix.h>
+#include <libc/stddef.h>
+#include <libc/stdint.h>
+#include <libcpp/atomic.h>
+#include <libcpp/list.h>
+#include <libcpp/queue.h>
+#include <machine/memory/memory.h>
 
-#define __inline   inline __attribute__((__always_inline__))
-#define __noinline __attribute__((noinline))
+#include <kern/types.h>
+#include <kern/kern_return.h>
+#include <kern/spinlock.h>
+#include "thread.h"
 
-#define __expect_true(x)  __builtin_expect(!!(x), 1)
-#define __expect_false(x) __builtin_expect(!!(x), 0)
+namespace sd
+{
+	class scheduler_t;
+	
+	class task_t : public cpp::list<task_t>::node
+	{
+	public:
+		friend class thread_t;
+		friend class scheduler_t;
 
-#ifdef __cplusplus
-	#define BEGIN_EXTERNC extern "C" {
-	#define END_EXTERNC }
-#else
-	#define BEGIN_EXTERNC
-	#define END_EXTERNC
-#endif /* __cplusplus */
+		enum class state
+		{
+			waiting,
+			running,
+			blocked,
+			died
+		};
 
-#endif /* _MACROS_H_ */
+		task_t(vm::directory *directory);
+		~task_t() override;
+
+		kern_return_t attach_thread(thread_t **outthread, thread_t::entry_t entry, size_t stack);
+
+		pid_t get_pid() const { return _pid; }
+
+	private:
+		void attach_thread(thread_t *thread);
+		void remove_thread(thread_t *thread);
+
+		std::atomic<int32_t> _tid_counter;
+		vm::directory *_directory;
+
+		cpp::queue<thread_t> _threads;
+		thread_t *_main_thread;
+
+		spinlock_t _lock;
+		pid_t _pid;
+		state _state;
+
+		bool _ring3;
+	};
+}
+
+#endif /* _TASK_H_ */

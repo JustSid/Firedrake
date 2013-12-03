@@ -1,5 +1,5 @@
 //
-//  macros.h
+//  thread.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,26 +16,63 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _MACROS_H_
-#define _MACROS_H_
+#ifndef _THREAD_H_
+#define _THREAD_H_
 
-#define __unused      __attribute__((unused))
-#define __used        __attribute__((used))
-#define __deprecated  __attribute__((deprecated))
-#define __unavailable __attribute__((unavailable))
+#include <prefix.h>
+#include <libc/stddef.h>
+#include <libc/stdint.h>
+#include <libcpp/atomic.h>
+#include <libcpp/list.h>
+#include <libcpp/queue.h>
+#include <machine/cpu.h>
+#include <kern/kern_return.h>
+#include <kern/types.h>
+#include <kern/spinlock.h>
 
-#define __inline   inline __attribute__((__always_inline__))
-#define __noinline __attribute__((noinline))
+namespace sd
+{
+	class task_t;
+	class scheduler_t;
 
-#define __expect_true(x)  __builtin_expect(!!(x), 1)
-#define __expect_false(x) __builtin_expect(!!(x), 0)
+	class thread_t
+	{
+	public:
+		friend class scheduler_t;
+		friend class task_t;
 
-#ifdef __cplusplus
-	#define BEGIN_EXTERNC extern "C" {
-	#define END_EXTERNC }
-#else
-	#define BEGIN_EXTERNC
-	#define END_EXTERNC
-#endif /* __cplusplus */
+		typedef uint32_t entry_t;
 
-#endif /* _MACROS_H_ */
+		thread_t(task_t *task, entry_t entry, size_t stackPages);
+		~thread_t();
+
+	private:
+		kern_return_t initialize();
+		void initialize_kernel_stack(bool ring3);
+
+		task_t *_task;
+		tid_t _tid;
+		spinlock_t _lock;
+
+		cpu_t *_pinned_cpu;
+		cpu_t *_running_cpu;
+
+		cpp::queue<thread_t>::entry _scheduler_entry;
+		cpp::queue<thread_t>::entry _task_entry;
+
+		size_t _quantum;
+
+		size_t _user_stack_pages;
+		uint8_t *_user_stack;
+		uint8_t *_user_stack_virtual;
+
+		size_t _kernel_stack_pages;
+		uint8_t *_kernel_stack;
+		uint8_t *_kernel_stack_virtual;
+
+		uint32_t _esp;
+		uint32_t _entry;
+	};
+}
+
+#endif /* _THREAD_H_ */

@@ -1,5 +1,5 @@
 //
-//  macros.h
+//  types.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,26 +16,13 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _MACROS_H_
-#define _MACROS_H_
+#ifndef _KERN_TYPES_H_
+#define _KERN_TYPES_H_
 
-#define __unused      __attribute__((unused))
-#define __used        __attribute__((used))
-#define __deprecated  __attribute__((deprecated))
-#define __unavailable __attribute__((unavailable))
+#include <prefix.h>
+#include <libc/stdint.h>
 
-#define __inline   inline __attribute__((__always_inline__))
-#define __noinline __attribute__((noinline))
+typedef uint32_t tid_t;
+typedef int32_t  pid_t;
 
-#define __expect_true(x)  __builtin_expect(!!(x), 1)
-#define __expect_false(x) __builtin_expect(!!(x), 0)
-
-#ifdef __cplusplus
-	#define BEGIN_EXTERNC extern "C" {
-	#define END_EXTERNC }
-#else
-	#define BEGIN_EXTERNC
-	#define END_EXTERNC
-#endif /* __cplusplus */
-
-#endif /* _MACROS_H_ */
+#endif /* _KERN_TYPES_H_ */

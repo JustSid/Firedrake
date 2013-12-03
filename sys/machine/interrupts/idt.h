@@ -81,7 +81,7 @@ void idt_interrupt_0x36(); // IPI
 void idt_interrupt_0x37(); // LINT0
 void idt_interrupt_0x38(); // LINT1
 void idt_interrupt_0x39(); // Panic / Stop CPU
-void idt_interrupt_0x3a();
+void idt_interrupt_0x3a(); // Startup scheduling
 void idt_interrupt_0x3b();
 void idt_interrupt_0x3c();
 void idt_interrupt_0x3d();
