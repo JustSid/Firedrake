@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <libc/assert.h>
 #include <kern/kprintf.h>
 #include <libc/string.h>
 #include <libcpp/algorithm.h>
@@ -60,7 +61,7 @@ namespace sd
 	void scheduler_t::create_kernel_task()
 	{
 		_kernel_task = new task_t(vm::get_kernel_directory());
-		_kernel_task->attach_thread(nullptr, (thread_t::entry_t)&sd_kernel_task, 0);
+		_kernel_task->attach_thread(nullptr, (thread_t::entry_t)&kernel_task, 0);
 	}
 
 	void scheduler_t::create_idle_task()
@@ -72,7 +73,7 @@ namespace sd
 			cpu_proxy_t *proxy = _proxy_cpus[i];
 			thread_t *thread;
 
-			if(_idle_task->attach_thread(&thread, (thread_t::entry_t)&sd_idle_task, 0) != KERN_SUCCESS)
+			if(_idle_task->attach_thread(&thread, (thread_t::entry_t)&idle_task, 0) != KERN_SUCCESS)
 				panic("Failed to create idle thread");
 
 			thread->_pinned_cpu  = proxy->cpu;

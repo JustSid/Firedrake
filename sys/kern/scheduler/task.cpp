@@ -33,7 +33,7 @@ namespace sd
 		_directory(directory)
 	{
 		_ring3 = false;
-		_main_thread = false;
+		_main_thread = nullptr;
 	}
 
 	task_t::~task_t()
