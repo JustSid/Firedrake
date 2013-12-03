@@ -53,9 +53,10 @@ static uint8_t smp_entry_bitmap[] = {
 	0xea, 0x00, 0x00, 0x08, 0x00
 };
 
-void smp_clock_tick(__unused uint8_t vector, __unused cpu_t *cpu)
+uint32_t smp_clock_tick(uint32_t esp, __unused cpu_t *cpu)
 {
 	_smp_ticks ++;
+	return esp;
 }
 
 

@@ -39,9 +39,10 @@ static inline void sti()
 
 namespace ir
 {
-	typedef void (*interrupt_handler_t)(uint8_t, cpu_t *);
+	typedef uint32_t (*interrupt_handler_t)(uint32_t, cpu_t *);
 
 	kern_return_t set_interrupt_handler(uint8_t vector, interrupt_handler_t handler);
+
 	kern_return_t init();
 	kern_return_t init_application_cpu();
 }

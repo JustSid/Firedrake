@@ -75,13 +75,16 @@ uint32_t ir_handle_interrupt(uint32_t esp)
 		{
 			ir::interrupt_handler_t handler = _ir_interrupt_handler[state->interrupt];
 			if(handler)
-				handler(state->interrupt, cpu);
+				esp = handler(esp, cpu);
 
 			break;
 		}
 	}
 
 	cpu->last_state = prev;
+
+	state = reinterpret_cast<cpu_state_t *>(esp);
+	state->fs = cpu->id;
 
 	if(needsEOI)
 		ir::apic_write(APIC_REGISTER_EOI, 0);
