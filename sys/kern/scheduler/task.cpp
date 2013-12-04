@@ -29,7 +29,7 @@ namespace sd
 		_lock(SPINLOCK_INIT),
 		_state(state::waiting),
 		_pid(_task_pid_counter.fetch_add(1)),
-		_tid_counter(0),
+		_tid_counter(1),
 		_main_thread(nullptr),
 		_directory(directory)
 	{
