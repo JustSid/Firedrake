@@ -89,11 +89,56 @@ namespace sd
 	}
 
 
+	task_t *scheduler_t::get_active_task()
+	{
+		thread_t *thread = get_active_thread();
+		return thread->get_task();
+	}
+
+	task_t *scheduler_t::get_active_task(cpu_t *cpu)
+	{
+		thread_t *thread = get_active_thread(cpu);
+		return thread->get_task();
+	}
+
+	thread_t *scheduler_t::get_active_thread()
+	{
+		cpu_t *cpu = cpu_get_current_cpu();
+		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
+
+		return proxy->active_thread;
+	}
+
+	thread_t *scheduler_t::get_active_thread(cpu_t *cpu)
+	{
+		if(cpu == cpu_get_current_cpu())
+			return get_active_thread();
+
+		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
+
+		spinlock_lock(&proxy->lock);
+		thread_t *thread = proxy->active_thread;
+		spinlock_unlock(&proxy->lock);
+
+		return thread;
+	}
+
+
 	void scheduler_t::add_thread(thread_t *thread)
 	{
 		spinlock_lock(&_thread_lock);
 		_active_threads.insert_back(thread->_scheduler_entry);
 		spinlock_unlock(&_thread_lock);
+	}
+
+	uint32_t scheduler_t::reschedule_on_cpu(uint32_t esp, cpu_t *cpu)
+	{
+		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
+		thread_t *thread = proxy->active_thread;
+
+		thread->_quantum = 0;
+
+		return schedule_on_cpu(esp, cpu);
 	}
 
 	uint32_t scheduler_t::schedule_on_cpu(uint32_t esp, cpu_t *cpu)
@@ -105,6 +150,7 @@ namespace sd
 		if(__expect_false(!proxy->first_run))
 			proxy->active_thread->_esp = esp;
 		
+		spinlock_lock(&proxy->lock);
 		thread_t *thread = proxy->active_thread;
 
 		thread->lock();
@@ -161,6 +207,8 @@ namespace sd
 		{
 			thread->unlock();
 		}
+
+		spinlock_unlock(&proxy->lock);
 
 		task_t *task = thread->get_task();
 		ir::trampoline_cpu_data_t *data = cpu->data;

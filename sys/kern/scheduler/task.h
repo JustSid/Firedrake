@@ -23,7 +23,6 @@
 #include <libc/stddef.h>
 #include <libc/stdint.h>
 #include <libcpp/atomic.h>
-#include <libcpp/list.h>
 #include <libcpp/queue.h>
 #include <machine/memory/memory.h>
 
@@ -36,7 +35,7 @@ namespace sd
 {
 	class scheduler_t;
 	
-	class task_t : public cpp::list<task_t>::node
+	class task_t
 	{
 	public:
 		friend class thread_t;
@@ -51,7 +50,7 @@ namespace sd
 		};
 
 		task_t(vm::directory *directory);
-		~task_t() override;
+		~task_t();
 
 		kern_return_t attach_thread(thread_t **outthread, thread_t::entry_t entry, size_t stack);
 

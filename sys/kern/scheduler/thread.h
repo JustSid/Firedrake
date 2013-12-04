@@ -23,7 +23,6 @@
 #include <libc/stddef.h>
 #include <libc/stdint.h>
 #include <libcpp/atomic.h>
-#include <libcpp/list.h>
 #include <libcpp/queue.h>
 #include <machine/cpu.h>
 #include <kern/kern_return.h>

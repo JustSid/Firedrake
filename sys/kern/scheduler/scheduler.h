@@ -39,6 +39,12 @@ namespace sd
 		scheduler_t();
 		void initialize();
 
+		task_t *get_active_task();
+		task_t *get_active_task(cpu_t *cpu);
+		thread_t *get_active_thread();
+		thread_t *get_active_thread(cpu_t *cpu);
+
+		uint32_t reschedule_on_cpu(uint32_t esp, cpu_t *cpu);
 		uint32_t schedule_on_cpu(uint32_t esp, cpu_t *cpu);
 
 		void activate_cpu(cpu_t *cpu);
@@ -57,6 +63,7 @@ namespace sd
 			cpu_t *cpu;
 			thread_t *idle_thread;
 			thread_t *active_thread;
+			spinlock_t lock;
 			bool active;
 			bool first_run;
 		};
