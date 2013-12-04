@@ -226,6 +226,7 @@ namespace ir
 		if((result = trampoline_init()) != KERN_SUCCESS)
 			return result;
 
+		panic_init();
 		sti();
 		return KERN_SUCCESS;
 	}
