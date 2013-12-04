@@ -594,18 +594,12 @@ namespace vm
 			return result;
 		}
 
-		// Map the kernel into memory
+		// Map the kernel and  video RAM 1:1
 		vm_address_t kernelBegin = reinterpret_cast<vm_address_t>(&kernel_begin);
 		vm_address_t kernelEnd   = reinterpret_cast<vm_address_t>(&kernel_end);
 
 		_kernel_directory->map_page_range(kernelBegin, kernelBegin, VM_PAGE_COUNT(kernelEnd - kernelBegin), VM_FLAGS_KERNEL);
-		_kernel_directory->map_page_range(0xb8000, 0xb8000, 1, VM_FLAGS_KERNEL);
-
-		// Map the stack into memory
-		vm_address_t stackBottom = VM_PAGE_ALIGN_DOWN(reinterpret_cast<vm_address_t>(&stack_bottom));
-		vm_address_t stackTop    = VM_PAGE_ALIGN_UP(reinterpret_cast<vm_address_t>(&stack_top));
-
-		_kernel_directory->map_page_range(stackBottom, stackBottom, VM_PAGE_COUNT(stackTop - stackBottom), VM_FLAGS_KERNEL);
+		_kernel_directory->map_page_range(0xa0000, 0xa0000, VM_PAGE_COUNT(0xc0000 - 0xa0000), VM_FLAGS_KERNEL);
 
 		// Activate the kernel directory and virtual memory
 		uint32_t cr0;

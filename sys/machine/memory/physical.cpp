@@ -157,6 +157,17 @@ namespace pm
 	}
 
 
+	void mark_range(uintptr_t begin, uintptr_t end)
+	{
+		begin = VM_PAGE_ALIGN_DOWN(begin);
+		end   = VM_PAGE_ALIGN_UP(end);
+
+		while(begin < end)
+		{
+			_mark_used(begin);
+			begin += VM_PAGE_SIZE;
+		}
+	}
 
 	kern_return_t init(multiboot_t *info)
 	{
@@ -193,26 +204,13 @@ namespace pm
 		}
 
 		// Mark the kernel as allocated
-		uintptr_t kernelBegin = reinterpret_cast<uintptr_t>(&kernel_begin);
-		uintptr_t kernelEnd   = reinterpret_cast<uintptr_t>(&kernel_end);
+		mark_range(reinterpret_cast<uintptr_t>(&kernel_begin), reinterpret_cast<uintptr_t>(&kernel_end));
 
-		while(kernelBegin < kernelEnd) 
-		{
-			_mark_used(kernelBegin);
-			kernelBegin += VM_PAGE_SIZE;
-		}
+		// Mark the first megabyte as allocated as well
+		// Although most of the BIOS stuff in there is undefined, it still might be useful
+		// and it's up to grabs by the kernel
+		mark_range(0x0, 0x100000);
 
-		// Mark the kernel stack as allocated
-		uintptr_t stackBottom = VM_PAGE_ALIGN_DOWN(reinterpret_cast<uintptr_t>(&stack_bottom));
-		uintptr_t stackTop    = VM_PAGE_ALIGN_UP(reinterpret_cast<uintptr_t>(&stack_top));
-
-		while(stackBottom < stackTop)
-		{
-			_mark_used(stackBottom);
-			stackBottom += VM_PAGE_SIZE;
-		}
-
-		_mark_used(0x0);
 		return KERN_SUCCESS;	
 	}
 }
