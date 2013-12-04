@@ -271,15 +271,32 @@ namespace ir
 	// MARK: Timer
 	// --------------------
 
-	void apic_set_timer(bool masked, apic_timer_divisor_t divisor, apic_timer_mode_t mode, uint32_t initial_count)
+	void apic_arm_timer(uint32_t count)
 	{
-		uint32_t timeVector = apic_read(APIC_REGISTER_LVT_TIMER);
+		uint32_t vector = apic_read(APIC_REGISTER_LVT_TIMER);
+		vector &= ~APIC_LVT_MASKED;
 
-		timeVector &= ~(APIC_LVT_MASKED | APIC_LVT_PERIODIC);
-		timeVector |= masked ? APIC_LVT_MASKED : 0;
-		timeVector |= (mode == apic_timer_mode_t::periodic) ? APIC_LVT_PERIODIC : 0;
+		apic_write(APIC_REGISTER_LVT_TIMER, vector);
+		apic_write(APIC_REGISTER_TIMER_INITAL_COUNT, count);
+		//apic_write(APIC_REGISTER_TIMER_CURRENT_COUNT, count);
+	}
 
-		apic_write(APIC_REGISTER_LVT_TIMER, timeVector);
+	void apic_unarm_timer()
+	{
+		uint32_t vector = apic_read(APIC_REGISTER_LVT_TIMER);
+		vector |= APIC_LVT_MASKED;
+
+		apic_write(APIC_REGISTER_LVT_TIMER, vector);
+	}
+
+	void apic_set_timer(apic_timer_divisor_t divisor, apic_timer_mode_t mode, uint32_t initial_count)
+	{
+		uint32_t vector = apic_read(APIC_REGISTER_LVT_TIMER);
+
+		vector &= ~APIC_LVT_PERIODIC;
+		vector |= ((mode == apic_timer_mode_t::periodic) ? APIC_LVT_PERIODIC : 0) | APIC_LVT_MASKED;
+
+		apic_write(APIC_REGISTER_LVT_TIMER, vector);
 		apic_write(APIC_REGISTER_TIMER_DIVIDE_CONFIG, static_cast<uint32_t>(divisor));
 		apic_write(APIC_REGISTER_TIMER_INITAL_COUNT, initial_count);
 	}

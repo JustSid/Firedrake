@@ -131,7 +131,10 @@ namespace ir
 	
 	void apic_ioapic_mask_interrupt(uint8_t irq, bool masked);
 
-	void apic_set_timer(bool masked, apic_timer_divisor_t divisor, apic_timer_mode_t mode, uint32_t initial_count);
+	void apic_arm_timer(uint32_t count);
+	void apic_unarm_timer();
+
+	void apic_set_timer(apic_timer_divisor_t divisor, apic_timer_mode_t mode, uint32_t initial_count);
 	void apic_get_timer(apic_timer_divisor_t *divisor, apic_timer_mode_t *mode, uint32_t *initial, uint32_t *current);
 
 	kern_return_t apic_add_interrupt_override(ioapic_interrupt_override_t *override);
