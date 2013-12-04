@@ -21,6 +21,7 @@
 #include <libc/string.h>
 #include <libcpp/algorithm.h>
 #include <machine/interrupts/interrupts.h>
+#include <machine/clock/clock.h>
 #include <kern/panic.h>
 #include "scheduler.h"
 
@@ -238,8 +239,9 @@ namespace sd
 
 	uint32_t activate_cpu(uint32_t esp, cpu_t *cpu)
 	{
-		ir::apic_set_timer(false, ir::apic_timer_divisor_t::divide_by_16, ir::apic_timer_mode_t::periodic, 10000);
-		
+		ir::apic_set_timer(clock::default_time_divisor, ir::apic_timer_mode_t::periodic, clock::default_time_counter);
+		ir::apic_arm_timer(clock::default_time_counter);
+
 		scheduler_t::get_shared_instance()->activate_cpu(cpu);
 		return scheduler_t::get_shared_instance()->schedule_on_cpu(esp, cpu);
 	}

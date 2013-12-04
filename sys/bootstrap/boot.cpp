@@ -28,6 +28,7 @@
 #include <machine/cpu.h>
 #include <machine/memory/memory.h>
 #include <machine/interrupts/interrupts.h>
+#include <machine/clock/clock.h>
 #include <machine/smp/smp.h>
 #include <kern/scheduler/scheduler.h>
 
@@ -86,6 +87,7 @@ void sys_boot(multiboot_t *info)
 	sys_initN("virtual memory", vm::init, info);
 	sys_init0("heap", mm::heap_init);
 	sys_init0("interrupts", ir::init);
+	sys_init0("clock", clock::init);
 	sys_init0("smp", smp_init);
 	sys_init0("scheduler", sd::init);
 
