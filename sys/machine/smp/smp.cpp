@@ -22,6 +22,7 @@
 #include <machine/port.h>
 #include <machine/cme.h>
 #include <machine/gdt.h>
+#include <machine/clock/clock.h>
 #include "smp.h"
 
 extern "C" void smp_rendezvous_point();
@@ -30,7 +31,6 @@ extern "C" uintptr_t smp_bootstrap_end;
 extern "C" uint32_t *_kernel_page_directory;
 
 static spinlock_t _smp_rendezvous_lock = SPINLOCK_INIT;
-static size_t _smp_ticks = 0;
 
 #define SMP_PHYSICAL_CODE 0x7000
 #define SMP_PHYSICAL_GDT  0x8000
@@ -55,14 +55,6 @@ static uint8_t smp_entry_bitmap[] = {
 	0x0f, 0x22, 0xc0,
 	0xea, 0x00, 0x00, 0x08, 0x00
 };
-
-uint32_t smp_clock_tick(uint32_t esp, __unused cpu_t *cpu)
-{
-	_smp_ticks ++;
-	return esp;
-}
-
-
 
 void smp_rendezvous_fail()
 {
@@ -113,17 +105,15 @@ void smp_kickoff_cpu(cpu_t *cpu)
 	ir::apic_send_ipi(0x0f, cpu, vector);
 
 	// Wait 10ms for the CPU to initialize
-	size_t ticksEnd = _smp_ticks + 1;
-	while(_smp_ticks <= ticksEnd)
-		cpu_halt();
+	clock::await_pit_ticks(1);
 
 	vector = ((SMP_PHYSICAL_CODE / 0x1000) & 0xff) | APIC_ICR_DSS_OTHERS | APIC_ICR_DM_STARTUP | APIC_ICR_LV_ASSERT;
 	ir::apic_send_ipi(0x0, cpu, vector);
 
 	// Wait up to 100ms for the rendezvous to happen
-	ticksEnd = _smp_ticks + 10;
-	while(_smp_ticks <= ticksEnd)
+	for(int i = 0; i < 10; i ++)
 	{
+		clock::await_pit_ticks(1);
 		cpu_halt();
 
 		if(spinlock_try_lock(&_smp_rendezvous_lock))
@@ -149,16 +139,6 @@ void smp_kickoff_cpu(cpu_t *cpu)
 
 void smp_kickoff()
 {
-	// Set up the SMP timer used to keep track of timeouts
-	// We use the old PIT at 100hz
-	ir::apic_ioapic_mask_interrupt(0x20, false);
-	ir::set_interrupt_handler(0x20, &smp_clock_tick);
-
-	int divisor = 11931;
-	outb(0x43, 0x36);
-	outb(0x40, divisor & 0xff);
-	outb(0x40, divisor >> 8);
-
 	// Start up all CPUs
 	size_t count = cpu_get_cpu_count();
 	for(size_t i = 0; i < count; i ++)
@@ -169,9 +149,6 @@ void smp_kickoff()
 
 		smp_kickoff_cpu(cpu);
 	}
-
-	ir::set_interrupt_handler(0x20, nullptr);
-	ir::apic_ioapic_mask_interrupt(0x20, true);
 }
 
 void smp_forge_gdt(uint8_t *buffer)

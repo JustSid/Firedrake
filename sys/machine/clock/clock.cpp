@@ -26,14 +26,37 @@ namespace clock
 
 	ir::apic_timer_divisor_t default_time_divisor = ir::apic_timer_divisor_t::divide_by_16;
 	uint32_t default_time_resolution = 1000;
-	uint32_t default_time_counter = 0;
+	uint32_t default_time_counter    = 0;
 
+	// PIT
 
-	uint32_t clock_pit_tick(uint32_t esp, __unused cpu_t *cpu)
+	uint32_t pit_tick(uint32_t esp, __unused cpu_t *cpu)
 	{
 		_clock_pit_ticks ++;
 		return esp;
 	}
+
+	void await_pit_ticks(uint32_t ticks)
+	{
+		outb(0x43, 0x36);
+
+		uint32_t target = _clock_pit_ticks + ticks;
+
+		while(_clock_pit_ticks < target)
+			cpu_halt();
+	}
+
+	void init_pit()
+	{
+		ir::apic_ioapic_mask_interrupt(0x20, false);
+		ir::set_interrupt_handler(0x20, &pit_tick);
+
+		int pit_divisor = 11931;
+		outb(0x40, pit_divisor & 0xff);
+		outb(0x40, pit_divisor >> 8);
+	}	
+
+	// APIC
 
 	uint32_t calculate_apic_frequency(uint32_t resolution, ir::apic_timer_divisor_t apic_divisor)
 	{
@@ -66,37 +89,22 @@ namespace clock
 				break; 
 		}
 
-		// Prepare the APIC timer and interrupts
+		// Prepare the APIC timer
 		ir::apic_set_timer(apic_divisor, ir::apic_timer_mode_t::one_shot, 0xffffffff);
-		ir::apic_ioapic_mask_interrupt(0x20, false);
-		ir::set_interrupt_handler(0x20, &clock_pit_tick);
-
-		// Arm the PIT at 100hz
-		int pit_divisor = 11931;
-		outb(0x43, 0x36);
-		outb(0x40, pit_divisor & 0xff);
-		outb(0x40, pit_divisor >> 8);
-
-		// Arm the APIC timer
 		ir::apic_arm_timer(0xffffffff);
 
 		// Wait...
-		uint32_t target = _clock_pit_ticks + 1;
-		while(_clock_pit_ticks < target)
-		{}
+		await_pit_ticks(1);
 
-		// Unarm the APIC timer and disable interrupts
+		// Unarm the APIC
 		ir::apic_unarm_timer();
-		ir::set_interrupt_handler(0x20, nullptr);
-		ir::apic_ioapic_mask_interrupt(0x20, true);
 
 		// Calculate frequency and counter
-		uint32_t count;
-		uint32_t initial;
+		uint32_t count, initial;
 		ir::apic_get_timer(nullptr, nullptr, &initial, &count);
 
 		uint32_t frequency = ((initial - count) + 1) * divisor * 100;
-		uint32_t counter = frequency / resolution / divisor;
+		uint32_t counter   = frequency / resolution / divisor;
 
 		return counter;
 	}
@@ -107,14 +115,16 @@ namespace clock
 
 		for(int i = 0; i < 10; i++)
 			accumulator += calculate_apic_frequency(resolution, apic_divisor);
-		
+
 		return accumulator / 10;
 	}
 
-
 	kern_return_t init()
 	{
+		init_pit();
+
 		default_time_counter = calculate_apic_frequency_average(default_time_resolution, default_time_divisor);
+
 		return KERN_SUCCESS;
 	}
 }

@@ -29,7 +29,8 @@ namespace clock
 	extern uint32_t default_time_counter;
 	extern uint32_t default_time_resolution;
 
-	uint32_t calculate_apic_frequency(uint32_t resolution, ir::apic_timer_divisor_t apic_divisor);
+	void await_pit_ticks(uint32_t ticks);
+	
 	uint32_t calculate_apic_frequency_average(uint32_t resolution, ir::apic_timer_divisor_t apic_divisor);
 
 	kern_return_t init();
