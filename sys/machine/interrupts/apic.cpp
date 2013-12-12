@@ -196,13 +196,13 @@ namespace ir
 
 	void apic_write(uint32_t reg, uint32_t value)
 	{
-		uint32_t *base = reinterpret_cast<uint32_t *>(_apic_base + reg);
+		volatile uint32_t *base = reinterpret_cast<volatile uint32_t *>(_apic_base + reg);
 		*base = value;
 	}
 
 	uint32_t apic_read(uint32_t reg)
 	{
-		uint32_t *base = reinterpret_cast<uint32_t *>(_apic_base + reg);
+		volatile uint32_t *base = reinterpret_cast<volatile uint32_t *>(_apic_base + reg);
 		return *base;
 	}
 
