@@ -257,6 +257,20 @@ namespace ir
 		return KERN_SUCCESS;
 	}
 
+	kern_return_t apic_map_base_ap()
+	{
+		uintptr_t paddress = apic_get_base();
+		if(paddress != _apic_physical_base) // Not sure if any processor does this, but better safe than sorry, eh?
+		{
+			uint64_t value = cpu_read_msr(0x1b) & 0xfff;
+			value = _apic_physical_base | value;
+
+			cpu_write_msr(0x1b, value);
+		}
+
+		return KERN_SUCCESS;
+	}
+
 	uint32_t apic_vector(uint8_t interrupt, bool masked)
 	{
 		uint32_t vector = interrupt;
@@ -404,6 +418,14 @@ namespace ir
 
 	kern_return_t apic_init_cpu()
 	{
+		kern_return_t result;
+
+		if((result = apic_map_base_ap()) != KERN_SUCCESS)
+		{
+			kprintf("failed to map APIC");
+			return result;
+		}
+
 		// Initialize the APIC
 		apic_write(APIC_REGISTER_TPR, 0);
 		apic_write(APIC_REGISTER_SVR, (1 << 8) | 0x32);
