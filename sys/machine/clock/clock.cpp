@@ -38,7 +38,11 @@ namespace clock
 
 	void await_pit_ticks(uint32_t ticks)
 	{
+		constexpr int pit_divisor = 11931;
+
 		outb(0x43, 0x36);
+		outb(0x40, pit_divisor & 0xff);
+		outb(0x40, pit_divisor >> 8);
 
 		uint32_t target = _clock_pit_ticks + ticks;
 
@@ -50,10 +54,6 @@ namespace clock
 	{
 		ir::apic_ioapic_mask_interrupt(0x20, false);
 		ir::set_interrupt_handler(0x20, &pit_tick);
-
-		int pit_divisor = 11931;
-		outb(0x40, pit_divisor & 0xff);
-		outb(0x40, pit_divisor >> 8);
 	}	
 
 	// APIC
