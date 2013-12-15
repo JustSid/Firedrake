@@ -145,24 +145,18 @@ namespace sd
 	uint32_t scheduler_t::schedule_on_cpu(uint32_t esp, cpu_t *cpu)
 	{
 		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
-		if(__expect_false(!proxy->active))
+
+		if(__expect_false(!proxy->active) || __expect_false(!spinlock_try_lock(&proxy->lock)))
 			return esp;
 
-		if(__expect_false(!proxy->first_run))
-			proxy->active_thread->_esp = esp;
-		
-		spinlock_lock(&proxy->lock);
 		thread_t *thread = proxy->active_thread;
-
 		thread->lock();
-		thread->_quantum --;
 
-		if(thread->_quantum <= 0 || !thread->is_schedulable(cpu))
+		if(__expect_true(!proxy->first_run))
+			thread->_esp = esp;
+
+		if((thread->_quantum --) <= 0 || !thread->is_schedulable(cpu))
 		{
-			// Take the thread off this CPU
-			proxy->active_thread = nullptr;
-			thread->_running_cpu = nullptr;
-
 			// Find a new thread/task pair
 			thread_t *original = thread;
 			cpp::queue<thread_t>::entry *entry = &thread->_scheduler_entry;
@@ -197,18 +191,25 @@ namespace sd
 				thread->lock();
 			}
 
-			// Move the thread onto this CPU
+			// Move the new thread onto this CPU
 			proxy->active_thread = thread;
-			thread->_running_cpu = cpu;
-			thread->_quantum     = 5;
-
+			thread->_running_cpu  = cpu;
+			
+			// TODO: Calculate a better quantum for the thread
+			thread->_quantum = 5;
 			thread->unlock();
+
+			// Mark the old thread as no longer running on this CPU
+			original->lock();
+			original->_running_cpu = nullptr;
+			original->unlock();
 		}
 		else
 		{
 			thread->unlock();
 		}
 
+		proxy->first_run = false;
 		spinlock_unlock(&proxy->lock);
 
 		task_t *task = thread->get_task();
@@ -217,17 +218,19 @@ namespace sd
 		data->page_directory = task->get_directory()->get_physical_directory();
 		data->tss.esp0       = thread->_esp + sizeof(cpu_state_t);
 
-		proxy->first_run = false;
 		return thread->_esp;
 	}
 
 	void scheduler_t::activate_cpu(cpu_t *cpu)
 	{
 		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
-		assert(proxy->active == false);
+		assert(proxy && proxy->active == false);
 
 		proxy->active    = true;
 		proxy->first_run = true;
+
+		proxy->active_thread = proxy->idle_thread;
+		proxy->active_thread->_quantum = 1;
 	}
 
 
@@ -248,7 +251,8 @@ namespace sd
 
 	kern_return_t init()
 	{
-		scheduler_t::get_shared_instance()->initialize();
+		scheduler_t *scheduler = scheduler_t::get_shared_instance();
+		scheduler->initialize();
 
 		ir::set_interrupt_handler(0x35, &timer_interrupt_stub);
 		ir::set_interrupt_handler(0x3a, &activate_cpu);
