@@ -21,40 +21,32 @@
 TEXT()
 
 ENTRY(spinlock_lock)
-	pushl %edi
-	movl 0x8(%esp), %edi
-	movb $0x1, %cl
+	movl 0x4(%esp), %ecx
 
-spinlock_try_obtain:
-	rep
-	nop
-	xorb %al, %al
-	lock cmpxchgb %cl, (%edi)
-	jne spinlock_try_obtain
+1:
+	xorl %eax, %eax
+	lock cmpxchgl %ecx, (%ecx)
+	jne 1b
 
-	popl %edi
+	movl $0x1, %eax
 	ret
 
 
 ENTRY(spinlock_try_lock)
-	pushl %edi
-	movl 0x8(%esp), %edi
-	movb $0x1, %cl
-	xorb %al, %al
-	lock cmpxchgb %cl, (%edi)
-	jne spinlock_failed_obtain
-	movl $0x1, %eax
-	popl %edi
-	ret
+	movl 0x4(%esp), %ecx
 
-spinlock_failed_obtain:
 	xorl %eax, %eax
-	popl %edi
+	lock cmpxchgl %ecx, (%ecx)
+	jne 1f
+
+	movl $0x1, %eax
+	ret
+1:
+	xorl %eax, %eax
 	ret
 
 
 ENTRY(spinlock_unlock)
 	movl 0x4(%esp), %eax
-	movb $0x0, (%eax)
-	lock orl $0, (%esp)
+	movl $0, (%eax)
 	ret

@@ -22,7 +22,7 @@
 #ifndef _SPINLOCK_H_
 #define _SPINLOCK_H_
 
-typedef uint8_t spinlock_t;
+typedef int32_t spinlock_t;
 
 #define SPINLOCK_INIT 0
 #define SPINLOCK_INIT_LOCKED 1

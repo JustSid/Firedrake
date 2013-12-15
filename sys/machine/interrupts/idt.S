@@ -133,11 +133,11 @@ ENTRY(idt_entry_handler)
 
 	// Load the kernels page directory if it isn't active yet
 	cmpl %eax, %ecx
-	jz idt_entry_handler_call_handler
+	jz 1f
 
 	movl %ecx, %cr3
 
-idt_entry_handler_call_handler:
+1:
 	// Call the high level interrupt handler
 	pushl %esp
 	call ir_handle_interrupt
@@ -158,11 +158,11 @@ idt_entry_handler_call_handler:
 	// Load the new page directory if it is NOT the kernels page directory
 	// This potentially saves trashing the TLB a few times
 	cmpl (_kernel_page_directory), %ecx
-	jz idt_entry_handler_outro
+	jz 1f
 
 	movl %ecx, %cr3
 
-idt_entry_handler_outro:
+1:
 	popl %gs
 	popl %fs
 	popl %es
