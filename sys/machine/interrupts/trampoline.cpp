@@ -29,9 +29,6 @@
 BEGIN_EXTERNC
 extern uintptr_t idt_begin;
 extern uintptr_t idt_end;
-
-void idt_entry_handler();
-uint32_t ir_handle_interrupt(uint32_t);
 END_EXTERNC
 
 namespace ir
@@ -69,16 +66,13 @@ namespace ir
 		trampoline_map = reinterpret_cast<trampoline_map_t *>(IR_TRAMPOLINE_BEGIN);
 
 		// Fix up the idt section
-		uintptr_t idtBegin        = reinterpret_cast<uintptr_t>(&idt_begin);
-		uintptr_t idtEnd          = reinterpret_cast<uintptr_t>(&idt_end);
-		uintptr_t idtEntryHandler = reinterpret_cast<uintptr_t>(&idt_entry_handler);
+		uintptr_t idtBegin = reinterpret_cast<uintptr_t>(&idt_begin);
+		uintptr_t idtEnd   = reinterpret_cast<uintptr_t>(&idt_end);
 
 		size_t size = static_cast<size_t>(idtEnd - idtBegin);
 		assert(size <= VM_PAGE_SIZE);
 
 		memcpy(trampoline_map->buffer, &idt_begin, idtEnd - idtBegin);
-		cme_fix_call_simple(trampoline_map->buffer + (idtEntryHandler - idtBegin), idtEnd - idtEntryHandler, reinterpret_cast<void *>(&ir_handle_interrupt));
-		
 		return trampoline_init_cpu();
 	}
 

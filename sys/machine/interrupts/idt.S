@@ -140,7 +140,8 @@ ENTRY(idt_entry_handler)
 1:
 	// Call the high level interrupt handler
 	pushl %esp
-	call ir_handle_interrupt
+	movl $ir_handle_interrupt, %eax
+	call *%eax
 	addl $4, %esp
 
 	// Load the new stack
