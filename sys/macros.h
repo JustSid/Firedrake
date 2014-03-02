@@ -31,11 +31,9 @@
 #define __expect_false(x) __builtin_expect(!!(x), 0)
 
 #ifdef __cplusplus
-	#define BEGIN_EXTERNC extern "C" {
-	#define END_EXTERNC }
+	#define EXTERNC extern "C"
 #else
-	#define BEGIN_EXTERNC
-	#define END_EXTERNC
+	#define EXTERNC
 #endif /* __cplusplus */
 
 #endif /* _MACROS_H_ */

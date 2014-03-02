@@ -35,9 +35,7 @@
 const char *kVersionBeast    = "Nidhogg";
 const char *kVersionAppendix = "";
 
-BEGIN_EXTERNC
-void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
-END_EXTERNC
+extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
 
 extern void cxa_init();
 extern kern_return_t pm_init(multiboot_t *info);

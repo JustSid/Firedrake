@@ -32,95 +32,95 @@
 
 #define IDT_ENTRIES 256
 
-BEGIN_EXTERNC
-void idt_exception_divbyzero(); // 0
-void idt_exception_debug(); // 1
-void idt_exception_breakpoint(); // 3
-void idt_exception_overflow(); // 4
-void idt_exception_boundrange(); // 5
-void idt_exception_opcode(); // 6
-void idt_exception_devicenotavailable(); // 7
-void idt_exception_doublefault(); // 8 error
-void idt_exception_segmentoverrun(); // 9
-void idt_exception_invalidtss(); // 10 error
-void idt_exception_segmentnotpresent(); // 11 error
-void idt_exception_stackfault(); // 12 error
-void idt_exception_protectionfault(); // 13 error
-void idt_exception_pagefault(); // 14 error
-void idt_exception_fpuerror(); // 16
-void idt_exception_alignment(); // 17 error
-void idt_exception_machinecheck(); // 18
-void idt_exception_simd(); // 19
+extern "C"
+{
+	void idt_exception_divbyzero(); // 0
+	void idt_exception_debug(); // 1
+	void idt_exception_breakpoint(); // 3
+	void idt_exception_overflow(); // 4
+	void idt_exception_boundrange(); // 5
+	void idt_exception_opcode(); // 6
+	void idt_exception_devicenotavailable(); // 7
+	void idt_exception_doublefault(); // 8 error
+	void idt_exception_segmentoverrun(); // 9
+	void idt_exception_invalidtss(); // 10 error
+	void idt_exception_segmentnotpresent(); // 11 error
+	void idt_exception_stackfault(); // 12 error
+	void idt_exception_protectionfault(); // 13 error
+	void idt_exception_pagefault(); // 14 error
+	void idt_exception_fpuerror(); // 16
+	void idt_exception_alignment(); // 17 error
+	void idt_exception_machinecheck(); // 18
+	void idt_exception_simd(); // 19
 
-// Devices
-void idt_interrupt_0x02(); // NMI
-void idt_interrupt_0x20(); // PIT
-void idt_interrupt_0x21();
-void idt_interrupt_0x22();
-void idt_interrupt_0x23();
-void idt_interrupt_0x24();
-void idt_interrupt_0x25();
-void idt_interrupt_0x26();
-void idt_interrupt_0x27();
-void idt_interrupt_0x28();
-void idt_interrupt_0x29();
-void idt_interrupt_0x2a();
-void idt_interrupt_0x2b();
-void idt_interrupt_0x2c();
-void idt_interrupt_0x2d();
-void idt_interrupt_0x2e();
-void idt_interrupt_0x2f();
+	// Devices
+	void idt_interrupt_0x02(); // NMI
+	void idt_interrupt_0x20(); // PIT
+	void idt_interrupt_0x21();
+	void idt_interrupt_0x22();
+	void idt_interrupt_0x23();
+	void idt_interrupt_0x24();
+	void idt_interrupt_0x25();
+	void idt_interrupt_0x26();
+	void idt_interrupt_0x27();
+	void idt_interrupt_0x28();
+	void idt_interrupt_0x29();
+	void idt_interrupt_0x2a();
+	void idt_interrupt_0x2b();
+	void idt_interrupt_0x2c();
+	void idt_interrupt_0x2d();
+	void idt_interrupt_0x2e();
+	void idt_interrupt_0x2f();
 
-void idt_interrupt_0x30(); // Performance counter
-void idt_interrupt_0x31(); // CMCI
-void idt_interrupt_0x32(); // Spurious
-void idt_interrupt_0x33(); // Error
-void idt_interrupt_0x34(); // Thermal
-void idt_interrupt_0x35(); // Timer
-void idt_interrupt_0x36(); // IPI
-void idt_interrupt_0x37(); // LINT0
-void idt_interrupt_0x38(); // LINT1
-void idt_interrupt_0x39(); // Panic / Stop CPU
-void idt_interrupt_0x3a(); // Startup scheduling
-void idt_interrupt_0x3b();
-void idt_interrupt_0x3c();
-void idt_interrupt_0x3d();
-void idt_interrupt_0x3e();
-void idt_interrupt_0x3f();
+	void idt_interrupt_0x30(); // Performance counter
+	void idt_interrupt_0x31(); // CMCI
+	void idt_interrupt_0x32(); // Spurious
+	void idt_interrupt_0x33(); // Error
+	void idt_interrupt_0x34(); // Thermal
+	void idt_interrupt_0x35(); // Timer
+	void idt_interrupt_0x36(); // IPI
+	void idt_interrupt_0x37(); // LINT0
+	void idt_interrupt_0x38(); // LINT1
+	void idt_interrupt_0x39(); // Panic / Stop CPU
+	void idt_interrupt_0x3a(); // Startup scheduling
+	void idt_interrupt_0x3b();
+	void idt_interrupt_0x3c();
+	void idt_interrupt_0x3d();
+	void idt_interrupt_0x3e();
+	void idt_interrupt_0x3f();
 
-// General purpose interrupts
+	// General purpose interrupts
 #define idt_interrupt_set(n) \
-	void idt_interrupt_## n ## 0(); \
-	void idt_interrupt_## n ## 1(); \
-	void idt_interrupt_## n ## 2(); \
-	void idt_interrupt_## n ## 3(); \
-	void idt_interrupt_## n ## 4(); \
-	void idt_interrupt_## n ## 5(); \
-	void idt_interrupt_## n ## 6(); \
-	void idt_interrupt_## n ## 7(); \
-	void idt_interrupt_## n ## 8(); \
-	void idt_interrupt_## n ## 9(); \
-	void idt_interrupt_## n ## a(); \
-	void idt_interrupt_## n ## b(); \
-	void idt_interrupt_## n ## c(); \
-	void idt_interrupt_## n ## d(); \
-	void idt_interrupt_## n ## e(); \
-	void idt_interrupt_## n ## f()
+		void idt_interrupt_## n ## 0(); \
+		void idt_interrupt_## n ## 1(); \
+		void idt_interrupt_## n ## 2(); \
+		void idt_interrupt_## n ## 3(); \
+		void idt_interrupt_## n ## 4(); \
+		void idt_interrupt_## n ## 5(); \
+		void idt_interrupt_## n ## 6(); \
+		void idt_interrupt_## n ## 7(); \
+		void idt_interrupt_## n ## 8(); \
+		void idt_interrupt_## n ## 9(); \
+		void idt_interrupt_## n ## a(); \
+		void idt_interrupt_## n ## b(); \
+		void idt_interrupt_## n ## c(); \
+		void idt_interrupt_## n ## d(); \
+		void idt_interrupt_## n ## e(); \
+		void idt_interrupt_## n ## f()
 
-idt_interrupt_set(0x4);
-idt_interrupt_set(0x5);
-idt_interrupt_set(0x6);
-idt_interrupt_set(0x7);
-idt_interrupt_set(0x8);
-idt_interrupt_set(0x9);
-idt_interrupt_set(0xa);
-idt_interrupt_set(0xb);
-idt_interrupt_set(0xc);
-idt_interrupt_set(0xd);
-idt_interrupt_set(0xe);
-idt_interrupt_set(0xf);
-
-END_EXTERNC
+	idt_interrupt_set(0x4);
+	idt_interrupt_set(0x5);
+	idt_interrupt_set(0x6);
+	idt_interrupt_set(0x7);
+	idt_interrupt_set(0x8);
+	idt_interrupt_set(0x9);
+	idt_interrupt_set(0xa);
+	idt_interrupt_set(0xb);
+	idt_interrupt_set(0xc);
+	idt_interrupt_set(0xd);
+	idt_interrupt_set(0xe);
+	idt_interrupt_set(0xf);
+} /* extern "C" */
 
 namespace ir
 {

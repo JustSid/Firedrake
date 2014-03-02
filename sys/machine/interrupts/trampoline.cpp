@@ -26,10 +26,8 @@
 #include "trampoline.h"
 #include "interrupts.h"
 
-BEGIN_EXTERNC
-extern uintptr_t idt_begin;
-extern uintptr_t idt_end;
-END_EXTERNC
+extern "C" uintptr_t idt_begin;
+extern "C" uintptr_t idt_end;
 
 namespace ir
 {

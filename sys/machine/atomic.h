@@ -23,10 +23,8 @@
 #include <libc/stdint.h>
 #include <libc/stdbool.h>
 
-BEGIN_EXTERNC
-
-bool atomic_compare_swap(int32_t oldValue, int32_t newValue, int32_t *address);
-int32_t atomic_add(int32_t amount, int32_t *address);
+EXTERNC bool atomic_compare_swap(int32_t oldValue, int32_t newValue, int32_t *address);
+EXTERNC int32_t atomic_add(int32_t amount, int32_t *address);
 
 static inline int32_t atomic_increment(int32_t *address)
 {
@@ -73,7 +71,5 @@ static inline void memory_barrier()
 	// Basically: The lock prefix is faster and acts as a memory barrier just as well as mfence
 	__asm__ volatile("lock orl $0, (%esp)");
 }
-
-END_EXTERNC
 
 #endif /* _ATOMIC_H_ */

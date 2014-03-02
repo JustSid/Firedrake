@@ -26,10 +26,6 @@
 
 #include <prefix.h>
 
-BEGIN_EXTERNC
-
-int atoi(const char *string);
-
-END_EXTERNC
+EXTERNC int atoi(const char *string);
 
 #endif /* _STDLIB_H_ */
