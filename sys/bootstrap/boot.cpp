@@ -24,6 +24,7 @@
 #include <kern/panic.h>
 #include <kern/kern_return.h>
 #include <libc/string.h>
+#include <libcpp/type_traits.h>
 
 #include <machine/cpu.h>
 #include <machine/memory/memory.h>
@@ -38,37 +39,23 @@ const char *kVersionAppendix = "";
 extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
 
 extern void cxa_init();
-extern kern_return_t pm_init(multiboot_t *info);
 
-#define sys_init0(name, function) \
-	do { \
-		kprintf("Initializing %s... { ", name); \
-		kern_return_t result; \
-		if((result = function()) != KERN_SUCCESS) \
-		{ \
-			kprintf(" } failed\n"); \
-			panic("Failed to initialize %s", name); \
-		} \
-		else \
-		{ \
-			kprintf(" } ok\n"); \
-		} \
-	} while(0)
+template<class F, class ...Args>
+void sys_init(const char *name, F &&f, Args &&... args)
+{
+	kprintf("Initializing %s... { ", name);
 
-#define sys_initN(name, function, ...) \
-	do { \
-		kprintf("Initializing %s... { ", name); \
-		kern_return_t result; \
-		if((result = function(__VA_ARGS__)) != KERN_SUCCESS) \
-		{ \
-			kprintf(" } failed\n"); \
-			panic("Failed to initialize %s", name); \
-		} \
-		else \
-		{ \
-			kprintf(" } ok\n"); \
-		} \
-	} while(0)
+	kern_return_t result;
+	if((result = f(std::forward<Args>(args)...)) != KERN_SUCCESS)
+	{
+		kprintf("} failed\n");
+		panic("Failed to initialize %s", name); 
+	}
+	else
+	{
+		kprintf(" } ok\n");
+	}
+}
 
 void sys_boot(multiboot_t *info)
 {
@@ -80,14 +67,14 @@ void sys_boot(multiboot_t *info)
 	kprintf("Firedrake v%i.%i.%i:%i (%s)\nHere be dragons\n\n", kVersionMajor, kVersionMinor, kVersionPatch, VersionCurrent(), kVersionBeast);
 
 	// Run the low level initialization process
-	sys_init0("cpu", cpu_init);
-	sys_initN("physical memory", pm::init, info);
-	sys_initN("virtual memory", vm::init, info);
-	sys_init0("heap", mm::heap_init);
-	sys_init0("interrupts", ir::init);
-	sys_init0("clock", clock::init);
-	sys_init0("smp", smp_init);
-	sys_init0("scheduler", sd::init);
+	sys_init("cpu", cpu_init);
+	sys_init("physical memory", pm::init, info);
+	sys_init("virtual memory", vm::init, info);
+	sys_init("heap", mm::heap_init);
+	sys_init("interrupts", ir::init);
+	sys_init("clock", clock::init);
+	sys_init("smp", smp_init);
+	sys_init("scheduler", sd::init);
 
 	kprintf("\n\n");
 
