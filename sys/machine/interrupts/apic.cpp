@@ -106,6 +106,12 @@ namespace ir
 
 	kern_return_t apic_add_ioapic(ioapic_t *ioapic)
 	{
+		for(size_t i = 0; i < _apic_ioapic_count; i ++)
+		{
+			if(_apic_ioapic[i].id == ioapic->id)
+				return KERN_SUCCESS;
+		}
+
 		if(_apic_ioapic_count >= APIC_MAX_IOAPICS)
 			return KERN_NO_MEMORY;
 
