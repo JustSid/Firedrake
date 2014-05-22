@@ -106,8 +106,12 @@ union uu {
 
 typedef unsigned int	qshift_t;
 
-EXTERNC u_quad_t __udivdi3(u_quad_t a, u_quad_t b);
-EXTERNC u_quad_t __umoddi3(u_quad_t a, u_quad_t b);
-EXTERNC u_quad_t __qdivrem(u_quad_t uq, u_quad_t vq, u_quad_t *arq);
+__BEGIN_DECLS
+
+u_quad_t __udivdi3(u_quad_t a, u_quad_t b);
+u_quad_t __umoddi3(u_quad_t a, u_quad_t b);
+u_quad_t __qdivrem(u_quad_t uq, u_quad_t vq, u_quad_t *arq);
+
+__END_DECLS
 
 #endif /* !_LIBKERN_QUAD_H_ */

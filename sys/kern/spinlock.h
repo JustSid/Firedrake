@@ -27,8 +27,12 @@ typedef int32_t spinlock_t;
 #define SPINLOCK_INIT 0
 #define SPINLOCK_INIT_LOCKED 1
 
-EXTERNC void spinlock_lock(spinlock_t *lock);
-EXTERNC bool spinlock_try_lock(spinlock_t *lock);
-EXTERNC void spinlock_unlock(spinlock_t *lock);
+__BEGIN_DECLS
+
+void spinlock_lock(spinlock_t *lock);
+bool spinlock_try_lock(spinlock_t *lock);
+void spinlock_unlock(spinlock_t *lock);
+
+__END_DECLS
 
 #endif /* _SPINLOCK_H_ */

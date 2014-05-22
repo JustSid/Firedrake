@@ -23,10 +23,14 @@
 #include "stddef.h"
 #include "stdarg.h"
 
-EXTERNC int vsnprintf(char *buffer, size_t size, const char *format, va_list arg);
-EXTERNC int vsprintf(char *buffer, const char *format, va_list arg);
+__BEGIN_DECLS
 
-EXTERNC int snprintf(char *dst, size_t size, const char *format, ...);
-EXTERNC int sprintf(char *dst, const char *format, ...);
+int vsnprintf(char *buffer, size_t size, const char *format, va_list arg);
+int vsprintf(char *buffer, const char *format, va_list arg);
+
+int snprintf(char *dst, size_t size, const char *format, ...);
+int sprintf(char *dst, const char *format, ...);
+
+__END_DECLS
 
 #endif /* _STDIO_H_ */

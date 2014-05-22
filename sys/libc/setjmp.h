@@ -23,7 +23,11 @@
 
 typedef	int jmp_buf[6];
 
-EXTERNC int setjmp(jmp_buf jmp_buf);
-EXTERNC void longjmp(jmp_buf jmp_buf, int value);
+__BEGIN_DECLS
+
+int setjmp(jmp_buf jmp_buf);
+void longjmp(jmp_buf jmp_buf, int value);
+
+__END_DECLS
 
 #endif /* _SETJMP_H_ */

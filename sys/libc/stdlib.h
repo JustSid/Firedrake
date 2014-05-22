@@ -16,16 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-/*
- * Overview:
- * Implements only a subset of the libc stdlib.h, namely the numeric conversion functions
- * Everything else has no place in the kernel.
- */
 #ifndef _STDLIB_H_
 #define _STDLIB_H_
 
 #include <prefix.h>
 
-EXTERNC int atoi(const char *string);
+__BEGIN_DECLS
+
+int atoi(const char *string);
+
+__END_DECLS
 
 #endif /* _STDLIB_H_ */

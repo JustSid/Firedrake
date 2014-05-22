@@ -30,10 +30,12 @@
 #define __expect_true(x)  __builtin_expect(!!(x), 1)
 #define __expect_false(x) __builtin_expect(!!(x), 0)
 
-#ifdef __cplusplus
-	#define EXTERNC extern "C"
+#ifdef   __cplusplus
+	#define __BEGIN_DECLS  extern "C" {                                            
+	#define __END_DECLS }
 #else
-	#define EXTERNC
-#endif /* __cplusplus */
+	#define __BEGIN_DECLS
+	#define __END_DECLS
+#endif
 
 #endif /* _MACROS_H_ */

@@ -25,17 +25,22 @@
 #define isdigit(c) (c >= '0' && c <= '9')
 #define isspace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r')
 
-EXTERNC void *memset(void *dst, int c, size_t size);
-EXTERNC void *memcpy(void *dst, const void *src, size_t size);
+__BEGIN_DECLS
 
-EXTERNC char *strcpy(char *dst, const char *src);
-EXTERNC size_t strlcpy(char *dst, const char *src, size_t size); // Similar to strncpy, but appends the NULL byte always!
-EXTERNC size_t strlen(const char *string);
+void *memset(void *dst, int c, size_t size);
+void *memcpy(void *dst, const void *src, size_t size);
 
-EXTERNC int strcmp(const char *str1, const char *str2);
-EXTERNC int strncmp(const char *str1, const char *str2, size_t size);
+char *strcpy(char *dst, const char *src);
+size_t strlcpy(char *dst, const char *src, size_t size); // Similar to strncpy, but appends the NULL byte always!
+size_t strlen(const char *string);
 
-EXTERNC char *strstr(char *str1, const char *str2);
-EXTERNC char *strpbrk(char *str1, const char *str2);
+int strcmp(const char *str1, const char *str2);
+int strncmp(const char *str1, const char *str2, size_t size);
+
+char *strstr(char *str1, const char *str2);
+char *strpbrk(char *str1, const char *str2);
+char *strchr(char *str, int character);
+
+__END_DECLS
 
 #endif /* _STRING_H_ */
