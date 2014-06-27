@@ -40,19 +40,19 @@ namespace sd
 		void initialize();
 
 		task_t *get_active_task();
-		task_t *get_active_task(cpu_t *cpu);
+		task_t *get_active_task(Sys::CPU *cpu);
 		thread_t *get_active_thread();
-		thread_t *get_active_thread(cpu_t *cpu);
+		thread_t *get_active_thread(Sys::CPU *cpu);
 
-		uint32_t reschedule_on_cpu(uint32_t esp, cpu_t *cpu);
-		uint32_t schedule_on_cpu(uint32_t esp, cpu_t *cpu);
+		uint32_t reschedule_on_cpu(uint32_t esp, Sys::CPU *cpu);
+		uint32_t schedule_on_cpu(uint32_t esp, Sys::CPU *cpu);
 
-		void activate_cpu(cpu_t *cpu);
+		void activate_cpu(Sys::CPU *cpu);
 
 	private:
 		struct cpu_proxy_t
 		{
-			cpu_proxy_t(cpu_t *tcpu) :
+			cpu_proxy_t(Sys::CPU *tcpu) :
 				cpu(tcpu),
 				idle_thread(nullptr),
 				active_thread(nullptr),
@@ -60,7 +60,7 @@ namespace sd
 				first_run(true)
 			{}
 
-			cpu_t *cpu;
+			Sys::CPU *cpu;
 			thread_t *idle_thread;
 			thread_t *active_thread;
 			spinlock_t lock;
@@ -72,7 +72,7 @@ namespace sd
 		void create_idle_task();
 		void add_thread(thread_t *thread);
 
-		cpu_proxy_t *_proxy_cpus[CPU_MAX_CPUS];
+		cpu_proxy_t *_proxy_cpus[CONFIG_MAX_CPUS];
 		size_t _proxy_cpu_count;
 
 		task_t *_kernel_task;

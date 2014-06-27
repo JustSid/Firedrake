@@ -121,8 +121,8 @@ namespace ir
 	bool apic_is_interrupt_pending();
 	bool apic_is_interrupting(uint8_t vector);
 
-	void apic_send_ipi(uint8_t vector, cpu_t *cpu);
-	void apic_send_ipi(uint8_t vector, cpu_t *cpu, uint32_t flags);
+	void apic_send_ipi(uint8_t vector, Sys::CPU *cpu);
+	void apic_send_ipi(uint8_t vector, Sys::CPU *cpu, uint32_t flags);
 	void apic_broadcast_ipi(uint8_t vector, bool self);
 	void apic_broadcast_ipi(uint8_t vector, bool self, uint32_t flags);
 

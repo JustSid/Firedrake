@@ -119,10 +119,10 @@ namespace sd
 		*(-- stack) = 0x0;
 		*(-- stack) = 0x0;
 
-		_esp = ring3 ? reinterpret_cast<uint32_t>(_kernel_stack_virtual + size) - sizeof(cpu_state_t) : reinterpret_cast<uint32_t>(stack);
+		_esp = ring3 ? reinterpret_cast<uint32_t>(_kernel_stack_virtual + size) - sizeof(Sys::CPUState) : reinterpret_cast<uint32_t>(stack);
 	}
 
-	bool thread_t::is_schedulable(cpu_t *cpu) const
+	bool thread_t::is_schedulable(Sys::CPU *cpu) const
 	{
 		if(_running_cpu || (_pinned_cpu && _pinned_cpu != cpu))
 			return false;

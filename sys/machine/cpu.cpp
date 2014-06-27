@@ -19,147 +19,253 @@
 #include <machine/interrupts/apic.h>
 #include <machine/memory/memory.h>
 #include <kern/kprintf.h>
+#include <kern/panic.h>
 #include <libc/string.h>
 #include "cpu.h"
 #include "acpi.h"
 #include "gdt.h"
 
-static cpu_info_t _cpu_info;
-
-static cpu_t _cpu_cpu[CPU_MAX_CPUS];
-static size_t _cpu_cpu_count = 0;
-static cpu_t *_cpu_bootstrap_cpu = nullptr;
-
-kern_return_t cpu_add_cpu(cpu_t *cpu)
+namespace Sys
 {
-	if(_cpu_cpu_count >= CPU_MAX_CPUS)
-		return KERN_FAILURE;
+	// Small tiny race condition...
+	// CPUs are initialized _before_ the memory is, so we don't really have memory for this...
+	// Get some scratch memory and use that instead
+	char _cpuMemory[CONFIG_MAX_CPUS * sizeof(CPU)];
 
-	if((cpu->flags & CPU_FLAG_BOOTSTRAP) && _cpu_bootstrap_cpu)
+	static CPU *_cpu = nullptr;
+	static CPU *_bootstrapCPU;
+	static size_t _cpuCount = 0;
+
+	static bool _hasCPUFastPath = false;
+
+	// -----
+	// CPU
+	// -----
+
+	CPU::CPU()
+	{}
+
+	CPU::CPU(uint8_t apicID, Flags flags) :
+		_id(0xff),
+		_apicID(apicID),
+		_flags(flags),
+		_lastState(nullptr),
+		_registered(false),
+		_trampoline(nullptr)
+	{}
+
+	CPU::CPU(const CPU &other) :
+		_id(other._id),
+		_apicID(other._apicID),
+		_flags(other._flags),
+		_lastState(other._lastState),
+		_registered(false),
+		_trampoline(other._trampoline)
+	{}
+
+	CPU &CPU::operator =(const CPU &other)
 	{
-		kprintf("second bootstrap CPU");
-		return KERN_FAILURE;
+		_id         = other._id;
+		_apicID     = other._apicID;
+		_flags      = other._flags;
+		_trampoline = other._trampoline;
+		_lastState  = other._lastState;
+		_registered = false;
+
+		return *this;
 	}
 
-	cpu_t *dest = &_cpu_cpu[_cpu_cpu_count];
+	void CPU::Register()
+	{
+		if(_registered)
+			panic("Trying to re-register an existing CPU!");
 
-	memcpy(dest, cpu, sizeof(cpu_t));
-	dest->id = _cpu_cpu_count;
+		if(_cpuCount >= CONFIG_MAX_CPUS)
+		{
+			kprintf("Trying to register more CPUs than configured (increase CONFIG_MAX_CPUS)");
+			return;
+		}
 
-	if(dest->flags & CPU_FLAG_BOOTSTRAP)
-		_cpu_bootstrap_cpu = dest;
+		if((_flags & Flags::Bootstrap) && _bootstrapCPU)
+			panic("Tried to register more than one bootstrap CPU!");
 
-	_cpu_cpu_count ++;
-	return KERN_SUCCESS;
-}
 
-cpu_t *cpu_get_cpu_with_id(uint32_t id)
-{
-	if(id >= _cpu_cpu_count)
+		_registered = true;
+		_id = _cpuCount ++;
+
+		_cpu[_id] = *this;
+
+		if(_flags & Flags::Bootstrap)
+			_bootstrapCPU = &_cpu[_id];
+	}
+
+	void CPU::Bootstrap()
+	{
+		_info = CPUInfo();
+	}
+
+
+	void CPU::SetState(CPUState *state)
+	{
+		_lastState = state;
+	}
+	void CPU::SetTrampoline(ir::trampoline_cpu_data_t *trampoline)
+	{
+		_trampoline = trampoline;
+	}
+	void CPU::SetFlags(Flags flags)
+	{
+		_flags = flags;
+	}
+
+
+	CPU *CPU::GetCPUWithID(uint32_t id)
+	{
+		if(id >= _cpuCount)
+			return nullptr;
+
+		return &_cpu[id];
+	}
+	CPU *CPU::GetCPUWithApicID(uint32_t apicID)
+	{
+		for(size_t i = 0; i < _cpuCount; i ++)
+		{
+			if(_cpu[i]._apicID == apicID)
+				return &_cpu[i];
+		}
+
 		return nullptr;
-
-	return &_cpu_cpu[id];
-}
-
-cpu_t *cpu_get_cpu_with_apic(uint8_t apic)
-{
-	for(size_t i = 0; i < _cpu_cpu_count; i ++)
+	}
+	CPU *CPU::GetCurrentCPU()
 	{
-		if(_cpu_cpu[i].apic_id == apic)
-			return &_cpu_cpu[i];
+		if(!_hasCPUFastPath)
+		{
+			uint32_t id = ir::apic_read(APIC_REGISTER_ID);
+			uint8_t apic = (id >> 24) & 0xff;
+
+			return GetCPUWithApicID(apic);
+		}
+
+		uint16_t id;
+		__asm__ volatile("movw %%fs, %0" : "=a" (id));
+
+		return &_cpu[id];
 	}
 
-	return nullptr;
-}
-
-cpu_t *cpu_get_current_cpu()
-{
-	uint8_t id = cpu_get_cpu_number();
-	return &_cpu_cpu[id];
-}
-
-cpu_t *cpu_get_current_cpu_slow()
-{
-	uint32_t id = ir::apic_read(APIC_REGISTER_ID);
-	uint8_t apic = (id >> 24) & 0xff;
-
-	return cpu_get_cpu_with_apic(apic);
-}
-
-uint8_t cpu_get_cpu_number()
-{
-	uint16_t fs;
-	__asm__ volatile("movw %%fs, %0" : "=a" (fs));
-
-	return static_cast<uint8_t>(fs);
-}
-
-uint32_t cpu_get_cpu_count()
-{
-	return _cpu_cpu_count;
-}
-
-
-void cpuid(cpuid_registers_t &registers)
-{
-	int *regs = reinterpret_cast<int *>(&registers);
-	int code  = static_cast<int>(registers.eax);
-
-	__asm__ volatile("cpuid" : "=a" (regs[0]), "=b" (regs[1]), "=c" (regs[2]), "=d" (regs[3]) : "a" (code), "c" (0));
-}
-
-
-cpu_info_t *cpu_get_info()
-{
-	return &_cpu_info;
-}
-
-void cpu_read_info()
-{
-	cpuid_registers_t registers = { 1, 0, 0, 0 };
-	cpuid(registers);
-
-	_cpu_info.stepping = (registers.eax >> 0) & 0xf;
-	_cpu_info.model    = (registers.eax >> 4) & 0xf;
-	_cpu_info.family   = (registers.eax >> 8) & 0xf;
-	_cpu_info.type     = (registers.eax >> 12) & 0x3;
-
-	_cpu_info.extendedModel  = (registers.eax >> 16) & 0xf;
-	_cpu_info.extendedFamily = (registers.eax >> 20) & 0xf;
-
-	_cpu_info.features = ((uint64_t)registers.edx << 32) | registers.ecx; 
-}
-
-kern_return_t cpu_init()
-{
-	cpu_read_info();
-	memset(_cpu_cpu, 0, CPU_MAX_CPUS * sizeof(cpu_t));
-
-	for(size_t i = 0; i < CPU_MAX_CPUS; i ++)
+	uint32_t CPU::GetCPUID()
 	{
-		cpu_t *cpu = &_cpu_cpu[i];
+		if(!_hasCPUFastPath)
+		{
+			uint32_t id = ir::apic_read(APIC_REGISTER_ID);
+			uint8_t apic = (id >> 24) & 0xff;
 
-		cpu->apic_id = 0xff;
-		cpu->id      = 0xff;
+			CPU *cpu = GetCPUWithApicID(apic);
+			if(!cpu)
+				panic("Running on unregistered and unknown CPU!");
+
+			return cpu->_id;
+		}
+
+		uint16_t id;
+		__asm__ volatile("movw %%fs, %0" : "=a" (id));
+
+		return id;
+	}
+	size_t CPU::GetCPUCount()
+	{
+		return _cpuCount;
 	}
 
-	// We need need an APIC and MSRs to run Firedrake
-	if(!(_cpu_info.features & CPUID_FLAG_APIC) && !(_cpu_info.features & CPUID_FLAG_MSR))
+	// -----
+	// CPUID
+	// -----
+
+	CPUID::CPUID(uint32_t id)
 	{
-		kprintf("unsupported CPU (no MSR or APIC present)");
-		return KERN_RESOURCES_MISSING;
+		int code  = static_cast<int>(id);
+		__asm__ volatile("cpuid" : "=a" (_eax), "=b" (_ebx), "=c" (_ecx), "=d" (_edx) : "a" (code), "c" (0));
 	}
 
-	kern_return_t result;
-	if((result = acpi_init()) != KERN_SUCCESS)
-		return result;
+	// -----
+	// CPUInfo
+	// -----
 
-	if(!_cpu_bootstrap_cpu)
+	CPUInfo::CPUInfo()
 	{
-		kprintf("no bootstrap CPU");
-		return KERN_FAILURE;
+		{
+			CPUID cpuid(0);
+
+			uint32_t ebx = cpuid.GetEBX();
+			uint32_t edx = cpuid.GetEDX();
+			uint32_t ecx = cpuid.GetECX();
+
+			char vendor[12];
+			memcpy(vendor + 0, &ebx, 4);
+			memcpy(vendor + 4, &edx, 4);
+			memcpy(vendor + 8, &ecx, 4);
+
+			if(strncmp(vendor, "GenuineIntel", 12) == 0)
+			{
+				_vendor = CPUVendor::Intel;
+			}
+			else if(strncmp(vendor, "AuthenticAMD", 12) == 0)
+			{
+				_vendor = CPUVendor::AMD;
+			}
+			else
+			{
+				_vendor = CPUVendor::Unknown;
+			}
+		}
+
+		{
+			CPUID cpuid(1);
+
+			uint32_t eax = cpuid.GetEAX();
+			uint32_t edx = cpuid.GetEDX();
+			uint32_t ecx = cpuid.GetECX();
+
+			_stepping = (eax >> 0) & 0xf;
+			_model    = (eax >> 4) & 0xf;
+			_family   = (eax >> 8) & 0xf;
+			_type     = (eax >> 12) & 0x3;
+
+			_extendedModel  = (eax >> 16) & 0xf;
+			_extendedFamily = (eax >> 20) & 0xf;
+
+			_features = (static_cast<uint64_t>(edx) << 32) | ecx;
+		}
 	}
 
-	kprintf("%i %s", _cpu_cpu_count, (_cpu_cpu_count == 1) ? "CPU" : "CPUs");
-	return KERN_SUCCESS;
+	// -----
+	// Bootstrap
+	// -----
+
+	kern_return_t CPUInit()
+	{
+		// We need need an APIC and MSRs to run Firedrake
+		CPUInfo info;
+
+		if(!(info.GetFeatures() & CPUInfo::Feature::APIC) || !(info.GetFeatures() & CPUInfo::Feature::MSR))
+		{
+			kprintf("unsupported CPU (no MSR and/or APIC present)");
+			return KERN_RESOURCES_MISSING;
+		}
+
+		// Assign the scratch memory to the CPU array
+		_cpu = reinterpret_cast<CPU *>(_cpuMemory);
+
+		kern_return_t result;
+		if((result = ACPI::Init()) != KERN_SUCCESS)
+			return result;
+
+		if(!_bootstrapCPU)
+		{
+			kprintf("no bootstrap CPU");
+			return KERN_FAILURE;
+		}
+
+		kprintf("%i %s", CPU::GetCPUCount(), (CPU::GetCPUCount() == 1) ? "CPU" : "CPUs");
+		return KERN_SUCCESS;
+	}
 }

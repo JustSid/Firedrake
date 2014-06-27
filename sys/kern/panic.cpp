@@ -32,8 +32,8 @@ static bool _panic_initialized = false;
 
 void panic_die_fancy(const char *buffer)
 {
-	cpu_t *cpu = cpu_get_current_cpu_slow();
-	cpu_state_t *state = cpu->last_state;
+	Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
+	Sys::CPUState *state = cpu->GetLastState();
 
 	vd::video_device *device = vd::get_active_device();
 	device->write_string("\n\16\24Kernel Panic!\16\27\n");
@@ -42,7 +42,7 @@ void panic_die_fancy(const char *buffer)
 	device->write_string("\"\n");
 
 	// Use kprintf for small strings for convinience
-	kprintf("Crashing CPU: \16\031%i\16\27\n", cpu->id);
+	kprintf("Crashing CPU: \16\031%i\16\27\n", cpu->GetID());
 
 	if(state)
 	{
@@ -106,15 +106,15 @@ void panic(const char *reason, ...)
 
 	va_list args;
 	va_start(args, reason);
-
-	_panic_initialized ? panic_heap(reason, args) : panic_stack(reason, args);
+	
+	/*_panic_initialized ? panic_heap(reason, args) :*/ panic_stack(reason, args);
 
 	va_end(args);
 
 	while(1)
 	{
 		cli();
-		cpu_halt();
+		Sys::CPUHalt();
 	}
 }
 

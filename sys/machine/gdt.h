@@ -38,8 +38,8 @@
 #define GDT_ENTRIES 6
 
 void gdt_set_entry(uint64_t *gdt, int16_t index, uint32_t base, uint32_t limit, int32_t flags);
-void gdt_set_tss_entry(uint64_t *gdt, int16_t index, tss_t *tss);
+void gdt_set_tss_entry(uint64_t *gdt, int16_t index, Sys::TSS *tss);
 
-void gdt_init(uint64_t *gdt, tss_t *tss);
+void gdt_init(uint64_t *gdt, Sys::TSS *tss);
 
 #endif /* _GDT_H_ */

@@ -30,7 +30,7 @@ namespace clock
 
 	// PIT
 
-	uint32_t pit_tick(uint32_t esp, __unused cpu_t *cpu)
+	uint32_t pit_tick(uint32_t esp, __unused Sys::CPU *cpu)
 	{
 		_clock_pit_ticks ++;
 		return esp;
@@ -47,13 +47,13 @@ namespace clock
 		uint32_t target = _clock_pit_ticks + ticks;
 
 		while(_clock_pit_ticks < target)
-			cpu_halt();
+			Sys::CPUHalt();
 	}
 
 	void init_pit()
 	{
-		ir::apic_ioapic_mask_interrupt(0x20, false);
 		ir::set_interrupt_handler(0x20, &pit_tick);
+		ir::apic_ioapic_mask_interrupt(0x20, false);
 	}	
 
 	// APIC

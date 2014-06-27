@@ -19,6 +19,7 @@
 #include <kern/kprintf.h>
 #include <kern/spinlock.h>
 #include <libc/string.h>
+#include <libc/assert.h>
 #include <machine/port.h>
 #include <machine/cme.h>
 #include <machine/gdt.h>
@@ -62,7 +63,7 @@ void smp_rendezvous_fail()
 	spinlock_unlock(&_smp_rendezvous_lock);
 
 	while(1)
-		cpu_halt();
+		Sys::CPUHalt();
 }
 
 void smp_rendezvous_point()
@@ -81,25 +82,25 @@ void smp_rendezvous_point()
 	if(result != KERN_SUCCESS)
 		smp_rendezvous_fail();
 	
-	cpu_t *cpu = cpu_get_current_cpu();
+	Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
 
-	if(cpu->flags & CPU_FLAG_TIMEDOUT)
+	if(cpu->GetFlags() & Sys::CPU::Flags::Timedout)
 	{
 		// Well, too late...
 		smp_rendezvous_fail();
 	}
 
-	cpu->flags |= CPU_FLAG_RUNNING;
+	cpu->SetFlags(cpu->GetFlags() | Sys::CPU::Flags::Running);
 
 	spinlock_unlock(&_smp_rendezvous_lock);
 
 	// Wait for work. The CPU will receive an IPI once the kernel is ready to start scheduling
 	// this will automatically switch stacks and stop this thread of execution
 	while(1)
-		cpu_halt();
+		Sys::CPUHalt();
 }
 
-void smp_kickoff_cpu(cpu_t *cpu)
+void smp_kickoff_cpu(Sys::CPU *cpu)
 {
 	uint32_t vector = APIC_ICR_DM_INIT | APIC_ICR_LV_ASSERT;
 	ir::apic_send_ipi(0x0f, cpu, vector);
@@ -114,11 +115,11 @@ void smp_kickoff_cpu(cpu_t *cpu)
 	for(int i = 0; i < 10; i ++)
 	{
 		clock::await_pit_ticks(1);
-		cpu_halt();
+		Sys::CPUHalt();
 
 		if(spinlock_try_lock(&_smp_rendezvous_lock))
 		{
-			if(cpu->flags & CPU_FLAG_RUNNING)
+			if(cpu->GetFlags() & Sys::CPU::Flags::Running)
 			{
 				spinlock_unlock(&_smp_rendezvous_lock);
 				break;
@@ -131,8 +132,8 @@ void smp_kickoff_cpu(cpu_t *cpu)
 	// Synchronize with the CPU to avoid race conditions
 	spinlock_lock(&_smp_rendezvous_lock);
 
-	if(!cpu->flags & CPU_FLAG_RUNNING)
-		cpu->flags |= CPU_FLAG_TIMEDOUT;
+	if(!cpu->GetFlags() & Sys::CPU::Flags::Running)
+		cpu->SetFlags(cpu->GetFlags() | Sys::CPU::Flags::Timedout);
 
 	spinlock_unlock(&_smp_rendezvous_lock);
 }
@@ -140,11 +141,11 @@ void smp_kickoff_cpu(cpu_t *cpu)
 void smp_kickoff()
 {
 	// Start up all CPUs
-	size_t count = cpu_get_cpu_count();
+	size_t count = Sys::CPU::GetCPUCount();
 	for(size_t i = 0; i < count; i ++)
 	{
-		cpu_t *cpu = cpu_get_cpu_with_id(i);
-		if(cpu->flags & CPU_FLAG_BOOTSTRAP)
+		Sys::CPU *cpu = Sys::CPU::GetCPUWithID(i);
+		if(cpu->GetFlags() & Sys::CPU::Flags::Running)
 			continue;
 
 		smp_kickoff_cpu(cpu);
@@ -204,12 +205,12 @@ kern_return_t smp_init()
 	smp_kickoff();
 
 	// Debug output
-	size_t count = cpu_get_cpu_count();
+	/*size_t count = Sys::CPU::GetCPUCount();
 	for(size_t i = 0; i < count; i ++)
 	{
-		cpu_t *cpu = cpu_get_cpu_with_id(i);
+		Sys::CPU *cpu = Sys::CPU::GetCPUWithID(i);
 		kprintf("%c", (cpu->flags & CPU_FLAG_RUNNING) ? (cpu->flags & CPU_FLAG_BOOTSTRAP) ? 'B' : 'R' : 'T');
-	}
+	}*/
 
 	return KERN_SUCCESS;
 }

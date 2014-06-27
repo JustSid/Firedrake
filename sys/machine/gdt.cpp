@@ -31,10 +31,10 @@ void gdt_set_entry(uint64_t *gdt, int16_t index, uint32_t base, uint32_t limit, 
 	gdt[index] |= ((base >> 24) & INT64_C(0xff)) << 56;
 }
 
-void gdt_set_tss_entry(uint64_t *gdt, int16_t index, tss_t *tss)
+void gdt_set_tss_entry(uint64_t *gdt, int16_t index, Sys::TSS *tss)
 {
 	uint32_t base  = reinterpret_cast<uint32_t>(tss);
-	uint32_t limit = sizeof(tss_t);
+	uint32_t limit = sizeof(Sys::TSS);
 	int32_t  flags = GDT_FLAG_TSS | GDT_FLAG_PRESENT | GDT_FLAG_RING3;
 
 	gdt[index] = limit & INT64_C(0xffff);
@@ -46,7 +46,7 @@ void gdt_set_tss_entry(uint64_t *gdt, int16_t index, tss_t *tss)
 }
 
 
-void gdt_init(uint64_t *gdt, tss_t *tss)
+void gdt_init(uint64_t *gdt, Sys::TSS *tss)
 {
 	struct 
 	{
@@ -77,8 +77,8 @@ void gdt_init(uint64_t *gdt, tss_t *tss)
 	// fs contains the CPU id (not necessarily equal to the APIC id) and gs is going to hold the thread local storage
 	// but for now is zeroed out.
 	// TODO: Should probably moved somewhere else
-	cpu_t *cpu  = cpu_get_current_cpu_slow();
-	uint16_t id = static_cast<uint16_t>(cpu->id);
+	Sys::CPU *cpu  = Sys::CPU::GetCurrentCPU();
+	uint16_t id = static_cast<uint16_t>(cpu->GetID());
 
 	__asm__ volatile("mov %%ax, %%fs" :: "a" (id));
 	__asm__ volatile("mov %%ax, %%gs" :: "a" (0x0));

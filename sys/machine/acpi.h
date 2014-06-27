@@ -24,70 +24,93 @@
 #include <libc/stdint.h>
 #include <libc/stddef.h>
 
-struct acpi_rsdp_t
+namespace ACPI
 {
-	uint64_t signature;
-	uint8_t checksum;
-	int8_t oem_id[6];
-	uint8_t revision;
-	uint32_t rsdt_address;
-} __attribute__((packed));
+	struct RSDT;
+	struct MADTEntry;
 
-struct acpi_rsdt_header_t
-{
-	int8_t signature[4];
-	uint32_t length;
-	uint8_t revision;
-	uint8_t checksum;
-	int8_t oem_id[6];
-	int8_t oem_table_id[8];
-	uint32_t oem_revision;
-	uint32_t creator_id;
-	uint32_t creator_revision;
-} __attribute__((packed));
+	struct RSDP
+	{
+		uint64_t signature;
+		uint8_t checksum;
+		int8_t oemID[6];
+		uint8_t revision;
+		uint32_t rsdtAddress;
 
-struct acpi_rsdt_t : public acpi_rsdt_header_t
-{
-	uint32_t *other_sdt;
-} __attribute__((packed));
+		RSDT *GetRSDT() const;
+	} __attribute__((packed));
 
-struct acpi_madt_t : public acpi_rsdt_header_t
-{
-	uint32_t interrupt_controller_address;
-	uint32_t flags;
-} __attribute__((packed));
+	struct RSDTHeader
+	{
+		int8_t signature[4];
+		uint32_t length;
+		uint8_t revision;
+		uint8_t checksum;
+		int8_t oemID[6];
+		int8_t oemTableID[8];
+		uint32_t oemRevision;
+		uint32_t creatorID;
+		uint32_t creatorRevision;
+	} __attribute__((packed));
 
-struct acpi_madt_entry_t
-{
-	uint8_t type;
-	uint8_t length;
-} __attribute__((packed));
+	struct RSDT : public RSDTHeader
+	{
+		uint32_t *otherSDT;
+
+		RSDTHeader *FindHeader(const char *signature) const;
+
+		template<class T>
+		T *FindEntry(const char *signature) const
+		{
+			return static_cast<T *>(FindHeader(signature));
+		}
+
+		kern_return_t ParseMADT() const;
+	} __attribute__((packed));
+
+	struct MADT : public RSDTHeader
+	{
+		uint32_t interruptControllerAddress;
+		uint32_t flags;
+
+		size_t GetEntryCount() const;
+		MADTEntry *GetFirstEntry() const;
+
+	} __attribute__((packed));
+
+	struct MADTEntry
+	{
+		uint8_t type;
+		uint8_t length;
+
+		MADTEntry *GetNext() const;
+	} __attribute__((packed));
 
 
+	struct MADTApic : public MADTEntry
+	{
+		uint8_t acpiID;
+		uint8_t apicID;
+		uint32_t flags;
+	} __attribute__((packed));
 
-struct acpi_madt_apic_t : public acpi_madt_entry_t
-{
-	uint8_t acpi_processor_id;
-	uint8_t apic_id;
-	uint32_t flags;
-} __attribute__((packed));
+	struct MADTIOApic : public MADTEntry
+	{
+		uint8_t ioapicID;
+		uint8_t reserved;
+		uint32_t ioapicAddress;
+		uint32_t interruptBase;
+	} __attribute__((packed));
 
-struct acpi_madt_ioapic_t : public acpi_madt_entry_t
-{
-	uint8_t ioapic_id;
-	uint8_t reserved;
-	uint32_t ioapic_address;
-	uint32_t interrupt_base;
-} __attribute__((packed));
+	struct MADTInterruptSource : public MADTEntry
+	{
+		uint8_t bus;
+		uint8_t source;
+		uint32_t globalSystemInterrupt;
+		uint16_t flags;
+	} __attribute__((packed));
 
-struct acpi_madt_interrupt_source_override_t : public acpi_madt_entry_t
-{
-	uint8_t bus;
-	uint8_t source;
-	uint32_t global_system_interrupt;
-	uint16_t flags;
-} __attribute__((packed));
-
-kern_return_t acpi_init();
+	kern_return_t Init();
+}
 
 #endif /* _ACPI_H_ */

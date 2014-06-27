@@ -160,8 +160,8 @@ namespace ir
 		for(size_t i = 0; i < _apic_ioapic_count; i ++)
 		{
 			ioapic_t *ioapic = &_apic_ioapic[i];
-
-			if(ioapic->interrupt_base <= irq && ioapic->maxiumum_redirection_entry >= irq)
+			
+			if(irq >= ioapic->interrupt_base && irq <= ioapic->maxiumum_redirection_entry)
 				return ioapic;
 		}
 
@@ -187,6 +187,8 @@ namespace ir
 
 		uint8_t offset = APIC_IOREDTBL0 + (irq * 2);
 		ioapic_t *ioapic = apic_ioapic_servicing_interrupt(irq);
+
+		assert(ioapic);
 
 		apic_write_ioapic(ioapic, offset + 0, data);
 		apic_write_ioapic(ioapic, offset + 1, 0);
@@ -237,7 +239,7 @@ namespace ir
 
 	uintptr_t apic_get_base()
 	{
-		uint64_t value = cpu_read_msr(0x1b);
+		uint64_t value = Sys::CPUReadMSR(0x1b);
 		uint32_t base  = static_cast<uint32_t>(value & ~0xfff);
 
 		return base;
@@ -268,10 +270,10 @@ namespace ir
 		uintptr_t paddress = apic_get_base();
 		if(paddress != _apic_physical_base) // Not sure if any processor does this, but better safe than sorry, eh?
 		{
-			uint64_t value = cpu_read_msr(0x1b) & 0xfff;
+			uint64_t value = Sys::CPUReadMSR(0x1b) & 0xfff;
 			value = _apic_physical_base | value;
 
-			cpu_write_msr(0x1b, value);
+			Sys::CPUWriteMSR(0x1b, value);
 		}
 
 		return KERN_SUCCESS;
@@ -346,19 +348,19 @@ namespace ir
 	static inline void apic_finish_pending_ipi()
 	{
 		while(apic_read(APIC_REGISTER_ICRL) & APIC_ICR_DS_PENDING)
-			cpu_pause();
+			Sys::CPUPause();
 	}
 
-	void apic_send_ipi(uint8_t vector, cpu_t *cpu)
+	void apic_send_ipi(uint8_t vector, Sys::CPU *cpu)
 	{
 		apic_send_ipi(vector, cpu, APIC_ICR_DM_FIXED);
 	}
 
-	void apic_send_ipi(uint8_t vector, cpu_t *cpu, uint32_t flags)
+	void apic_send_ipi(uint8_t vector, Sys::CPU *cpu, uint32_t flags)
 	{
 		apic_finish_pending_ipi();
-
-		apic_write(APIC_REGISTER_ICRH, cpu->apic_id << 24);
+		
+		apic_write(APIC_REGISTER_ICRH, cpu->GetApicID() << 24);
 		apic_write(APIC_REGISTER_ICRL, vector | flags);
 	}
 
@@ -432,12 +434,18 @@ namespace ir
 			return result;
 		}
 
+		if(_apic_ioapic_count == 0)
+		{
+			kprintf("No IOAPIC present");
+			return KERN_RESOURCES_MISSING;
+		}
+
 		// Initialize the APIC
 		apic_write(APIC_REGISTER_TPR, 0);
 		apic_write(APIC_REGISTER_SVR, (1 << 8) | 0x32);
 
 		apic_write(APIC_REGISTER_DFR, APIC_DFR_FLAT);
-		apic_write(APIC_REGISTER_LDR, cpu_get_cpu_number() << 24);
+		apic_write(APIC_REGISTER_LDR, Sys::CPU::GetCPUID() << 24);
 
 		apic_write(APIC_REGISTER_LVT_PMC,     apic_vector(0x30, false));
 		//apic_write(APIC_REGISTER_LVT_CMCI,    apic_vector(0x31, false));

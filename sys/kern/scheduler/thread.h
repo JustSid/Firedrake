@@ -51,7 +51,7 @@ namespace sd
 		task_t *get_task() const { return _task; }
 		tid_t get_tid() const { return _tid; }
 
-		bool is_schedulable(cpu_t *cpu) const;
+		bool is_schedulable(Sys::CPU *cpu) const;
 
 	private:
 		kern_return_t initialize();
@@ -61,8 +61,8 @@ namespace sd
 		tid_t _tid;
 		spinlock_t _lock;
 
-		cpu_t *_pinned_cpu;
-		cpu_t *_running_cpu;
+		Sys::CPU *_pinned_cpu;
+		Sys::CPU *_running_cpu;
 
 		cpp::queue<thread_t>::entry _scheduler_entry;
 		cpp::queue<thread_t>::entry _task_entry;

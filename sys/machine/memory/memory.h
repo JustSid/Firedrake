@@ -24,6 +24,8 @@
 #include "virtual.h"
 #include "heap.h"
 
+#include <kern/kalloc.h>
+
 namespace mm
 {
 	template<class T=void>
@@ -66,6 +68,16 @@ namespace mm
 			dir->free(reinterpret_cast<vm_address_t>(ptr), pages);
 			pm::free(pmemory, pages);
 		}
+	}
+
+	template<class T>
+	T *Allocate()
+	{
+		void *buffer = kalloc(sizeof(T));
+		if(!buffer)
+			return nullptr;
+
+		T *result = new(buffer) T();
 	}
 }
 

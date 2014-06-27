@@ -27,4 +27,9 @@
 #define CONFIG_STRICT 1
 #endif
 
+
+#ifndef CONFIG_MAX_CPUS
+#define CONFIG_MAX_CPUS 32
+#endif
+
 #endif /* _CONFIG_H_ */

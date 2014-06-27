@@ -37,22 +37,22 @@ namespace sd
 
 	void idle_task()
 	{
-		kprintf("idle task on CPU %i\n", cpu_get_current_cpu()->id);
+		kprintf("idle task on CPU %i\n", Sys::CPU::GetCurrentCPU()->GetID());
 
 		while(1)
-			cpu_halt();
+			Sys::CPUHalt();
 	}
 
 
 	scheduler_t::scheduler_t() :
-		_proxy_cpu_count(cpu_get_cpu_count()),
+		_proxy_cpu_count(Sys::CPU::GetCPUCount()),
 		_thread_lock(SPINLOCK_INIT)
 	{
-		std::fill(_proxy_cpus, _proxy_cpus + CPU_MAX_CPUS, nullptr);
+		std::fill(_proxy_cpus, _proxy_cpus + CONFIG_MAX_CPUS, nullptr);
 
 		for(size_t i = 0; i < _proxy_cpu_count; i ++)
 		{
-			cpu_proxy_t *proxy = new cpu_proxy_t(cpu_get_cpu_with_id(i));
+			cpu_proxy_t *proxy = new cpu_proxy_t(Sys::CPU::GetCPUWithID(i));
 			_proxy_cpus[i] = proxy;
 		}
 	}
@@ -96,7 +96,7 @@ namespace sd
 		return thread->get_task();
 	}
 
-	task_t *scheduler_t::get_active_task(cpu_t *cpu)
+	task_t *scheduler_t::get_active_task(Sys::CPU *cpu)
 	{
 		thread_t *thread = get_active_thread(cpu);
 		return thread->get_task();
@@ -104,18 +104,18 @@ namespace sd
 
 	thread_t *scheduler_t::get_active_thread()
 	{
-		cpu_t *cpu = cpu_get_current_cpu();
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
+		Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
+		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
 
 		return proxy->active_thread;
 	}
 
-	thread_t *scheduler_t::get_active_thread(cpu_t *cpu)
+	thread_t *scheduler_t::get_active_thread(Sys::CPU *cpu)
 	{
-		if(cpu == cpu_get_current_cpu())
+		if(cpu == Sys::CPU::GetCurrentCPU())
 			return get_active_thread();
 
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
+		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
 
 		spinlock_lock(&proxy->lock);
 		thread_t *thread = proxy->active_thread;
@@ -132,9 +132,9 @@ namespace sd
 		spinlock_unlock(&_thread_lock);
 	}
 
-	uint32_t scheduler_t::reschedule_on_cpu(uint32_t esp, cpu_t *cpu)
+	uint32_t scheduler_t::reschedule_on_cpu(uint32_t esp, Sys::CPU *cpu)
 	{
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
+		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
 		thread_t *thread = proxy->active_thread;
 
 		thread->_quantum = 0;
@@ -142,9 +142,9 @@ namespace sd
 		return schedule_on_cpu(esp, cpu);
 	}
 
-	uint32_t scheduler_t::schedule_on_cpu(uint32_t esp, cpu_t *cpu)
+	uint32_t scheduler_t::schedule_on_cpu(uint32_t esp, Sys::CPU *cpu)
 	{
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
+		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
 
 		if(__expect_false(!proxy->active) || __expect_false(!spinlock_try_lock(&proxy->lock)))
 			return esp;
@@ -193,7 +193,7 @@ namespace sd
 
 			// Move the new thread onto this CPU
 			proxy->active_thread = thread;
-			thread->_running_cpu  = cpu;
+			thread->_running_cpu = cpu;
 			
 			// TODO: Calculate a better quantum for the thread
 			thread->_quantum = 5;
@@ -213,17 +213,17 @@ namespace sd
 		spinlock_unlock(&proxy->lock);
 
 		task_t *task = thread->get_task();
-		ir::trampoline_cpu_data_t *data = cpu->data;
+		ir::trampoline_cpu_data_t *data = cpu->GetTrampoline();
 
 		data->page_directory = task->get_directory()->get_physical_directory();
-		data->tss.esp0       = thread->_esp + sizeof(cpu_state_t);
+		data->tss.esp0       = thread->_esp + sizeof(Sys::CPUState);
 
 		return thread->_esp;
 	}
 
-	void scheduler_t::activate_cpu(cpu_t *cpu)
+	void scheduler_t::activate_cpu(Sys::CPU *cpu)
 	{
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->id];
+		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
 		assert(proxy && proxy->active == false);
 
 		proxy->active    = true;
@@ -235,12 +235,12 @@ namespace sd
 
 
 
-	uint32_t timer_interrupt_stub(uint32_t esp, cpu_t *cpu)
+	uint32_t timer_interrupt_stub(uint32_t esp, Sys::CPU *cpu)
 	{
 		return scheduler_t::get_shared_instance()->schedule_on_cpu(esp, cpu);
 	}
 
-	uint32_t activate_cpu(uint32_t esp, cpu_t *cpu)
+	uint32_t activate_cpu(uint32_t esp, Sys::CPU *cpu)
 	{
 		ir::apic_set_timer(clock::default_time_divisor, ir::apic_timer_mode_t::periodic, clock::default_time_counter);
 		ir::apic_arm_timer(clock::default_time_counter);

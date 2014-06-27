@@ -34,13 +34,13 @@ namespace ir
 
 		uint64_t idt[IDT_ENTRIES];
 		uint64_t gdt[GDT_ENTRIES];
-		tss_t tss;
+		Sys::TSS tss;
 	};
 
 	typedef struct
 	{
 		uint8_t buffer[VM_PAGE_SIZE];
-		trampoline_cpu_data_t data[CPU_MAX_CPUS];
+		trampoline_cpu_data_t data[CONFIG_MAX_CPUS];
 	} trampoline_map_t;
 
 	trampoline_map_t *get_trampoline_map();

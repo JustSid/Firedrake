@@ -37,13 +37,13 @@ void ir_panic_segfault()
 
 uint32_t ir_handle_interrupt(uint32_t esp)
 {
-	cpu_state_t *state = reinterpret_cast<cpu_state_t *>(esp);
-	cpu_t *cpu = cpu_get_current_cpu();
+	Sys::CPUState *state = reinterpret_cast<Sys::CPUState *>(esp);
+	Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
 
 	bool needsEOI = true;
 
-	cpu_state_t *prev = cpu->last_state;
-	cpu->last_state = state;
+	Sys::CPUState *prev = cpu->GetLastState();
+	cpu->SetState(state);
 
 	switch(state->interrupt)
 	{
@@ -54,11 +54,11 @@ uint32_t ir_handle_interrupt(uint32_t esp)
 			break;
 
 		case 0x39:
-			// Shutdown CPU
+			// Shutdown CPU IPI
 			while(1)
 			{
 				cli();
-				cpu_halt();
+				Sys::CPUHalt();
 			}
 
 			break;
@@ -81,10 +81,10 @@ uint32_t ir_handle_interrupt(uint32_t esp)
 		}
 	}
 
-	cpu->last_state = prev;
+	cpu->SetState(prev);
 
-	state = reinterpret_cast<cpu_state_t *>(esp);
-	state->fs = cpu->id;
+	state = reinterpret_cast<Sys::CPUState *>(esp);
+	state->fs = cpu->GetID();
 
 	if(needsEOI)
 		ir::apic_write(APIC_REGISTER_EOI, 0);
@@ -149,7 +149,7 @@ namespace ir
 		idt_set_entry(idt, 0x11, (reinterpret_cast<uint32_t>(idt_exception_alignment)) + offset,            0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
 		idt_set_entry(idt, 0x12, (reinterpret_cast<uint32_t>(idt_exception_machinecheck)) + offset,         0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
 		idt_set_entry(idt, 0x13, (reinterpret_cast<uint32_t>(idt_exception_simd)) + offset,                 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-	
+		
 		// Interrupts
 		idt_set_interrupt_entry(0x02, IDT_FLAG_RING0);
 		idt_set_interrupt_entry(0x20, IDT_FLAG_RING0);
@@ -168,7 +168,7 @@ namespace ir
 		idt_set_interrupt_entry(0x2d, IDT_FLAG_RING0);
 		idt_set_interrupt_entry(0x2e, IDT_FLAG_RING0);
 		idt_set_interrupt_entry(0x2f, IDT_FLAG_RING0);
-
+		
 		idt_set_interrupt_set(0x3, IDT_FLAG_RING0);
 		idt_set_interrupt_set(0x4, IDT_FLAG_RING0);
 		idt_set_interrupt_set(0x5, IDT_FLAG_RING0);

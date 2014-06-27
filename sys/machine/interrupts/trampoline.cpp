@@ -60,7 +60,7 @@ namespace ir
 			kprintf("failed to allocate trampoline area");
 			return result;
 		}
-
+		
 		trampoline_map = reinterpret_cast<trampoline_map_t *>(IR_TRAMPOLINE_BEGIN);
 
 		// Fix up the idt section
@@ -76,10 +76,10 @@ namespace ir
 
 	kern_return_t trampoline_init_cpu()
 	{
-		cpu_t *cpu = cpu_get_current_cpu_slow();
-		trampoline_cpu_data_t *data = &trampoline_map->data[cpu->id];
+		Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
+		trampoline_cpu_data_t *data = &trampoline_map->data[cpu->GetID()];
 
-		cpu->data = data;
+		cpu->SetTrampoline(data);
 		data->page_directory = vm::get_kernel_directory()->get_physical_directory();
 
 		uintptr_t idtBegin = reinterpret_cast<uintptr_t>(&idt_begin);
@@ -88,7 +88,7 @@ namespace ir
 
 		// Hacky hackery hack
 		uint32_t *esp = mm::alloc<uint32_t>(vm::get_kernel_directory(), 1, VM_FLAGS_KERNEL);
-		data->tss.esp0 = reinterpret_cast<uint32_t>(esp) + (VM_PAGE_SIZE - sizeof(cpu_state_t));
+		data->tss.esp0 = reinterpret_cast<uint32_t>(esp) + (VM_PAGE_SIZE - sizeof(Sys::CPUState));
 		data->tss.ss0  = 0x10;
 
 		return KERN_SUCCESS;
