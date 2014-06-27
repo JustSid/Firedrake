@@ -42,7 +42,7 @@ namespace std
 			_buffer[0] = '\0';
 		}
 
-		string(const string& other) :
+		string(const string &other) :
 			_buffer(nullptr),
 			_length(other._length),
 			_capacity(0)
@@ -66,7 +66,7 @@ namespace std
 		}
 
 		
-		void append(const string& other)
+		void append(const string &other)
 		{
 			append(other._buffer, other._length);
 		}
@@ -86,7 +86,7 @@ namespace std
 		}
 
 
-		size_t find(const string& other)
+		size_t find(const string &other)
 		{
 			return find(other._buffer);
 		}

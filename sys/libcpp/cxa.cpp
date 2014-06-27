@@ -34,7 +34,7 @@ extern "C"
 
 	int __cxa_atexit(__unused void (*f)(void *), __unused void *p, __unused void *d)
 	{
-		// The kernel will be alive for the whole livetime of the machine
+		// The kernel will be alive for the whole lifetime of the machine
 		// so there is not much sense in actually destructing anything in __cxa_finalize
 		// so no need to track anything here.
 		return 0;

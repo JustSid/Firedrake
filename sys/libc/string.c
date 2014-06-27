@@ -198,3 +198,17 @@ char *strpbrk(char *str1, const char *str2)
 	
 	return NULL;
 }
+
+char *strchr(char *str, int character)
+{
+	while(1)
+	{
+		if(*str == character)
+			return str;
+
+		if(*str == '\0')
+			return NULL;
+
+		str ++;
+	}
+}

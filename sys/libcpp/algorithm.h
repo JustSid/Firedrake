@@ -22,19 +22,19 @@
 namespace std
 {
 	template<class T>
-	const T& min(const T& a, const T& b)
+	const T &min(const T &a, const T &b)
 	{
 		return (a < b) ? a : b;
 	}
 
 	template<class T>
-	const T& max(const T& a, const T& b)
+	const T &max(const T &a, const T &b)
 	{
 		return (a > b) ? a : b;
 	}
 
 	template<class ForwardIt, class T>
-	void fill(ForwardIt first, ForwardIt last, const T& value)
+	void fill(ForwardIt first, ForwardIt last, const T &value)
 	{
 		while(first != last)
 		{

@@ -51,7 +51,7 @@ namespace std
 		public:
 			friend class hash_map;
 
-			iterator(const iterator& it) :
+			iterator(const iterator &it) :
 				_map(it._map),
 				_bucket(it._bucket),
 				_index(it._index)
@@ -66,18 +66,18 @@ namespace std
 				return &_bucket->value;
 			}
 
-			bool operator!= (const iterator& other)
+			bool operator!= (const iterator &other)
 			{
 				return (_bucket != other._bucket);
 			}
 
-			bool operator== (const iterator& other)
+			bool operator== (const iterator &other)
 			{
 				return (_bucket == other._bucket);
 			}
 
 
-			iterator& operator++ ()
+			iterator &operator++ ()
 			{
 				move_forward();
 				return *this;
@@ -152,7 +152,7 @@ namespace std
 			}
 		}
 
-		iterator find(const Key& key)
+		iterator find(const Key &key)
 		{
 			size_t index;
 			bucket *tbucket = find_bucket(key, index, true);
@@ -174,7 +174,7 @@ namespace std
 		}
 
 
-		void insert(const Key& key, const Val& value)
+		void insert(const Key &key, const Val &value)
 		{
 			bucket *tbucket = find_bucket(key, false);
 			tbucket->value  = value;
@@ -182,7 +182,7 @@ namespace std
 			grow_buckets();
 		}
 
-		void erase(const Key& key)
+		void erase(const Key &key)
 		{
 			bucket *tbucket = find_bucket(key, true);
 			if(tbucket)
@@ -194,7 +194,7 @@ namespace std
 			}
 		}
 
-		void erase(const iterator& it)
+		void erase(const iterator &it)
 		{
 			if(it->_bucket)
 			{
@@ -263,13 +263,13 @@ namespace std
 			delete [] buckets;
 		}
 
-		bucket *find_bucket(const Key& key, bool lookup)
+		bucket *find_bucket(const Key &key, bool lookup)
 		{
 			size_t index;
 			return find_bucket(key, index, lookup);
 		}
 
-		bucket *find_bucket(const Key& key, size_t& index, bool lookup)
+		bucket *find_bucket(const Key &key, size_t &index, bool lookup)
 		{
 			index = _hasher(key) % _capacity;
 			bucket *tbucket = _buckets[index];

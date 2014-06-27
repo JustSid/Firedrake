@@ -30,7 +30,7 @@ namespace cpp
 		public:
 			friend class queue;
 
-			entry(const entry& other) :
+			entry(const entry &other) :
 				_data(other._data),
 				_next(other._next),
 				_prev(other._next),

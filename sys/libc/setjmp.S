@@ -22,14 +22,14 @@ TEXT()
 
 ENTRY(setjmp)
 	movl 4(%esp), %ecx
-	movl %ebx,    0(%ecx)
-	movl %esi,    4(%ecx)
-	movl %edi,    8(%ecx)
-	movl %ebp,    12(%ecx)
+	movl %ebx, 0(%ecx)
+	movl %esi, 4(%ecx)
+	movl %edi, 8(%ecx)
+	movl %ebp, 12(%ecx)
 	popl %edx
-	movl %esp,    16(%ecx)
-	movl %edx,    20(%ecx)
-	xorl %eax,    %eax
+	movl %esp, 16(%ecx)
+	movl %edx, 20(%ecx)
+	xorl %eax, %eax
 	jmp  *%edx
 
 ENTRY(longjmp)
@@ -41,6 +41,7 @@ ENTRY(longjmp)
 	movl 12(%ecx), %ebp
 	movl 16(%ecx), %esp
 	orl  %eax,     %eax
-	jnz  0f
+	jnz  1f
 	incl %eax
-0:  jmp  *20(%ecx)
+1:  
+	jmp  *20(%ecx)
