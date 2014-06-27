@@ -36,45 +36,48 @@
 const char *kVersionBeast    = "Nidhogg";
 const char *kVersionAppendix = "";
 
-extern "C" void sys_boot(multiboot_t *info) __attribute__ ((noreturn));
-
 extern void cxa_init();
+extern "C" void SysInit_i486(Sys::MultibootHeader *info) __attribute__ ((noreturn));
 
-template<class F, class ...Args>
-void sys_init(const char *name, F &&f, Args &&... args)
+namespace Sys
 {
-	kprintf("Initializing %s... { ", name);
+	template<class F, class ...Args>
+	void Init(const char *name, F &&f, Args &&... args)
+	{
+		kprintf("Initializing %s... { ", name);
 
-	kern_return_t result;
-	if((result = f(std::forward<Args>(args)...)) != KERN_SUCCESS)
-	{
-		kprintf("} failed\n");
-		panic("Failed to initialize %s", name); 
-	}
-	else
-	{
-		kprintf(" } ok\n");
+		kern_return_t result;
+		if((result = f(std::forward<Args>(args)...)) != KERN_SUCCESS)
+		{
+			kprintf("} failed\n");
+			panic("Failed to initialize %s", name); 
+		}
+		else
+		{
+			kprintf(" } ok\n");
+		}
 	}
 }
 
-void sys_boot(multiboot_t *info)
+void SysInit_i486(Sys::MultibootHeader *info)
 {
 	// Get the C++ runtime and a basic video output ready
 	cxa_init();
 	vd::init();
 
 	// Print the hello world message
-	kprintf("Firedrake v%i.%i.%i:%i (%s)\nHere be dragons\n\n", kVersionMajor, kVersionMinor, kVersionPatch, VersionCurrent(), kVersionBeast);
+	kprintf("Firedrake v%i.%i.%i:%i (%s)\n", kVersionMajor, kVersionMinor, kVersionPatch, VersionCurrent(), kVersionBeast);
+	kprintf("Here be dragons\n\n");
 
 	// Run the low level initialization process
-	sys_init("cpu", cpu_init);
-	sys_init("physical memory", pm::init, info);
-	sys_init("virtual memory", vm::init, info);
-	sys_init("heap", mm::heap_init);
-	sys_init("interrupts", ir::init);
-	sys_init("clock", clock::init);
-	sys_init("smp", smp_init);
-	sys_init("scheduler", sd::init);
+	Sys::Init("cpu", Sys::CPUInit);
+	Sys::Init("physical memory", pm::init, info);
+	Sys::Init("virtual memory", vm::init, info);
+	Sys::Init("heap", mm::heap_init);
+	Sys::Init("interrupts", ir::init);
+	Sys::Init("clock", clock::init);
+	Sys::Init("smp", smp_init);
+	Sys::Init("scheduler", sd::init);
 
 	kprintf("\n\n");
 
@@ -84,5 +87,5 @@ void sys_boot(multiboot_t *info)
 	ir::apic_broadcast_ipi(0x3a, true);
 
 	while(1)
-		cpu_halt();
+		Sys::CPUHalt();
 }

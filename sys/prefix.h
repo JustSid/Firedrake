@@ -19,6 +19,7 @@
 #ifndef _PREFIX_H_
 #define _PREFIX_H_
 
+#include "config.h"
 #include "version.h"
 #include "macros.h"
 

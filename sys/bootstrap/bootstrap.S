@@ -21,32 +21,32 @@
 // GRUB multiboot header
 .section multiboot
 .align 4
-	.int 0x1BADB002  
-	.int 0x0           
-	.int (-0x1BADB002)
+	.int 0x1badb002
+	.int 0x0
+	.int (-0x1badb002)
 
 // Entry point
 TEXT()
 
 ENTRY(_start)
-	movl $stack_top, %esp
+	movl $StackTop, %esp
 
 	// Push an empty stack frame
 	pushl $0
 	pushl $0
 
-	// Call the sys_boot() entry function with the multiboot struct as argument
+	// Call the SysInit_i486() entry function with the multiboot struct as argument
 	pushl %ebx
-	call sys_boot
- 
+	call SysInit_i486
+
 	jmp .
 
 // Stack
 .bss
 
-.global stack_bottom
-.global stack_top
+.global StackBottom
+.global StackTop
 
-stack_bottom:
-.space 4096
-stack_top:
+StackBottom:
+.space 2048
+StackTop:

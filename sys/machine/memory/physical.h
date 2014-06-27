@@ -31,7 +31,7 @@ namespace pm
 	kern_return_t alloc_limit(uintptr_t& address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit);
 	kern_return_t free(uintptr_t page, size_t pages);
 
-	kern_return_t init(multiboot_t *info);
+	kern_return_t init(Sys::MultibootHeader *info);
 }
 
 #endif /* _PHYSICAL_H_ */

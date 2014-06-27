@@ -21,88 +21,95 @@
 
 #include <prefix.h>
 #include <libc/stdint.h>
+#include <libcpp/bitfield.h>
 
 // http://www.gnu.org/software/grub/manual/multiboot/multiboot.html
 
-#define kMultibootFlagMemory        (1 << 0)
-#define kMultibootFlagBootDevice    (1 << 1)
-#define kMultibootFlagCommandLine   (1 << 2)
-#define kMultibootFlagModules       (1 << 3)
-
-#define kMultibootFlagMmap          (1 << 6)
-#define kMultibootFlagDrives        (1 << 7)
-#define kMultibootFlagConfigTable   (1 << 8)
-#define kMultibootFlagBootLoader    (1 << 9)
-#define kMultibootFlagAPM           (1 << 10)
-
-struct multiboot_s
+namespace Sys
 {
-	uint32_t flags;
+	struct MultibootModule
+	{
+		void *start;
+		void *end;
+		void *name;
+		uint32_t reserved;
 
-	// kMultibootFlagMemory
-	uint32_t mem_lower;
-	uint32_t mem_upper;
-	
-	// kMultibootFlagBootDevice
-	uint32_t bootdevice;
+		MultibootModule *GetNext() const { return const_cast<MultibootModule *>(this + 1); }
+	} __attribute__((packed));
 
-	// kMultibootFlagCommandLine
-	void *cmdline;
-	
-	// kMultibootFlagModules
-	uint32_t mods_count;
-	void *mods_addr;
-	
-	uint32_t syms[4];
-	
-	// kMultibootFlagMmap
-	uint32_t mmap_length;
-	void *mmap_addr;
+	struct MultibootMmap
+	{
+		uint32_t size;
+		uint64_t base;
+		uint64_t length;
+		uint32_t type;
 
-	// kMultibootFlagDrives
-	uint32_t drives_length;
-	void *drives_addr;
+		MultibootMmap *GetNext() const { return reinterpret_cast<MultibootMmap *>(const_cast<uint8_t *>(reinterpret_cast<const uint8_t *>(this) + size + 4)); }
+		bool IsAvailable() const { return type == 1; }
+	} __attribute__((packed));
 
-	// kMultibootFlagConfigTable
-	void *config_table;
+	struct MultibootDrive
+	{
+		uint32_t size;
+		uint32_t drive_number;
+		char drive_mode;
+		char drive_cylinders;
+		char drive_heads;
+		char drive_sectors;
+		uint16_t drive_port0; // First port, there might be more! Last port in the list is 0
+	} __attribute__((packed));
 
-	// kMultibootFlagBootLoader
-	void *boot_loader_name;
 
-	// kMultibootFlagAPM
-	void *apm_table;
-} __attribute__((packed));
 
-struct multiboot_module_s
-{
-	void *start;
-	void *end;
-	void *name;
-	uint32_t reserved;
-} __attribute__((packed));
+	struct MultibootHeader
+	{
+		struct Flags : public cpp::Bitfield<uint32_t>
+		{
+			enum
+			{
+				Memory      = (1 << 0),
+				BootDevice  = (1 << 1),
+				CommandLine = (1 << 2),
+				Modules     = (1 << 3),
+				Mmap        = (1 << 6),
+				Drives      = (1 << 7),
+				ConfigTable = (1 << 8),
+				BootLoader  = (1 << 9),
+				APM         = (1 << 10)
+			};
+		};
 
-struct multiboot_drive_s
-{
-	uint32_t size;
-	uint32_t drive_number;
-	char drive_mode;
-	char drive_cylinders;
-	char drive_heads;
-	char drive_sectors;
-	uint16_t drive_port0; // First port, there might be more! Last port in the list is 0
-} __attribute__((packed));
+		Flags flags;
 
-struct multiboot_mmap_s
-{
-	uint32_t size;
-	uint64_t base;
-	uint64_t length;
-	uint32_t type;
-} __attribute__((packed));
+		uint32_t memLower;
+		uint32_t memUpper;
 
-typedef struct multiboot_s         multiboot_t;
-typedef struct multiboot_module_s  multiboot_module_t;
-typedef struct multiboot_drive_s   multiboot_drive_t;
-typedef struct multiboot_mmap_s    multiboot_mmap_t;
+		uint32_t bootDevice;
+
+		void *commandLine;
+
+		uint32_t modulesCount;
+		MultibootModule *modules;
+
+		uint32_t syms[4];
+
+		uint32_t mmapLength;
+		MultibootMmap *mmap;
+
+		uint32_t drivesLength;
+		MultibootDrive *drives;
+
+		void *configTable;
+		void *bootLoaderName;
+		void *apmTable;
+
+
+		uint32_t GetMmapCount() const   { return mmapLength / sizeof(MultibootMmap); }
+		uint32_t getDrivesCount() const { return drivesLength / sizeof(MultibootDrive); }
+
+	} __attribute__((packed));
+
+	static_assert(sizeof(MultibootHeader) == 72, "MultibootHeader must be 72 bytes exactly!");
+}
 
 #endif

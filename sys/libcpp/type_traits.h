@@ -85,6 +85,28 @@ namespace std
 	template<class T>
 	struct enable_if<true, T>
 	{ typedef T type; };
+
+
+
+	template<class T>
+	struct is_pod : public integral_constant<bool, __is_pod(T)>
+	{};
+
+	template<class T>
+	struct is_literal_type : public integral_constant<bool, __is_literal(T)>
+	{};
+
+	template<class T>
+	struct is_standard_layout : public integral_constant<bool, __is_standard_layout(T)>
+	{};
+
+	template<class T>
+	struct is_trivially_copyable : public integral_constant<bool, __is_trivially_copyable(T)>
+	{};
+
+	template<class T>
+	struct is_trivial : public integral_constant<bool, __is_trivial(T)>
+	{};
 }
 
 #endif /* _TYPE_TRAITS_H_ */

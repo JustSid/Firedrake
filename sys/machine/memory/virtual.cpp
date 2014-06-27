@@ -583,7 +583,7 @@ namespace vm
 		return KERN_SUCCESS;
 	}
 
-	kern_return_t init(multiboot_t *info)
+	kern_return_t init(Sys::MultibootHeader *info)
 	{
 		_use_physical_kernel_pages = true;
 

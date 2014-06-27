@@ -102,7 +102,7 @@ namespace vm
 	}
 
 	directory *get_kernel_directory();
-	kern_return_t init(multiboot_t *info);
+	kern_return_t init(Sys::MultibootHeader *info);
 }
 
 #endif /* _VIRTUAL_H_ */

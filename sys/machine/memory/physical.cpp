@@ -169,40 +169,39 @@ namespace pm
 		}
 	}
 
-	kern_return_t init(multiboot_t *info)
+	kern_return_t init(Sys::MultibootHeader *info)
 	{
 		memset(heap_bitmap, 0, heap_width * sizeof(uint32_t));
 
 		// Mark all free pages
-		if(!(info->flags & kMultibootFlagMmap))
+		if(!(info->flags & Sys::MultibootHeader::Flags::Mmap))
 		{
 			kprintf("No mmap info present!");
 			return KERN_INVALID_ARGUMENT;
 		}
 
-		uint8_t *mmapPtr = reinterpret_cast<uint8_t *>(info->mmap_addr);
-		uint8_t *mmapEnd = mmapPtr + info->mmap_length;
 
-		while(mmapPtr < mmapEnd)
+		Sys::MultibootMmap *mmap = info->mmap;
+		size_t count = info->GetMmapCount();
+
+		for(size_t i = 0; i < count; i ++)
 		{
-			multiboot_mmap_t *mmap = reinterpret_cast<multiboot_mmap_t *>(mmapPtr);
-
-			if(mmap->type == 1)
+			if(mmap->IsAvailable())
 			{
-				uintptr_t address    = mmap->base;
+				uintptr_t address = mmap->base;
 				uintptr_t addressEnd = address + mmap->length;
 
-				// Mark the range as free
-				while(address < addressEnd) 
+				while(address < addressEnd)
 				{
 					_mark_free(address);
 					address += VM_PAGE_SIZE;
 				}
 			}
 
-			mmapPtr += mmap->size + 4;
+			mmap = mmap->GetNext();
 		}
 
+		
 		// Mark the kernel as allocated
 		mark_range(reinterpret_cast<uintptr_t>(&kernel_begin), reinterpret_cast<uintptr_t>(&kernel_end));
 
