@@ -23,17 +23,18 @@
 #ifndef _CLOCK_H_
 #define _CLOCK_H_
 
-namespace clock
+namespace Sys
 {
-	extern Sys::APIC::TimerDivisor default_time_divisor;
-	extern uint32_t default_time_counter;
-	extern uint32_t default_time_resolution;
+	namespace Clock
+	{
+		APIC::TimerDivisor GetTimerDivisor();
+		uint32_t GetTimerCount();
+		uint32_t GetTimerResolution();
 
-	void await_pit_ticks(uint32_t ticks);
-	
-	uint32_t calculate_apic_frequency_average(uint32_t resolution, Sys::APIC::TimerDivisor apic_divisor);
+		void AwaitPitTicks(uint32_t ticks);
+	}
 
-	kern_return_t init();
+	kern_return_t ClockInit();
 }
 
 #endif /* _CLOCK_H_ */

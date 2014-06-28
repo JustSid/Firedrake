@@ -242,8 +242,8 @@ namespace sd
 
 	uint32_t activate_cpu(uint32_t esp, Sys::CPU *cpu)
 	{
-		Sys::APIC::SetTimer(clock::default_time_divisor, Sys::APIC::TimerMode::Periodic, clock::default_time_counter);
-		Sys::APIC::ArmTimer(clock::default_time_counter);
+		Sys::APIC::SetTimer(Sys::Clock::GetTimerDivisor(), Sys::APIC::TimerMode::Periodic, Sys::Clock::GetTimerCount());
+		Sys::APIC::ArmTimer(Sys::Clock::GetTimerCount());
 
 		scheduler_t::get_shared_instance()->activate_cpu(cpu);
 		return scheduler_t::get_shared_instance()->schedule_on_cpu(esp, cpu);

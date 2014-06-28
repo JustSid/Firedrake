@@ -24,6 +24,9 @@
 #include <machine/interrupts/interrupts.h>
 #include <machine/memory/memory.h>
 
-kern_return_t smp_init();
+namespace Sys
+{
+	kern_return_t SMPInit();
+}
 
 #endif /* _SMP_H_ */

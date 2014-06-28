@@ -18,113 +18,121 @@
 
 #include <machine/port.h>
 #include <kern/kprintf.h>
+#include <libcpp/atomic.h>
 #include "clock.h"
 
-namespace clock
+namespace Sys
 {
-	volatile uint32_t _clock_pit_ticks = 0;
-
-	Sys::APIC::TimerDivisor default_time_divisor = Sys::APIC::TimerDivisor::DivideBy16;
-	uint32_t default_time_resolution = 1000;
-	uint32_t default_time_counter    = 0;
-
-	// PIT
-
-	uint32_t pit_tick(uint32_t esp, __unused Sys::CPU *cpu)
+	namespace Clock
 	{
-		_clock_pit_ticks ++;
-		return esp;
-	}
+		std::atomic<uint32_t> _pitTicks = 0;
 
-	void await_pit_ticks(uint32_t ticks)
-	{
-		constexpr int pit_divisor = 11931;
+		static Sys::APIC::TimerDivisor _timerDivisor = Sys::APIC::TimerDivisor::DivideBy16;
+		static uint32_t _timerResolution = 1000;
+		static uint32_t _timerCount      = 0;
 
-		outb(0x43, 0x36);
-		outb(0x40, pit_divisor & 0xff);
-		outb(0x40, pit_divisor >> 8);
-
-		uint32_t target = _clock_pit_ticks + ticks;
-
-		while(_clock_pit_ticks < target)
-			Sys::CPUHalt();
-	}
-
-	void init_pit()
-	{
-		Sys::SetInterruptHandler(0x20, &pit_tick);
-		Sys::APIC::MaskInterrupt(0x20, false);
-	}	
-
-	// APIC
-
-	uint32_t calculate_apic_frequency(uint32_t resolution, Sys::APIC::TimerDivisor apic_divisor)
-	{
-		uint32_t divisor;
-		switch(apic_divisor)
+		APIC::TimerDivisor GetTimerDivisor()
 		{
-			case Sys::APIC::TimerDivisor::DivideBy1:
-				divisor = 1;
-				break;
-			case Sys::APIC::TimerDivisor::DivideBy2:
-				divisor = 2;
-				break;
-			case Sys::APIC::TimerDivisor::DivideBy4:
-				divisor = 4;
-				break;
-			case Sys::APIC::TimerDivisor::DivideBy8:
-				divisor = 8;
-				break;
-			case Sys::APIC::TimerDivisor::DivideBy16:
-				divisor = 16;
-				break;
-			case Sys::APIC::TimerDivisor::DivideBy32:
-				divisor = 32;
-				break;
-			case Sys::APIC::TimerDivisor::DivideBy64:
-				divisor = 64;
-				break;
-			case Sys::APIC::TimerDivisor::DivideBy128:
-				divisor = 128;
-				break; 
+			return _timerDivisor;
+		}
+		uint32_t GetTimerCount()
+		{
+			return _timerCount;
+		}
+		uint32_t GetTimerResolution()
+		{
+			return _timerResolution;
 		}
 
-		// Prepare the APIC timer
-		Sys::APIC::SetTimer(apic_divisor, Sys::APIC::TimerMode::OneShot, 0xffffffff);
-		Sys::APIC::ArmTimer(0xffffffff);
 
-		// Wait...
-		await_pit_ticks(1);
+		uint32_t PITTick(uint32_t esp, __unused CPU *cpu)
+		{
+			_pitTicks ++;
+			return esp;
+		}
 
-		// Unarm the APIC
-		Sys::APIC::UnarmTimer();
+		void AwaitPitTicks(uint32_t ticks)
+		{
+			constexpr int divisor = 11931;
 
-		// Calculate frequency and counter
-		uint32_t count, initial;
-		Sys::APIC::GetTimer(nullptr, nullptr, &initial, &count);
+			outb(0x43, 0x36);
+			outb(0x40, divisor & 0xff);
+			outb(0x40, divisor >> 8);
 
-		uint32_t frequency = ((initial - count) + 1) * divisor * 100;
-		uint32_t counter   = frequency / resolution / divisor;
+			uint32_t target = _pitTicks.load() + ticks;
 
-		return counter;
+			while(_pitTicks.load() < target)
+				CPUHalt();
+		}
+
+		uint32_t CalculateAPICFrequency(uint32_t resolution, APIC::TimerDivisor apicDivisor)
+		{
+			uint32_t divisor;
+			switch(apicDivisor)
+			{
+				case Sys::APIC::TimerDivisor::DivideBy1:
+					divisor = 1;
+					break;
+				case Sys::APIC::TimerDivisor::DivideBy2:
+					divisor = 2;
+					break;
+				case Sys::APIC::TimerDivisor::DivideBy4:
+					divisor = 4;
+					break;
+				case Sys::APIC::TimerDivisor::DivideBy8:
+					divisor = 8;
+					break;
+				case Sys::APIC::TimerDivisor::DivideBy16:
+					divisor = 16;
+					break;
+				case Sys::APIC::TimerDivisor::DivideBy32:
+					divisor = 32;
+					break;
+				case Sys::APIC::TimerDivisor::DivideBy64:
+					divisor = 64;
+					break;
+				case Sys::APIC::TimerDivisor::DivideBy128:
+					divisor = 128;
+					break; 
+			}
+
+			// Prepare the APIC timer
+			APIC::SetTimer(apicDivisor, Sys::APIC::TimerMode::OneShot, 0xffffffff);
+			APIC::ArmTimer(0xffffffff);
+
+			// Wait...
+			AwaitPitTicks(1);
+
+			// Unarm the APIC
+			APIC::UnarmTimer();
+
+			// Calculate frequency and counter
+			uint32_t count, initial;
+			APIC::GetTimer(nullptr, nullptr, &initial, &count);
+
+			uint32_t frequency = ((initial - count) + 1) * divisor * 100;
+			uint32_t counter   = frequency / resolution / divisor;
+
+			return counter;
+		}
+
+		uint32_t CalculateAPICFrequencyAverage(uint32_t resolution, Sys::APIC::TimerDivisor apic_divisor)
+		{
+			uint32_t accumulator = 0;
+
+			for(int i = 0; i < 10; i++)
+				accumulator += CalculateAPICFrequency(resolution, apic_divisor);
+
+			return accumulator / 10;
+		}
 	}
 
-	uint32_t calculate_apic_frequency_average(uint32_t resolution, Sys::APIC::TimerDivisor apic_divisor)
+	kern_return_t ClockInit()
 	{
-		uint32_t accumulator = 0;
+		SetInterruptHandler(0x20, &Clock::PITTick);
+		APIC::MaskInterrupt(0x20, false);
 
-		for(int i = 0; i < 10; i++)
-			accumulator += calculate_apic_frequency(resolution, apic_divisor);
-
-		return accumulator / 10;
-	}
-
-	kern_return_t init()
-	{
-		init_pit();
-
-		default_time_counter = calculate_apic_frequency_average(default_time_resolution, default_time_divisor);
-
+		Clock::_timerCount = Clock::CalculateAPICFrequencyAverage(Clock::_timerResolution, Clock::_timerDivisor);
 		return KERN_SUCCESS;
 	}
 }

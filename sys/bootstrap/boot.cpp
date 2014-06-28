@@ -75,8 +75,8 @@ void SysInit_i486(Sys::MultibootHeader *info)
 	Sys::Init("virtual memory", vm::init, info);
 	Sys::Init("heap", mm::heap_init);
 	Sys::Init("interrupts", Sys::InterruptsInit);
-	Sys::Init("clock", clock::init);
-	Sys::Init("smp", smp_init);
+	Sys::Init("clock", Sys::ClockInit);
+	Sys::Init("smp", Sys::SMPInit);
 	Sys::Init("scheduler", sd::init);
 
 	kprintf("\n\n");

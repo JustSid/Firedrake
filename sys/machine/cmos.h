@@ -20,47 +20,68 @@
 #define _CMOS_H_
 
 #include <libc/stdint.h>
+#include <libcpp/bitfield.h>
 #include "port.h"
 
-#define CMOS_REGISTER_SECOND    0x00
-#define CMOS_REGISTER_MINUTE    0x02
-#define CMOS_REGISTER_HOUR      0x04
-#define CMOS_REGISTER_WDAY      0x06
-#define CMOS_REGISTER_DMONTH    0x07
-#define CMOS_REGISTER_MONTH	    0x08
-#define CMOS_REGISTER_YEAR      0x09
-
-#define CMOS_REGISTER_STATEA 0x0A
-#define CMOS_REGISTER_STATEB 0x0B
-
-#define CMOS_RTC_FLAG_DST        (1 << 0)
-#define CMOS_RTC_FLAG_24HOURS    (1 << 1)
-#define COMS_RTC_FLAG_BINARY     (1 << 2)
-#define CMOS_RTC_FLAG_FREQUENCY  (1 << 3)
-#define CMOS_RTC_FLAG_INTERRUPT  (1 << 4)
-#define CMOS_RTC_FLAG_ALARM      (1 << 5)
-#define CMOS_RTC_FLAG_PERIODIC   (1 << 6)
-#define CMOS_RTC_FLAG_NOUPDATE   (1 << 7)
-
-
-static inline uint8_t cmos_read(uint8_t offset)
+namespace Sys
 {
-	uint8_t temp = inb(0x70);
-	outb(0x70, (temp & 0x80) | (offset & 0x7f));
+	namespace CMOS
+	{
+		enum class Register : uint8_t
+		{
+			Second = 0x0,
+			Minute = 0x2,
+			Hour   = 0x4,
+			WDay   = 0x6,
+			DMonth = 0x7,
+			Month  = 0x8,
+			Year   = 0x9,
 
-	return inb(0x71);
-}
+			StateA = 0xa,
+			StateB = 0xb
+		};
 
-static inline void cmos_write(uint8_t offset, uint8_t data)
-{
-	uint8_t temp = inb(0x70);
-	outb(0x70, (temp & 0x80) | (offset & 0x7f));
-	outb(0x71, data);
-}
+		struct Flags : public cpp::Bitfield<uint8_t>
+		{	
+			Flags()
+			{}
+			Flags(int value) :
+				Bitfield(value)
+			{}
 
-static inline void cmos_write_rtc_flags(uint8_t flags)
-{
-	cmos_write(CMOS_REGISTER_STATEB, flags);
+			enum
+			{
+				DST       = (1 << 0),
+				Hours24   = (1 << 1),
+				Binary    = (1 << 2),
+				Frequency = (1 << 3),
+				Interrupt = (1 << 4),
+				Alarm     = (1 << 5),
+				Periodic  = (1 << 6),
+				NoUpdate  = (1 << 7),
+			};
+		};
+
+		static inline void Write(Register reg, uint8_t data)
+		{
+			uint8_t temp = inb(0x70);
+			outb(0x70, (temp & 0x80) | (static_cast<uint8_t>(reg) & 0x7f));
+			outb(0x71, data);
+		}
+
+		static inline uint8_t Read(Register reg)
+		{
+			uint8_t temp = inb(0x70);
+			outb(0x70, (temp & 0x80) | (static_cast<uint8_t>(reg) & 0x7f));
+
+			return inb(0x71);
+		}
+
+		static inline void WriteRTCFlags(Flags flags)
+		{
+			Write(Register::StateB, static_cast<uint8_t>(flags));
+		}
+	}
 }
 
 #endif
