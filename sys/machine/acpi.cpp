@@ -94,29 +94,22 @@ namespace ACPI
 					case 1:
 					{
 						MADTIOApic *ioapic = static_cast<MADTIOApic *>(entry);
-						ir::ioapic_t ioapic_entry;
+						Sys::IOAPIC *result = Sys::IOAPIC::RegisterIOAPIC(ioapic->ioapicID, ioapic->ioapicAddress, ioapic->interruptBase);
 
-						ioapic_entry.id = ioapic->ioapicID;
-						ioapic_entry.address = ioapic->ioapicAddress;
-						ioapic_entry.interrupt_base = ioapic->interruptBase;
-
-						kern_return_t result = apic_add_ioapic(&ioapic_entry);
-						if(result != KERN_SUCCESS)
-							return result;
+						if(!result)
+							return KERN_RESOURCES_MISSING;
 
 						break;
 					}
 
 					case 2:
 					{
-						MADTInterruptSource *isos = static_cast<MADTInterruptSource *>(entry);
+						MADTInterruptSource *override = static_cast<MADTInterruptSource *>(entry);
+						Sys::IOAPIC::InterruptOverride *result = Sys::IOAPIC::RegisterInterruptOverride(override->source, override->flags, override->globalSystemInterrupt);
 
-						ir::ioapic_interrupt_override_t override;
-						override.source = isos->source;
-						override.system_interrupt = isos->globalSystemInterrupt;
-						override.flags = isos->flags;
+						if(!result)
+							return KERN_RESOURCES_MISSING;
 
-						apic_add_interrupt_override(&override);
 						break;
 					}
 				}

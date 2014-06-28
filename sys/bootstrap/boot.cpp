@@ -74,7 +74,7 @@ void SysInit_i486(Sys::MultibootHeader *info)
 	Sys::Init("physical memory", pm::init, info);
 	Sys::Init("virtual memory", vm::init, info);
 	Sys::Init("heap", mm::heap_init);
-	Sys::Init("interrupts", ir::init);
+	Sys::Init("interrupts", Sys::InterruptsInit);
 	Sys::Init("clock", clock::init);
 	Sys::Init("smp", smp_init);
 	Sys::Init("scheduler", sd::init);
@@ -84,7 +84,7 @@ void SysInit_i486(Sys::MultibootHeader *info)
 	// Kick off into the scheduler
 	// Once the IPI is handled by a CPU, it won't return to its current thread of execution ever again
 	// This means that whatever bootstrapping you want to do, MUST be done before this call
-	ir::apic_broadcast_ipi(0x3a, true);
+	Sys::APIC::BroadcastIPI(0x3a, true);
 
 	while(1)
 		Sys::CPUHalt();

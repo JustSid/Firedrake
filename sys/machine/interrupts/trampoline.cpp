@@ -29,18 +29,18 @@
 extern "C" uintptr_t idt_begin;
 extern "C" uintptr_t idt_end;
 
-namespace ir
+namespace Sys
 {
-	trampoline_map_t *trampoline_map = nullptr;
-	
-	trampoline_map_t *get_trampoline_map()
+	struct Map
 	{
-		return trampoline_map;
-	}
+		uint8_t buffer[VM_PAGE_SIZE];
+		Trampoline trampoline[CONFIG_MAX_CPUS];
+	};
+	Map *_map = nullptr;
 
-	kern_return_t trampoline_init()
+	kern_return_t TrampolineInit()
 	{
-		assert(sizeof(trampoline_map_t) <= IR_TRAMPOLINE_PAGES * VM_PAGE_SIZE);
+		assert(sizeof(Map) <= IR_TRAMPOLINE_PAGES * VM_PAGE_SIZE);
 
 		kern_return_t result;
 		vm_address_t vaddress;
@@ -61,7 +61,7 @@ namespace ir
 			return result;
 		}
 		
-		trampoline_map = reinterpret_cast<trampoline_map_t *>(IR_TRAMPOLINE_BEGIN);
+		_map = reinterpret_cast<Map *>(IR_TRAMPOLINE_BEGIN);
 
 		// Fix up the idt section
 		uintptr_t idtBegin = reinterpret_cast<uintptr_t>(&idt_begin);
@@ -70,26 +70,28 @@ namespace ir
 		size_t size = static_cast<size_t>(idtEnd - idtBegin);
 		assert(size <= VM_PAGE_SIZE);
 
-		memcpy(trampoline_map->buffer, &idt_begin, idtEnd - idtBegin);
-		return trampoline_init_cpu();
+		memcpy(_map->buffer, &idt_begin, idtEnd - idtBegin);
+		return TrampolineInitCPU();
 	}
 
-	kern_return_t trampoline_init_cpu()
+	kern_return_t TrampolineInitCPU()
 	{
-		Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
-		trampoline_cpu_data_t *data = &trampoline_map->data[cpu->GetID()];
+		CPU *cpu = CPU::GetCurrentCPU();
+		Trampoline *trampoline = &_map->trampoline[cpu->GetID()];
 
-		cpu->SetTrampoline(data);
-		data->page_directory = vm::get_kernel_directory()->get_physical_directory();
+		vm::directory *directory = vm::get_kernel_directory();
+
+		trampoline->pageDirectory = directory->get_physical_directory();
+		cpu->SetTrampoline(trampoline);
 
 		uintptr_t idtBegin = reinterpret_cast<uintptr_t>(&idt_begin);
-		idt_init(data->idt, IR_TRAMPOLINE_BEGIN - idtBegin);
-		gdt_init(data->gdt, &data->tss);
+		IDTInit(trampoline->idt, IR_TRAMPOLINE_BEGIN - idtBegin);
+		GDTInit(trampoline->gdt, &trampoline->tss);
 
 		// Hacky hackery hack
-		uint32_t *esp = mm::alloc<uint32_t>(vm::get_kernel_directory(), 1, VM_FLAGS_KERNEL);
-		data->tss.esp0 = reinterpret_cast<uint32_t>(esp) + (VM_PAGE_SIZE - sizeof(Sys::CPUState));
-		data->tss.ss0  = 0x10;
+		uint32_t *esp = mm::alloc<uint32_t>(directory, 1, VM_FLAGS_KERNEL);
+		trampoline->tss.esp0 = reinterpret_cast<uint32_t>(esp) + (VM_PAGE_SIZE - sizeof(Sys::CPUState));
+		trampoline->tss.ss0  = 0x10;
 
 		return KERN_SUCCESS;
 	}

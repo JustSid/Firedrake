@@ -149,7 +149,7 @@ ENTRY(idt_entry_handler)
 
 	// Get the address of the new page directory
 	movl %fs, %eax
-	imull $0x89c, %eax // 0x89c == sizeof(ir::trampoline_data_t)
+	imull $0x89c, %eax // 0x89c == sizeof(Sys::Trampoline)
 
 	movl $0xffb00000, %ecx
 	addl %eax, %ecx

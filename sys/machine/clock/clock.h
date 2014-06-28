@@ -25,13 +25,13 @@
 
 namespace clock
 {
-	extern ir::apic_timer_divisor_t default_time_divisor;
+	extern Sys::APIC::TimerDivisor default_time_divisor;
 	extern uint32_t default_time_counter;
 	extern uint32_t default_time_resolution;
 
 	void await_pit_ticks(uint32_t ticks);
 	
-	uint32_t calculate_apic_frequency_average(uint32_t resolution, ir::apic_timer_divisor_t apic_divisor);
+	uint32_t calculate_apic_frequency_average(uint32_t resolution, Sys::APIC::TimerDivisor apic_divisor);
 
 	kern_return_t init();
 }

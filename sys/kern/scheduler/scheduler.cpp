@@ -213,10 +213,10 @@ namespace sd
 		spinlock_unlock(&proxy->lock);
 
 		task_t *task = thread->get_task();
-		ir::trampoline_cpu_data_t *data = cpu->GetTrampoline();
+		Sys::Trampoline *data = cpu->GetTrampoline();
 
-		data->page_directory = task->get_directory()->get_physical_directory();
-		data->tss.esp0       = thread->_esp + sizeof(Sys::CPUState);
+		data->pageDirectory = task->get_directory()->get_physical_directory();
+		data->tss.esp0      = thread->_esp + sizeof(Sys::CPUState);
 
 		return thread->_esp;
 	}
@@ -242,8 +242,8 @@ namespace sd
 
 	uint32_t activate_cpu(uint32_t esp, Sys::CPU *cpu)
 	{
-		ir::apic_set_timer(clock::default_time_divisor, ir::apic_timer_mode_t::periodic, clock::default_time_counter);
-		ir::apic_arm_timer(clock::default_time_counter);
+		Sys::APIC::SetTimer(clock::default_time_divisor, Sys::APIC::TimerMode::Periodic, clock::default_time_counter);
+		Sys::APIC::ArmTimer(clock::default_time_counter);
 
 		scheduler_t::get_shared_instance()->activate_cpu(cpu);
 		return scheduler_t::get_shared_instance()->schedule_on_cpu(esp, cpu);
@@ -254,8 +254,8 @@ namespace sd
 		scheduler_t *scheduler = scheduler_t::get_shared_instance();
 		scheduler->initialize();
 
-		ir::set_interrupt_handler(0x35, &timer_interrupt_stub);
-		ir::set_interrupt_handler(0x3a, &activate_cpu);
+		Sys::SetInterruptHandler(0x35, &timer_interrupt_stub);
+		Sys::SetInterruptHandler(0x3a, &activate_cpu);
 
 		return KERN_SUCCESS;
 	}

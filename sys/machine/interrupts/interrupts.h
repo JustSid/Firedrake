@@ -37,14 +37,15 @@ static inline void sti()
 	__asm__ volatile("sti");
 }
 
-namespace ir
+namespace Sys
 {
-	typedef uint32_t (*interrupt_handler_t)(uint32_t, Sys::CPU *);
+	typedef uint32_t (*InterruptHandler)(uint32_t, Sys::CPU *);
 
-	kern_return_t set_interrupt_handler(uint8_t vector, interrupt_handler_t handler);
+	void SetInterruptHandler(uint8_t vector, InterruptHandler handler);
+	void IDTInit(uint64_t *idt, uint32_t offset);
 
-	kern_return_t init();
-	kern_return_t init_application_cpu();
+	kern_return_t InterruptsInit();
+	kern_return_t InterruptsInitAP();
 }
 
 #endif /* _INTERRUPTS_H_ */

@@ -26,27 +26,19 @@
 #include <machine/memory/memory.h>
 #include "idt.h"
 
-namespace ir
+namespace Sys
 {
-	struct trampoline_cpu_data_t
+	struct Trampoline
 	{
-		uint32_t *page_directory;
+		uint32_t *pageDirectory;
 
 		uint64_t idt[IDT_ENTRIES];
 		uint64_t gdt[GDT_ENTRIES];
-		Sys::TSS tss;
+		TSS tss;
 	};
 
-	typedef struct
-	{
-		uint8_t buffer[VM_PAGE_SIZE];
-		trampoline_cpu_data_t data[CONFIG_MAX_CPUS];
-	} trampoline_map_t;
-
-	trampoline_map_t *get_trampoline_map();
-
-	kern_return_t trampoline_init_cpu();
-	kern_return_t trampoline_init();
+	kern_return_t TrampolineInit();
+	kern_return_t TrampolineInitCPU();
 }
 
 #endif /* _TRAMPOLINE_H_ */

@@ -101,7 +101,7 @@ void panic(const char *reason, ...)
 	{
 		// Tear down the system properly to avoid other code to be executed
 		cli();
-		ir::apic_broadcast_ipi(0x39, false);
+		Sys::APIC::BroadcastIPI(0x39, false);
 	}
 
 	va_list args;

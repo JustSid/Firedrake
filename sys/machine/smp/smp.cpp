@@ -31,6 +31,11 @@ extern "C" uintptr_t smp_bootstrap_begin;
 extern "C" uintptr_t smp_bootstrap_end;
 extern "C" uint32_t *_kernel_page_directory;
 
+namespace Sys
+{
+	void GDTSetEntry(uint64_t *gdt, int16_t index, uint32_t base, uint32_t limit, int32_t flags);
+}
+
 static spinlock_t _smp_rendezvous_lock = SPINLOCK_INIT;
 
 #define SMP_PHYSICAL_CODE 0x7000
@@ -77,7 +82,7 @@ void smp_rendezvous_point()
 	__asm__ volatile("mov %0, %%cr0" : : "r" (cr0 | (1 << 31)));
 
 	// Bootstrap Interrupts
-	kern_return_t result = ir::init_application_cpu();
+	kern_return_t result = Sys::InterruptsInitAP();
 
 	if(result != KERN_SUCCESS)
 		smp_rendezvous_fail();
@@ -103,13 +108,13 @@ void smp_rendezvous_point()
 void smp_kickoff_cpu(Sys::CPU *cpu)
 {
 	uint32_t vector = APIC_ICR_DM_INIT | APIC_ICR_LV_ASSERT;
-	ir::apic_send_ipi(0x0f, cpu, vector);
+	Sys::APIC::SendIPI(0x0f, cpu, vector);
 
 	// Wait 10ms for the CPU to initialize
 	clock::await_pit_ticks(1);
 
 	vector = ((SMP_PHYSICAL_CODE / 0x1000) & 0xff) | APIC_ICR_DSS_OTHERS | APIC_ICR_DM_STARTUP | APIC_ICR_LV_ASSERT;
-	ir::apic_send_ipi(0x0, cpu, vector);
+	Sys::APIC::SendIPI(0x0, cpu, vector);
 
 	// Wait up to 100ms for the rendezvous to happen
 	for(int i = 0; i < 10; i ++)
@@ -167,9 +172,9 @@ void smp_forge_gdt(uint8_t *buffer)
 
 	uint64_t *gdt = reinterpret_cast<uint64_t *>(buffer + sizeof(gdtp));
 
-	gdt_set_entry(gdt, 0, 0x0, 0x0, 0);
-	gdt_set_entry(gdt, 1, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_CODESEG | GDT_FLAG_4K | GDT_FLAG_PRESENT);
-	gdt_set_entry(gdt, 2, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_DATASEG | GDT_FLAG_4K | GDT_FLAG_PRESENT);
+	Sys::GDTSetEntry(gdt, 0, 0x0, 0x0, 0);
+	Sys::GDTSetEntry(gdt, 1, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_CODESEG | GDT_FLAG_4K | GDT_FLAG_PRESENT);
+	Sys::GDTSetEntry(gdt, 2, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_DATASEG | GDT_FLAG_4K | GDT_FLAG_PRESENT);
 }
 
 kern_return_t smp_init()

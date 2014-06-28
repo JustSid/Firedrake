@@ -82,7 +82,7 @@ namespace Sys
 	{
 		_lastState = state;
 	}
-	void CPU::SetTrampoline(ir::trampoline_cpu_data_t *trampoline)
+	void CPU::SetTrampoline(Trampoline *trampoline)
 	{
 		_trampoline = trampoline;
 	}
@@ -113,7 +113,7 @@ namespace Sys
 	{
 		if(!_hasCPUFastPath)
 		{
-			uint32_t id = ir::apic_read(APIC_REGISTER_ID);
+			uint32_t id  = APIC::Read(APIC::Register::ID);
 			uint8_t apic = (id >> 24) & 0xff;
 
 			return GetCPUWithApicID(apic);
@@ -129,7 +129,7 @@ namespace Sys
 	{
 		if(!_hasCPUFastPath)
 		{
-			uint32_t id = ir::apic_read(APIC_REGISTER_ID);
+			uint32_t id  = APIC::Read(APIC::Register::ID);
 			uint8_t apic = (id >> 24) & 0xff;
 
 			CPU *cpu = GetCPUWithApicID(apic);

@@ -25,13 +25,10 @@
 #include <libcpp/bitfield.h>
 #include <kern/kern_return.h>
 
-namespace ir
-{
-	struct trampoline_cpu_data_t;
-}
-
 namespace Sys
 {
+	struct Trampoline;
+
 	struct TSS
 	{
 		uint32_t backLink;	/* segment number of previous task, if nested */
@@ -230,10 +227,10 @@ namespace Sys
 		Flags GetFlags() const { return _flags; }
 		CPUState *GetLastState() const { return const_cast<CPUState *>(_lastState); }
 		CPUInfo *GetInfo() const { return const_cast<CPUInfo *>(&_info); } // Not valid until bootstrapped
-		ir::trampoline_cpu_data_t *GetTrampoline() const { return const_cast<ir::trampoline_cpu_data_t *>(_trampoline); }
+		Trampoline *GetTrampoline() const { return const_cast<Trampoline *>(_trampoline); }
 
 		void SetState(CPUState *state);
-		void SetTrampoline(ir::trampoline_cpu_data_t *trampoline);
+		void SetTrampoline(Trampoline *trampoline);
 		void SetFlags(Flags flags);
 
 		static CPU *RegisterCPU(uint8_t apicID, Flags flags);
@@ -254,8 +251,7 @@ namespace Sys
 		Flags _flags;
 		CPUState *_lastState;
 		CPUInfo _info;
-
-		ir::trampoline_cpu_data_t *_trampoline;
+		Trampoline *_trampoline;
 	};
 
 	class CPUID

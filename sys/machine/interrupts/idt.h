@@ -122,9 +122,4 @@ extern "C"
 	idt_interrupt_set(0xf);
 } /* extern "C" */
 
-namespace ir
-{
-	void idt_init(uint64_t *idt, uint32_t offset);
-}
-
 #endif /* _IDT_H_ */

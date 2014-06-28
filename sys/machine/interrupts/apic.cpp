@@ -21,6 +21,7 @@
 #include <kern/kprintf.h>
 #include <libc/assert.h>
 #include <libc/string.h>
+#include <libcpp/new.h>
 #include "apic.h"
 
 #define APIC_MAX_IOAPICS 8
@@ -33,165 +34,147 @@
 
 #define APIC_PIC_RELCOATION_OFFSET 0x20
 
-namespace ir
+namespace Sys
 {
 	// --------------------
 	// MARK: -
-	// MARK: ioapic_interrupt_override_t
+	// MARK: IOAPIC
 	// --------------------
 
-	ioapic_interrupt_override_t _apic_interrupt_override[APIC_MAX_INTERRUPT_OVERRIDES];
-	size_t _apic_interrupt_override_count = 0;
+	static char _ioapicMemory[CONFIG_MAX_IOAPICS * sizeof(IOAPIC)];
+	static char _interruptOverrideMemory[CONFIG_MAX_INTERRUPT_OVERRIDES * sizeof(IOAPIC::InterruptOverride)];
 
-	bool ioapic_interrupt_override_t::is_active_high() const
-	{
-		uint16_t polarity = (flags & 0x3);
-		return (polarity == 1); 
-	}
+	static IOAPIC *_ioapic = reinterpret_cast<IOAPIC *>(_ioapicMemory);
+	static size_t _ioapicCount = 0;
 
-	bool ioapic_interrupt_override_t::is_active_low() const
-	{
-		return (!is_active_high());
-	}
+	static IOAPIC::InterruptOverride *_interruptOverride = reinterpret_cast<IOAPIC::InterruptOverride *>(_interruptOverrideMemory);
+	static size_t _interruptOverrideCount = 0;
 
-	bool ioapic_interrupt_override_t::is_level_triggered() const
-	{
-		uint16_t trigger = ((flags >> 2) & 0x3);
-		return (trigger == 3);
-	}
+	IOAPIC::IOAPIC(uint8_t id, uint32_t address, uint32_t base) :
+		_id(id),
+		_maxRedirectionEntry(0),
+		_address(address),
+		_interruptBase(base)
+	{}
 
-	bool ioapic_interrupt_override_t::is_edge_triggered() const
+	IOAPIC *IOAPIC::RegisterIOAPIC(uint8_t id, uint32_t address, uint32_t base)
 	{
-		return (!is_level_triggered());
-	}
-
-	ioapic_interrupt_override_t *apic_ioapic_get_interrupt_override(uint8_t irq)
-	{
-		for(size_t i = 0; i < _apic_interrupt_override_count; i ++)
+		// Workaround for a Qemu bug(?!) where an IOAPIC id showed up multiple times in the ACPI
+		for(size_t i = 0; i < _ioapicCount; i ++)
 		{
-			if(_apic_interrupt_override[i].source == irq)
-				return &_apic_interrupt_override[i];
+			if(_ioapic[i].GetID() == id)
+				return _ioapic + i;
+		}
+
+		if(_ioapicCount >= CONFIG_MAX_IOAPICS)
+		{
+			kprintf("Trying to register more IOAPICs than configured (increase CONFIG_MAX_IOAPICS)");
+			return nullptr;
+		}
+
+		size_t index = _ioapicCount ++;
+
+		IOAPIC *ioapic = new(&_ioapicMemory[index * sizeof(IOAPIC)]) IOAPIC(id, address, base);
+		return ioapic;
+	}
+
+	IOAPIC::InterruptOverride *IOAPIC::RegisterInterruptOverride(uint8_t source, uint16_t flags, uint32_t systemInterrupt)
+	{
+		if(_interruptOverrideCount >= CONFIG_MAX_INTERRUPT_OVERRIDES)
+		{
+			kprintf("Trying to register more interrupt overrides than configured (increase CONFIG_MAX_INTERRUPT_OVERRIDES)");
+			return nullptr;
+		}
+
+		size_t index = _interruptOverrideCount ++;
+
+		InterruptOverride *override = new(&_interruptOverrideMemory[index * sizeof(InterruptOverride)]) InterruptOverride(source, flags, systemInterrupt);
+		return override;
+	}
+
+	IOAPIC *IOAPIC::GetIOAPICWithID(uint8_t id)
+	{
+		for(size_t i = 0; i < _ioapicCount; i ++)
+		{
+			IOAPIC *ioapic = _ioapic + i;
+			
+			if(ioapic->GetID() == id)
+				return ioapic;
 		}
 
 		return nullptr;
 	}
-
-	uint8_t apic_iopaic_resolve_interrupt(uint8_t irq)
+	IOAPIC *IOAPIC::GetIOAPICForInterrupt(uint8_t irq)
 	{
-		ioapic_interrupt_override_t *override = apic_ioapic_get_interrupt_override(irq);
-		if(override)
-			return static_cast<uint8_t>(override->system_interrupt);
-
-		return irq;
-	}
-
-	kern_return_t apic_add_interrupt_override(ioapic_interrupt_override_t *override)
-	{
-		if(_apic_interrupt_override_count >= APIC_MAX_INTERRUPT_OVERRIDES)
-			return KERN_NO_MEMORY;
-
-		memcpy(&_apic_interrupt_override[_apic_interrupt_override_count], override, sizeof(ioapic_interrupt_override_t));
-		_apic_interrupt_override_count ++;
-
-		return KERN_SUCCESS;
-	}
-
-	// --------------------
-	// MARK: -
-	// MARK: I/O APIC
-	// --------------------
-
-	ioapic_t _apic_ioapic[APIC_MAX_IOAPICS];
-	size_t _apic_ioapic_count = 0;
-
-	kern_return_t apic_add_ioapic(ioapic_t *ioapic)
-	{
-		for(size_t i = 0; i < _apic_ioapic_count; i ++)
+		for(size_t i = 0; i < _ioapicCount; i ++)
 		{
-			if(_apic_ioapic[i].id == ioapic->id)
-				return KERN_SUCCESS;
-		}
-
-		if(_apic_ioapic_count >= APIC_MAX_IOAPICS)
-			return KERN_NO_MEMORY;
-
-		memcpy(&_apic_ioapic[_apic_ioapic_count], ioapic, sizeof(ioapic_t));
-		_apic_ioapic_count ++;
-
-		return KERN_SUCCESS;
-	}
-
-	void apic_write_ioapic(ioapic_t *ioapic, uint8_t offset, uint32_t value) __attribute__((noinline));
-	void apic_write_ioapic(ioapic_t *ioapic, uint8_t offset, uint32_t value)
-	{
-		*(volatile uint32_t *)(ioapic->address) = offset;
-		*(volatile uint32_t *)(ioapic->address + 0x10) = value;
-	}
-
-	uint32_t apic_read_ioapic(ioapic_t *ioapic, uint8_t offset) __attribute__((noinline));
-	uint32_t apic_read_ioapic(ioapic_t *ioapic, uint8_t offset)
-	{
-		*(volatile uint32_t *)(ioapic->address) = offset;
-		return *(volatile uint32_t *)(ioapic->address + 0x10);
-	}
-
-	kern_return_t apic_map_ioapics()
-	{
-		vm::directory *directory = vm::get_kernel_directory();
-		for(size_t i = 0; i < _apic_ioapic_count; i ++)
-		{
-			vm_address_t address;
-			kern_return_t result = directory->alloc_limit(address, _apic_ioapic[i].address, VM_KERNEL_LIMIT, VM_UPPER_LIMIT, 1, VM_FLAGS_KERNEL_NOCACHE);
-
-			if(result != KERN_SUCCESS)
-				return result;
-
-			_apic_ioapic[i].address = address;
-
-			uint32_t version = apic_read_ioapic(&_apic_ioapic[i], APIC_IOAPICVER);
-			_apic_ioapic[i].maxiumum_redirection_entry = (version >> 16) & 0xff;
-		}
-
-		return KERN_SUCCESS;
-	}
-
-	ioapic_t *apic_ioapic_servicing_interrupt(uint8_t irq)
-	{
-		for(size_t i = 0; i < _apic_ioapic_count; i ++)
-		{
-			ioapic_t *ioapic = &_apic_ioapic[i];
+			IOAPIC *ioapic = _ioapic + i;
 			
-			if(irq >= ioapic->interrupt_base && irq <= ioapic->maxiumum_redirection_entry)
+			if(irq >= ioapic->GetInterruptBase() && irq <= ioapic->GetMaximumRedirectionEntry())
 				return ioapic;
 		}
 
 		return nullptr;
 	}
 
-	void apic_ioapic_mask_interrupt(uint8_t vector, bool masked)
+	uint8_t IOAPIC::ResolveInterrupt(uint8_t irq)
 	{
-		assert(vector >= 0x20 && vector <= 0x2f);
-
-		uint8_t irq   = vector - APIC_PIC_RELCOATION_OFFSET;
-		uint32_t data = vector;
-		data |= masked ? (1 << 16) : 0;
-
-		ioapic_interrupt_override_t *override = apic_ioapic_get_interrupt_override(irq);
-		if(override)
+		for(size_t i = 0; i < _interruptOverrideCount; i ++)
 		{
-			irq = override->system_interrupt;
+			InterruptOverride *override = _interruptOverride + i;
 
-			data |= override->is_level_triggered() ? (1 << 15) : 0;
-			data |= override->is_active_low() ? (1 << 13) : 0;
+			if(override->GetSource() == irq)
+				return override->GetSystemInterrupt();
 		}
 
-		uint8_t offset = APIC_IOREDTBL0 + (irq * 2);
-		ioapic_t *ioapic = apic_ioapic_servicing_interrupt(irq);
+		return irq;
+	}
 
-		assert(ioapic);
+	IOAPIC::InterruptOverride *IOAPIC::GetInterruptOverride(uint8_t irq)
+	{
+		for(size_t i = 0; i < _interruptOverrideCount; i ++)
+		{
+			InterruptOverride *override = _interruptOverride + i;
+			if(override->GetSource() == irq)
+				return override;
+		}
 
-		apic_write_ioapic(ioapic, offset + 0, data);
-		apic_write_ioapic(ioapic, offset + 1, 0);
+		return nullptr;
+	}
+
+
+	void IOAPIC::Write(Register reg, uint32_t value)
+	{
+		*(volatile uint32_t *)(_address) = static_cast<uint32_t>(reg);
+		*(volatile uint32_t *)(_address + 0x10) = value;
+	}
+	uint32_t IOAPIC::Read(Register reg)
+	{
+		*(volatile uint32_t *)(_address) = static_cast<uint32_t>(reg);
+		return *(volatile uint32_t *)(_address + 0x10);
+	}
+
+	kern_return_t IOAPIC::MapIOAPICs()
+	{
+		vm::directory *directory = vm::get_kernel_directory();
+		for(size_t i = 0; i < _ioapicCount; i ++)
+		{
+			IOAPIC *ioapic = _ioapic + i;
+
+			vm_address_t address;
+			kern_return_t result = directory->alloc_limit(address, ioapic->_address, VM_KERNEL_LIMIT, VM_UPPER_LIMIT, 1, VM_FLAGS_KERNEL_NOCACHE);
+
+			if(result != KERN_SUCCESS)
+				return result;
+
+
+			ioapic->_address = address;
+
+			uint32_t version = ioapic->Read(Register::VER);
+			ioapic->_maxRedirectionEntry = (version >> 16) & 0xff;
+		}
+
+		return KERN_SUCCESS;
 	}
 
 	// --------------------
@@ -199,193 +182,207 @@ namespace ir
 	// MARK: APIC
 	// --------------------
 
-	vm_address_t _apic_base = 0;
-	uintptr_t _apic_physical_base = 0;
-
-	void apic_write(uint32_t reg, uint32_t value)
+	namespace APIC
 	{
-		volatile uint32_t *base = reinterpret_cast<volatile uint32_t *>(_apic_base + reg);
-		*base = value;
-	}
+		vm_address_t _apicBase = 0;
+		uintptr_t _apicPhysicalBase = 0;
 
-	uint32_t apic_read(uint32_t reg)
-	{
-		volatile uint32_t *base = reinterpret_cast<volatile uint32_t *>(_apic_base + reg);
-		return *base;
-	}
-
-	bool apic_is_interrupt_pending()
-	{
-		for(int i = 0; i < 8; i++)
+		void Write(Register reg, uint32_t value)
 		{
-			if(apic_read(APIC_REGISTER_IRR_BASE + i) || apic_read(APIC_REGISTER_ISR_BASE + i))
-				return true;
+			volatile uint32_t *base = reinterpret_cast<volatile uint32_t *>(_apicBase + static_cast<uint32_t>(reg));
+			*base = value;
 		}
 
-		return true;
-	}
-
-	bool apic_is_interrupting(uint8_t vector)
-	{
-		int i = vector / 32;
-		int bit = 1 << (vector % 32);
-
-		uint32_t irr = apic_read(APIC_REGISTER_IRR_BASE + i);
-		uint32_t isr = apic_read(APIC_REGISTER_ISR_BASE + i);
-
-		return ((irr | isr) & bit);
-	}
-
-
-	uintptr_t apic_get_base()
-	{
-		uint64_t value = Sys::CPUReadMSR(0x1b);
-		uint32_t base  = static_cast<uint32_t>(value & ~0xfff);
-
-		return base;
-	}
-
-	kern_return_t apic_map_base()
-	{
-		kern_return_t result;
-		vm_address_t vaddress;
-
-		uintptr_t paddress = apic_get_base();
-
-		result = vm::get_kernel_directory()->alloc_limit(vaddress, paddress, VM_KERNEL_LIMIT, VM_UPPER_LIMIT, 1, VM_FLAGS_KERNEL_NOCACHE);
-		if(result != KERN_SUCCESS)
+		uint32_t Read(Register reg)
 		{
-			kprintf("couldn't allocate apic memory");
-			return result;
+			volatile uint32_t *base = reinterpret_cast<volatile uint32_t *>(_apicBase + static_cast<uint32_t>(reg));
+			return *base;
 		}
 
-		_apic_physical_base = paddress;
-		_apic_base = vaddress;
 
-		return KERN_SUCCESS;
-	}
-
-	kern_return_t apic_map_base_ap()
-	{
-		uintptr_t paddress = apic_get_base();
-		if(paddress != _apic_physical_base) // Not sure if any processor does this, but better safe than sorry, eh?
+		bool IsInterruptPending()
 		{
-			uint64_t value = Sys::CPUReadMSR(0x1b) & 0xfff;
-			value = _apic_physical_base | value;
+			for(int i = 0; i < 8; i ++)
+			{
+				if(Read(APICRegisterWithOffset(Register::IRR_BASE, i)) || Read(APICRegisterWithOffset(Register::ISR_BASE, i)))
+					return true;
+			}
 
-			Sys::CPUWriteMSR(0x1b, value);
+			return false;
+		}
+		bool IsInterrupting(uint8_t vector)
+		{
+			int i = vector / 32;
+			int bit = 1 << (vector % 32);
+
+			uint32_t irr = Read(APICRegisterWithOffset(Register::IRR_BASE, i));
+			uint32_t isr = Read(APICRegisterWithOffset(Register::ISR_BASE, i));
+
+			return ((irr | isr) & bit);
 		}
 
-		return KERN_SUCCESS;
-	}
+		// IPI
+		static inline void FinishPendingIPI()
+		{
+			while(Read(Register::ICRL) & APIC_ICR_DS_PENDING)
+				Sys::CPUPause();
+		}
 
-	uint32_t apic_vector(uint8_t interrupt, bool masked)
-	{
-		uint32_t vector = interrupt;
-		if(masked)
+		void SendIPI(uint8_t vector, CPU *cpu)
+		{
+			SendIPI(vector, cpu, APIC_ICR_DM_FIXED);
+		}
+
+		void SendIPI(uint8_t vector, CPU *cpu, uint32_t flags)
+		{
+			FinishPendingIPI();
+			
+			Write(Register::ICRH, cpu->GetApicID() << 24);
+			Write(Register::ICRL, vector | flags);
+		}
+
+		void BroadcastIPI(uint8_t vector, bool self)
+		{
+			BroadcastIPI(vector, self, APIC_ICR_LV_ASSERT);
+		}
+		void BroadcastIPI(uint8_t vector, bool self, uint32_t flags)
+		{
+			uint32_t deliveryMode = self ? APIC_ICR_DSS_ALL : APIC_ICR_DSS_OTHERS;
+
+			FinishPendingIPI();
+
+			Write(Register::ICRH, 0);
+			Write(Register::ICRL, vector | flags | deliveryMode);
+		}
+
+		// Timer
+
+		void ArmTimer(uint32_t count)
+		{
+			uint32_t vector = Read(Register::LVT_TIMER);
+			vector &= ~APIC_LVT_MASKED;
+
+			Write(Register::LVT_TIMER, vector);
+			Write(Register::TMR_INITIAL_COUNT, count);
+		}
+
+		void UnarmTimer()
+		{
+			uint32_t vector = Read(APIC::Register::LVT_TIMER);
 			vector |= APIC_LVT_MASKED;
 
-		return vector;
+			Write(Register::LVT_TIMER, vector);
+		}
+
+		void SetTimer(TimerDivisor divisor, TimerMode mode, uint32_t initial)
+		{
+			uint32_t vector = Read(Register::LVT_TIMER);
+
+			vector &= ~APIC_LVT_PERIODIC;
+			vector |= ((mode == TimerMode::Periodic) ? APIC_LVT_PERIODIC : 0) | APIC_LVT_MASKED;
+
+			Write(Register::LVT_TIMER, vector);
+			Write(Register::TMR_DIVIDE_CONFIG, static_cast<uint32_t>(divisor));
+			Write(Register::TMR_INITIAL_COUNT, initial);
+		}
+
+		void GetTimer(TimerDivisor *divisor, TimerMode *mode, uint32_t *initial, uint32_t *current)
+		{
+			uint32_t timeVector = Read(Register::LVT_TIMER);
+
+			if(mode)
+				*mode = (timeVector & APIC_LVT_PERIODIC) ? TimerMode::Periodic : TimerMode::OneShot;
+
+			if(divisor)
+				*divisor = static_cast<TimerDivisor>(Read(Register::TMR_DIVIDE_CONFIG));
+
+			if(initial)
+				*initial = Read(Register::TMR_INITIAL_COUNT);
+
+			if(current)
+				*current = Read(Register::TMR_CURRENT_COUNT);
+		}
+
+		// Misc
+
+		uintptr_t GetBase()
+		{
+			uint64_t value = Sys::CPUReadMSR(0x1b);
+			uint32_t base  = static_cast<uint32_t>(value & ~0xfff);
+
+			return base;
+		}
+
+		kern_return_t MapBase()
+		{
+			kern_return_t result;
+			vm_address_t vaddress;
+
+			uintptr_t paddress = GetBase();
+
+			result = vm::get_kernel_directory()->alloc_limit(vaddress, paddress, VM_KERNEL_LIMIT, VM_UPPER_LIMIT, 1, VM_FLAGS_KERNEL_NOCACHE);
+			if(result != KERN_SUCCESS)
+			{
+				kprintf("couldn't allocate APIC memory");
+				return result;
+			}
+
+			_apicPhysicalBase = paddress;
+			_apicBase         = vaddress;
+
+			return KERN_SUCCESS;
+		}
+
+		kern_return_t MapBaseAP()
+		{
+			uintptr_t paddress = GetBase();
+			if(paddress != _apicPhysicalBase) // Just in case an AP has a different APIC base
+			{
+				uint64_t value = Sys::CPUReadMSR(0x1b) & 0xfff;
+				value = _apicPhysicalBase | value;
+
+				Sys::CPUWriteMSR(0x1b, value);
+			}
+
+			return KERN_SUCCESS;
+		}
+
+		uint32_t Vector(uint8_t interrupt, bool masked)
+		{
+			uint32_t vector = interrupt;
+			if(masked)
+				vector |= APIC_LVT_MASKED;
+
+			return vector;
+		}
+
+		void MaskInterrupt(uint8_t vector, bool masked)
+		{
+			assert(vector >= 0x20 && vector <= 0x2f);
+
+			uint8_t irq   = vector - APIC_PIC_RELCOATION_OFFSET;
+			uint32_t data = masked ? (vector | (1 << 16)) : vector;
+
+			IOAPIC::InterruptOverride *override = IOAPIC::GetInterruptOverride(irq);
+			if(override)
+			{
+				irq = override->GetSystemInterrupt();
+
+				data |= override->IsLevelTriggered() ? (1 << 15) : 0;
+				data |= override->IsActiveHigh() ? 0 : (1 << 13);
+			}
+
+			uint32_t offset = static_cast<uint32_t>(IOAPIC::Register::REDTBL0) + (irq * 2);
+			IOAPIC *ioapic  = IOAPIC::GetIOAPICForInterrupt(irq);
+
+			assert(ioapic);
+
+			ioapic->Write(static_cast<IOAPIC::Register>(offset + 0), data);
+			ioapic->Write(static_cast<IOAPIC::Register>(offset + 1), 0);
+		}
 	}
 
-	// --------------------
-	// MARK: -
-	// MARK: Timer
-	// --------------------
-
-	void apic_arm_timer(uint32_t count)
-	{
-		uint32_t vector = apic_read(APIC_REGISTER_LVT_TIMER);
-		vector &= ~APIC_LVT_MASKED;
-
-		apic_write(APIC_REGISTER_LVT_TIMER, vector);
-		apic_write(APIC_REGISTER_TIMER_INITAL_COUNT, count);
-		//apic_write(APIC_REGISTER_TIMER_CURRENT_COUNT, count);
-	}
-
-	void apic_unarm_timer()
-	{
-		uint32_t vector = apic_read(APIC_REGISTER_LVT_TIMER);
-		vector |= APIC_LVT_MASKED;
-
-		apic_write(APIC_REGISTER_LVT_TIMER, vector);
-	}
-
-	void apic_set_timer(apic_timer_divisor_t divisor, apic_timer_mode_t mode, uint32_t initial_count)
-	{
-		uint32_t vector = apic_read(APIC_REGISTER_LVT_TIMER);
-
-		vector &= ~APIC_LVT_PERIODIC;
-		vector |= ((mode == apic_timer_mode_t::periodic) ? APIC_LVT_PERIODIC : 0) | APIC_LVT_MASKED;
-
-		apic_write(APIC_REGISTER_LVT_TIMER, vector);
-		apic_write(APIC_REGISTER_TIMER_DIVIDE_CONFIG, static_cast<uint32_t>(divisor));
-		apic_write(APIC_REGISTER_TIMER_INITAL_COUNT, initial_count);
-	}
-
-	void apic_get_timer(apic_timer_divisor_t *divisor, apic_timer_mode_t *mode, uint32_t *initial, uint32_t *current)
-	{
-		uint32_t timeVector = apic_read(APIC_REGISTER_LVT_TIMER);
-
-		if(mode)
-			*mode = (timeVector & APIC_LVT_PERIODIC) ? apic_timer_mode_t::periodic : apic_timer_mode_t::one_shot;
-
-		if(divisor)
-			*divisor = static_cast<apic_timer_divisor_t>(apic_read(APIC_REGISTER_TIMER_DIVIDE_CONFIG));
-
-		if(initial)
-			*initial = apic_read(APIC_REGISTER_TIMER_INITAL_COUNT);
-
-		if(current)
-			*current = apic_read(APIC_REGISTER_TIMER_CURRENT_COUNT);
-	}
-
-	// --------------------
-	// MARK: -
-	// MARK: IPI
-	// --------------------
-
-	static inline void apic_finish_pending_ipi()
-	{
-		while(apic_read(APIC_REGISTER_ICRL) & APIC_ICR_DS_PENDING)
-			Sys::CPUPause();
-	}
-
-	void apic_send_ipi(uint8_t vector, Sys::CPU *cpu)
-	{
-		apic_send_ipi(vector, cpu, APIC_ICR_DM_FIXED);
-	}
-
-	void apic_send_ipi(uint8_t vector, Sys::CPU *cpu, uint32_t flags)
-	{
-		apic_finish_pending_ipi();
-		
-		apic_write(APIC_REGISTER_ICRH, cpu->GetApicID() << 24);
-		apic_write(APIC_REGISTER_ICRL, vector | flags);
-	}
-
-
-	void apic_broadcast_ipi(uint8_t vector, bool self)
-	{
-		apic_broadcast_ipi(vector, self, APIC_ICR_LV_ASSERT);
-	}
-
-	void apic_broadcast_ipi(uint8_t vector, bool self, uint32_t flags)
-	{
-		uint32_t deliveryMode = self ? APIC_ICR_DSS_ALL : APIC_ICR_DSS_OTHERS;
-
-		apic_finish_pending_ipi();
-
-		apic_write(APIC_REGISTER_ICRH, 0);
-		apic_write(APIC_REGISTER_ICRL, vector | flags | deliveryMode);
-	}
-
-	// --------------------
-	// MARK: -
-	// MARK: Initialization
-	// --------------------
-
-	void apic_mask_pic()
+	void MaskPIC()
 	{
 		// The PIC is completely masked, so there shouldn't be any interrupts
 		// Well, BOCHS thinks differently, so we remap the interrupts to avoid the PIT showing up
@@ -404,57 +401,51 @@ namespace ir
 		outb(0xa1, 0xff);
 	}
 
-	kern_return_t apic_init()
+	kern_return_t APICInit()
 	{
 		kern_return_t result;
-		apic_mask_pic();
+		MaskPIC();
 
-		if((result = apic_map_base()) != KERN_SUCCESS)
+		if((result = APIC::MapBase()) != KERN_SUCCESS)
 		{
 			kprintf("failed to map APIC");
 			return result;
 		}
 
-		if((result = apic_map_ioapics()) != KERN_SUCCESS)
+		if((result = IOAPIC::MapIOAPICs()) != KERN_SUCCESS)
 		{
 			kprintf("failed to map I/O APIC(s)");
 			return result;
 		}
 		
-		return apic_init_cpu();
+		return APICInitCPU();
 	}
 
-	kern_return_t apic_init_cpu()
+	kern_return_t APICInitCPU()
 	{
 		kern_return_t result;
 
-		if((result = apic_map_base_ap()) != KERN_SUCCESS)
+		if((result = APIC::MapBaseAP()) != KERN_SUCCESS)
 		{
 			kprintf("failed to map APIC");
 			return result;
 		}
 
-		if(_apic_ioapic_count == 0)
-		{
-			kprintf("No IOAPIC present");
-			return KERN_RESOURCES_MISSING;
-		}
-
 		// Initialize the APIC
-		apic_write(APIC_REGISTER_TPR, 0);
-		apic_write(APIC_REGISTER_SVR, (1 << 8) | 0x32);
+		APIC::Write(APIC::Register::TPR, 0);
+		APIC::Write(APIC::Register::SVR, (1 << 8) | 0x32);
 
-		apic_write(APIC_REGISTER_DFR, APIC_DFR_FLAT);
-		apic_write(APIC_REGISTER_LDR, Sys::CPU::GetCPUID() << 24);
+		APIC::Write(APIC::Register::DFR, APIC_DFR_FLAT);
+		APIC::Write(APIC::Register::LDR, Sys::CPU::GetCPUID() << 24);
 
-		apic_write(APIC_REGISTER_LVT_PMC,     apic_vector(0x30, false));
-		//apic_write(APIC_REGISTER_LVT_CMCI,    apic_vector(0x31, false));
-		apic_write(APIC_REGISTER_LVT_ERROR,   apic_vector(0x33, false));
-		apic_write(APIC_REGISTER_LVT_THERMAL, apic_vector(0x34, false));
-		apic_write(APIC_REGISTER_LVT_TIMER,   apic_vector(0x35, false));
+		APIC::Write(APIC::Register::LVT_PMC,     APIC::Vector(0x30, false));
+		//apic_write(APIC::Register::LVT_CMCI,    APIC::Vector(0x31, false));
+		APIC::Write(APIC::Register::LVT_ERROR,   APIC::Vector(0x33, false));
+		APIC::Write(APIC::Register::LVT_THERMAL, APIC::Vector(0x34, false));
+		APIC::Write(APIC::Register::LVT_TIMER,   APIC::Vector(0x35, false));
 
-		apic_write(APIC_REGISTER_LVT_LINT0,   apic_vector(0x37, false));
-		apic_write(APIC_REGISTER_LVT_LINT1,   apic_vector(0x38, false));
+		APIC::Write(APIC::Register::LVT_LINT0,   APIC::Vector(0x37, false));
+		APIC::Write(APIC::Register::LVT_LINT1,   APIC::Vector(0x38, false));
 
 		return KERN_SUCCESS;
 	}

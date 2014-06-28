@@ -32,4 +32,12 @@
 #define CONFIG_MAX_CPUS 32
 #endif
 
+#ifndef CONFIG_MAX_IOAPICS
+#define CONFIG_MAX_IOAPICS 8
+#endif
+
+#ifndef CONFIG_MAX_INTERRUPT_OVERRIDES
+#define CONFIG_MAX_INTERRUPT_OVERRIDES 32
+#endif
+
 #endif /* _CONFIG_H_ */
