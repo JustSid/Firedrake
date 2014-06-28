@@ -25,23 +25,25 @@
 
 __BEGIN_DECLS
 
-bool atomic_compare_swap(int32_t oldValue, int32_t newValue, int32_t *address);
-int32_t atomic_add(int32_t amount, int32_t *address);
+bool atomic_compare_swap_i32(int32_t oldValue, int32_t newValue, int32_t *address);
+bool atomic_compare_swap_u32(uint32_t oldValue, uint32_t newValue, uint32_t *address);
+int32_t atomic_add_i32(int32_t amount, int32_t *address);
+uint32_t atomic_add_u32(uint32_t amount, uint32_t *address);
 
 __END_DECLS
 
-static inline int32_t atomic_increment(int32_t *address)
+// int32_t
+static inline int32_t atomic_increment_i32(int32_t *address)
 {
-	return atomic_add(1, address);
+	return atomic_add_i32(1, address);
+}
+static inline int32_t atomic_decrement_i32(int32_t *address)
+{
+	return atomic_add_i32(-1, address);
 }
 
-static inline int32_t atomic_decrement(int32_t *address)
-{
-	return atomic_add(-1, address);
-}
 
-
-static inline int32_t atomic_bitwise(int32_t andMask, int32_t orMask, int32_t xorMask, int32_t *address)
+static inline int32_t atomic_bitwise_i32(int32_t andMask, int32_t orMask, int32_t xorMask, int32_t *address)
 {
 	int32_t oldValue;
 	int32_t newValue;
@@ -49,25 +51,59 @@ static inline int32_t atomic_bitwise(int32_t andMask, int32_t orMask, int32_t xo
 	do {
 		oldValue = *address;
 		newValue = ((oldValue & andMask) | orMask) ^ xorMask;
-	} while(!atomic_compare_swap(oldValue, newValue, address));
+	} while(!atomic_compare_swap_i32(oldValue, newValue, address));
 
 	return oldValue;
 }
-
-static inline int32_t atomic_and(int32_t mask, int32_t *address)
+static inline int32_t atomic_and_i32(int32_t mask, int32_t *address)
 {
-	return atomic_bitwise(mask, 0, 0, address);
+	return atomic_bitwise_i32(mask, 0, 0, address);
+}
+static inline int32_t atomic_or_i32(int32_t mask, int32_t *address)
+{
+	return atomic_bitwise_i32(-1, mask, 0, address);
+}
+static inline int32_t atomic_xor_i32(int32_t mask, int32_t *address)
+{
+	return atomic_bitwise_i32(-1, 0, mask, address);
 }
 
-static inline int32_t atomic_or(int32_t mask, int32_t *address)
+// uint32_t
+static inline uint32_t atomic_increment_i32(uint32_t *address)
 {
-	return atomic_bitwise(-1, mask, 0, address);
+	return atomic_add_u32(1, address);
+}
+static inline uint32_t atomic_decrement_i32(uint32_t *address)
+{
+	return atomic_add_u32(-1, address);
 }
 
-static inline int32_t atomic_xor(int32_t mask, int32_t *address)
+
+static inline uint32_t atomic_bitwise_u32(uint32_t andMask, uint32_t orMask, uint32_t xorMask, uint32_t *address)
 {
-	return atomic_bitwise(-1, 0, mask, address);
+	uint32_t oldValue;
+	uint32_t newValue;
+
+	do {
+		oldValue = *address;
+		newValue = ((oldValue & andMask) | orMask) ^ xorMask;
+	} while(!atomic_compare_swap_u32(oldValue, newValue, address));
+
+	return oldValue;
 }
+static inline uint32_t atomic_and_u32(uint32_t mask, uint32_t *address)
+{
+	return atomic_bitwise_u32(mask, 0, 0, address);
+}
+static inline uint32_t atomic_or_u32(uint32_t mask, uint32_t *address)
+{
+	return atomic_bitwise_u32(-1, mask, 0, address);
+}
+static inline uint32_t atomic_xor_u32(uint32_t mask, uint32_t *address)
+{
+	return atomic_bitwise_u32(-1, 0, mask, address);
+}
+
 
 static inline void memory_fence()
 {
@@ -78,8 +114,7 @@ static inline void memory_barrier()
 {
 	// See: http://stackoverflow.com/questions/2599238
 	// Basically: The lock prefix is faster and acts as a memory barrier just as well as mfence
-	memory_fence();
-	__asm__ volatile("lock orl $0, (%esp)");
+	__asm__ volatile("lock orl $0, (%%esp)" ::: "memory");
 }
 
 #endif /* _ATOMIC_H_ */

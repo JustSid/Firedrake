@@ -19,7 +19,8 @@
 #include <asm.h>
 
 
-ENTRY(atomic_compare_swap)
+ENTRY(atomic_compare_swap_i32)
+ENTRY(atomic_compare_swap_u32)
 	movl 4(%esp), %eax
 	movl 8(%esp), %edx
 	movl 12(%esp), %ecx
@@ -30,7 +31,8 @@ ENTRY(atomic_compare_swap)
 	movzbl %al, %eax
 	ret
 
-ENTRY(atomic_add)
+ENTRY(atomic_add_i32)
+ENTRY(atomic_add_u32)
 	movl 4(%esp), %eax
 	movl 8(%esp), %ecx
 
