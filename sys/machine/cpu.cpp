@@ -21,6 +21,7 @@
 #include <kern/kprintf.h>
 #include <kern/panic.h>
 #include <libc/string.h>
+#include <libcpp/new.h>
 #include "cpu.h"
 #include "acpi.h"
 #include "gdt.h"
@@ -32,7 +33,7 @@ namespace Sys
 	// Get some scratch memory and use that instead
 	char _cpuMemory[CONFIG_MAX_CPUS * sizeof(CPU)];
 
-	static CPU *_cpu = nullptr;
+	static CPU *_cpu = reinterpret_cast<CPU *>(_cpuMemory);
 	static CPU *_bootstrapCPU;
 	static size_t _cpuCount = 0;
 
@@ -42,61 +43,33 @@ namespace Sys
 	// CPU
 	// -----
 
-	CPU::CPU()
-	{}
-
-	CPU::CPU(uint8_t apicID, Flags flags) :
-		_id(0xff),
+	CPU::CPU(uint8_t id, uint8_t apicID, Flags flags) :
+		_id(id),
 		_apicID(apicID),
 		_flags(flags),
 		_lastState(nullptr),
-		_registered(false),
 		_trampoline(nullptr)
 	{}
 
-	CPU::CPU(const CPU &other) :
-		_id(other._id),
-		_apicID(other._apicID),
-		_flags(other._flags),
-		_lastState(other._lastState),
-		_registered(false),
-		_trampoline(other._trampoline)
-	{}
 
-	CPU &CPU::operator =(const CPU &other)
+	CPU *CPU::RegisterCPU(uint8_t apicID, Flags flags)
 	{
-		_id         = other._id;
-		_apicID     = other._apicID;
-		_flags      = other._flags;
-		_trampoline = other._trampoline;
-		_lastState  = other._lastState;
-		_registered = false;
-
-		return *this;
-	}
-
-	void CPU::Register()
-	{
-		if(_registered)
-			panic("Trying to re-register an existing CPU!");
-
 		if(_cpuCount >= CONFIG_MAX_CPUS)
 		{
 			kprintf("Trying to register more CPUs than configured (increase CONFIG_MAX_CPUS)");
-			return;
+			return nullptr;
 		}
 
-		if((_flags & Flags::Bootstrap) && _bootstrapCPU)
+		if((flags & Flags::Bootstrap) && _bootstrapCPU)
 			panic("Tried to register more than one bootstrap CPU!");
 
+		uint8_t id = _cpuCount ++;
+		CPU *cpu = new(&_cpuMemory[id * sizeof(CPU)]) CPU(id, apicID, flags);
 
-		_registered = true;
-		_id = _cpuCount ++;
+		if(flags & Flags::Bootstrap)
+			_bootstrapCPU = cpu;
 
-		_cpu[_id] = *this;
-
-		if(_flags & Flags::Bootstrap)
-			_bootstrapCPU = &_cpu[_id];
+		return cpu;
 	}
 
 	void CPU::Bootstrap()
@@ -251,9 +224,6 @@ namespace Sys
 			kprintf("unsupported CPU (no MSR and/or APIC present)");
 			return KERN_RESOURCES_MISSING;
 		}
-
-		// Assign the scratch memory to the CPU array
-		_cpu = reinterpret_cast<CPU *>(_cpuMemory);
 
 		kern_return_t result;
 		if((result = ACPI::Init()) != KERN_SUCCESS)

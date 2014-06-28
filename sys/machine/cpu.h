@@ -221,15 +221,6 @@ namespace Sys
 			};
 		};
 
-		CPU();
-		CPU(uint8_t apicID, Flags flags);
-		CPU(const CPU &other);
-
-		CPU &operator =(const CPU &other);
-
-		// Must be called from the bootstrap CPU before any other CPU is bootstrapped
-		void Register();
-
 		// Must be called from the actual CPU!
 		void Bootstrap();
 
@@ -245,6 +236,8 @@ namespace Sys
 		void SetTrampoline(ir::trampoline_cpu_data_t *trampoline);
 		void SetFlags(Flags flags);
 
+		static CPU *RegisterCPU(uint8_t apicID, Flags flags);
+
 		static CPU *GetCPUWithID(uint32_t id);
 		static CPU *GetCPUWithApicID(uint32_t apicID);
 		static CPU *GetCurrentCPU();
@@ -253,6 +246,8 @@ namespace Sys
 		static size_t GetCPUCount();
 
 	private:
+		CPU(uint8_t id, uint8_t apicID, Flags flags);
+
 		uint8_t _id;
 		uint8_t _apicID;
 
@@ -261,8 +256,6 @@ namespace Sys
 		CPUInfo _info;
 
 		ir::trampoline_cpu_data_t *_trampoline;
-
-		bool _registered;
 	};
 
 	class CPUID

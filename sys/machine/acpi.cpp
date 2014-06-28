@@ -85,8 +85,7 @@ namespace ACPI
 								hasBootstrapCPU = true;
 							}
 
-							Sys::CPU cpu(apic->apicID, flags);
-							cpu.Register();
+							Sys::CPU::RegisterCPU(apic->apicID, flags);
 						}
 
 						break;
