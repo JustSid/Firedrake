@@ -47,14 +47,14 @@ namespace Sys
 		uintptr_t paddress;
 
 		// Allocate space for the trampoline map
-		result = pm::alloc(paddress, IR_TRAMPOLINE_PAGES);
+		result = PM::Alloc(paddress, IR_TRAMPOLINE_PAGES);
 		if(result != KERN_SUCCESS)
 		{
 			kprintf("failed to allocate physical trampoline area");
 			return result;
 		}
 
-		result = vm::get_kernel_directory()->alloc_limit(vaddress, paddress, IR_TRAMPOLINE_BEGIN, VM_UPPER_LIMIT, IR_TRAMPOLINE_PAGES, VM_FLAGS_KERNEL);
+		result = VM::Directory::GetKernelDirectory()->AllocLimit(vaddress, paddress, IR_TRAMPOLINE_BEGIN, VM::kUpperLimit, IR_TRAMPOLINE_PAGES, kVMFlagsKernel);
 		if(result != KERN_SUCCESS || vaddress != IR_TRAMPOLINE_BEGIN)
 		{
 			kprintf("failed to allocate trampoline area");
@@ -79,9 +79,9 @@ namespace Sys
 		CPU *cpu = CPU::GetCurrentCPU();
 		Trampoline *trampoline = &_map->trampoline[cpu->GetID()];
 
-		vm::directory *directory = vm::get_kernel_directory();
+		VM::Directory *directory = VM::Directory::GetKernelDirectory();
 
-		trampoline->pageDirectory = directory->get_physical_directory();
+		trampoline->pageDirectory = directory->GetPhysicalDirectory();
 		cpu->SetTrampoline(trampoline);
 
 		uintptr_t idtBegin = reinterpret_cast<uintptr_t>(&idt_begin);
@@ -89,7 +89,7 @@ namespace Sys
 		GDTInit(trampoline->gdt, &trampoline->tss);
 
 		// Hacky hackery hack
-		uint32_t *esp = mm::alloc<uint32_t>(directory, 1, VM_FLAGS_KERNEL);
+		uint32_t *esp = Alloc<uint32_t>(directory, 1, kVMFlagsKernel);
 		trampoline->tss.esp0 = reinterpret_cast<uint32_t>(esp) + (VM_PAGE_SIZE - sizeof(Sys::CPUState));
 		trampoline->tss.ss0  = 0x10;
 

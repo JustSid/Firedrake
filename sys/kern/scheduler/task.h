@@ -49,7 +49,7 @@ namespace sd
 			died
 		};
 
-		task_t(vm::directory *directory);
+		task_t(Sys::VM::Directory *directory);
 		~task_t();
 
 		kern_return_t attach_thread(thread_t **outthread, thread_t::entry_t entry, size_t stack);
@@ -58,14 +58,14 @@ namespace sd
 		void unlock();
 
 		pid_t get_pid() const { return _pid; }
-		vm::directory *get_directory() const { return _directory; }
+		Sys::VM::Directory *get_directory() const { return _directory; }
 
 	private:
 		void attach_thread(thread_t *thread);
 		void remove_thread(thread_t *thread);
 
 		std::atomic<int32_t> _tid_counter;
-		vm::directory *_directory;
+		Sys::VM::Directory *_directory;
 
 		cpp::queue<thread_t> _threads;
 		thread_t *_main_thread;

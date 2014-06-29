@@ -25,22 +25,23 @@
 #include "heap.h"
 
 #include <kern/kalloc.h>
+#include <libcpp/type_traits.h>
 
-namespace mm
+namespace Sys
 {
 	template<class T=void>
-	T *alloc(vm::directory *dir, size_t pages, uint32_t flags)
+	T *Alloc(VM::Directory *dir, size_t pages, uint32_t flags)
 	{
 		uintptr_t pmemory    = 0;
 		vm_address_t vmemory = 0;
 
 		kern_return_t result;
 
-		result = pm::alloc(pmemory, pages);
+		result = PM::Alloc(pmemory, pages);
 		if(result != KERN_SUCCESS)
 			goto alloc_failed;
 
-		result = dir->alloc(vmemory, pmemory, pages, flags);
+		result = dir->Alloc(vmemory, pmemory, pages, flags);
 		if(result != KERN_SUCCESS)
 			goto alloc_failed;
 
@@ -48,27 +49,29 @@ namespace mm
 
 	alloc_failed:
 		if(pmemory)
-			pm::free(pmemory, pages);
+			PM::Free(pmemory, pages);
 
 		if(vmemory)
-			dir->free(vmemory, pages);
+			dir->Free(vmemory, pages);
 
 		return nullptr;
 	}
 
 	template<class T>
-	void free(T *ptr, vm::directory *dir, size_t pages)
+	void Free(T *ptr, VM::Directory *dir, size_t pages)
 	{
 		kern_return_t result;
 		uintptr_t pmemory;
 
-		result = dir->resolve_virtual_address(pmemory, reinterpret_cast<vm_address_t>(ptr));
+		result = dir->ResolveAddress(pmemory, reinterpret_cast<vm_address_t>(ptr));
 		if(result == KERN_SUCCESS)
 		{
-			dir->free(reinterpret_cast<vm_address_t>(ptr), pages);
-			pm::free(pmemory, pages);
+			dir->Free(reinterpret_cast<vm_address_t>(ptr), pages);
+			PM::Free(pmemory, pages);
 		}
 	}
+
+
 
 	template<class T>
 	T *Allocate()
@@ -78,6 +81,18 @@ namespace mm
 			return nullptr;
 
 		T *result = new(buffer) T();
+		return result;
+	}
+
+	template<class T, class ... Args>
+	T *Allocate(Args&&... args)
+	{
+		void *buffer = kalloc(sizeof(T));
+		if(!buffer)
+			return nullptr;
+
+		T *result = new(buffer) T(std::forward<Args>(args)...);
+		return result;
 	}
 }
 

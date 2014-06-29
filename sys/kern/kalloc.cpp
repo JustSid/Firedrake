@@ -21,12 +21,12 @@
 
 void *kalloc(size_t size)
 {
-	mm::heap *heap = mm::get_generic_heap();
-	return heap->allocate(size);
+	Sys::Heap *heap = Sys::Heap::GetGenericHeap();
+	return heap->Allocate(size);
 }
 
 void kfree(void *ptr)
 {
-	mm::heap *heap = mm::get_generic_heap();
-	heap->free(ptr);
+	Sys::Heap *heap = Sys::Heap::GetGenericHeap();
+	heap->Free(ptr);
 }

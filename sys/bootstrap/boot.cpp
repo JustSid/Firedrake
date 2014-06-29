@@ -71,9 +71,9 @@ void SysInit_i486(Sys::MultibootHeader *info)
 
 	// Run the low level initialization process
 	Sys::Init("cpu", Sys::CPUInit);
-	Sys::Init("physical memory", pm::init, info);
-	Sys::Init("virtual memory", vm::init, info);
-	Sys::Init("heap", mm::heap_init);
+	Sys::Init("physical memory", Sys::PMInit, info);
+	Sys::Init("virtual memory", Sys::VMInit, info);
+	Sys::Init("heap", Sys::HeapInit);
 	Sys::Init("interrupts", Sys::InterruptsInit);
 	Sys::Init("clock", Sys::ClockInit);
 	Sys::Init("smp", Sys::SMPInit);

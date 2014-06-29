@@ -156,13 +156,13 @@ namespace Sys
 
 	kern_return_t IOAPIC::MapIOAPICs()
 	{
-		vm::directory *directory = vm::get_kernel_directory();
+		VM::Directory *directory = VM::Directory::GetKernelDirectory();
 		for(size_t i = 0; i < _ioapicCount; i ++)
 		{
 			IOAPIC *ioapic = _ioapic + i;
 
 			vm_address_t address;
-			kern_return_t result = directory->alloc_limit(address, ioapic->_address, VM_KERNEL_LIMIT, VM_UPPER_LIMIT, 1, VM_FLAGS_KERNEL_NOCACHE);
+			kern_return_t result = directory->AllocLimit(address, ioapic->_address, VM::kKernelLimit, VM::kUpperLimit, 1, kVMFlagsKernelNoCache);
 
 			if(result != KERN_SUCCESS)
 				return result;
@@ -320,7 +320,7 @@ namespace Sys
 
 			uintptr_t paddress = GetBase();
 
-			result = vm::get_kernel_directory()->alloc_limit(vaddress, paddress, VM_KERNEL_LIMIT, VM_UPPER_LIMIT, 1, VM_FLAGS_KERNEL_NOCACHE);
+			result = VM::Directory::GetKernelDirectory()->AllocLimit(vaddress, paddress, VM::kKernelLimit, VM::kUpperLimit, 1, kVMFlagsKernelNoCache);
 			if(result != KERN_SUCCESS)
 			{
 				kprintf("couldn't allocate APIC memory");

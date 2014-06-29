@@ -18,7 +18,7 @@
 
 #include <asm.h>
 
-.global _kernel_page_directory
+.global _kernelPageDirectory
 .global ir_handl_interrupt
 
 TEXT()
@@ -128,7 +128,7 @@ ENTRY(idt_entry_handler)
 	cld
 
 	// Load the current page directory and the kernel ones into eax and ecx respectively
-	movl (_kernel_page_directory), %ecx
+	movl (_kernelPageDirectory), %ecx
 	movl %cr3, %eax
 
 	// Load the kernels page directory if it isn't active yet
@@ -158,7 +158,7 @@ ENTRY(idt_entry_handler)
 
 	// Load the new page directory if it is NOT the kernels page directory
 	// This potentially saves trashing the TLB a few times
-	cmpl (_kernel_page_directory), %ecx
+	cmpl (_kernelPageDirectory), %ecx
 	jz 1f
 
 	movl %ecx, %cr3

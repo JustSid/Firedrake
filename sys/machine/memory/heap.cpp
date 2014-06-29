@@ -1,5 +1,5 @@
 //
-//  heap.cpp
+//  Heap.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -20,13 +20,13 @@
 #include <libcpp/algorithm.h>
 #include <libc/string.h>
 #include <kern/kprintf.h>
-#include "heap.h"
+#include "Heap.h"
 #include "memory.h"
 
-#define kHeapAllocationExtraPadding 16
-
-namespace mm
+namespace Sys
 {
+	constexpr size_t kHeapAllocationExtraPadding = 16;
+
 	// --------------------
 	// MARK: -
 	// MARK: zone_allocation
@@ -34,109 +34,109 @@ namespace mm
 
 	typedef struct
 	{
-		heap_zone_allocation_type type;
+		HeapZoneAllocationType type;
 		uint8_t size;
 		uint16_t offset;
-	} zone_allocation_tiny_t;
+	} ZoneAllocationTiny;
 
 	typedef struct
 	{
-		heap_zone_allocation_type type;
+		HeapZoneAllocationType type;
 		size_t size;
 		uintptr_t pointer;
-	} zone_allocation_t;
+	} ZoneAllocation;
 
 	// --------------------
 	// MARK: -
-	// MARK: allocation_proxy
+	// MARK: AllocationProxy
 	// --------------------
 
-	allocation_proxy::allocation_proxy(void *allocation, const heap_zone *zone) :
+	AllocationProxy::AllocationProxy(void *allocation, const HeapZone *zone) :
 		_allocation(allocation),
-		_zone(const_cast<heap_zone *>(zone))
+		_zone(const_cast<HeapZone *>(zone))
 	{
-		_tiny = _zone->is_tiny();
+		_tiny = _zone->IsTiny();
 	}
 
-	heap_zone_allocation_type allocation_proxy::get_type() const
+	HeapZoneAllocationType AllocationProxy::GetType() const
 	{
 		// The layout of the type is the same for all allocations
-		zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(_allocation);
+		ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(_allocation);
 		return allocation->type;
 	}
 
-	size_t allocation_proxy::get_size() const
+	size_t AllocationProxy::GetSize() const
 	{
 		if(_tiny)
 		{
-			zone_allocation_tiny_t *allocation = reinterpret_cast<zone_allocation_tiny_t *>(_allocation);
+			ZoneAllocationTiny *allocation = reinterpret_cast<ZoneAllocationTiny *>(_allocation);
 			return allocation->size;
 		}
 		else
 		{
-			zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(_allocation);
+			ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(_allocation);
 			return allocation->size;
 		}
 	}
 
-	void *allocation_proxy::get_pointer() const
+	void *AllocationProxy::GetPointer() const
 	{
 		if(_tiny)
 		{
-			zone_allocation_tiny_t *allocation = reinterpret_cast<zone_allocation_tiny_t *>(_allocation);
+			ZoneAllocationTiny *allocation = reinterpret_cast<ZoneAllocationTiny *>(_allocation);
 			return reinterpret_cast<void *>(_zone->_begin + allocation->offset);
 		}
 		else
 		{
-			zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(_allocation);
+			ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(_allocation);
 			return reinterpret_cast<void *>(allocation->pointer);
 		}
 	}
 
-	kern_return_t allocation_proxy::free()
+	kern_return_t AllocationProxy::Free()
 	{
-		if(get_type() == heap_zone_allocation_type::used)
-			return _zone->free_allocation(_allocation);
+		if(GetType() == HeapZoneAllocationType::Used)
+			return _zone->FreeAllocation(_allocation);
 
 		return KERN_INVALID_ARGUMENT;
 	}
 
-	kern_return_t allocation_proxy::use_with_size(void *&outPointer, size_t size)
+	kern_return_t AllocationProxy::UseWithSize(void *&outPointer, size_t size)
 	{
-		if(get_type() != heap_zone_allocation_type::free)
+		if(GetType() != HeapZoneAllocationType::Free)
 			return KERN_INVALID_ARGUMENT;
 
-		kern_return_t result = _zone->use_allocation(outPointer, _allocation, size);
+		kern_return_t result = _zone->UseAllocation(outPointer, _allocation, size);
 		return result;
 	}
 
 
 	// --------------------
 	// MARK: -
-	// MARK: heap_zone
+	// MARK: HeapZone
 	// --------------------
 
-	static inline heap_zone_type _heap_zoneype_for_size(size_t size)
+	static inline HeapZoneType _HeapZoneTypeForSize(size_t size)
 	{
 		if(size > 2048)
-			return heap_zone_type::large;
+			return HeapZoneType::Large;
 
 		if(size > 256)
-			return heap_zone_type::medium;
+			return HeapZoneType::Medium;
 
 		if(size > 64)
-			return heap_zone_type::small;
+			return HeapZoneType::Small;
 
-		return heap_zone_type::tiny;
+		return HeapZoneType::Tiny;
 	}
 
-	heap_zone::heap_zone(uint8_t *start, uint8_t *end, size_t pages, heap_zone_type type) :
+	HeapZone::HeapZone(uint8_t *start, uint8_t *end, size_t pages, HeapZoneType type) :
 		_type(type),
 		_pages(pages),
 		_begin(start),
 		_end(end)
 	{
-		size_t allocationSize = (type == heap_zone_type::tiny) ? sizeof(zone_allocation_tiny_t) : sizeof(zone_allocation_t);
+		size_t allocationSize = (type == HeapZoneType::Tiny) ? sizeof(ZoneAllocationTiny) : sizeof(ZoneAllocation);
 
 		_changes = 0;
 
@@ -145,20 +145,20 @@ namespace mm
 
 		_freeSize = ((pages - 1) * VM_PAGE_SIZE); // Account for the page occupied by the zone itself
 
-		_maxAllocations  = (VM_PAGE_SIZE - sizeof(heap_zone)) / allocationSize;
+		_maxAllocations  = (VM_PAGE_SIZE - sizeof(HeapZone)) / allocationSize;
 		_allocations     = 0;
 		_freeAllocations = 0;
 
-		_firstAllocation = (reinterpret_cast<uint8_t *>(this)) + sizeof(heap_zone);
+		_firstAllocation = (reinterpret_cast<uint8_t *>(this)) + sizeof(HeapZone);
 		_lastAllocation  = (reinterpret_cast<uint8_t *>(this)) + (_maxAllocations * allocationSize);
 
-		if(is_tiny())
+		if(IsTiny())
 		{
 			size_t left = _freeSize;
 			uint16_t offset = 0;
 
-			zone_allocation_tiny_t *allocation = reinterpret_cast<zone_allocation_tiny_t *>(_firstAllocation);
-			zone_allocation_tiny_t *last       = reinterpret_cast<zone_allocation_tiny_t *>(_lastAllocation);
+			ZoneAllocationTiny *allocation = reinterpret_cast<ZoneAllocationTiny *>(_firstAllocation);
+			ZoneAllocationTiny *last       = reinterpret_cast<ZoneAllocationTiny *>(_lastAllocation);
 
 			for(; allocation != last; allocation ++)
 			{
@@ -166,7 +166,7 @@ namespace mm
 				{
 					allocation->size   = std::min(left, UINT8_MAX);
 					allocation->offset = offset;
-					allocation->type   = heap_zone_allocation_type::free;
+					allocation->type   = HeapZoneAllocationType::Free;
 
 					offset += allocation->size;
 					left   -= allocation->size;
@@ -176,7 +176,7 @@ namespace mm
 				}
 				else
 				{
-					allocation->type   = heap_zone_allocation_type::unused;
+					allocation->type   = HeapZoneAllocationType::Unused;
 					allocation->offset = UINT16_MAX;
 				}
 			}
@@ -186,61 +186,61 @@ namespace mm
 			_allocations = 1;
 			_freeAllocations = 1;
 
-			zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(_firstAllocation);
-			zone_allocation_t *last       = reinterpret_cast<zone_allocation_t *>(_lastAllocation);
+			ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(_firstAllocation);
+			ZoneAllocation *last       = reinterpret_cast<ZoneAllocation *>(_lastAllocation);
 
-			allocation->type    = heap_zone_allocation_type::free;
+			allocation->type    = HeapZoneAllocationType::Free;
 			allocation->size    = _freeSize;
 			allocation->pointer = reinterpret_cast<uintptr_t>(_begin);
 
 			for(allocation ++; allocation != last; allocation ++)
 			{
 				allocation->pointer = 0x0;
-				allocation->type    = heap_zone_allocation_type::unused;
+				allocation->type    = HeapZoneAllocationType::Unused;
 			}
 		}
 	}
 
-	void heap_zone::operator delete(void *ptr)
+	void HeapZone::operator delete(void *ptr)
 	{
-		heap_zone *zone = static_cast<heap_zone *>(ptr);
-		mm::free(zone, vm::get_kernel_directory(), zone->_pages);
+		HeapZone *zone = static_cast<HeapZone *>(ptr);
+		Free(zone, VM::Directory::GetKernelDirectory(), zone->_pages);
 	}
 
 
-	bool heap_zone::is_tiny() const
+	bool HeapZone::IsTiny() const
 	{
-		return (_type == heap_zone_type::tiny);
+		return (_type == HeapZoneType::Tiny);
 	}
 
-	bool heap_zone::can_allocate(size_t size) const
+	bool HeapZone::CanAllocate(size_t size) const
 	{
 		return (_freeSize >= size && _allocations < _maxAllocations);
 	}
 
-	bool heap_zone::contains_allocation(void *ptr) const
+	bool HeapZone::ContainsAllocation(void *ptr) const
 	{
 		uint8_t *pointer = reinterpret_cast<uint8_t *>(ptr);
 		return (pointer >= _begin && pointer < _end);
 	}
 
-	void heap_zone::defragment()
+	void HeapZone::Defragment()
 	{
-		size_t threshold = is_tiny() ? 100 : 20;
+		size_t threshold = IsTiny() ? 100 : 20;
 
 		if(_changes >= threshold && _freeAllocations > 2)
 		{
-			if(is_tiny())
+			if(IsTiny())
 			{
-				zone_allocation_tiny_t *allocation = reinterpret_cast<zone_allocation_tiny_t *>(_firstAllocation);
-				zone_allocation_tiny_t *last       = reinterpret_cast<zone_allocation_tiny_t *>(_lastAllocation);
+				ZoneAllocationTiny *allocation = reinterpret_cast<ZoneAllocationTiny *>(_firstAllocation);
+				ZoneAllocationTiny *last       = reinterpret_cast<ZoneAllocationTiny *>(_lastAllocation);
 
 				for(; allocation != last; allocation ++)
 				{
-					while(allocation->type == heap_zone_allocation_type::free)
+					while(allocation->type == HeapZoneAllocationType::Free)
 					{
-						zone_allocation_tiny_t *next = static_cast<zone_allocation_tiny_t *>(find_allocation_for_pointer(_begin + allocation->offset + allocation->size));
-						if(!next || next->type != heap_zone_allocation_type::free)
+						ZoneAllocationTiny *next = static_cast<ZoneAllocationTiny *>(FindAllocationForPointer(_begin + allocation->offset + allocation->size));
+						if(!next || next->type != HeapZoneAllocationType::Free)
 							break;
 
 						size_t size = allocation->size;
@@ -249,7 +249,7 @@ namespace mm
 
 						allocation->size += next->size;
 
-						next->type   = heap_zone_allocation_type::unused;
+						next->type   = HeapZoneAllocationType::Unused;
 						next->offset = UINT16_MAX;
 
 						_allocations --;
@@ -259,20 +259,20 @@ namespace mm
 			}
 			else
 			{
-				zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(_firstAllocation);
-				zone_allocation_t *last       = reinterpret_cast<zone_allocation_t *>(_lastAllocation);
+				ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(_firstAllocation);
+				ZoneAllocation *last       = reinterpret_cast<ZoneAllocation *>(_lastAllocation);
 
 				for(; allocation != last; allocation ++)
 				{
-					while(allocation->type == heap_zone_allocation_type::free)
+					while(allocation->type == HeapZoneAllocationType::Free)
 					{
-						zone_allocation_t *next = static_cast<zone_allocation_t *>(find_allocation_for_pointer(reinterpret_cast<void *>(allocation->pointer + allocation->size)));
-						if(!next || next->type != heap_zone_allocation_type::free)
+						ZoneAllocation *next = static_cast<ZoneAllocation *>(FindAllocationForPointer(reinterpret_cast<void *>(allocation->pointer + allocation->size)));
+						if(!next || next->type != HeapZoneAllocationType::Free)
 							break;
 
 						allocation->size += next->size;
 
-						next->type    = heap_zone_allocation_type::unused;
+						next->type    = HeapZoneAllocationType::Unused;
 						next->pointer = 0;
 
 						_allocations --;
@@ -285,32 +285,32 @@ namespace mm
 		}
 	}
 
-	bool heap_zone::free_allocation_for_size(allocation_proxy &proxy, size_t size) const
+	bool HeapZone::FreeAllocationForSize(AllocationProxy &proxy, size_t size) const
 	{
-		if(is_tiny())
+		if(IsTiny())
 		{
-			zone_allocation_tiny_t *allocation = reinterpret_cast<zone_allocation_tiny_t *>(_firstAllocation);
-			zone_allocation_tiny_t *last       = reinterpret_cast<zone_allocation_tiny_t *>(_lastAllocation);
+			ZoneAllocationTiny *allocation = reinterpret_cast<ZoneAllocationTiny *>(_firstAllocation);
+			ZoneAllocationTiny *last       = reinterpret_cast<ZoneAllocationTiny *>(_lastAllocation);
 
 			for(; allocation != last; allocation ++)
 			{
-				if(allocation->type == heap_zone_allocation_type::free && allocation->size >= size)
+				if(allocation->type == HeapZoneAllocationType::Free && allocation->size >= size)
 				{
-					proxy = allocation_proxy(allocation, this);
+					proxy = AllocationProxy(allocation, this);
 					return true;
 				}
 			}
 		}
 		else
 		{
-			zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(_firstAllocation);
-			zone_allocation_t *last       = reinterpret_cast<zone_allocation_t *>(_lastAllocation);
+			ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(_firstAllocation);
+			ZoneAllocation *last       = reinterpret_cast<ZoneAllocation *>(_lastAllocation);
 
 			for(; allocation != last; allocation ++)
 			{
-				if(allocation->type == heap_zone_allocation_type::free && allocation->size >= size)
+				if(allocation->type == HeapZoneAllocationType::Free && allocation->size >= size)
 				{
-					proxy = allocation_proxy(allocation, this);
+					proxy = AllocationProxy(allocation, this);
 					return true;
 				}
 			}
@@ -319,51 +319,51 @@ namespace mm
 		return false;
 	}
 
-	bool heap_zone::allocation_for_pointer(allocation_proxy &proxy, void *ptr) const
+	bool HeapZone::AllocationForPointer(AllocationProxy &proxy, void *ptr) const
 	{
-		void *allocation = find_allocation_for_pointer(ptr);
+		void *allocation = FindAllocationForPointer(ptr);
 		if(allocation)
 		{
-			proxy = allocation_proxy(allocation, this);
+			proxy = AllocationProxy(allocation, this);
 			return true;
 		}
 
 		return false;
 	}
 
-	bool heap_zone::unused_allocation(allocation_proxy &proxy) const
+	bool HeapZone::UnusedAllocation(AllocationProxy &proxy) const
 	{
-		void *allocation = find_unused_allocation();
+		void *allocation = FindUnusedAllocation();
 		if(allocation)
 		{
-			proxy = allocation_proxy(allocation, this);
+			proxy = AllocationProxy(allocation, this);
 			return true;
 		}
 
 		return false;
 	}
 
-	void *heap_zone::find_unused_allocation() const
+	void *HeapZone::FindUnusedAllocation() const
 	{
-		if(is_tiny())
+		if(IsTiny())
 		{
-			zone_allocation_tiny_t *allocation = reinterpret_cast<zone_allocation_tiny_t *>(_firstAllocation);
-			zone_allocation_tiny_t *last       = reinterpret_cast<zone_allocation_tiny_t *>(_lastAllocation);
+			ZoneAllocationTiny *allocation = reinterpret_cast<ZoneAllocationTiny *>(_firstAllocation);
+			ZoneAllocationTiny *last       = reinterpret_cast<ZoneAllocationTiny *>(_lastAllocation);
 
 			for(; allocation != last; allocation ++)
 			{
-				if(allocation->type == heap_zone_allocation_type::unused)
+				if(allocation->type == HeapZoneAllocationType::Unused)
 					return allocation;
 			}
 		}
 		else
 		{
-			zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(_firstAllocation);
-			zone_allocation_t *last       = reinterpret_cast<zone_allocation_t *>(_lastAllocation);
+			ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(_firstAllocation);
+			ZoneAllocation *last       = reinterpret_cast<ZoneAllocation *>(_lastAllocation);
 
 			for(; allocation != last; allocation ++)
 			{
-				if(allocation->type == heap_zone_allocation_type::unused)
+				if(allocation->type == HeapZoneAllocationType::Unused)
 					return allocation;
 			}
 		}
@@ -371,31 +371,31 @@ namespace mm
 		return nullptr;
 	}
 
-	void *heap_zone::find_allocation_for_pointer(void *ptr) const
+	void *HeapZone::FindAllocationForPointer(void *ptr) const
 	{
-		if(is_tiny())
+		if(IsTiny())
 		{
-			zone_allocation_tiny_t *allocation = reinterpret_cast<zone_allocation_tiny_t *>(_firstAllocation);
-			zone_allocation_tiny_t *last       = reinterpret_cast<zone_allocation_tiny_t *>(_lastAllocation);
+			ZoneAllocationTiny *allocation = reinterpret_cast<ZoneAllocationTiny *>(_firstAllocation);
+			ZoneAllocationTiny *last       = reinterpret_cast<ZoneAllocationTiny *>(_lastAllocation);
 
 			uint8_t	*pointer = reinterpret_cast<uint8_t *>(ptr);
 
 			for(; allocation != last; allocation ++)
 			{
-				if(pointer == _begin + allocation->offset && allocation->type == heap_zone_allocation_type::used)
+				if(pointer == _begin + allocation->offset && allocation->type == HeapZoneAllocationType::Used)
 					return allocation;
 			}
 		}
 		else
 		{
-			zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(_firstAllocation);
-			zone_allocation_t *last       = reinterpret_cast<zone_allocation_t *>(_lastAllocation);
+			ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(_firstAllocation);
+			ZoneAllocation *last       = reinterpret_cast<ZoneAllocation *>(_lastAllocation);
 
 			uintptr_t pointer = reinterpret_cast<uintptr_t>(ptr);
 
 			for(; allocation != last; allocation ++)
 			{
-				if(pointer == allocation->pointer && allocation->type == heap_zone_allocation_type::used)
+				if(pointer == allocation->pointer && allocation->type == HeapZoneAllocationType::Used)
 					return allocation;
 			}
 		}
@@ -403,20 +403,20 @@ namespace mm
 		return nullptr;
 	}
 
-	kern_return_t heap_zone::free_allocation(void *tallocation)
+	kern_return_t HeapZone::FreeAllocation(void *tallocation)
 	{
-		if(is_tiny())
+		if(IsTiny())
 		{
-			zone_allocation_tiny_t *allocation = reinterpret_cast<zone_allocation_tiny_t *>(tallocation);
+			ZoneAllocationTiny *allocation = reinterpret_cast<ZoneAllocationTiny *>(tallocation);
 
-			allocation->type = heap_zone_allocation_type::free;
+			allocation->type = HeapZoneAllocationType::Free;
 			_freeSize += allocation->size;
 		}
 		else
 		{
-			zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(tallocation);
+			ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(tallocation);
 
-			allocation->type = heap_zone_allocation_type::free;
+			allocation->type = HeapZoneAllocationType::Free;
 			_freeSize += allocation->size;
 		}
 
@@ -426,25 +426,25 @@ namespace mm
 		return KERN_INVALID_ARGUMENT;
 	}
 
-	kern_return_t heap_zone::use_allocation(void *&outPointer, void *tallocation, size_t size)
+	kern_return_t HeapZone::UseAllocation(void *&outPointer, void *tallocation, size_t size)
 	{
 		size_t required = size + kHeapAllocationExtraPadding;
 
-		if(is_tiny())
+		if(IsTiny())
 		{
-			zone_allocation_tiny_t *allocation = reinterpret_cast<zone_allocation_tiny_t *>(tallocation);
+			ZoneAllocationTiny *allocation = reinterpret_cast<ZoneAllocationTiny *>(tallocation);
 			if(allocation->size >= size)
 			{
-				allocation->type = heap_zone_allocation_type::used;
+				allocation->type = HeapZoneAllocationType::Used;
 
 				if(allocation->size > required)
 				{
-					zone_allocation_tiny_t *unused = reinterpret_cast<zone_allocation_tiny_t *>(find_unused_allocation());
+					ZoneAllocationTiny *unused = reinterpret_cast<ZoneAllocationTiny *>(FindUnusedAllocation());
 					if(unused)
 					{
 						unused->size   = allocation->size - required;
 						unused->offset = allocation->offset + required;
-						unused->type   = heap_zone_allocation_type::free;
+						unused->type   = HeapZoneAllocationType::Free;
 
 						allocation->size = required;
 
@@ -463,19 +463,19 @@ namespace mm
 		}
 		else
 		{
-			zone_allocation_t *allocation = reinterpret_cast<zone_allocation_t *>(tallocation);
+			ZoneAllocation *allocation = reinterpret_cast<ZoneAllocation *>(tallocation);
 			if(allocation->size >= size)
 			{
-				allocation->type = heap_zone_allocation_type::used;
+				allocation->type = HeapZoneAllocationType::Used;
 
 				if(allocation->size > required)
 				{
-					zone_allocation_t *unused = reinterpret_cast<zone_allocation_t *>(find_unused_allocation());
+					ZoneAllocation *unused = reinterpret_cast<ZoneAllocation *>(FindUnusedAllocation());
 					if(unused)
 					{
 						unused->size    = allocation->size - required;
 						unused->pointer = allocation->pointer + required;
-						unused->type    = heap_zone_allocation_type::free;
+						unused->type    = HeapZoneAllocationType::Free;
 
 						allocation->size = required;
 
@@ -496,85 +496,85 @@ namespace mm
 		return KERN_INVALID_ARGUMENT;
 	}
 
-	kern_return_t heap_zone::create(heap_zone *&zone, size_t size)
+	kern_return_t HeapZone::Create(HeapZone *&zone, size_t size)
 	{
-		heap_zone_type type = _heap_zoneype_for_size(size);
+		HeapZoneType type = _HeapZoneTypeForSize(size);
 		size_t pages;
 
 		switch(type)
 		{
-			case heap_zone_type::tiny:
+			case HeapZoneType::Tiny:
 				pages = 1;
 				break;
 
-			case heap_zone_type::small:
+			case HeapZoneType::Small:
 				pages = 5;
 				break;
 
-			case heap_zone_type::medium:
+			case HeapZoneType::Medium:
 				pages = 20;
 				break;
 
-			case heap_zone_type::large:
+			case HeapZoneType::Large:
 				pages = VM_PAGE_COUNT(size);
 				break;
 		}
 
 		pages ++;
-		uint8_t *buffer = mm::alloc<uint8_t>(vm::get_kernel_directory(), pages, VM_FLAGS_KERNEL);
+		uint8_t *buffer = Alloc<uint8_t>(VM::Directory::GetKernelDirectory(), pages, kVMFlagsKernel);
 
 		if(!buffer)
 			return KERN_NO_MEMORY;
 
-		zone = new(buffer) heap_zone(buffer + VM_PAGE_SIZE, buffer + (pages * VM_PAGE_SIZE), pages, type);
+		zone = new(buffer) HeapZone(buffer + VM_PAGE_SIZE, buffer + (pages * VM_PAGE_SIZE), pages, type);
 		return KERN_SUCCESS;
 	}
 
 	// --------------------
 	// MARK: -
-	// MARK: heap
+	// MARK: Heap
 	// --------------------
 
-	heap::heap(uint32_t flags) :
+	Heap::Heap(Flags flags) :
 		_lock(SPINLOCK_INIT),
 		_flags(flags)
 	{}
 
-	heap::~heap()
+	Heap::~Heap()
 	{
-		heap_zone *zone = _zones.get_head();
+		HeapZone *zone = _zones.get_head();
 		while(zone)
 		{
-			heap_zone *temp = zone;
+			HeapZone *temp = zone;
 			zone = zone->get_next();
 
 			delete temp;
 		}
 	}
 
-	void *heap::operator new(__unused size_t size)
+	void *Heap::operator new(__unused size_t size)
 	{
-		void *buffer = mm::alloc<void>(vm::get_kernel_directory(), 1, VM_FLAGS_KERNEL);
+		void *buffer = Alloc<void>(VM::Directory::GetKernelDirectory(), 1, kVMFlagsKernel);
 		return buffer;
 	}
 
-	void heap::operator delete(void *ptr)
+	void Heap::operator delete(void *ptr)
 	{
-		mm::free(ptr, vm::get_kernel_directory(), 1);
+		Sys::Free(ptr, VM::Directory::GetKernelDirectory(), 1);
 	}
 
 
 
-	void *heap::allocate_from_zone(heap_zone *zone, size_t size)
+	void *Heap::AllocateFromZone(HeapZone *zone, size_t size)
 	{
-		allocation_proxy proxy;
+		AllocationProxy proxy;
 
 		void *pointer;
-		bool result = zone->free_allocation_for_size(proxy, size);
+		bool result = zone->FreeAllocationForSize(proxy, size);
 
 		if(result)
 		{
-			kern_return_t retVal = proxy.use_with_size(pointer, size);
+			kern_return_t retVal = proxy.UseWithSize(pointer, size);
 
 			if(retVal == KERN_SUCCESS)
 				return pointer;
@@ -583,25 +583,25 @@ namespace mm
 		return nullptr;
 	}
 
-	void *heap::allocate(size_t size)
+	void *Heap::Allocate(size_t size)
 	{
-		if(_flags & heap::flag_aligned)
+		if(_flags & Flags::Aligned)
 			size += (size % 4);
 
 		void *pointer = nullptr;
-		heap_zone_type type = _heap_zoneype_for_size(size);
+		HeapZoneType type = _HeapZoneTypeForSize(size);
 
 		spinlock_lock(&_lock);
 
 		// Large allocations require a complete zone for themselves
-		if(type == heap_zone_type::large)
+		if(type == HeapZoneType::Large)
 		{
-			heap_zone *zone;
-			kern_return_t result = heap_zone::create(zone, size);
+			HeapZone *zone;
+			kern_return_t result = HeapZone::Create(zone, size);
 
 			if(result == KERN_SUCCESS)
 			{
-				pointer = allocate_from_zone(zone, size);
+				pointer = AllocateFromZone(zone, size);
 				_zones.push_back(zone);
 			}
 
@@ -610,12 +610,12 @@ namespace mm
 		}
 
 		// Try to find a zone which can hold the allocation
-		heap_zone *zone = _zones.get_head();
+		HeapZone *zone = _zones.get_head();
 		while(zone)
 		{
-			if(zone->get_type() == type && zone->can_allocate(size))
+			if(zone->GetType() == type && zone->CanAllocate(size))
 			{
-				pointer = allocate_from_zone(zone, size);
+				pointer = AllocateFromZone(zone, size);
 				if(pointer)
 					break;
 			}
@@ -626,51 +626,51 @@ namespace mm
 		// Create a new zone if needed
 		if(!pointer)
 		{
-			heap_zone *zone;
-			kern_return_t result = heap_zone::create(zone, size);
+			HeapZone *zone;
+			kern_return_t result = HeapZone::Create(zone, size);
 
 			if(result == KERN_SUCCESS)
 			{
-				pointer = allocate_from_zone(zone, size);
+				pointer = AllocateFromZone(zone, size);
 				_zones.push_back(zone);
 			}
 		}
 
 		spinlock_unlock(&_lock);
 
-		if(pointer && _flags & heap::flag_secure)
+		if(pointer && _flags & Flags::Secure)
 			memset(pointer, 0, size);
 
 		return pointer;
 	}
 
-	void heap::free(void *ptr)
+	void Heap::Free(void *ptr)
 	{
 		spinlock_lock(&_lock);
 
 		bool didFree = false;
-		allocation_proxy proxy;
+		AllocationProxy proxy;
 
-		heap_zone *zone = _zones.get_head();
+		HeapZone *zone = _zones.get_head();
 		while(zone)
 		{
-			bool holdsAllocation = zone->contains_allocation(ptr);
+			bool holdsAllocation = zone->ContainsAllocation(ptr);
 
-			if(holdsAllocation && zone->allocation_for_pointer(proxy, ptr))
+			if(holdsAllocation && zone->AllocationForPointer(proxy, ptr))
 			{
-				if(_flags & heap::flag_secure)
-					memset(proxy.get_pointer(), 0, proxy.get_size());
+				if(_flags & Heap::Flags::Secure)
+					memset(proxy.GetPointer(), 0, proxy.GetSize());
 
 				didFree = true;
-				proxy.free();
+				proxy.Free();
 
-				if(zone->is_empty())
+				if(zone->IsEmpty())
 				{
 					delete zone;
 				}
 				else
 				{
-					zone->defragment();
+					zone->Defragment();
 				}
 			}
 
@@ -691,16 +691,16 @@ namespace mm
 	// MARK: Accessor/Initialization
 	// --------------------
 
-	static heap *_generic_heap = nullptr;
+	static Heap *_genericHeap = nullptr;
 
-	heap *get_generic_heap()
+	Heap *Heap::GetGenericHeap()
 	{
-		return _generic_heap;
+		return _genericHeap;
 	}
 
-	kern_return_t heap_init()
+	kern_return_t HeapInit()
 	{
-		_generic_heap = new heap(heap::flag_aligned);
-		return (_generic_heap != nullptr) ? KERN_SUCCESS : KERN_NO_MEMORY;
+		_genericHeap = new Heap(Heap::Flags::Aligned);
+		return (_genericHeap != nullptr) ? KERN_SUCCESS : KERN_NO_MEMORY;
 	}
 }

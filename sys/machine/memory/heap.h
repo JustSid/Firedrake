@@ -23,79 +23,84 @@
 #include <libc/stddef.h>
 #include <libc/stdint.h>
 #include <libcpp/list.h>
+#include <libcpp/bitfield.h>
 #include <kern/kern_return.h>
 #include <kern/spinlock.h>
 
-namespace mm
+namespace Sys
 {
-	enum class heap_zone_type
+	enum class HeapZoneType
 	{
-		tiny, // Less than 64 bytes
-		small, // Less than 256
-		medium, // Less than 2048
-		large // Everything else
+		Tiny, // Less than 64 bytes
+		Small, // Less than 256
+		Medium, // Less than 2048
+		Large // Everything else
 	};
 
-	enum class heap_zone_allocation_type : uint8_t
+	enum class HeapZoneAllocationType : uint8_t
 	{
-		free,
-		used,
-		unused
+		Free,
+		Used,
+		Unused
 	};
 
-	class heap_zone;
-	class allocation_proxy
+	class HeapZone;
+	class Heap;
+
+	class AllocationProxy
 	{
 	public:
-		friend class heap_zone;
+		friend class HeapZone;
 
-		allocation_proxy() {}
+		AllocationProxy() {}
 
-		heap_zone_allocation_type get_type() const;
-		size_t get_size() const;
-		void *get_pointer() const;
+		HeapZoneAllocationType GetType() const;
+		size_t GetSize() const;
+		void *GetPointer() const;
 
-		kern_return_t free();
-		kern_return_t use_with_size(void *&outPointer, size_t size);
+		kern_return_t Free();
+		kern_return_t UseWithSize(void *&outPointer, size_t size);
 
 	private:
-		allocation_proxy(void *allocation, const heap_zone *zone);
+		AllocationProxy(void *allocation, const HeapZone *zone);
 
-		heap_zone *_zone;
+		HeapZone *_zone;
 		void *_allocation;
 		bool _tiny;
 	};
 
-	class heap_zone : public cpp::list<heap_zone>::node
+	class HeapZone : public cpp::list<HeapZone>::node
 	{
 	public:
-		friend class allocation_proxy;
+		friend class AllocationProxy;
+		friend class Heap;
 
-		static kern_return_t create(heap_zone *&zone, size_t size);
+		static kern_return_t Create(HeapZone *&zone, size_t size);
 		void operator delete(void *ptr);
 
-		bool is_tiny() const;
-		bool is_empty() const { return _allocations == _freeAllocations; }
-		bool can_allocate(size_t size) const;
-		bool contains_allocation(void *ptr) const;
+		bool IsTiny() const;
+		bool IsEmpty() const { return _allocations == _freeAllocations; }
+		bool CanAllocate(size_t size) const;
+		bool ContainsAllocation(void *ptr) const;
 
-		size_t get_free_size() const { return _freeSize; }
-		heap_zone_type get_type() const { return _type; }
+		size_t GetFreeSize() const { return _freeSize; }
+		HeapZoneType GetType() const { return _type; }
 
-		void defragment();
-
-		bool free_allocation_for_size(allocation_proxy &proxy, size_t size) const;
-		bool allocation_for_pointer(allocation_proxy &proxy, void *ptr) const;
-		bool unused_allocation(allocation_proxy &proxy) const;
+		void Defragment();
 
 	private:
-		heap_zone(uint8_t *start, uint8_t *end, size_t pages, heap_zone_type type);
-		void *find_unused_allocation() const;
-		void *find_allocation_for_pointer(void *ptr) const;
-		kern_return_t use_allocation(void *&outPointer, void *allocation, size_t size);
-		kern_return_t free_allocation(void *allocation);
+		HeapZone(uint8_t *start, uint8_t *end, size_t pages, HeapZoneType type);
 
-		heap_zone_type _type;
+		bool FreeAllocationForSize(AllocationProxy &proxy, size_t size) const;
+		bool AllocationForPointer(AllocationProxy &proxy, void *ptr) const;
+		bool UnusedAllocation(AllocationProxy &proxy) const;
+
+		void *FindUnusedAllocation() const;
+		void *FindAllocationForPointer(void *ptr) const;
+		kern_return_t UseAllocation(void *&outPointer, void *allocation, size_t size);
+		kern_return_t FreeAllocation(void *allocation);
+
+		HeapZoneType _type;
 		uint32_t _changes;
 
 		uint8_t *_begin;
@@ -112,36 +117,46 @@ namespace mm
 		uint8_t *_lastAllocation;
 	};
 
-	class heap
+	class Heap
 	{
 	public:
-		enum
+		struct Flags : cpp::Bitfield<uint32_t>
 		{
-			flag_secure  = (1 << 0),
-			flag_aligned = (1 << 1)
+			Flags()
+			{}
+			Flags(int value) :
+				Bitfield(value)
+			{}
+
+			enum
+			{
+				Secure  = (1 << 0),
+				Aligned = (1 << 1)
+			};
 		};
 
-		heap(uint32_t flags);
-		~heap();
+		Heap(Flags flags);
+		~Heap();
+
+		static Heap *GetGenericHeap();
 
 		void *operator new(size_t size);
 		void operator delete(void *ptr);
 
-		size_t get_zone_count() const { return _zones.get_count(); }
+		size_t GetZoneCount() const { return _zones.get_count(); }
 
-		void *allocate(size_t size);
-		void free(void *ptr);
+		void *Allocate(size_t size);
+		void Free(void *ptr);
 
 	private:
-		void *allocate_from_zone(heap_zone *zone, size_t size);
+		void *AllocateFromZone(HeapZone *zone, size_t size);
 
 		spinlock_t _lock;
-		cpp::list<heap_zone> _zones;
-		uint32_t _flags;
+		cpp::list<HeapZone> _zones;
+		Flags _flags;
 	};
 
-	heap *get_generic_heap();
-	kern_return_t heap_init();
+	kern_return_t HeapInit();
 }
 
 #endif /* _HEAP_H_ */

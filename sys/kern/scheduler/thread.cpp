@@ -67,17 +67,17 @@ namespace sd
 			vm_address_t vaddress;
 			kern_return_t result;
 
-			result = pm::alloc(paddress, _kernel_stack_pages);
+			result = Sys::PM::Alloc(paddress, _kernel_stack_pages);
 			if(result != KERN_SUCCESS)
 			{
 				kprintf("Failed to allocate %i physicial kernel stack pages\n", _kernel_stack_pages);
 				return result;
 			}
 
-			result = _task->_directory->alloc_limit(vaddress, paddress, THREAD_STACK_LIMIT, VM_UPPER_LIMIT, _kernel_stack_pages, VM_FLAGS_KERNEL);
+			result = _task->_directory->AllocLimit(vaddress, paddress, THREAD_STACK_LIMIT, Sys::VM::kUpperLimit, _kernel_stack_pages, kVMFlagsKernel);
 			if(result != KERN_SUCCESS)
 			{
-				pm::free(paddress, _kernel_stack_pages);
+				Sys::PM::Free(paddress, _kernel_stack_pages);
 
 				kprintf("Failed to allocate %i virtual kernel stack pages\n", _kernel_stack_pages);
 				return result;

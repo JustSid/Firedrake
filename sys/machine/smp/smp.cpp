@@ -29,7 +29,7 @@
 extern "C" void smp_rendezvous_point();
 extern "C" uintptr_t smp_bootstrap_begin;
 extern "C" uintptr_t smp_bootstrap_end;
-extern "C" uint32_t *_kernel_page_directory;
+extern "C" uint32_t *_kernelPageDirectory;
 
 #define SMP_PHYSICAL_CODE 0x7000
 #define SMP_PHYSICAL_GDT  0x8000
@@ -78,7 +78,7 @@ namespace Sys
 		{
 			// Activate the kernel directory and virtual memory
 			uint32_t cr0;
-			__asm__ volatile("mov %0, %%cr3" : : "r" (reinterpret_cast<uint32_t>(_kernel_page_directory)));
+			__asm__ volatile("mov %0, %%cr3" : : "r" (reinterpret_cast<uint32_t>(_kernelPageDirectory)));
 			__asm__ volatile("mov %%cr0, %0" : "=r" (cr0));
 			__asm__ volatile("mov %0, %%cr0" : : "r" (cr0 | (1 << 31)));
 
@@ -193,7 +193,7 @@ namespace Sys
 		kern_return_t result;
 		vm_address_t vaddress;
 
-		if((result = vm::get_kernel_directory()->alloc(vaddress, SMP_PHYSICAL_CODE, pages, VM_FLAGS_KERNEL)) != KERN_SUCCESS)
+		if((result = VM::Directory::GetKernelDirectory()->Alloc(vaddress, SMP_PHYSICAL_CODE, pages, kVMFlagsKernel)) != KERN_SUCCESS)
 		{
 			kprintf("failed to allocate virtual memory");
 			return result;
@@ -210,7 +210,7 @@ namespace Sys
 		cme_fix_ljump16(buffer, size, reinterpret_cast<void *>(SMP_PHYSICAL_CODE + sizeof(SMP::entryBitmap)));
 
 		// Unmap the buffer and kick off the CPUs
-		vm::get_kernel_directory()->free(vaddress, pages);
+		VM::Directory::GetKernelDirectory()->Free(vaddress, pages);
 		SMP::Kickoff();
 
 		// Debug output

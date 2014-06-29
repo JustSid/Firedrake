@@ -20,6 +20,7 @@
 #define _VIRTUAL_H_
 
 #include <libc/stdint.h>
+#include <libcpp/bitfield.h>
 #include <kern/kern_return.h>
 #include <kern/spinlock.h>
 #include <bootstrap/multiboot.h>
@@ -34,75 +35,71 @@
 #define VM_PAGE_ALIGN_DOWN(x) ((x) & VM_PAGE_MASK)
 #define VM_PAGE_ALIGN_UP(x)   (VM_PAGE_ALIGN_DOWN((x) + ~VM_PAGE_MASK))
 
-#define VM_LOWER_LIMIT 0x1000
-#define VM_UPPER_LIMIT 0xfffff000
-#define VM_KERNEL_LIMIT 0x0ffff000
-
-
-#define VM_PAGETABLEFLAG_PRESENT      (1 << 0)
-#define VM_PAGETABLEFLAG_WRITEABLE    (1 << 1)
-#define VM_PAGETABLEFLAG_USERSPACE    (1 << 2)
-#define VM_PAGETABLEFLAG_WRITETHROUGH (1 << 3)
-#define VM_PAGETABLEFLAG_CACHEDISABLE (1 << 4)
-#define VM_PAGETABLEFLAG_ACCESSED     (1 << 5)
-#define VM_PAGETABLEFLAG_DIRTY        (1 << 6)
-
-#define VM_PAGETABLEFLAG_ALL ((1 << 0) | (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) | (1 << 5) | (1 << 6))
-
-#define VM_FLAGS_KERNEL         (VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE)
-#define VM_FLAGS_KERNEL_NOCACHE (VM_FLAGS_KERNEL | VM_PAGETABLEFLAG_CACHEDISABLE)
-#define VM_FLAGS_USERLAND       (VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_WRITEABLE | VM_PAGETABLEFLAG_USERSPACE)
-#define VM_FLAGS_USERLAND_R     (VM_PAGETABLEFLAG_PRESENT | VM_PAGETABLEFLAG_USERSPACE)
-
 typedef uintptr_t vm_address_t;
 
-namespace vm
+#define kVMFlagsKernel Sys::VM::Directory::Flags(Sys::VM::Directory::Flags::Present | Sys::VM::Directory::Flags::Writeable)
+#define kVMFlagsKernelNoCache Sys::VM::Directory::Flags(kVMFlagsKernel | Sys::VM::Directory::Flags::NoCache)
+#define kVMFlagsUserlandRW Sys::VM::Directory::Flags(Sys::VM::Directory::Flags::Present | Sys::VM::Directory::Flags::Writeable | Sys::VM::Directory::Flags::Userspace)
+#define kVMFlagsUserlandR  Sys::VM::Directory::Flags(Sys::VM::Directory::Flags::Present | Sys::VM::Directory::Flags::Userspace)
+#define kVMFlagsAll Sys::VM::Directory::Flags(0x7f)
+
+namespace Sys
 {
-	class directory
+	namespace VM
 	{
-	public:
-		directory(uint32_t *dir);
-		~directory();
+		constexpr vm_address_t kLowerLimit  = 0x1000;
+		constexpr vm_address_t kUpperLimit  = 0xfffff000;
+		constexpr vm_address_t kKernelLimit = 0x0ffff000;
 
-		kern_return_t map_page(uintptr_t physAddress, vm_address_t virtAddress, uint32_t flags);
-		kern_return_t map_page_range(uintptr_t physAddress, vm_address_t virtAddress, size_t pages, uint32_t flags);
-		kern_return_t resolve_virtual_address(uintptr_t &result, vm_address_t address);
+		class Directory
+		{
+		public:
+			struct Flags : cpp::Bitfield<uint32_t>
+			{
+				Flags()
+				{}
+				Flags(int value) : 
+					Bitfield(value)
+				{}
 
-		kern_return_t alloc(vm_address_t& address, uintptr_t physical, size_t pages, uint32_t flags);
-		kern_return_t alloc_limit(vm_address_t& address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, uint32_t flags);
-		kern_return_t free(vm_address_t address, size_t pages);
+				enum
+				{
+					Present      = (1 << 0),
+					Writeable    = (1 << 1),
+					Userspace    = (1 << 2),
+					Writethrough = (1 << 3),
+					NoCache      = (1 << 4),
+					Accessed     = (1 << 5),
+					Dirty        = (1 << 6)
+				};
+			};
 
-		uint32_t *get_physical_directory() const { return _directory; }
+			Directory(uint32_t *directory); // Shouldn't be called directly! Use Create() instead!
+			~Directory();
 
-		static kern_return_t create(directory *&result);
+			static kern_return_t Create(Directory *&directory);
+			static Directory *GetKernelDirectory();
 
-	private:
-		uint32_t *_directory;
-		spinlock_t _lock;
-	};
+			kern_return_t MapPage(uintptr_t physical, vm_address_t virtAddress, Flags flags);
+			kern_return_t MapPageRange(uintptr_t physical, vm_address_t virtAddress, size_t pages, Flags flags);
 
-	class temporary_mapping
-	{
-	public:
-		temporary_mapping(directory *dir, uintptr_t physical, size_t pages);
-		temporary_mapping(directory *dir, vm_address_t &result, uintptr_t physical, size_t pages);
-		~temporary_mapping();
+			kern_return_t ResolveAddress(uintptr_t &resolved, vm_address_t address);
 
-		vm_address_t get_address() const { return _address; }
+			kern_return_t Alloc(vm_address_t &address, uintptr_t physical, size_t pages, Flags flags);
+			kern_return_t AllocLimit(vm_address_t &address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags);
+			kern_return_t Free(vm_address_t address, size_t pages);
 
-	private:
-		directory *_dir;
-		vm_address_t _address;
-		size_t _pages;
-	};
+			uint32_t *GetPhysicalDirectory() const { return _directory; }
 
-	static inline void invlpg(uintptr_t addr)
-	{
-		__asm__ volatile("invlpg (%0)" :: "r" (addr) : "memory");
+		private:
+			kern_return_t GetPageTableEntry(uint32_t *pageDirectory, uint32_t &entry, vm_address_t vaddress);
+
+			uint32_t *_directory;
+			spinlock_t _lock;
+		};
 	}
 
-	directory *get_kernel_directory();
-	kern_return_t init(Sys::MultibootHeader *info);
+	kern_return_t VMInit(MultibootHeader *info);
 }
 
 #endif /* _VIRTUAL_H_ */

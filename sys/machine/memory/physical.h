@@ -25,13 +25,19 @@
 #ifndef _PHYSICAL_H_
 #define _PHYSICAL_H_
 
-namespace pm
+namespace Sys
 {
-	kern_return_t alloc(uintptr_t& address, size_t pages);
-	kern_return_t alloc_limit(uintptr_t& address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit);
-	kern_return_t free(uintptr_t page, size_t pages);
+	namespace PM
+	{
+		constexpr uintptr_t kLowerLimit  = 0x1000;
+		constexpr uintptr_t kUpperLimit  = 0xfffff000;
 
-	kern_return_t init(Sys::MultibootHeader *info);
+		kern_return_t Alloc(uintptr_t &address, size_t pages);
+		kern_return_t AllocLimit(uintptr_t &address, size_t pages, uintptr_t lower, uintptr_t upper);
+		kern_return_t Free(uintptr_t page, size_t pages);
+	}
+
+	kern_return_t PMInit(MultibootHeader *info);
 }
 
 #endif /* _PHYSICAL_H_ */

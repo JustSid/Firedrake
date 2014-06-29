@@ -65,13 +65,13 @@ namespace sd
 
 	void scheduler_t::create_kernel_task()
 	{
-		_kernel_task = new task_t(vm::get_kernel_directory());
+		_kernel_task = new task_t(Sys::VM::Directory::GetKernelDirectory());
 		_kernel_task->attach_thread(nullptr, (thread_t::entry_t)&kernel_task, 0);
 	}
 
 	void scheduler_t::create_idle_task()
 	{
-		_idle_task = new task_t(vm::get_kernel_directory());
+		_idle_task = new task_t(Sys::VM::Directory::GetKernelDirectory());
 		
 		for(size_t i = 0; i < _proxy_cpu_count; i ++)
 		{
@@ -215,7 +215,7 @@ namespace sd
 		task_t *task = thread->get_task();
 		Sys::Trampoline *data = cpu->GetTrampoline();
 
-		data->pageDirectory = task->get_directory()->get_physical_directory();
+		data->pageDirectory = task->get_directory()->GetPhysicalDirectory();
 		data->tss.esp0      = thread->_esp + sizeof(Sys::CPUState);
 
 		return thread->_esp;

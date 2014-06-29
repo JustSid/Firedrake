@@ -27,161 +27,157 @@
 extern "C" uintptr_t kernel_begin;
 extern "C" uintptr_t kernel_end;
 
-extern "C" uintptr_t stack_bottom;
-extern "C" uintptr_t stack_top;
-
-namespace pm
+namespace Sys
 {
-	static constexpr size_t heap_width = 32768;
-
-	static uint32_t heap_bitmap[heap_width];
-	static spinlock_t heap_lock = SPINLOCK_INIT;
-
-
-	static inline void _mark_used(uintptr_t page)
+	namespace PM
 	{
-		uint32_t index = page / VM_PAGE_SIZE;
-		heap_bitmap[index / 32] &= ~(1 << (index & 31));
-	}
+		static constexpr size_t _heapWidth = 32768;
 
-	static inline void _mark_free(uintptr_t page)
-	{
-		uint32_t index = page / VM_PAGE_SIZE;
-		heap_bitmap[index / 32] |= (1 << (index & 31));
-	}
+		static uint32_t _heapBitmap[_heapWidth];
+		static spinlock_t _heapLock = SPINLOCK_INIT;
 
-	static inline uintptr_t _find_free_pages(size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit)
-	{
-		size_t found = 0;
-		uintptr_t page = 0;
 
-		for(size_t i = lowerLimit / VM_PAGE_SIZE / 32; i < upperLimit / VM_PAGE_SIZE / 32; i ++)
+		static inline void MarkUsed(uintptr_t page)
 		{
-			if(heap_bitmap[i] == 0)
-			{
-				found = 0;
-				continue;
-			}
+			uint32_t index = page / VM_PAGE_SIZE;
+			_heapBitmap[index / 32] &= ~(1 << (index & 31));
+		}
+		static inline void MarkFree(uintptr_t page)
+		{
+			uint32_t index = page / VM_PAGE_SIZE;
+			_heapBitmap[index / 32] |= (1 << (index & 31));
+		}
 
-			if(heap_bitmap[i] == 0xffffffff)
-			{
-				if(found == 0)
-					page = i * 32 * VM_PAGE_SIZE;
 
-				found += 32;
-			}
-			else
+		static inline uintptr_t FindFreePages(size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit)
+		{
+			size_t found = 0;
+			uintptr_t page = 0;
+
+			for(size_t i = lowerLimit / VM_PAGE_SIZE / 32; i < upperLimit / VM_PAGE_SIZE / 32; i ++)
 			{
-				for(size_t j = 0; j < 32; j ++)
+				if(_heapBitmap[i] == 0)
 				{
-					if(heap_bitmap[i] & (1 << j))
-					{
-						if(found == 0)
-							page = (i * 32 + j) * VM_PAGE_SIZE;
+					found = 0;
+					continue;
+				}
 
-						if((++ found) >= pages)
-							return page;
-					}
-					else
+				if(_heapBitmap[i] == 0xffffffff)
+				{
+					if(found == 0)
+						page = i * 32 * VM_PAGE_SIZE;
+
+					found += 32;
+				}
+				else
+				{
+					for(size_t j = 0; j < 32; j ++)
 					{
-						found = 0;
+						if(_heapBitmap[i] & (1 << j))
+						{
+							if(found == 0)
+								page = (i * 32 + j) * VM_PAGE_SIZE;
+
+							if((++ found) >= pages)
+								return page;
+						}
+						else
+						{
+							found = 0;
+						}
 					}
+				}
+
+				if(found >= pages)
+					return page;
+			}
+
+			return 0x0;
+		}
+
+
+
+		kern_return_t Alloc(uintptr_t &address, size_t pages)
+		{
+			return AllocLimit(address, pages, kLowerLimit, kUpperLimit);
+		}
+
+		kern_return_t AllocLimit(uintptr_t &address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit)
+		{
+	#if CONFIG_STRICT
+			if(pages == 0 || lowerLimit < kLowerLimit || upperLimit > kUpperLimit)
+				return KERN_INVALID_ARGUMENT;
+
+			if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
+				return KERN_INVALID_ADDRESS;
+	#endif
+
+			spinlock_lock(&_heapLock);
+
+			uintptr_t page = FindFreePages(pages, lowerLimit, upperLimit);
+			if(page)
+			{
+				uintptr_t temp = page;
+
+				for(size_t i = 0; i < pages; i ++)
+				{
+					MarkUsed(temp);
+					temp += VM_PAGE_SIZE;
 				}
 			}
 
-			if(found >= pages)
-				return page;
+			spinlock_unlock(&_heapLock);
+			address = page;
+			
+			return page ? KERN_SUCCESS : KERN_NO_MEMORY;
 		}
 
-		return 0x0;
-	}
-
-
-
-	kern_return_t alloc(uintptr_t& address, size_t pages)
-	{
-		return alloc_limit(address, pages, VM_LOWER_LIMIT, VM_UPPER_LIMIT);
-	}
-
-	kern_return_t alloc_limit(uintptr_t& address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit)
-	{
-#if CONFIG_STRICT
-
-		if(pages == 0 || lowerLimit < VM_LOWER_LIMIT || upperLimit > VM_UPPER_LIMIT)
-			return KERN_INVALID_ARGUMENT;
-
-		if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-			return KERN_INVALID_ADDRESS;
-
-#endif
-
-		spinlock_lock(&heap_lock);
-
-		uintptr_t page = _find_free_pages(pages, lowerLimit, upperLimit);
-		if(page)
+		kern_return_t Free(uintptr_t page, size_t pages)
 		{
-			uintptr_t temp = page;
+	#if CONFIG_STRICT
+			if(page == 0 || (page % VM_PAGE_SIZE) != 0)
+				return KERN_INVALID_ADDRESS;
+	#endif
+
+			spinlock_lock(&_heapLock);
 
 			for(size_t i = 0; i < pages; i ++)
 			{
-				_mark_used(temp);
-				temp += VM_PAGE_SIZE;
+				MarkFree(page);
+				page += VM_PAGE_SIZE;
+			}
+
+			spinlock_unlock(&_heapLock);
+			return KERN_SUCCESS;
+		}
+
+
+		void MarkRange(uintptr_t begin, uintptr_t end)
+		{
+			begin = VM_PAGE_ALIGN_DOWN(begin);
+			end   = VM_PAGE_ALIGN_UP(end);
+
+			while(begin < end)
+			{
+				MarkUsed(begin);
+				begin += VM_PAGE_SIZE;
 			}
 		}
-
-		spinlock_unlock(&heap_lock);
-		address = page;
-		
-		return page ? KERN_SUCCESS : KERN_NO_MEMORY;
 	}
 
-	kern_return_t free(uintptr_t page, size_t pages)
+	kern_return_t PMInit(MultibootHeader *info)
 	{
-#if CONFIG_STRICT
-
-		if(page == 0 || (page % VM_PAGE_SIZE) != 0)
-			return KERN_INVALID_ADDRESS;
-
-#endif
-
-		spinlock_lock(&heap_lock);
-
-		for(size_t i = 0; i < pages; i ++)
-		{
-			_mark_free(page);
-			page += VM_PAGE_SIZE;
-		}
-
-		spinlock_unlock(&heap_lock);
-		return KERN_SUCCESS;
-	}
-
-
-	void mark_range(uintptr_t begin, uintptr_t end)
-	{
-		begin = VM_PAGE_ALIGN_DOWN(begin);
-		end   = VM_PAGE_ALIGN_UP(end);
-
-		while(begin < end)
-		{
-			_mark_used(begin);
-			begin += VM_PAGE_SIZE;
-		}
-	}
-
-	kern_return_t init(Sys::MultibootHeader *info)
-	{
-		memset(heap_bitmap, 0, heap_width * sizeof(uint32_t));
+		memset(PM::_heapBitmap, 0, PM::_heapWidth * sizeof(uint32_t));
 
 		// Mark all free pages
-		if(!(info->flags & Sys::MultibootHeader::Flags::Mmap))
+		if(!(info->flags & MultibootHeader::Flags::Mmap))
 		{
 			kprintf("No mmap info present!");
 			return KERN_INVALID_ARGUMENT;
 		}
 
 
-		Sys::MultibootMmap *mmap = info->mmap;
+		MultibootMmap *mmap = info->mmap;
 		size_t count = info->GetMmapCount();
 
 		for(size_t i = 0; i < count; i ++)
@@ -193,7 +189,7 @@ namespace pm
 
 				while(address < addressEnd)
 				{
-					_mark_free(address);
+					PM::MarkFree(address);
 					address += VM_PAGE_SIZE;
 				}
 			}
@@ -203,12 +199,12 @@ namespace pm
 
 		
 		// Mark the kernel as allocated
-		mark_range(reinterpret_cast<uintptr_t>(&kernel_begin), reinterpret_cast<uintptr_t>(&kernel_end));
+		PM::MarkRange(reinterpret_cast<uintptr_t>(&kernel_begin), reinterpret_cast<uintptr_t>(&kernel_end));
 
 		// Mark the first megabyte as allocated as well
 		// Although most of the BIOS stuff in there is undefined, it still might be useful
 		// and it's up to grabs by the kernel
-		mark_range(0x0, 0x100000);
+		PM::MarkRange(0x0, 0x100000);
 
 		return KERN_SUCCESS;	
 	}

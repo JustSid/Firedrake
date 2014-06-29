@@ -25,7 +25,7 @@ namespace sd
 {
 	static std::atomic<pid_t> _task_pid_counter;
 
-	task_t::task_t(vm::directory *directory) :
+	task_t::task_t(Sys::VM::Directory *directory) :
 		_lock(SPINLOCK_INIT),
 		_state(state::waiting),
 		_pid(_task_pid_counter.fetch_add(1)),

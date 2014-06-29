@@ -17,537 +17,551 @@
 //
 
 #include <libc/string.h>
+#include <libc/assert.h>
 #include <libcpp/new.h>
 #include <kern/kprintf.h>
 #include "virtual.h"
 #include "physical.h"
+#include "memory.h"
 
-#define VM_KERNEL_PAGE_TABLES 0x3fc00000
-
-#define VM_DIRECTORY_LENGTH 1024
-#define VM_PAGETABLE_LENGTH 1024
-
-namespace vm
+namespace Sys
 {
-	extern "C" uint32_t *_kernel_page_directory = nullptr;
-
-	static directory *_kernel_directory = nullptr;
-	static bool _use_physical_kernel_pages;
-
-	__inline kern_return_t find_free_pages_user(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
-	__inline kern_return_t find_free_pages_kernel(vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
-	__inline kern_return_t find_free_pages(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
-	__inline kern_return_t get_pagetable_entry(uint32_t *pageDirectory, uint32_t &entry, vm_address_t vaddress);
-	__inline kern_return_t map_page_noCheck(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags);
-	__inline kern_return_t map_page(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags);
-	__inline kern_return_t map_page_range(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, size_t pages, uint32_t flags);
-
-	// --------------------
-	// MARK: -
-	// MARK: mapped_directory
-	// --------------------
-
-	class mapped_directory
+	namespace VM
 	{
-	public:
-		mapped_directory(uint32_t *dir) :
-			_mapped(nullptr),
-			_isKernelDirectory(false)
+		constexpr vm_address_t kKernelPageTables = 0x3fc00000;
+		constexpr vm_address_t kDirectoryLength  = 1024;
+		constexpr vm_address_t kPagetableLength  = 1024;
+
+		extern "C" uint32_t *_kernelPageDirectory = nullptr;
+
+		static Directory *_kernelDirectory = nullptr;
+		static bool _usePhysicalKernelPages;
+
+		__inline kern_return_t __FindFreePagesUser(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
+		__inline kern_return_t __FindFreePagesKernel(vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
+		__inline kern_return_t __FindFreePages(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
+		__inline kern_return_t __MapPageNoCheck(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags);
+		__inline kern_return_t __MapPage(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags);
+		__inline kern_return_t __MapPageRange(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, size_t pages, uint32_t flags);
+
+		// --------------------
+		// MARK: -
+		// MARK: ScopedDirectory
+		// --------------------
+
+		class ScopedDirectory
 		{
-			if(dir == _kernel_page_directory)
+		public:
+			ScopedDirectory(uint32_t *directory) :
+				_mapped(nullptr),
+				_isKernelDirectory(false)
 			{
-				_isKernelDirectory = true;
-				return;
-			}
-
-			vm_address_t address;
-			kern_return_t result = _kernel_directory->alloc(address, reinterpret_cast<uintptr_t>(dir), 1, VM_FLAGS_KERNEL);
-
-			_mapped = (result == KERN_SUCCESS) ? reinterpret_cast<uint32_t *>(address) : nullptr;
-		}
-
-		~mapped_directory()
-		{
-			if(!_isKernelDirectory && _mapped)
-				_kernel_directory->map_page(0x0, reinterpret_cast<vm_address_t>(_mapped), 0);
-		}
-
-		uint32_t *get_directory() const
-		{
-			return _isKernelDirectory ? _kernel_page_directory : _mapped;
-		}
-
-	private:
-		bool _isKernelDirectory;
-		uint32_t *_mapped;
-	};
-
-	// --------------------
-	// MARK: -
-	// MARK: directory
-	// --------------------
-
-	directory::directory(uint32_t *dir) :
-		_directory(dir),
-		_lock(SPINLOCK_INIT)
-	{}
-
-	directory::~directory()
-	{
-		if(!_directory)
-			return;
-
-		vm_address_t temp;
-		kern_return_t result = _kernel_directory->alloc(temp, reinterpret_cast<uintptr_t>(_directory), 1, VM_FLAGS_KERNEL);
-
-		if(result == KERN_SUCCESS)
-		{
-			uint32_t *pageDirectory = reinterpret_cast<uint32_t *>(temp);
-
-			for(size_t i = 0; i < VM_DIRECTORY_LENGTH; i ++)
-			{
-				uint32_t table = pageDirectory[i] & ~VM_PAGETABLEFLAG_ALL;
-				if(table)
-					pm::free(table, 1);
-			}
-
-			_kernel_directory->free(temp, 1);
-		}
-
-		pm::free(reinterpret_cast<uintptr_t>(_directory), 1);
-	}
-
-	kern_return_t directory::create(directory *&dir)
-	{
-		kern_return_t result;
-		uintptr_t physical;
-
-		result = pm::alloc(physical, 1);
-		if(result != KERN_SUCCESS)
-			return result;
-
-		// Map the page directory temporarily into memory
-		vm_address_t temp;
-		result = _kernel_directory->alloc(temp, physical, 1, VM_FLAGS_KERNEL);
-		if(result != KERN_SUCCESS)
-		{
-			pm::free(physical, 1);
-			return result;
-		}
-
-		// Initialize the page directory
-		uint32_t *pageDirectory = reinterpret_cast<uint32_t *>(temp);
-		memset(pageDirectory, 0, VM_DIRECTORY_LENGTH * sizeof(uint32_t));
-
-		pageDirectory[0xff] = (uint32_t)physical | VM_FLAGS_KERNEL;
-
-		_kernel_directory->free(temp, 1);
-
-		dir = new directory(reinterpret_cast<uint32_t *>(physical));
-		return KERN_SUCCESS;
-	}
-
-
-
-	kern_return_t directory::map_page(uintptr_t physAddress, vm_address_t virtAddress, uint32_t flags)
-	{
-		spinlock_lock(&_lock);
-		kern_return_t result = vm::map_page(_directory, physAddress, virtAddress, flags);
-		spinlock_unlock(&_lock);
-
-		return result;
-	}
-	kern_return_t directory::map_page_range(uintptr_t physAddress, vm_address_t virtAddress, size_t pages, uint32_t flags)
-	{
-		spinlock_lock(&_lock);
-		kern_return_t result = vm::map_page_range(_directory, physAddress, virtAddress, pages, flags);
-		spinlock_unlock(&_lock);
-
-		return result;
-	}
-	kern_return_t directory::resolve_virtual_address(uintptr_t &physical, vm_address_t address)
-	{
-		mapped_directory temp(_directory);
-		uint32_t *mapped = temp.get_directory();
-
-		if(!mapped)
-			return KERN_NO_MEMORY;
-
-		uint32_t entry;
-		kern_return_t result = get_pagetable_entry(mapped, entry, address);
-
-		if(result != KERN_SUCCESS)
-			return result;
-
-		physical = (entry & ~0xfff) | (address & 0xfff);
-		return KERN_SUCCESS;
-	}
-
-
-
-	kern_return_t directory::alloc(vm_address_t& address, uintptr_t physical, size_t pages, uint32_t flags)
-	{
-		return alloc_limit(address, physical, VM_LOWER_LIMIT, VM_UPPER_LIMIT, pages, flags);
-	}
-
-	kern_return_t directory::alloc_limit(vm_address_t& address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, uint32_t flags)
-	{
-		spinlock_lock(&_lock);
-
-		mapped_directory dir(_directory);
-		uint32_t *mapped = dir.get_directory();
-
-		if(!mapped)
-		{
-			spinlock_unlock(&_lock);
-			return KERN_NO_MEMORY;
-		}
-
-		kern_return_t result = find_free_pages(_directory, address, pages, lower, upper);
-		if(result != KERN_SUCCESS)
-		{
-			spinlock_unlock(&_lock);
-			return result;
-		}
-
-		vm::map_page_range(mapped, physical, address, pages, flags);
-		spinlock_unlock(&_lock);
-
-		return KERN_SUCCESS;
-	}
-
-	kern_return_t directory::free(vm_address_t address, size_t pages)
-	{
-		spinlock_lock(&_lock);
-
-		mapped_directory dir(_directory);
-		uint32_t *mapped = dir.get_directory();
-
-		if(!mapped)
-		{
-			spinlock_unlock(&_lock);
-			return KERN_NO_MEMORY;
-		}
-
-		vm::map_page_range(mapped, 0, address, pages, 0);
-		spinlock_unlock(&_lock);
-
-		return KERN_SUCCESS;
-	}
-
-
-	// --------------------
-	// MARK: -
-	// MARK: temporary_mapping
-	// --------------------
-
-	temporary_mapping::temporary_mapping(directory *dir, uintptr_t physical, size_t pages) :
-		_dir(dir),
-		_pages(pages)
-	{
-		kern_return_t result = _dir->alloc(_address, physical, pages, VM_FLAGS_KERNEL);
-		if(result != KERN_SUCCESS)
-		{
-			_address = 0;
-			return;
-		}
-	}
-
-	temporary_mapping::temporary_mapping(directory *dir, vm_address_t &result, uintptr_t physical, size_t pages) :
-		temporary_mapping(dir, physical, pages)
-	{
-		result = _address;
-	}
-
-	temporary_mapping::~temporary_mapping()
-	{
-		if(_address)
-			_dir->free(_address, _pages);
-	}
-
-	// --------------------
-	// MARK: -
-	// MARK: Low level, non locking primitives
-	// NOTE: These methods expect the appropirate locks to be held by the caller
-	// --------------------
-
-	kern_return_t find_free_pages_user(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
-	{
-		if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-			return KERN_INVALID_ADDRESS;
-
-		if(pages == 0 || lowerLimit < VM_LOWER_LIMIT || upperLimit > VM_UPPER_LIMIT)
-			return KERN_INVALID_ARGUMENT;
-
-
-		size_t found = 0;
-		vm_address_t regionStart = 0;
-
-		size_t pageTableIndex = (lowerLimit >> VM_DIRECTORY_SHIFT);
-		size_t pageIndex = (lowerLimit >> VM_PAGE_SHIFT) % VM_PAGETABLE_LENGTH;
-
-		temporary_mapping temp(_kernel_directory, 0xdeadbeef, 1);
-		vm_address_t temporaryPage = temp.get_address();
-
-		if(!temporaryPage)
-			return KERN_NO_MEMORY;
-
-		while(found < pages && (pageTableIndex << VM_DIRECTORY_SHIFT) < upperLimit)
-		{
-			if(pageTableIndex >= VM_DIRECTORY_LENGTH)
-			{
-				found = 0;
-				break;
-			}
-
-			if(pageDirectory[pageTableIndex] & VM_PAGETABLEFLAG_PRESENT)
-			{
-				uint32_t *ptable = reinterpret_cast<uint32_t *>(pageDirectory[pageTableIndex] & ~0xfff);
-				uint32_t *table  = reinterpret_cast<uint32_t *>(temporaryPage);
-
-				_kernel_directory->map_page(reinterpret_cast<uintptr_t>(ptable), temporaryPage, VM_FLAGS_KERNEL);
-
-				for(; pageIndex < VM_PAGETABLE_LENGTH; pageIndex ++)
+				if(directory == _kernelPageDirectory)
 				{
-					if(!(table[pageIndex] & VM_PAGETABLEFLAG_PRESENT))
-					{
-						if(found == 0)
-							regionStart = (pageTableIndex << VM_DIRECTORY_SHIFT) + (pageIndex << VM_PAGE_SHIFT);
+					_isKernelDirectory = true;
+					_mapped = _kernelPageDirectory;
+					return;
+				}
 
-						if((++ found) >= pages)
-							break;
-					}
-					else
-					{
-						found = 0;
-					}
+				vm_address_t address;
+				kern_return_t result = _kernelDirectory->Alloc(address, reinterpret_cast<uintptr_t>(directory), 1, kVMFlagsKernel);
+
+				_mapped = (result == KERN_SUCCESS) ? reinterpret_cast<uint32_t *>(address) : nullptr;
+			}
+
+			~ScopedDirectory()
+			{
+				if(_mapped && !_isKernelDirectory)
+					_kernelDirectory->MapPage(0x0, reinterpret_cast<vm_address_t>(_mapped), 0);
+			}
+
+			uint32_t *GetDirectory() const
+			{
+				return _mapped;
+			}
+
+		private:
+			uint32_t *_mapped;
+			bool _isKernelDirectory;
+		};
+
+		// --------------------
+		// MARK: -
+		// MARK: ScopedMapping
+		// --------------------
+
+		class ScopedMapping
+		{
+		public:
+			ScopedMapping(Directory *directory, uintptr_t physical, size_t pages) :
+				_directory(directory),
+				_pages(pages)
+			{
+				kern_return_t result = directory->Alloc(_address, physical, pages, kVMFlagsKernel);
+
+				if(result != KERN_SUCCESS)
+					_address = 0;
+			}
+
+			~ScopedMapping()
+			{
+				if(_address)
+					_directory->Free(_address, _pages);
+			}
+
+			vm_address_t GetAddress() const
+			{
+				return _address;
+			}
+
+		private:
+			Directory *_directory;
+			vm_address_t _address;
+			size_t _pages;
+		};
+
+		// --------------------
+		// MARK: -
+		// MARK: Directory
+		// --------------------
+
+		Directory::Directory(uint32_t *directory) :
+			_directory(directory),
+			_lock(SPINLOCK_INIT)
+		{
+			assert(_directory);
+		}
+
+		Directory::~Directory()
+		{
+			ScopedDirectory scoped(_directory);
+
+			uint32_t *pageDirectory = scoped.GetDirectory();
+			if(pageDirectory)
+			{
+				for(size_t i = 0; i < kDirectoryLength; i ++)
+				{
+					uint32_t table = pageDirectory[i] & ~kVMFlagsAll;
+					if(table)
+						PM::Free(table, 1);
 				}
 			}
-			else
-			{
-				if(found == 0)
-					regionStart = (pageTableIndex << VM_DIRECTORY_SHIFT) + (pageIndex << VM_PAGE_SHIFT);
 
-				found += VM_PAGETABLE_LENGTH;
-			}
-
-			pageIndex = 0;
-			pageTableIndex ++;
+			PM::Free(reinterpret_cast<uintptr_t>(_directory), 1);
 		}
 
-		if(found >= pages && regionStart + (pages * VM_PAGE_SIZE) <= upperLimit)
+		kern_return_t Directory::Create(Directory *&directory)
 		{
-			address = regionStart;
-			return KERN_SUCCESS;
-		}
-
-		return KERN_NO_MEMORY;
-	}
-
-	kern_return_t find_free_pages_kernel(vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
-	{
-		if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-			return KERN_INVALID_ADDRESS;
-
-		if(pages == 0 || lowerLimit < VM_LOWER_LIMIT || upperLimit > VM_UPPER_LIMIT)
-			return KERN_INVALID_ARGUMENT;
-
-		size_t found = 0;
-		vm_address_t regionStart = 0;
-
-		size_t pageTableIndex = (lowerLimit >> VM_DIRECTORY_SHIFT);
-		size_t pageIndex = (lowerLimit >> VM_PAGE_SHIFT) % VM_PAGETABLE_LENGTH;
-
-		while(found < pages && (pageTableIndex << VM_DIRECTORY_SHIFT) < upperLimit)
-		{
-			if(pageTableIndex >= VM_DIRECTORY_LENGTH)
-			{
-				found = 0;
-				break;
-			}
-
-			if(_kernel_page_directory[pageTableIndex] & VM_PAGETABLEFLAG_PRESENT)
-			{
-				uint32_t *table = reinterpret_cast<uint32_t *>(VM_KERNEL_PAGE_TABLES + (pageTableIndex << VM_PAGE_SHIFT));
-
-				for(; pageIndex < VM_PAGETABLE_LENGTH; pageIndex ++)
-				{
-					if(!(table[pageIndex] & VM_PAGETABLEFLAG_PRESENT))
-					{
-						if(found == 0)
-							regionStart = (pageTableIndex << VM_DIRECTORY_SHIFT) + (pageIndex << VM_PAGE_SHIFT);
-
-						if((++ found) >= pages)
-							break;
-					}
-					else
-					{
-						found = 0;
-					}
-				}
-			}
-			else
-			{
-				if(found == 0)
-					regionStart = (pageTableIndex << VM_DIRECTORY_SHIFT) + (pageIndex << VM_PAGE_SHIFT);
-
-				found += VM_PAGETABLE_LENGTH;
-			}
-
-			pageIndex = 0;
-			pageTableIndex ++;
-		}
-
-		if(found >= pages && regionStart + (pages * VM_PAGE_SIZE) <= upperLimit)
-		{
-			address = regionStart;
-			return KERN_SUCCESS;
-		}
-
-		return KERN_NO_MEMORY;
-	}
-
-	kern_return_t find_free_pages(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
-	{
-		kern_return_t result;
-		result = (pageDirectory == _kernel_page_directory) ? find_free_pages_kernel(address, pages, lowerLimit, upperLimit) : find_free_pages_user(pageDirectory, address, pages, lowerLimit, upperLimit);
-		return result;
-	}
-
-	kern_return_t get_pagetable_entry(uint32_t *pageDirectory, uint32_t &entry, vm_address_t vaddress)
-	{
-		uint32_t index = vaddress / VM_PAGE_SIZE;
-		if(!(pageDirectory[index / VM_PAGETABLE_LENGTH] & VM_PAGETABLEFLAG_PRESENT))
-			return KERN_INVALID_ADDRESS;
-
-		uintptr_t physPageTable = (pageDirectory[index / VM_PAGETABLE_LENGTH] & ~0xfff);
-		temporary_mapping temp(_kernel_directory, physPageTable, 1);
-		uint32_t *pageTable = reinterpret_cast<uint32_t *>(temp.get_address());
-
-		if(pageTable[index % VM_PAGETABLE_LENGTH] & VM_PAGETABLEFLAG_PRESENT)
-		{
-			entry = pageTable[index % VM_PAGETABLE_LENGTH];
-			return KERN_SUCCESS;
-		}
-
-		return KERN_INVALID_ADDRESS;
-	}
-
-	kern_return_t map_page_noCheck(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags)
-	{
-		uint32_t index = vaddress / VM_PAGE_SIZE;
-
-		uint32_t *pageTable;
-		vm_address_t temporaryPage = 0x0;
-
-		if(pageDirectory != _kernel_page_directory)
-		{
-			kern_return_t result = _kernel_directory->alloc(temporaryPage, 0xdeadbeef, 1, VM_FLAGS_KERNEL);
-
-			if(result != KERN_SUCCESS)
-				return result;
-		}
-
-		if(!(pageDirectory[index / VM_DIRECTORY_LENGTH] & VM_PAGETABLEFLAG_PRESENT))
-		{
+			kern_return_t result;
 			uintptr_t physical;
-			kern_return_t result = pm::alloc(physical, 1);
 
-			if(result != KERN_SUCCESS)
+			if((result = PM::Alloc(physical, 1)) != KERN_SUCCESS)
 				return result;
 
-			pageTable = reinterpret_cast<uint32_t *>(physical);
-			pageDirectory[index / VM_DIRECTORY_LENGTH] = physical | VM_FLAGS_KERNEL;
-
-			if(pageDirectory != _kernel_page_directory)
 			{
-				_kernel_directory->map_page(physical, temporaryPage, VM_FLAGS_KERNEL);
-				pageTable = reinterpret_cast<uint32_t *>(temporaryPage);
+				ScopedDirectory scoped(reinterpret_cast<uint32_t *>(physical));
+				uint32_t *mapped = scoped.GetDirectory();
 
-				if(!pageTable)
+				if(!mapped)
 				{
-					pm::free(physical, 1);
-					pageDirectory[index / VM_DIRECTORY_LENGTH] = 0;
-
+					PM::Free(physical, 1);
 					return KERN_NO_MEMORY;
 				}
-			}
-			else if(!_use_physical_kernel_pages)
-			{
-				pageTable = reinterpret_cast<uint32_t *>((VM_KERNEL_PAGE_TABLES + ((sizeof(uint32_t) * index) & ~0xfff)));
+
+				memset(mapped, 0, kDirectoryLength * sizeof(uint32_t));
+				mapped[0xff] = physical | kVMFlagsKernel;
 			}
 
-			memset(pageTable, 0, VM_PAGETABLE_LENGTH);
+			directory = Allocate<Directory>(reinterpret_cast<uint32_t *>(physical));
+			return (directory != nullptr) ? KERN_SUCCESS : KERN_NO_MEMORY;
 		}
-		else
-		{
-			if(pageDirectory != _kernel_page_directory)
-			{
-				uintptr_t physical = (pageDirectory[index / VM_DIRECTORY_LENGTH] & ~0xfff);
 
-				_kernel_directory->map_page(physical, temporaryPage, VM_FLAGS_KERNEL);
-				pageTable = reinterpret_cast<uint32_t *>(temporaryPage);
+		Directory *Directory::GetKernelDirectory()
+		{
+			return _kernelDirectory;
+		}
+
+		kern_return_t Directory::MapPage(uintptr_t physical, vm_address_t virtAddress, Flags flags)
+		{
+			spinlock_lock(&_lock);
+			kern_return_t result = __MapPage(_directory, physical, virtAddress, flags);
+			spinlock_unlock(&_lock);
+
+			return result;
+		}
+
+		kern_return_t Directory::MapPageRange(uintptr_t physical, vm_address_t virtAddress, size_t pages, Flags flags)
+		{
+			spinlock_lock(&_lock);
+			kern_return_t result = __MapPageRange(_directory, physical, virtAddress, pages, flags);
+			spinlock_unlock(&_lock);
+
+			return result;
+		}
+
+		kern_return_t Directory::ResolveAddress(uintptr_t &resolved, vm_address_t address)
+		{
+			ScopedDirectory scoped(_directory);
+			uint32_t *mapped = scoped.GetDirectory();
+
+			if(!mapped)
+				return KERN_NO_MEMORY;
+
+			// TODO: There really should be locking here, but that would lead to a race condition
+			// and for now it works... Probably breaks one day mysteriously and I'll spend a weekend
+			// trying to find out what the shit happened... Hi future me, sorry!
+
+			uint32_t entry;
+			kern_return_t result = GetPageTableEntry(mapped, entry, address);
+
+			if(resolved != KERN_SUCCESS)
+				return result;
+
+			resolved = (entry & ~0xfff) | (address & 0xfff);
+			return KERN_SUCCESS;
+		}
+
+		kern_return_t Directory::GetPageTableEntry(uint32_t *pageDirectory, uint32_t &entry, vm_address_t vaddress)
+		{
+			uint32_t index = vaddress / VM_PAGE_SIZE;
+			if(!(pageDirectory[index / kPagetableLength] & Flags::Present))
+				return KERN_INVALID_ADDRESS;
+
+			uintptr_t physPageTable = (pageDirectory[index / kPagetableLength] & ~0xfff);
+			ScopedMapping temp(_kernelDirectory, physPageTable, 1);
+			uint32_t *pageTable = reinterpret_cast<uint32_t *>(temp.GetAddress());
+
+			if(pageTable[index % kPagetableLength] & Flags::Present)
+			{
+				entry = pageTable[index % kPagetableLength];
+				return KERN_SUCCESS;
+			}
+
+			return KERN_INVALID_ADDRESS;
+		}
+
+		kern_return_t Directory::Alloc(vm_address_t &address, uintptr_t physical, size_t pages, Flags flags)
+		{
+			return AllocLimit(address, physical, kLowerLimit, kUpperLimit, pages, flags);
+		}
+
+		kern_return_t Directory::AllocLimit(vm_address_t &address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags)
+		{
+			ScopedDirectory scoped(_directory);
+			uint32_t *mapped = scoped.GetDirectory();
+
+			if(!mapped)
+				return KERN_NO_MEMORY;
+
+
+			spinlock_lock(&_lock);
+
+			kern_return_t result = __FindFreePages(_directory, address, pages, lower, upper);
+			if(result != KERN_SUCCESS)
+			{
+				spinlock_unlock(&_lock);
+				return result;
+			}
+
+			__MapPageRange(mapped, physical, address, pages, flags);
+			spinlock_unlock(&_lock);
+
+			return KERN_SUCCESS;
+		}
+
+		kern_return_t Directory::Free(vm_address_t address, size_t pages)
+		{
+			ScopedDirectory scoped(_directory);
+			uint32_t *mapped = scoped.GetDirectory();
+
+			if(!mapped)
+				return KERN_NO_MEMORY;
+
+
+			spinlock_lock(&_lock);
+			__MapPageRange(mapped, 0, address, pages, 0);
+			spinlock_unlock(&_lock);
+			
+			return KERN_SUCCESS;	
+		}
+
+		kern_return_t __FindFreePagesUser(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
+		{
+			if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
+				return KERN_INVALID_ADDRESS;
+
+			if(pages == 0 || lowerLimit < kLowerLimit || upperLimit > kUpperLimit)
+				return KERN_INVALID_ARGUMENT;
+
+
+			size_t found = 0;
+			vm_address_t regionStart = 0;
+
+			size_t pageTableIndex = (lowerLimit >> VM_DIRECTORY_SHIFT);
+			size_t pageIndex = (lowerLimit >> VM_PAGE_SHIFT) % kPagetableLength;
+
+			ScopedMapping temp(_kernelDirectory, 0xdeadbeef, 1);
+			vm_address_t temporaryPage = temp.GetAddress();
+
+			if(!temporaryPage)
+				return KERN_NO_MEMORY;
+
+			while(found < pages && (pageTableIndex << VM_DIRECTORY_SHIFT) < upperLimit)
+			{
+				if(pageTableIndex >= kDirectoryLength)
+				{
+					found = 0;
+					break;
+				}
+
+				if(pageDirectory[pageTableIndex] & Directory::Flags::Present)
+				{
+					uint32_t *ptable = reinterpret_cast<uint32_t *>(pageDirectory[pageTableIndex] & ~0xfff);
+					uint32_t *table  = reinterpret_cast<uint32_t *>(temporaryPage);
+
+					_kernelDirectory->MapPage(reinterpret_cast<uintptr_t>(ptable), temporaryPage, kVMFlagsKernel);
+
+					for(; pageIndex < kPagetableLength; pageIndex ++)
+					{
+						if(!(table[pageIndex] & Directory::Flags::Present))
+						{
+							if(found == 0)
+								regionStart = (pageTableIndex << VM_DIRECTORY_SHIFT) + (pageIndex << VM_PAGE_SHIFT);
+
+							if((++ found) >= pages)
+								break;
+						}
+						else
+						{
+							found = 0;
+						}
+					}
+				}
+				else
+				{
+					if(found == 0)
+						regionStart = (pageTableIndex << VM_DIRECTORY_SHIFT) + (pageIndex << VM_PAGE_SHIFT);
+
+					found += kPagetableLength;
+				}
+
+				pageIndex = 0;
+				pageTableIndex ++;
+			}
+
+			if(found >= pages && regionStart + (pages * VM_PAGE_SIZE) <= upperLimit)
+			{
+				address = regionStart;
+				return KERN_SUCCESS;
+			}
+
+			return KERN_NO_MEMORY;
+		}
+
+		kern_return_t __FindFreePagesKernel(vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
+		{
+			if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
+				return KERN_INVALID_ADDRESS;
+
+			if(pages == 0 || lowerLimit < kLowerLimit || upperLimit > kUpperLimit)
+				return KERN_INVALID_ARGUMENT;
+
+			size_t found = 0;
+			vm_address_t regionStart = 0;
+
+			size_t pageTableIndex = (lowerLimit >> VM_DIRECTORY_SHIFT);
+			size_t pageIndex      = (lowerLimit >> VM_PAGE_SHIFT) % kPagetableLength;
+
+			while(found < pages && (pageTableIndex << VM_DIRECTORY_SHIFT) < upperLimit)
+			{
+				if(pageTableIndex >= kDirectoryLength)
+				{
+					found = 0;
+					break;
+				}
+
+				if(_kernelPageDirectory[pageTableIndex] & Directory::Flags::Present)
+				{
+					uint32_t *table = reinterpret_cast<uint32_t *>(kKernelPageTables + (pageTableIndex << VM_PAGE_SHIFT));
+
+					for(; pageIndex < kPagetableLength; pageIndex ++)
+					{
+						if(!(table[pageIndex] & Directory::Flags::Present))
+						{
+							if(found == 0)
+								regionStart = (pageTableIndex << VM_DIRECTORY_SHIFT) + (pageIndex << VM_PAGE_SHIFT);
+
+							if((++ found) >= pages)
+								break;
+						}
+						else
+						{
+							found = 0;
+						}
+					}
+				}
+				else
+				{
+					if(found == 0)
+						regionStart = (pageTableIndex << VM_DIRECTORY_SHIFT) + (pageIndex << VM_PAGE_SHIFT);
+
+					found += kPagetableLength;
+				}
+
+				pageIndex = 0;
+				pageTableIndex ++;
+			}
+
+			if(found >= pages && regionStart + (pages * VM_PAGE_SIZE) <= upperLimit)
+			{
+				address = regionStart;
+				return KERN_SUCCESS;
+			}
+
+			return KERN_NO_MEMORY;
+		}
+
+		kern_return_t __FindFreePages(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
+		{
+			kern_return_t result;
+			result = (pageDirectory == _kernelPageDirectory) ? __FindFreePagesKernel(address, pages, lowerLimit, upperLimit) : __FindFreePagesUser(pageDirectory, address, pages, lowerLimit, upperLimit);
+			return result;
+		}
+
+
+		kern_return_t __MapPageNoCheck(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags)
+		{
+			uint32_t index = vaddress / VM_PAGE_SIZE;
+
+			uint32_t *pageTable;
+			vm_address_t temporaryPage = 0x0;
+
+			if(pageDirectory != _kernelPageDirectory)
+			{
+				kern_return_t result = _kernelDirectory->Alloc(temporaryPage, 0xdeadbeef, 1, kVMFlagsKernel);
+
+				if(result != KERN_SUCCESS)
+					return result;
+			}
+
+			if(!(pageDirectory[index / kDirectoryLength] & Directory::Flags::Present))
+			{
+				uintptr_t physical;
+				kern_return_t result = PM::Alloc(physical, 1);
+
+				if(result != KERN_SUCCESS)
+					return result;
+
+				pageTable = reinterpret_cast<uint32_t *>(physical);
+				pageDirectory[index / kDirectoryLength] = physical | kVMFlagsKernel;
+
+				if(pageDirectory != _kernelPageDirectory)
+				{
+					_kernelDirectory->MapPage(physical, temporaryPage, kVMFlagsKernel);
+					pageTable = reinterpret_cast<uint32_t *>(temporaryPage);
+
+					if(!pageTable)
+					{
+						PM::Free(physical, 1);
+						pageDirectory[index / kDirectoryLength] = 0;
+
+						return KERN_NO_MEMORY;
+					}
+				}
+				else if(!_usePhysicalKernelPages)
+				{
+					pageTable = reinterpret_cast<uint32_t *>((kKernelPageTables + ((sizeof(uint32_t) * index) & ~0xfff)));
+				}
+
+				memset(pageTable, 0, kPagetableLength);
 			}
 			else
 			{
-				uint32_t temp = _use_physical_kernel_pages ? (pageDirectory[index / VM_DIRECTORY_LENGTH] & ~0xfff) : VM_KERNEL_PAGE_TABLES + ((sizeof(uint32_t) * index) & ~0xfff);
-				pageTable = reinterpret_cast<uint32_t *>(temp);
+				if(pageDirectory != _kernelPageDirectory)
+				{
+					uintptr_t physical = (pageDirectory[index / kDirectoryLength] & ~0xfff);
+
+					_kernelDirectory->MapPage(physical, temporaryPage, kVMFlagsKernel);
+					pageTable = reinterpret_cast<uint32_t *>(temporaryPage);
+				}
+				else
+				{
+					uint32_t temp = _usePhysicalKernelPages ? (pageDirectory[index / kDirectoryLength] & ~0xfff) : kKernelPageTables + ((sizeof(uint32_t) * index) & ~0xfff);
+					pageTable = reinterpret_cast<uint32_t *>(temp);
+				}
 			}
+
+			pageTable[index % kPagetableLength] = paddress | flags;
+
+			if(temporaryPage)
+				_kernelDirectory->MapPage(0x0, temporaryPage, 0);
+
+			return KERN_SUCCESS;
 		}
 
-		pageTable[index % VM_PAGETABLE_LENGTH] = paddress | flags;
-
-		if(temporaryPage)
-			_kernel_directory->map_page(0x0, temporaryPage, 0);
-
-		return KERN_SUCCESS;
-	}
-
-	kern_return_t map_page(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags)
-	{
-		if((paddress % VM_PAGE_SIZE) || (vaddress % VM_PAGE_SIZE))
-			return KERN_INVALID_ADDRESS;
-
-		if(vaddress == 0 || (paddress == 0 && flags != 0))
-			return KERN_INVALID_ADDRESS;
-
-		if(flags > VM_PAGETABLEFLAG_ALL)
-			return KERN_INVALID_ARGUMENT;
-
-		return map_page_noCheck(pageDirectory, paddress, vaddress, flags);
-	}
-
-	kern_return_t map_page_range(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, size_t pages, uint32_t flags)
-	{
-		if((paddress % VM_PAGE_SIZE) || (vaddress % VM_PAGE_SIZE))
-			return KERN_INVALID_ADDRESS;
-
-		if(vaddress == 0 || (paddress == 0 && flags != 0))
-			return KERN_INVALID_ADDRESS;
-
-		if(pages == 0 || flags > VM_PAGETABLEFLAG_ALL)
-			return KERN_INVALID_ARGUMENT;
-
-		for(size_t i = 0; i < pages; i ++)
+		kern_return_t __MapPage(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags)
 		{
-			// TODO: Check the return argument!
-			map_page_noCheck(pageDirectory, paddress, vaddress, flags);
+			if((paddress % VM_PAGE_SIZE) || (vaddress % VM_PAGE_SIZE))
+				return KERN_INVALID_ADDRESS;
 
-			vaddress += VM_PAGE_SIZE;
-			paddress += VM_PAGE_SIZE;
+			if(vaddress == 0 || (paddress == 0 && flags != 0))
+				return KERN_INVALID_ADDRESS;
+
+			if(flags > kVMFlagsAll)
+				return KERN_INVALID_ARGUMENT;
+
+			return __MapPageNoCheck(pageDirectory, paddress, vaddress, flags);
 		}
 
-		return KERN_SUCCESS;
-	}
+		kern_return_t __MapPageRange(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, size_t pages, uint32_t flags)
+		{
+			if((paddress % VM_PAGE_SIZE) || (vaddress % VM_PAGE_SIZE))
+				return KERN_INVALID_ADDRESS;
 
-	// --------------------
-	// MARK: -
-	// MARK: Accessor
-	// --------------------
+			if(vaddress == 0 || (paddress == 0 && flags != 0))
+				return KERN_INVALID_ADDRESS;
 
-	directory *get_kernel_directory()
-	{
-		return _kernel_directory;
+			if(pages == 0 || flags > kVMFlagsAll)
+				return KERN_INVALID_ARGUMENT;
+
+			for(size_t i = 0; i < pages; i ++)
+			{
+				// TODO: Check the return argument!
+				__MapPageNoCheck(pageDirectory, paddress, vaddress, flags);
+
+				vaddress += VM_PAGE_SIZE;
+				paddress += VM_PAGE_SIZE;
+			}
+
+			return KERN_SUCCESS;
+		}
+
+		// --------------------
+		// MARK: -
+		// MARK: Initialization
+		// --------------------
+
+		kern_return_t CreateKernelDirectory()
+		{
+			uintptr_t address;
+			kern_return_t result = PM::Alloc(address, 2);
+
+			if(result != KERN_SUCCESS)
+				return result;
+
+			uint8_t *buffer = reinterpret_cast<uint8_t *>(address + VM_PAGE_SIZE);
+
+			_kernelPageDirectory = reinterpret_cast<uint32_t *>(address);
+			_kernelDirectory = new(buffer) Directory(_kernelPageDirectory);
+
+			memset(_kernelPageDirectory, 0, kDirectoryLength * sizeof(uint32_t));
+
+			// Initialize and map the kernel directory
+			_kernelPageDirectory[0xff] = address | kVMFlagsKernel;
+			_kernelDirectory->MapPageRange(address, address, 2, kVMFlagsKernel); // This call can't fail because of _usePhysicalKernelPages
+
+			return KERN_SUCCESS;
+		}
 	}
 
 	// --------------------
@@ -558,36 +572,11 @@ namespace vm
 	extern "C" uintptr_t kernel_begin;
 	extern "C" uintptr_t kernel_end;
 
-	extern "C" uintptr_t stack_bottom;
-	extern "C" uintptr_t stack_top;
-
-	kern_return_t create_kernel_directory()
+	kern_return_t VMInit(__unused MultibootHeader *info)
 	{
-		uintptr_t address;
-		kern_return_t result = pm::alloc(address, 2);
+		VM::_usePhysicalKernelPages = true;
 
-		if(result != KERN_SUCCESS)
-			return result;
-
-		uint8_t *buffer = reinterpret_cast<uint8_t *>(address + VM_PAGE_SIZE);
-
-		_kernel_page_directory = reinterpret_cast<uint32_t *>(address);
-		_kernel_directory = new(buffer) directory(_kernel_page_directory);
-
-		memset(_kernel_page_directory, 0, VM_DIRECTORY_LENGTH * sizeof(uint32_t));
-
-		// Initialize and map the kernel directory
-		_kernel_page_directory[0xff] = address | VM_FLAGS_KERNEL;
-		_kernel_directory->map_page_range(address, address, 2, VM_FLAGS_KERNEL); // This call can't fail because of _use_physical_kernel_pages
-
-		return KERN_SUCCESS;
-	}
-
-	kern_return_t init(Sys::MultibootHeader *info)
-	{
-		_use_physical_kernel_pages = true;
-
-		kern_return_t result = create_kernel_directory();
+		kern_return_t result = VM::CreateKernelDirectory();
 		if(result != KERN_SUCCESS)
 		{
 			kprintf("Failed to create kernel page directory!\n");
@@ -598,16 +587,16 @@ namespace vm
 		vm_address_t kernelBegin = reinterpret_cast<vm_address_t>(&kernel_begin);
 		vm_address_t kernelEnd   = reinterpret_cast<vm_address_t>(&kernel_end);
 
-		_kernel_directory->map_page_range(kernelBegin, kernelBegin, VM_PAGE_COUNT(kernelEnd - kernelBegin), VM_FLAGS_KERNEL);
-		_kernel_directory->map_page_range(0xa0000, 0xa0000, VM_PAGE_COUNT(0xc0000 - 0xa0000), VM_FLAGS_KERNEL);
+		VM::_kernelDirectory->MapPageRange(kernelBegin, kernelBegin, VM_PAGE_COUNT(kernelEnd - kernelBegin), kVMFlagsKernel);
+		VM::_kernelDirectory->MapPageRange(0xa0000, 0xa0000, VM_PAGE_COUNT(0xc0000 - 0xa0000), kVMFlagsKernel);
 
 		// Activate the kernel directory and virtual memory
 		uint32_t cr0;
-		__asm__ volatile("mov %0, %%cr3" : : "r" (reinterpret_cast<uint32_t>(_kernel_page_directory)));
+		__asm__ volatile("mov %0, %%cr3" : : "r" (reinterpret_cast<uint32_t>(VM::_kernelPageDirectory)));
 		__asm__ volatile("mov %%cr0, %0" : "=r" (cr0));
 		__asm__ volatile("mov %0, %%cr0" : : "r" (cr0 | (1 << 31)));
 
-		_use_physical_kernel_pages = false;
+		VM::_usePhysicalKernelPages = false;
 		return KERN_SUCCESS;
-	}
+	}	
 }
