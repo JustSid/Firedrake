@@ -34,7 +34,7 @@
 			"cmd": ["exec ./build.sh"],
 			"shell": true,
 			"path": "/usr/local/bin:/usr/bin:",
-			"selector": "source.c, source.c++, source.asm",
+			"selector": "source.c, source.c++, source.c++.11, source.asm",
 
 			"variants":
 			[
