@@ -18,48 +18,68 @@
 
 #include <libc/string.h>
 #include <libcpp/algorithm.h>
+#include <libcpp/new.h>
 #include <machine/memory/memory.h>
 #include <machine/cpu.h>
 #include <kern/kprintf.h>
 #include "task.h"
 #include "thread.h"
 
-#define THREAD_STACK_LIMIT 0xffff000
-
-namespace sd
+namespace Core
 {
-	thread_t::thread_t(task_t *task, entry_t entry, size_t stackPages) :
+	constexpr vm_address_t kThreadStackLimit = 0xffff000;
+
+	Thread::Thread(Task *task, Entry entry, size_t stackPages) :
 		_task(task),
 		_lock(SPINLOCK_INIT),
 		_quantum(0),
 		_entry(entry),
-		_pinned_cpu(nullptr),
-		_running_cpu(nullptr),
-		_scheduler_entry(this),
-		_task_entry(this)
+		_pinnedCPU(nullptr),
+		_runningCPU(nullptr),
+		_schedulerEntry(this),
+		_taskEntry(this),
+		_kernelStack(nullptr),
+		_kernelStackVirtual(nullptr),
+		_userStack(nullptr),
+		_userStackVirtual(nullptr)
 	{
-		_tid = _task->_tid_counter.fetch_add(1);
+		_tid = _task->_tidCounter.fetch_add(1);
 		_esp = 0;
 
 		if(_task->_ring3)
 		{
-			_user_stack_pages   = std::min<size_t>(64, std::max<size_t>(24, stackPages));
-			_kernel_stack_pages = 4;
+			_userStackPages   = std::min<size_t>(64, std::max<size_t>(24, stackPages));
+			_kernelStackPages = 4;
 		}
 		else
 		{
-			_kernel_stack_pages = std::min<size_t>(32, std::max<size_t>(12, stackPages));
-			_user_stack_pages   = 0;
+			_kernelStackPages = std::min<size_t>(32, std::max<size_t>(12, stackPages));
+			_userStackPages   = 0;
 		}
-
-		_user_stack   = _user_stack_virtual   = nullptr;
-		_kernel_stack = _kernel_stack_virtual = nullptr;
 	}
 
-	thread_t::~thread_t()
+	Thread::~Thread()
 	{}
 
-	kern_return_t thread_t::initialize()
+	kern_return_t Thread::Create(Thread *&thread, Task *task, Entry entry, size_t stackPages)
+	{
+		void *buffer = kalloc(sizeof(Thread));
+		if(!buffer)
+			return KERN_NO_MEMORY;
+
+		thread = new(buffer) Thread(task, entry, stackPages);
+
+		kern_return_t result;
+		if((result = thread->Initialize()) != KERN_SUCCESS)
+		{
+			delete thread;
+			return result;
+		}
+		
+		return KERN_SUCCESS;
+	}
+
+	kern_return_t Thread::Initialize()
 	{
 		if(!_task->_ring3)
 		{
@@ -67,34 +87,34 @@ namespace sd
 			vm_address_t vaddress;
 			kern_return_t result;
 
-			result = Sys::PM::Alloc(paddress, _kernel_stack_pages);
+			result = Sys::PM::Alloc(paddress, _kernelStackPages);
 			if(result != KERN_SUCCESS)
 			{
-				kprintf("Failed to allocate %i physicial kernel stack pages\n", _kernel_stack_pages);
+				kprintf("Failed to allocate %i physicial kernel stack pages\n", _kernelStackPages);
 				return result;
 			}
 
-			result = _task->_directory->AllocLimit(vaddress, paddress, THREAD_STACK_LIMIT, Sys::VM::kUpperLimit, _kernel_stack_pages, kVMFlagsKernel);
+			result = _task->_directory->AllocLimit(vaddress, paddress, kThreadStackLimit, Sys::VM::kUpperLimit, _kernelStackPages, kVMFlagsKernel);
 			if(result != KERN_SUCCESS)
 			{
-				Sys::PM::Free(paddress, _kernel_stack_pages);
+				Sys::PM::Free(paddress, _kernelStackPages);
 
-				kprintf("Failed to allocate %i virtual kernel stack pages\n", _kernel_stack_pages);
+				kprintf("Failed to allocate %i virtual kernel stack pages\n", _kernelStackPages);
 				return result;
 			}
 
-			_kernel_stack = reinterpret_cast<uint8_t *>(paddress);
-			_kernel_stack_virtual = reinterpret_cast<uint8_t *>(vaddress);
+			_kernelStack = reinterpret_cast<uint8_t *>(paddress);
+			_kernelStackVirtual = reinterpret_cast<uint8_t *>(vaddress);
 		}
 
-		initialize_kernel_stack(_task->_ring3);
+		InitializeKernelStack(_task->_ring3);
 		return KERN_SUCCESS;
 	}
 
-	void thread_t::initialize_kernel_stack(bool ring3)
+	void Thread::InitializeKernelStack(bool ring3)
 	{
-		size_t size = _kernel_stack_pages * VM_PAGE_SIZE;
-		uint32_t *stack = reinterpret_cast<uint32_t *>(_kernel_stack_virtual + size);
+		size_t size     = _kernelStackPages * VM_PAGE_SIZE;
+		uint32_t *stack = reinterpret_cast<uint32_t *>(_kernelStackVirtual + size);
 
 		*(-- stack) = ring3 ? 0x23 : 0x10; // ss
 		*(-- stack) = 0x0;   // esp
@@ -119,23 +139,39 @@ namespace sd
 		*(-- stack) = 0x0;
 		*(-- stack) = 0x0;
 
-		_esp = ring3 ? reinterpret_cast<uint32_t>(_kernel_stack_virtual + size) - sizeof(Sys::CPUState) : reinterpret_cast<uint32_t>(stack);
+		_esp = ring3 ? reinterpret_cast<uint32_t>(_kernelStackVirtual + size) - sizeof(Sys::CPUState) : reinterpret_cast<uint32_t>(stack);
 	}
 
-	bool thread_t::is_schedulable(Sys::CPU *cpu) const
+	void Thread::SetQuantum(int8_t quantum)
 	{
-		if(_running_cpu || (_pinned_cpu && _pinned_cpu != cpu))
+		_quantum = quantum;
+	}
+	void Thread::SetESP(uint32_t esp)
+	{
+		_esp = esp;
+	}
+	void Thread::SetRunningCPU(Sys::CPU *cpu)
+	{
+		_runningCPU = cpu;
+	}
+	void Thread::SetPinnedCPU(Sys::CPU *cpu)
+	{
+		_pinnedCPU = cpu;
+	}
+
+	bool Thread::IsSchedulable(Sys::CPU *cpu) const
+	{
+		if(_runningCPU || (_pinnedCPU && _pinnedCPU != cpu))
 			return false;
 
 		return true;
 	}
 
-	void thread_t::lock()
+	void Thread::Lock()
 	{
 		spinlock_lock(&_lock);
 	}
-
-	void thread_t::unlock()
+	void Thread::Unlock()
 	{
 		spinlock_unlock(&_lock);
 	}

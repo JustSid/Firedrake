@@ -21,58 +21,59 @@
 #include "scheduler.h"
 #include "task.h"
 
-namespace sd
+namespace Core
 {
-	static std::atomic<pid_t> _task_pid_counter;
+	static std::atomic<pid_t> _taskPidCounter;
 
-	task_t::task_t(Sys::VM::Directory *directory) :
-		_lock(SPINLOCK_INIT),
-		_state(state::waiting),
-		_pid(_task_pid_counter.fetch_add(1)),
-		_tid_counter(1),
-		_main_thread(nullptr),
-		_directory(directory)
+	namespace Scheduler
 	{
-		_ring3 = false;
-		_main_thread = nullptr;
+		void AddThread(Thread *thread);
 	}
 
-	task_t::~task_t()
+	Task::Task(Sys::VM::Directory *directory) :
+		_lock(SPINLOCK_INIT),
+		_state(State::Waiting),
+		_pid(_taskPidCounter.fetch_add(1)),
+		_ring3(false),
+		_tidCounter(1),
+		_mainThread(nullptr),
+		_directory(directory)
+	{}
+
+	Task::~Task()
 	{}
 
 
-	kern_return_t task_t::attach_thread(thread_t **outthread, thread_t::entry_t entry, size_t stack)
+	kern_return_t Task::AttachThread(Thread **outthread, Thread::Entry entry, size_t stack)
 	{
 		spinlock_lock(&_lock);
 
-		thread_t *thread = new thread_t(this, entry, stack);
-		kern_return_t result = thread->initialize();
+		Thread *thread;
+		kern_return_t result = Thread::Create(thread, this, entry, stack);
 
 		if(result != KERN_SUCCESS)
 		{
-			delete thread;
 			spinlock_unlock(&_lock);
-
 			return result;
 		}
 
-		if(!_main_thread)
-			_main_thread = thread;
+		if(!_mainThread)
+			_mainThread = thread;
 
 		if(outthread)
 			*outthread = thread;
 
-		_threads.insert_back(thread->_task_entry);
+		_threads.insert_back(thread->_taskEntry);
 		spinlock_unlock(&_lock);
 		
-		scheduler_t::get_shared_instance()->add_thread(thread);
-		return result;
+		Scheduler::AddThread(thread);
+		return KERN_SUCCESS;
 	}
 
-	void task_t::remove_thread(thread_t *thread)
+	void Task::RemoveThread(Thread *thread)
 	{
 		spinlock_lock(&_lock);
-		_threads.erase(thread->_task_entry);
+		_threads.erase(thread->_taskEntry);
 		spinlock_unlock(&_lock);
 	}
 }

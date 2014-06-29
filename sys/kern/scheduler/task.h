@@ -31,48 +31,44 @@
 #include <kern/spinlock.h>
 #include "thread.h"
 
-namespace sd
+namespace Core
 {
-	class scheduler_t;
-	
-	class task_t
+	class Task
 	{
 	public:
-		friend class thread_t;
-		friend class scheduler_t;
+		friend class Thread;
 
-		enum class state
+		enum class State
 		{
-			waiting,
-			running,
-			blocked,
-			died
+			Waiting,
+			Running,
+			Blocked,
+			Died
 		};
 
-		task_t(Sys::VM::Directory *directory);
-		~task_t();
+		Task(Sys::VM::Directory *directory);
+		~Task();
 
-		kern_return_t attach_thread(thread_t **outthread, thread_t::entry_t entry, size_t stack);
+		kern_return_t AttachThread(Thread **outthread, Thread::Entry entry, size_t stack);
 
-		void lock();
-		void unlock();
+		void Lock();
+		void Unlock();
 
-		pid_t get_pid() const { return _pid; }
-		Sys::VM::Directory *get_directory() const { return _directory; }
+		pid_t GetPid() const { return _pid; }
+		Sys::VM::Directory *GetDirectory() const { return _directory; }
 
 	private:
-		void attach_thread(thread_t *thread);
-		void remove_thread(thread_t *thread);
+		void RemoveThread(Thread *thread);
 
-		std::atomic<int32_t> _tid_counter;
+		std::atomic<int32_t> _tidCounter;
 		Sys::VM::Directory *_directory;
 
-		cpp::queue<thread_t> _threads;
-		thread_t *_main_thread;
+		cpp::queue<Thread> _threads;
+		Thread *_mainThread;
 
 		spinlock_t _lock;
 		pid_t _pid;
-		state _state;
+		State _state;
 
 		bool _ring3;
 	};

@@ -29,53 +29,64 @@
 #include <kern/types.h>
 #include <kern/spinlock.h>
 
-namespace sd
+namespace Core
 {
-	class task_t;
-	class scheduler_t;
+	class Task;
 
-	class thread_t
+	class Thread
 	{
 	public:
-		friend class scheduler_t;
-		friend class task_t;
+		friend class Task;
+		typedef uint32_t Entry;
 
-		typedef uint32_t entry_t;
+		~Thread();
 
-		thread_t(task_t *task, entry_t entry, size_t stackPages);
-		~thread_t();
+		void Lock();
+		void Unlock();
 
-		void lock();
-		void unlock();
+		void SetQuantum(int8_t quantum);
+		void SetESP(uint32_t esp);
+		void SetRunningCPU(Sys::CPU *cpu);
+		void SetPinnedCPU(Sys::CPU *cpu);
 
-		task_t *get_task() const { return _task; }
-		tid_t get_tid() const { return _tid; }
+		bool IsSchedulable(Sys::CPU *cpu) const;
 
-		bool is_schedulable(Sys::CPU *cpu) const;
+		Task *GetTask() const { return _task; }
+		tid_t GetTid() const { return _tid; }
+		uint32_t GetESP() const { return _esp; }
+
+		int8_t ReduceQuantum() { return (_quantum --); }
+		int8_t GetQuantum() const { return _quantum; }
+
+		cpp::queue<Thread>::entry &GetSchedulerEntry() { return _schedulerEntry; }
 
 	private:
-		kern_return_t initialize();
-		void initialize_kernel_stack(bool ring3);
+		static kern_return_t Create(Thread *&result, Task *task, Entry entry, size_t stackPages);
+		
+		Thread(Task *task, Entry entry, size_t stackPages);
 
-		task_t *_task;
+		kern_return_t Initialize();
+		void InitializeKernelStack(bool ring3);
+
+		Task *_task;
 		tid_t _tid;
 		spinlock_t _lock;
 
-		Sys::CPU *_pinned_cpu;
-		Sys::CPU *_running_cpu;
+		Sys::CPU *_pinnedCPU;
+		Sys::CPU *_runningCPU;
 
-		cpp::queue<thread_t>::entry _scheduler_entry;
-		cpp::queue<thread_t>::entry _task_entry;
+		cpp::queue<Thread>::entry _schedulerEntry;
+		cpp::queue<Thread>::entry _taskEntry;
 
 		int8_t _quantum;
 
-		size_t _user_stack_pages;
-		uint8_t *_user_stack;
-		uint8_t *_user_stack_virtual;
+		size_t _userStackPages;
+		uint8_t *_userStack;
+		uint8_t *_userStackVirtual;
 
-		size_t _kernel_stack_pages;
-		uint8_t *_kernel_stack;
-		uint8_t *_kernel_stack_virtual;
+		size_t _kernelStackPages;
+		uint8_t *_kernelStack;
+		uint8_t *_kernelStackVirtual;
 
 		uint32_t _esp;
 		uint32_t _entry;

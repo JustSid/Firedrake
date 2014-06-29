@@ -29,60 +29,23 @@
 #include "task.h"
 #include "thread.h"
 
-namespace sd
+namespace Core
 {
-	class scheduler_t : public cpp::singleton<scheduler_t>
+	namespace Scheduler
 	{
-	public:
-		friend class task_t;
+		Task *GetActiveTask();
+		Task *GetActiveTask(Sys::CPU *cpu);
 
-		scheduler_t();
-		void initialize();
+		Thread *GetActiveThread();
+		Thread *GetActiveThread(Sys::CPU *cpu);
 
-		task_t *get_active_task();
-		task_t *get_active_task(Sys::CPU *cpu);
-		thread_t *get_active_thread();
-		thread_t *get_active_thread(Sys::CPU *cpu);
+		void ActivateCPU(Sys::CPU *cpu);
 
-		uint32_t reschedule_on_cpu(uint32_t esp, Sys::CPU *cpu);
-		uint32_t schedule_on_cpu(uint32_t esp, Sys::CPU *cpu);
+		uint32_t RescheduleOnCPU(uint32_t esp, Sys::CPU *cpu);
+		uint32_t ScheduleOnCPU(uint32_t esp, Sys::CPU *cpu);
+	}
 
-		void activate_cpu(Sys::CPU *cpu);
-
-	private:
-		struct cpu_proxy_t
-		{
-			cpu_proxy_t(Sys::CPU *tcpu) :
-				cpu(tcpu),
-				idle_thread(nullptr),
-				active_thread(nullptr),
-				active(false),
-				first_run(true)
-			{}
-
-			Sys::CPU *cpu;
-			thread_t *idle_thread;
-			thread_t *active_thread;
-			spinlock_t lock;
-			bool active;
-			bool first_run;
-		};
-
-		void create_kernel_task();
-		void create_idle_task();
-		void add_thread(thread_t *thread);
-
-		cpu_proxy_t *_proxy_cpus[CONFIG_MAX_CPUS];
-		size_t _proxy_cpu_count;
-
-		task_t *_kernel_task;
-		task_t *_idle_task;
-
-		spinlock_t _thread_lock;
-		cpp::queue<thread_t> _active_threads;
-	};
-
-	kern_return_t init();
+	kern_return_t SchedulerInit();
 }
 
 #endif

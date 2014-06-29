@@ -20,14 +20,15 @@
 #include <kern/kprintf.h>
 #include <libc/string.h>
 #include <libcpp/algorithm.h>
+#include <libcpp/new.h>
 #include <machine/interrupts/interrupts.h>
 #include <machine/clock/clock.h>
 #include <kern/panic.h>
 #include "scheduler.h"
 
-namespace sd
+namespace Core
 {
-	void kernel_task()
+	void KernelTask()
 	{
 		kprintf("Hello World\n");
 
@@ -35,7 +36,7 @@ namespace sd
 		{}
 	}
 
-	void idle_task()
+	void IdleTask()
 	{
 		kprintf("idle task on CPU %i\n", Sys::CPU::GetCurrentCPU()->GetID());
 
@@ -43,219 +44,258 @@ namespace sd
 			Sys::CPUHalt();
 	}
 
-
-	scheduler_t::scheduler_t() :
-		_proxy_cpu_count(Sys::CPU::GetCPUCount()),
-		_thread_lock(SPINLOCK_INIT)
+	namespace Scheduler
 	{
-		std::fill(_proxy_cpus, _proxy_cpus + CONFIG_MAX_CPUS, nullptr);
-
-		for(size_t i = 0; i < _proxy_cpu_count; i ++)
+		struct CPUProxy
 		{
-			cpu_proxy_t *proxy = new cpu_proxy_t(Sys::CPU::GetCPUWithID(i));
-			_proxy_cpus[i] = proxy;
+			CPUProxy(Sys::CPU *tcpu) : 
+				cpu(tcpu),
+				idleThread(nullptr),
+				activeThread(nullptr),
+				active(false),
+				firstRun(false),
+				lock(SPINLOCK_INIT)
+			{}
+
+			Sys::CPU *cpu;
+			Thread *idleThread;
+			Thread *activeThread;
+			spinlock_t lock;
+			bool active;
+			bool firstRun;
+		};
+
+		static size_t _proxyCPUCount = 0;
+		static CPUProxy *_proxyCPUs = nullptr;
+		static spinlock_t _threadLock = SPINLOCK_INIT;
+
+		static Task *_kernelTask = nullptr;
+		static Task *_idleTask   = nullptr;
+
+		cpp::queue<Thread> _activeThreads;
+
+		// --------------------
+		// MARK: -
+		// MARK: Lookup
+		// --------------------
+
+		Task *GetActiveTask()
+		{
+			Thread *thread = GetActiveThread();
+			return thread->GetTask();
 		}
-	}
-
-	void scheduler_t::initialize()
-	{
-		create_kernel_task();
-		create_idle_task();
-	}
-
-	void scheduler_t::create_kernel_task()
-	{
-		_kernel_task = new task_t(Sys::VM::Directory::GetKernelDirectory());
-		_kernel_task->attach_thread(nullptr, (thread_t::entry_t)&kernel_task, 0);
-	}
-
-	void scheduler_t::create_idle_task()
-	{
-		_idle_task = new task_t(Sys::VM::Directory::GetKernelDirectory());
-		
-		for(size_t i = 0; i < _proxy_cpu_count; i ++)
+		Task *GetActiveTask(Sys::CPU *cpu)
 		{
-			cpu_proxy_t *proxy = _proxy_cpus[i];
-			thread_t *thread;
-
-			if(_idle_task->attach_thread(&thread, (thread_t::entry_t)&idle_task, 0) != KERN_SUCCESS)
-				panic("Failed to create idle thread");
-
-			thread->_pinned_cpu  = proxy->cpu;
-			thread->_running_cpu = proxy->cpu;
-
-			proxy->idle_thread   = thread;
-			proxy->active_thread = thread;
+			Thread *thread = GetActiveThread(cpu);
+			return thread->GetTask();
 		}
-	}
 
-
-	task_t *scheduler_t::get_active_task()
-	{
-		thread_t *thread = get_active_thread();
-		return thread->get_task();
-	}
-
-	task_t *scheduler_t::get_active_task(Sys::CPU *cpu)
-	{
-		thread_t *thread = get_active_thread(cpu);
-		return thread->get_task();
-	}
-
-	thread_t *scheduler_t::get_active_thread()
-	{
-		Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
-
-		return proxy->active_thread;
-	}
-
-	thread_t *scheduler_t::get_active_thread(Sys::CPU *cpu)
-	{
-		if(cpu == Sys::CPU::GetCurrentCPU())
-			return get_active_thread();
-
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
-
-		spinlock_lock(&proxy->lock);
-		thread_t *thread = proxy->active_thread;
-		spinlock_unlock(&proxy->lock);
-
-		return thread;
-	}
-
-
-	void scheduler_t::add_thread(thread_t *thread)
-	{
-		spinlock_lock(&_thread_lock);
-		_active_threads.insert_back(thread->_scheduler_entry);
-		spinlock_unlock(&_thread_lock);
-	}
-
-	uint32_t scheduler_t::reschedule_on_cpu(uint32_t esp, Sys::CPU *cpu)
-	{
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
-		thread_t *thread = proxy->active_thread;
-
-		thread->_quantum = 0;
-
-		return schedule_on_cpu(esp, cpu);
-	}
-
-	uint32_t scheduler_t::schedule_on_cpu(uint32_t esp, Sys::CPU *cpu)
-	{
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
-
-		if(__expect_false(!proxy->active) || __expect_false(!spinlock_try_lock(&proxy->lock)))
-			return esp;
-
-		thread_t *thread = proxy->active_thread;
-		thread->lock();
-
-		if(__expect_true(!proxy->first_run))
-			thread->_esp = esp;
-
-		if((thread->_quantum --) <= 0 || !thread->is_schedulable(cpu))
+		Thread *GetActiveThread()
 		{
-			// Find a new thread/task pair
-			thread_t *original = thread;
-			cpp::queue<thread_t>::entry *entry = &thread->_scheduler_entry;
-			bool found = false;
+			Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
+			CPUProxy *proxy = &_proxyCPUs[cpu->GetID()];
 
-			thread->unlock();
+			return proxy->activeThread;
+		}
+		Thread *GetActiveThread(Sys::CPU *cpu)
+		{
+			if(cpu == Sys::CPU::GetCurrentCPU())
+				return GetActiveThread();
 
-			do {
-				spinlock_lock(&_thread_lock);
+			CPUProxy *proxy = &_proxyCPUs[cpu->GetID()];
 
-				entry = entry->get_next();
-				if(!entry)
-					entry = _active_threads.get_head();
+			spinlock_lock(&proxy->lock);
+			Thread *thread = proxy->activeThread;
+			spinlock_unlock(&proxy->lock);
 
-				spinlock_unlock(&_thread_lock);
+			return thread;
+		}
 
-				thread = entry->get();
-				thread->lock();
+		// --------------------
+		// MARK: -
+		// MARK: Thread handling
+		// --------------------
 
-				if(thread->is_schedulable(cpu))
+		void AddThread(Thread *thread)
+		{
+			spinlock_lock(&_threadLock);
+			_activeThreads.insert_back(thread->GetSchedulerEntry());
+			spinlock_unlock(&_threadLock);
+		}
+
+		// --------------------
+		// MARK: -
+		// MARK: Scheduling
+		// --------------------
+
+		uint32_t RescheduleOnCPU(uint32_t esp, Sys::CPU *cpu)
+		{
+			CPUProxy *proxy = &_proxyCPUs[cpu->GetID()];
+			Thread *thread  = proxy->activeThread;
+
+			thread->SetQuantum(0);
+
+			return ScheduleOnCPU(esp, cpu);
+		}
+
+		uint32_t ScheduleOnCPU(uint32_t esp, Sys::CPU *cpu)
+		{
+			CPUProxy *proxy = &_proxyCPUs[cpu->GetID()];
+
+			if(__expect_false(!proxy->active) || __expect_false(!spinlock_try_lock(&proxy->lock)))
+				return esp;
+
+			Thread *thread = proxy->activeThread;
+			thread->Lock();
+
+			if(__expect_true(!proxy->firstRun))
+				thread->SetESP(esp);
+
+			if(thread->ReduceQuantum() <= 0 || !thread->IsSchedulable(cpu))
+			{
+				Thread *original = thread;
+				cpp::queue<Thread>::entry *entry = &thread->GetSchedulerEntry();
+				bool found = false;
+
+				thread->Unlock();
+				do {
+
+					spinlock_lock(&_threadLock);
+
+					entry = entry->get_next();
+					if(!entry)
+						entry = _activeThreads.get_head();
+
+					spinlock_unlock(&_threadLock);
+
+					thread = entry->get();
+					thread->Lock();
+
+					if(thread->IsSchedulable(cpu))
+					{
+						found = true;
+						break;
+					}
+
+					thread->Unlock();
+
+				} while(thread != original);
+
+				if(!thread)
 				{
-					found = true;
-					break;
+					thread = proxy->idleThread;
+					thread->Lock();
 				}
 
-				thread->unlock();
-			} while(thread != original);
 
-			if(!found) // Default to the idle thread if we are starved of threads
+				proxy->activeThread = thread;
+
+				thread->SetRunningCPU(cpu);
+				thread->SetQuantum(5);
+				thread->Unlock();
+
+				if(thread != original)
+				{
+					original->Lock();
+					original->SetRunningCPU(nullptr);
+					original->Unlock();
+				}
+			}
+			else
 			{
-				thread = proxy->idle_thread;
-				thread->lock();
+				thread->Unlock();
 			}
 
-			// Move the new thread onto this CPU
-			proxy->active_thread = thread;
-			thread->_running_cpu = cpu;
-			
-			// TODO: Calculate a better quantum for the thread
-			thread->_quantum = 5;
-			thread->unlock();
+			proxy->firstRun = false;
+			spinlock_unlock(&proxy->lock);
 
-			// Mark the old thread as no longer running on this CPU
-			original->lock();
-			original->_running_cpu = nullptr;
-			original->unlock();
+			Task *task = thread->GetTask();
+			Sys::Trampoline *data = cpu->GetTrampoline();
+
+			data->pageDirectory = task->GetDirectory()->GetPhysicalDirectory();
+			data->tss.esp0      = thread->GetESP() + sizeof(Sys::CPUState);
+
+			return thread->GetESP();
 		}
-		else
+
+		void ActivateCPU(Sys::CPU *cpu)
 		{
-			thread->unlock();
+			CPUProxy *proxy = &_proxyCPUs[cpu->GetID()];
+			assert(proxy && proxy->active == false);
+
+			proxy->active    = true;
+			proxy->firstRun = true;
+
+			proxy->activeThread = proxy->idleThread;
+			proxy->activeThread->SetQuantum(1);
 		}
 
-		proxy->first_run = false;
-		spinlock_unlock(&proxy->lock);
+		// --------------------
+		// MARK: -
+		// MARK: Misc & Initialization
+		// --------------------
 
-		task_t *task = thread->get_task();
-		Sys::Trampoline *data = cpu->GetTrampoline();
+		uint32_t ActivateCPUFromIPI(uint32_t esp, Sys::CPU *cpu)
+		{
+			Sys::APIC::SetTimer(Sys::Clock::GetTimerDivisor(), Sys::APIC::TimerMode::Periodic, Sys::Clock::GetTimerCount());
+			Sys::APIC::ArmTimer(Sys::Clock::GetTimerCount());
 
-		data->pageDirectory = task->get_directory()->GetPhysicalDirectory();
-		data->tss.esp0      = thread->_esp + sizeof(Sys::CPUState);
+			ActivateCPU(cpu);
+			return ScheduleOnCPU(esp, cpu);
+		}
 
-		return thread->_esp;
+		kern_return_t InitializeTasks()
+		{
+			_kernelTask = new Task(Sys::VM::Directory::GetKernelDirectory());
+			_kernelTask->AttachThread(nullptr, (Thread::Entry)&KernelTask, 0);
+
+			_idleTask = new Task(Sys::VM::Directory::GetKernelDirectory());
+			
+			for(size_t i = 0; i < _proxyCPUCount; i ++)
+			{
+				Thread *thread;
+				kern_return_t result;
+
+				if((result = _idleTask->AttachThread(&thread, (Thread::Entry)&IdleTask, 0)) != KERN_SUCCESS)
+					return result;
+				
+
+				CPUProxy *proxy = _proxyCPUs + i;
+
+				thread->SetRunningCPU(proxy->cpu);
+				thread->SetPinnedCPU(proxy->cpu);
+
+				proxy->idleThread   = thread;
+				proxy->activeThread = thread;
+			}
+
+			return KERN_SUCCESS;
+		}
 	}
 
-	void scheduler_t::activate_cpu(Sys::CPU *cpu)
+	kern_return_t SchedulerInit()
 	{
-		cpu_proxy_t *proxy = _proxy_cpus[cpu->GetID()];
-		assert(proxy && proxy->active == false);
+		size_t count = Sys::CPU::GetCPUCount();
+		void *data = kalloc(count * sizeof(Scheduler::CPUProxy));
 
-		proxy->active    = true;
-		proxy->first_run = true;
+		if(!data)
+			return KERN_NO_MEMORY;
 
-		proxy->active_thread = proxy->idle_thread;
-		proxy->active_thread->_quantum = 1;
-	}
+		Scheduler::_proxyCPUCount = count;
+		Scheduler::_proxyCPUs     = reinterpret_cast<Scheduler::CPUProxy *>(data);
 
+		for(size_t i = 0; i < Scheduler::_proxyCPUCount; i ++)
+		{
+			new(&Scheduler::_proxyCPUs[i]) Scheduler::CPUProxy(Sys::CPU::GetCPUWithID(i));
+		}
 
+		kern_return_t result;
 
-	uint32_t timer_interrupt_stub(uint32_t esp, Sys::CPU *cpu)
-	{
-		return scheduler_t::get_shared_instance()->schedule_on_cpu(esp, cpu);
-	}
+		if((result = Scheduler::InitializeTasks()) != KERN_SUCCESS)
+			return result;
 
-	uint32_t activate_cpu(uint32_t esp, Sys::CPU *cpu)
-	{
-		Sys::APIC::SetTimer(Sys::Clock::GetTimerDivisor(), Sys::APIC::TimerMode::Periodic, Sys::Clock::GetTimerCount());
-		Sys::APIC::ArmTimer(Sys::Clock::GetTimerCount());
-
-		scheduler_t::get_shared_instance()->activate_cpu(cpu);
-		return scheduler_t::get_shared_instance()->schedule_on_cpu(esp, cpu);
-	}
-
-	kern_return_t init()
-	{
-		scheduler_t *scheduler = scheduler_t::get_shared_instance();
-		scheduler->initialize();
-
-		Sys::SetInterruptHandler(0x35, &timer_interrupt_stub);
-		Sys::SetInterruptHandler(0x3a, &activate_cpu);
+		Sys::SetInterruptHandler(0x35, &Scheduler::ScheduleOnCPU);
+		Sys::SetInterruptHandler(0x3a, &Scheduler::ActivateCPUFromIPI);
 
 		return KERN_SUCCESS;
 	}

@@ -31,16 +31,16 @@ extern "C" uintptr_t idt_end;
 
 namespace Sys
 {
-	struct Map
+	struct TrampolineMap
 	{
 		uint8_t buffer[VM_PAGE_SIZE];
 		Trampoline trampoline[CONFIG_MAX_CPUS];
 	};
-	Map *_map = nullptr;
+	TrampolineMap *_map = nullptr;
 
 	kern_return_t TrampolineInit()
 	{
-		assert(sizeof(Map) <= IR_TRAMPOLINE_PAGES * VM_PAGE_SIZE);
+		assert(sizeof(TrampolineMap) <= IR_TRAMPOLINE_PAGES * VM_PAGE_SIZE);
 
 		kern_return_t result;
 		vm_address_t vaddress;
@@ -61,7 +61,7 @@ namespace Sys
 			return result;
 		}
 		
-		_map = reinterpret_cast<Map *>(IR_TRAMPOLINE_BEGIN);
+		_map = reinterpret_cast<TrampolineMap *>(IR_TRAMPOLINE_BEGIN);
 
 		// Fix up the idt section
 		uintptr_t idtBegin = reinterpret_cast<uintptr_t>(&idt_begin);
