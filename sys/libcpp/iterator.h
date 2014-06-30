@@ -38,6 +38,20 @@ namespace std
 	struct forward_iterator_tag       : public input_iterator_tag {};
 	struct bidirectional_iterator_tag : public forward_iterator_tag {};
 	struct random_access_iterator_tag : public bidirectional_iterator_tag {};
+
+	template<class T> 
+	auto begin(T& c) -> decltype(c.begin()) { return c.begin(); }
+	template<class T> 
+	auto begin(const T& c) -> decltype(c.begin()) { return c.begin(); }
+	template<class T, size_t N> 
+	T *begin(T(&array)[N]) { return array + 0; }
+
+	template<class T> 
+	auto end(T& c) -> decltype(c.end()) { return c.end(); }
+	template<class T> 
+	auto end(const T& c) -> decltype(c.end()) { return c.end(); }
+	template<class T, size_t N> 
+	T *end(T(&array)[N]) { return array + N; }
 }
 
 #endif /* _ITERATOR_H_ */

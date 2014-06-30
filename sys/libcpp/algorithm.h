@@ -50,6 +50,20 @@ namespace std
 
 		return dest;
 	}
+
+	template<class InputIt, class T>
+	InputIt find(InputIt first, InputIt last, const T &value)
+	{
+		while(first != last)
+		{
+			if(*first == value)
+				return first;
+
+			first ++;
+		}
+
+		return last;
+	}
 }
 
 #endif /* _ALGORITHM_H_ */
