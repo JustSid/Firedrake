@@ -18,6 +18,8 @@
 
 #include <kern/kprintf.h>
 #include <kern/panic.h>
+#include <libc/string.h>
+#include <vfs/file.h>
 #include "scheduler.h"
 #include "task.h"
 
@@ -37,8 +39,11 @@ namespace Core
 		_ring3(false),
 		_tidCounter(1),
 		_mainThread(nullptr),
-		_directory(directory)
-	{}
+		_directory(directory),
+		_context(nullptr)
+	{
+		memset(_files, 0, CONFIG_MAX_FILES * sizeof(VFS::File *));
+	}
 
 	Task::~Task()
 	{}
@@ -75,5 +80,71 @@ namespace Core
 		spinlock_lock(&_lock);
 		_threads.erase(thread->_taskEntry);
 		spinlock_unlock(&_lock);
+	}
+
+
+	void Task::Lock()
+	{
+		spinlock_lock(&_lock);
+	}
+	void Task::Unlock()
+	{
+		spinlock_unlock(&_lock);
+	}
+
+
+	VFS::File *Task::GetFileForDescriptor(int fd)
+	{
+		if(fd >= CONFIG_MAX_FILES)
+			panic("File descriptor >= CONFIG_MAX_FILES!");
+
+		Lock();
+		VFS::File *file = _files[fd];
+		Unlock();
+
+		return (file != VFS::InvalidFile) ? file : nullptr;
+	}
+	void Task::SetFileForDescriptor(VFS::File *file, int fd)
+	{
+		if(fd >= CONFIG_MAX_FILES)
+			panic("File descriptor >= CONFIG_MAX_FILES!");
+
+		if(file == nullptr)
+			file = VFS::InvalidFile;
+
+		Lock();
+		_files[fd] = file;
+		Unlock();
+	}
+
+	int Task::AllocateFileDescriptor()
+	{
+		Lock();
+		
+		int fd = -1;
+
+		for(int i = 0; i < CONFIG_MAX_FILES; i ++)
+		{
+			if(_files[i] == nullptr)
+			{
+				_files[i] = VFS::InvalidFile;
+				fd = i;
+
+				break;
+			}
+		}
+
+		Unlock();
+
+		return fd;
+	}
+	void Task::FreeFileDescriptor(int fd)
+	{
+		if(fd >= CONFIG_MAX_FILES)
+			panic("File descriptor >= CONFIG_MAX_FILES!");
+
+		Lock();
+		_files[fd] = nullptr;
+		Unlock();
 	}
 }

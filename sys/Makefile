@@ -4,8 +4,8 @@ SRCS = $(shell find $(CURDIR) -type f \( -name "*.cpp" -o -name "*.c" -o -name "
 OBJS = $(addsuffix .o, $(basename $(SRCS)))
 
 ASFLAGS  = -m32 -I. -no-integrated-as
-CFLAGS 	 = -m32 -std=c99 -O0 -Wall -Wextra -pedantic-errors -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -mno-sse -mno-mmx -nostdlib -nostdinc -I.
-CPPFLAGS = -m32 -std=c++11 -O0 -Wall -Wextra -Wno-overloaded-virtual -Wno-reorder -pedantic-errors -fno-threadsafe-statics -fno-stack-protector -fno-builtin -fno-rtti -fno-exceptions -mno-sse -mno-mmx -nostdinc -nostdlib -I.
+CFLAGS 	 = -m32 -std=c99 -O2 -Wall -Wextra -pedantic-errors -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -mno-sse -mno-mmx -nostdlib -nostdinc -I.
+CPPFLAGS = -m32 -std=c++11 -O2 -Wall -Wextra -Wno-overloaded-virtual -Wno-reorder -pedantic-errors -fno-threadsafe-statics -fno-stack-protector -fno-builtin -fno-rtti -fno-exceptions -mno-sse -mno-mmx -nostdinc -nostdlib -I.
 LDFLAGS  = -T Makefile.ld
 
 firedrake: $(OBJS)

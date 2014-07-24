@@ -40,4 +40,8 @@
 #define CONFIG_MAX_INTERRUPT_OVERRIDES 32
 #endif
 
+#ifndef CONFIG_MAX_FILES
+#define CONFIG_MAX_FILES 256
+#endif
+
 #endif /* _CONFIG_H_ */

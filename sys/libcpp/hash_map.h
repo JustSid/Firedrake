@@ -117,6 +117,9 @@ namespace std
 
 					return;
 				}
+
+				_index = _map->_capacity + 1;
+				_bucket = nullptr;
 			}
 
 			const hash_map *_map;
@@ -152,7 +155,7 @@ namespace std
 			}
 		}
 
-		iterator find(const Key &key)
+		iterator find(const Key &key) const
 		{
 			size_t index;
 			bucket *tbucket = find_bucket(key, index, true);
@@ -170,7 +173,7 @@ namespace std
 
 		iterator end() const
 		{
-			return iterator(this, nullptr, 0);
+			return iterator(this, nullptr, _capacity + 1);
 		}
 
 
@@ -196,24 +199,17 @@ namespace std
 
 		void erase(const iterator &it)
 		{
-			if(it->_bucket)
+			if(it._bucket)
 			{
-				it->_bucket->valid = false;
+				it._bucket->valid = false;
 				_count --;
 
 				collapse_buckets();
 			}
 		}
 
-
-		size_t get_count() const
-		{
-			return _count;
-		}
-		size_t get_capacity() const
-		{
-			return _capacity;
-		}
+		size_t count() const { return _count; }
+		size_t capacity() const { return _capacity; }
 
 	private:
 		void grow_buckets()
@@ -269,7 +265,7 @@ namespace std
 			return find_bucket(key, index, lookup);
 		}
 
-		bucket *find_bucket(const Key &key, size_t &index, bool lookup)
+		bucket *find_bucket(const Key &key, size_t &index, bool lookup) const
 		{
 			index = _hasher(key) % _capacity;
 			bucket *tbucket = _buckets[index];
@@ -283,6 +279,8 @@ namespace std
 					
 					tbucket = tbucket->next;
 				}
+
+				return nullptr;
 			}
 			else
 			{
@@ -302,6 +300,10 @@ namespace std
 				if(temp)
 				{
 					_count ++;
+
+					temp->key = key;
+					temp->valid = true;
+
 					return temp;
 				}
 			}
@@ -320,8 +322,8 @@ namespace std
 		Hash _hasher;
 		EqualTo _comparator;
 
-		bucket **_buckets;
-		size_t _count;
+		mutable bucket **_buckets;
+		mutable size_t _count;
 		size_t _capacity;
 		size_t _primitive;
 	};

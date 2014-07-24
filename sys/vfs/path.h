@@ -1,5 +1,5 @@
 //
-//  atomic.S
+//  path.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,69 +16,43 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <asm.h>
+#ifndef _VFS_PATH_H_
+#define _VFS_PATH_H_
 
+#include <prefix.h>
+#include <kern/kern_return.h>
+#include "node.h"
+#include "context.h"
 
-ENTRY(atomic_compare_swap_i32)
-ENTRY(atomic_compare_swap_u32)
-	movl 4(%esp), %eax
-	movl 8(%esp), %edx
-	movl 12(%esp), %ecx
+namespace VFS
+{
+	class Path
+	{
+	public:
+		Path(const char *path, Context *context);
+		~Path();
 
-	lock cmpxchgl %edx, 0(%ecx)
+		Node *GetCurrentNode() const { return _node; }
+		const Filename &GetCurrentName() const { return _name; }
+		Filename GetNextName();
 
-	sete %al
-	movzbl %al, %eax
-	ret
+		size_t GetElementsLeft() const { return _elementsLeft; }
+		size_t GetTotalElements() const { return _totalElements; }
 
-ENTRY(atomic_add_i32)
-ENTRY(atomic_add_u32)
-	movl 4(%esp), %eax
-	movl 8(%esp), %ecx
+		kern_return_t ResolveElement();
 
-	lock xaddl %eax, 0(%ecx)
-	ret
-	
+	private:
+		char *_path;
+		char *_element;
 
-ENTRY(atomic_compare_swap_i64)
-ENTRY(atomic_compare_swap_u64)
-	pushl %edi
-	pushl %ebx
+		Filename _name;
 
-	movl 12(%esp), %eax
-	movl 16(%esp), %edx
-	movl 20(%esp), %ebx
-	movl 24(%esp), %ecx
-	movl 28(%esp), %edi
+		Context *_context;
+		Node *_node;
 
-	lock cmpxchg8b (%edi)
+		size_t _totalElements;
+		size_t _elementsLeft;
+	};
+}
 
-	sete   %al
-	movzbl %al, %eax
-
-	popl %ebx
-	popl %edi
-	ret
-
-ENTRY(atomic_add_i64)
-ENTRY(atomic_add_u64)
-	pushl %edi
-	pushl %ebx
-
-	movl 20(%esp), %edi
-	movl 0(%edi), %eax
-	movl 4(%edi), %ecx
-
-1:
-	movl %eax, %ebx
-	movl %edx, %ecx
-
-	addl 12(%esp), %ebx
-	addl 16(%esp), %ebx
-
-	lock cmpxchg8b (%edi)
-	jnz 1b
-
-	popl %ebx
-	popl %edi
-	ret
+#endif

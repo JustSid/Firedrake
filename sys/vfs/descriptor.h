@@ -1,5 +1,5 @@
 //
-//  task.h
+//  descriptor.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,81 +16,69 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TASK_H_
-#define _TASK_H_
+#ifndef _VFS_DESCRIPTOR_H_
+#define _VFS_DESCRIPTOR_H_
 
 #include <prefix.h>
+#include <kern/spinlock.h>
+#include <kern/kern_return.h>
 #include <libc/stddef.h>
 #include <libc/stdint.h>
-#include <libcpp/atomic.h>
-#include <libcpp/queue.h>
-#include <machine/memory/memory.h>
-
-#include <kern/types.h>
-#include <kern/kern_return.h>
-#include <kern/spinlock.h>
-#include "thread.h"
+#include <libcpp/bitfield.h>
+#include <libcpp/string.h>
+#include <libcpp/vector.h>
 
 namespace VFS
 {
-	class Context;
-	class File;
-}
-
-namespace Core
-{
-	class Task
+	class Instance;
+	class Descriptor
 	{
 	public:
-		friend class Thread;
-		friend class VFS::Context;
-
-		enum class State
+		struct Flags : cpp::Bitfield<uint32_t>
 		{
-			Waiting,
-			Running,
-			Blocked,
-			Died
+			Flags()
+			{}
+			Flags(int value) :
+				Bitfield(value)
+			{}
+
+			enum
+			{
+				Persistent = (1 << 0)
+			};
 		};
 
-		Task(Sys::VM::Directory *directory);
-		~Task();
+		virtual ~Descriptor();
 
-		kern_return_t AttachThread(Thread **outthread, Thread::Entry entry, size_t stack);
+		const char *GetName() const { return _name.c_str(); }
+		Flags GetFlags() const { return _flags; }
+
+		virtual kern_return_t CreateInstance(Instance *&instance) = 0;
+		virtual void DestroyInstance(Instance *instance) = 0;
+
+		// Must be called at some point
+		kern_return_t Register();
+		kern_return_t Unregister();
+
+	protected:
+		Descriptor(const char *name, Flags flags);
+
+		// Must be called while locked
+		void AddInstance(Instance *instance);
+		bool RemoveInstance(Instance *instance);
 
 		void Lock();
 		void Unlock();
 
-		pid_t GetPid() const { return _pid; }
-		Sys::VM::Directory *GetDirectory() const { return _directory; }
-
-		// VFS
-		VFS::Context *GetVFSContext() const { return _context; }
-
-		VFS::File *GetFileForDescriptor(int fd);
-		void SetFileForDescriptor(VFS::File *file, int fd);
-
-		int AllocateFileDescriptor();
-		void FreeFileDescriptor(int fd);
-
 	private:
-		void RemoveThread(Thread *thread);
-
-		std::atomic<int32_t> _tidCounter;
-		Sys::VM::Directory *_directory;
-
-		cpp::queue<Thread> _threads;
-		Thread *_mainThread;
-
+		std::fixed_string<32> _name;
 		spinlock_t _lock;
-		pid_t _pid;
-		State _state;
+		Flags _flags;
 
-		bool _ring3;
+		bool _registered;
 
-		VFS::Context *_context;
-		VFS::File *_files[CONFIG_MAX_FILES];
+		std::vector<Instance *> _instances;
 	};
 }
 
-#endif /* _TASK_H_ */
+#endif /* _VFS_DESCRIPTOR_H_ */

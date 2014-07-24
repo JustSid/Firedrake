@@ -23,7 +23,7 @@
 
 namespace std
 {
-	template<class uint32_t>
+	template<class T>
 	class atomic
 	{};
 
@@ -239,6 +239,220 @@ namespace std
 
 	private:
 		int32_t _value;
+	};
+
+	template<>
+	class atomic<uint64_t>
+	{
+	public:
+		atomic()
+		{}
+
+		atomic(uint64_t value) :
+			_value(value)
+		{}
+
+		void store(uint64_t value)
+		{
+			memory_barrier();
+			_value = value;
+		}
+
+		uint64_t load()
+		{
+			memory_barrier();
+			return _value;
+		}
+
+		bool compare_exchange(uint64_t &expected, uint64_t desired)
+		{
+			return atomic_compare_swap_u64(expected, desired, &_value);
+		}
+
+		bool is_lock_free() const
+		{
+			return true;
+		}
+
+		uint64_t fetch_add(uint64_t value)
+		{
+			return atomic_add_u64(value, &_value);
+		}
+
+		uint64_t fetch_sub(uint64_t value)
+		{
+			return atomic_add_u64(-value, &_value);
+		}
+
+		uint64_t fetch_and(uint64_t arg)
+		{
+			return atomic_and_u64(arg, &_value);
+		}
+
+		uint64_t fetch_or(uint64_t arg)
+		{
+			return atomic_or_u64(arg, &_value);
+		}
+
+		uint64_t fetch_xor(uint64_t arg)
+		{
+			return atomic_xor_u64(arg, &_value);
+		}
+
+		uint64_t operator ++()
+		{
+			return fetch_add(1) + 1;
+		}
+
+		uint64_t operator ++(int)
+		{
+			return fetch_add(1);
+		}
+
+		uint64_t operator --()
+		{
+			return fetch_sub(1) - 1;
+		}
+
+		uint64_t operator --(int)
+		{
+			return fetch_sub(1);
+		}
+
+		uint64_t operator += (uint64_t value)
+		{
+			return fetch_add(value) + value;
+		}
+
+		uint64_t operator -= (uint64_t value)
+		{
+			return fetch_sub(value) - value;
+		}
+
+		uint64_t operator &= (uint64_t value)
+		{
+			return fetch_and(value) & value;
+		}
+
+		uint64_t operator |= (uint64_t value)
+		{
+			return fetch_or(value) | value;
+		}
+
+		uint64_t operator ^= (uint64_t value)
+		{
+			return fetch_xor(value) ^ value;
+		}
+
+	private:
+		uint64_t _value;
+	};
+
+	template<>
+	class atomic<int64_t>
+	{
+	public:
+		atomic()
+		{}
+
+		atomic(int64_t value) :
+			_value(value)
+		{}
+
+		void store(int64_t value)
+		{
+			memory_barrier();
+			_value = value;
+		}
+
+		int64_t load()
+		{
+			memory_barrier();
+			return _value;
+		}
+
+		bool compare_exchange(int64_t &expected, int64_t desired)
+		{
+			return atomic_compare_swap_i64(expected, desired, &_value);
+		}
+
+		bool is_lock_free() const
+		{
+			return true;
+		}
+
+		int64_t fetch_add(int64_t value)
+		{
+			return atomic_add_i64(value, &_value);
+		}
+
+		int64_t fetch_sub(int64_t value)
+		{
+			return atomic_add_i64(-value, &_value);
+		}
+
+		int64_t fetch_and(int64_t arg)
+		{
+			return atomic_and_i64(arg, &_value);
+		}
+
+		int64_t fetch_or(int64_t arg)
+		{
+			return atomic_or_i64(arg, &_value);
+		}
+
+		int64_t fetch_xor(int64_t arg)
+		{
+			return atomic_xor_i64(arg, &_value);
+		}
+
+		int64_t operator ++()
+		{
+			return fetch_add(1) + 1;
+		}
+
+		int64_t operator ++(int)
+		{
+			return fetch_add(1);
+		}
+
+		int64_t operator --()
+		{
+			return fetch_sub(1) - 1;
+		}
+
+		int64_t operator --(int)
+		{
+			return fetch_sub(1);
+		}
+
+		int64_t operator += (int64_t value)
+		{
+			return fetch_add(value) + value;
+		}
+
+		int64_t operator -= (int64_t value)
+		{
+			return fetch_sub(value) - value;
+		}
+
+		int64_t operator &= (int64_t value)
+		{
+			return fetch_and(value) & value;
+		}
+
+		int64_t operator |= (int64_t value)
+		{
+			return fetch_or(value) | value;
+		}
+
+		int64_t operator ^= (int64_t value)
+		{
+			return fetch_xor(value) ^ value;
+		}
+
+	private:
+		int64_t _value;
 	};
 }
 

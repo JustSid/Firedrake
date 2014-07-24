@@ -1,5 +1,5 @@
 //
-//  atomic.S
+//  file.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,69 +16,59 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <asm.h>
+#include <kern/panic.h>
+#include <kern/kprintf.h>
+#include <libc/string.h>
+#include "file.h"
+#include "node.h"
+
+namespace VFS
+{
+	File::File(Node *node, int flags) :
+		_node(node),
+		_flags(flags),
+		_offset(0)
+	{
+		_node->Retain();
+	}
+	File::~File()
+	{
+		_node->Release();
+	}
+
+	void File::SetOffset(off_t offset)
+	{
+		_offset = offset;
+	}
 
 
-ENTRY(atomic_compare_swap_i32)
-ENTRY(atomic_compare_swap_u32)
-	movl 4(%esp), %eax
-	movl 8(%esp), %edx
-	movl 12(%esp), %ecx
+	FileDirectory::FileDirectory(Node *node, int flags) :
+		File(node, flags)
+	{
+		if(!node->IsDirectory())
+			panic("Node must be directory!");
 
-	lock cmpxchgl %edx, 0(%ecx)
+		Directory *directory = static_cast<Directory *>(node);
+		directory->Lock();
 
-	sete %al
-	movzbl %al, %eax
-	ret
+		auto begin = directory->GetBegin();
+		auto end   = directory->GetEnd();
 
-ENTRY(atomic_add_i32)
-ENTRY(atomic_add_u32)
-	movl 4(%esp), %eax
-	movl 8(%esp), %ecx
+		while(begin != end)
+		{
+			DirectoryEntry entry;
+			Node *temp = *begin;
 
-	lock xaddl %eax, 0(%ecx)
-	ret
-	
+			entry.type = static_cast<int>(temp->GetType());
+			entry.id   = temp->GetID();
 
-ENTRY(atomic_compare_swap_i64)
-ENTRY(atomic_compare_swap_u64)
-	pushl %edi
-	pushl %ebx
+			strcpy(entry.name, temp->GetName().c_str());
 
-	movl 12(%esp), %eax
-	movl 16(%esp), %edx
-	movl 20(%esp), %ebx
-	movl 24(%esp), %ecx
-	movl 28(%esp), %edi
+			_entries.push_back(std::move(entry));
+			begin ++;
+		}
 
-	lock cmpxchg8b (%edi)
+		directory->Unlock();
+	}
+}
 
-	sete   %al
-	movzbl %al, %eax
-
-	popl %ebx
-	popl %edi
-	ret
-
-ENTRY(atomic_add_i64)
-ENTRY(atomic_add_u64)
-	pushl %edi
-	pushl %ebx
-
-	movl 20(%esp), %edi
-	movl 0(%edi), %eax
-	movl 4(%edi), %ecx
-
-1:
-	movl %eax, %ebx
-	movl %edx, %ecx
-
-	addl 12(%esp), %ebx
-	addl 16(%esp), %ebx
-
-	lock cmpxchg8b (%edi)
-	jnz 1b
-
-	popl %ebx
-	popl %edi
-	ret

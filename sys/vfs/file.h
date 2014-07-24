@@ -1,5 +1,5 @@
 //
-//  atomic.S
+//  file.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,69 +16,51 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <asm.h>
+#ifndef _VFS_FILE_H_
+#define _VFS_FILE_H_
 
+#include <prefix.h>
+#include <libc/stdint.h>
+#include <libc/sys/fcntl.h>
+#include <libc/sys/types.h>
+#include <libcpp/vector.h>
 
-ENTRY(atomic_compare_swap_i32)
-ENTRY(atomic_compare_swap_u32)
-	movl 4(%esp), %eax
-	movl 8(%esp), %edx
-	movl 12(%esp), %ecx
+#include "directory.h"
 
-	lock cmpxchgl %edx, 0(%ecx)
+namespace VFS
+{
+	class Node;
+	class File
+	{
+	public:
+		File(Node *node, int flags);
+		virtual ~File();
 
-	sete %al
-	movzbl %al, %eax
-	ret
+		Node *GetNode() const { return _node; }
+		off_t GetOffset() const { return _offset; }
+		int GetFlags() const { return _flags; }
 
-ENTRY(atomic_add_i32)
-ENTRY(atomic_add_u32)
-	movl 4(%esp), %eax
-	movl 8(%esp), %ecx
+		void SetOffset(off_t offset);
 
-	lock xaddl %eax, 0(%ecx)
-	ret
-	
+	private:
+		Node *_node;
+		off_t _offset;
+		int _flags;
+	};
 
-ENTRY(atomic_compare_swap_i64)
-ENTRY(atomic_compare_swap_u64)
-	pushl %edi
-	pushl %ebx
+	class FileDirectory : public File
+	{
+	public:
+		FileDirectory(Node *node, int flags);
 
-	movl 12(%esp), %eax
-	movl 16(%esp), %edx
-	movl 20(%esp), %ebx
-	movl 24(%esp), %ecx
-	movl 28(%esp), %edi
+		size_t GetCount() const { return _entries.size(); }
+		const DirectoryEntry *GetEntries() const { return _entries.data(); }
 
-	lock cmpxchg8b (%edi)
+	private:
+		std::vector<DirectoryEntry> _entries;
+	};
 
-	sete   %al
-	movzbl %al, %eax
+	constexpr File *InvalidFile = (File *)0xffdeadff;
+}
 
-	popl %ebx
-	popl %edi
-	ret
-
-ENTRY(atomic_add_i64)
-ENTRY(atomic_add_u64)
-	pushl %edi
-	pushl %ebx
-
-	movl 20(%esp), %edi
-	movl 0(%edi), %eax
-	movl 4(%edi), %ecx
-
-1:
-	movl %eax, %ebx
-	movl %edx, %ecx
-
-	addl 12(%esp), %ebx
-	addl 16(%esp), %ebx
-
-	lock cmpxchg8b (%edi)
-	jnz 1b
-
-	popl %ebx
-	popl %edi
-	ret
+#endif /* _VFS_FILE_H_ */

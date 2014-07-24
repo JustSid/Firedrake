@@ -111,7 +111,7 @@ namespace Sys
 	}
 	CPU *CPU::GetCurrentCPU()
 	{
-		if(!_hasCPUFastPath)
+		if(__expect_false(!_hasCPUFastPath))
 		{
 			uint32_t id  = APIC::Read(APIC::Register::ID);
 			uint8_t apic = (id >> 24) & 0xff;
@@ -127,7 +127,7 @@ namespace Sys
 
 	uint32_t CPU::GetCPUID()
 	{
-		if(!_hasCPUFastPath)
+		if(__expect_false(!_hasCPUFastPath))
 		{
 			uint32_t id  = APIC::Read(APIC::Register::ID);
 			uint8_t apic = (id >> 24) & 0xff;

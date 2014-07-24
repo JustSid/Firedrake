@@ -21,6 +21,7 @@
 
 #include <prefix.h>
 #include <libc/stdint.h>
+#include <libc/string.h>
 
 namespace std
 {
@@ -29,6 +30,13 @@ namespace std
 
 	template<class T>
 	struct equal_to;
+
+	template<class T>
+	void hash_combine(size_t &seed, const T &value)
+	{
+		std::hash<T> hasher;
+		seed ^= hasher(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+	}
 
 
 
@@ -56,6 +64,24 @@ namespace std
 		}
 	};
 
+	template<>
+	struct hash<const char *>
+	{
+		size_t operator() (const char *value) const
+		{
+			size_t hash = 0;
+			size_t length = strlen(value);
+
+			for(size_t i = 0; i < length; i ++)
+			{
+				hash_combine(hash, static_cast<int32_t>(value[i]));
+			}
+
+			return hash;
+		}
+	};
+
+
 
 	template<>
 	struct equal_to<uint32_t>
@@ -74,6 +100,19 @@ namespace std
 		bool operator() (int32_t a, int32_t b) const
 		{
 			return (a == b);
+		}
+	};
+
+	template<>
+	struct equal_to<const char *>
+	{
+	public:
+		bool operator() (const char *a, const char *b) const
+		{
+			if(!a || !b)
+				return (a == b);
+
+			return (strcmp(a, b) == 0);
 		}
 	};
 }

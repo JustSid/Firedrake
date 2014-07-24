@@ -1,5 +1,5 @@
 //
-//  atomic.S
+//  context.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,69 +16,42 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <asm.h>
+#ifndef _VFS_CONTEXT_H_
+#define _VFS_CONTEXT_H_
 
+#include <prefix.h>
+#include <machine/memory/virtual.h>
+#include <kern/kern_return.h>
+#include <kern/spinlock.h>
 
-ENTRY(atomic_compare_swap_i32)
-ENTRY(atomic_compare_swap_u32)
-	movl 4(%esp), %eax
-	movl 8(%esp), %edx
-	movl 12(%esp), %ecx
+namespace VFS
+{
+	class Node;
+	class Context
+	{
+	public:
+		Context(Sys::VM::Directory *directory, Node *currentDir);
+		~Context();
 
-	lock cmpxchgl %edx, 0(%ecx)
+		Node *GetCurrentDir(); // Returns retained node!
+		Node *GetRootDir(); // Returns retained node!
 
-	sete %al
-	movzbl %al, %eax
-	ret
+		kern_return_t SetCurrentDir(Node *currentDir);
+		kern_return_t SetRootDir(Node *rootDir);
 
-ENTRY(atomic_add_i32)
-ENTRY(atomic_add_u32)
-	movl 4(%esp), %eax
-	movl 8(%esp), %ecx
+		kern_return_t CopyDataOut(const void *data, void *target, size_t length);
+		kern_return_t CopyDataIn(const void *data, void *target, size_t length);
 
-	lock xaddl %eax, 0(%ecx)
-	ret
-	
+		static Context *GetKernelContext();
+		static Context *GetActiveContext();
 
-ENTRY(atomic_compare_swap_i64)
-ENTRY(atomic_compare_swap_u64)
-	pushl %edi
-	pushl %ebx
+	private:
+		spinlock_t _lock;
 
-	movl 12(%esp), %eax
-	movl 16(%esp), %edx
-	movl 20(%esp), %ebx
-	movl 24(%esp), %ecx
-	movl 28(%esp), %edi
+		Node *_currentDir;
+		Node *_root;
+		Sys::VM::Directory *_directory;
+	};
+}
 
-	lock cmpxchg8b (%edi)
-
-	sete   %al
-	movzbl %al, %eax
-
-	popl %ebx
-	popl %edi
-	ret
-
-ENTRY(atomic_add_i64)
-ENTRY(atomic_add_u64)
-	pushl %edi
-	pushl %ebx
-
-	movl 20(%esp), %edi
-	movl 0(%edi), %eax
-	movl 4(%edi), %ecx
-
-1:
-	movl %eax, %ebx
-	movl %edx, %ecx
-
-	addl 12(%esp), %ebx
-	addl 16(%esp), %ebx
-
-	lock cmpxchg8b (%edi)
-	jnz 1b
-
-	popl %ebx
-	popl %edi
-	ret
+#endif /* _VFS_CONTEXT_H_ */

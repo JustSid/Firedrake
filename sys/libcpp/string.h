@@ -28,73 +28,72 @@
 
 namespace std
 {
-	class string
+	template<size_t Size>
+	class fixed_string
 	{
 	public:
 		static constexpr size_t npos = static_cast<size_t>(UINT32_MAX);
 
-		string() :
-			_buffer(nullptr),
-			_length(0),
-			_capacity(0)
+		fixed_string() :
+			_length(0)
 		{
-			assert_buffer(10);
 			_buffer[0] = '\0';
 		}
-
-		string(const string &other) :
-			_buffer(nullptr),
-			_length(other._length),
-			_capacity(0)
+		fixed_string(const char *string)
 		{
-			assert_buffer(other._capacity);
-			strcpy(_buffer, other._buffer);
+			assign(string, strlen(string));
 		}
-
-		string(const char *other) :
-			_buffer(nullptr),
-			_length(strlen(other)),
-			_capacity(0)
+		fixed_string(const fixed_string &other)
 		{
-			assert_buffer(strlen(other));
-			strcpy(_buffer, other);
-		}
-
-		~string()
-		{
-			delete [] _buffer;
-		}
-
-		
-		void append(const string &other)
-		{
-			append(other._buffer, other._length);
-		}
-
-		void append(const char *other)
-		{
-			append(other, strlen(other));
-		}
-
-		void append(const char *other, size_t length)
-		{
-			assert_buffer(_length + length);
-			memcpy(_buffer + _length, other, length);
-
-			_length += length;
-			_buffer[_length] = '\0';
+			assign(other._buffer, other._length);
 		}
 
 
-		size_t find(const string &other)
+		fixed_string &operator =(const fixed_string &other)
 		{
-			return find(other._buffer);
+			assign(other._buffer, other._length);
+			return *this;
+		}
+		fixed_string &operator =(const char *string)
+		{
+			assign(string, strlen(string));
+			return *this;
 		}
 
-		size_t find(const char *other)
+
+		bool operator ==(const fixed_string &other) const
+		{
+			if(_length != other._length)
+				return false;
+
+			return (strcmp(other._buffer, _buffer) == 0);
+		}
+		bool operator ==(const char *string) const
+		{
+			return (strcmp(string, _buffer) == 0);
+		}
+
+		bool operator !=(const fixed_string &other) const
+		{
+			return !(*this == other);
+		}
+		bool operator !=(const char *string) const
+		{
+			return !(*this == string);
+		}
+
+
+		size_t find(const fixed_string &other) const
+		{
+			return find(other._buffer, _length);
+		}
+		size_t find(const char *other) const
+		{
+			return find(other, strlen(other));
+		}
+		size_t find(const char *other, size_t length) const
 		{
 			size_t found  = 0;
-			size_t length = strlen(other);
 
 			char *buffer = _buffer;
 			while(*buffer)
@@ -112,71 +111,25 @@ namespace std
 			return npos;
 		}
 
-
-		void reserve(size_t size)
-		{
-			assert_buffer(size);
-		}
-
-
-
-		const char *get_data() const
-		{
-			return _buffer;
-		}
-		size_t get_capacity() const 
-		{
-			return _capacity;
-		}
-		size_t get_length() const
-		{
-			return _length;
-		}
+		const char *c_str() const { return _buffer; }
+		size_t length() const { return _length; }
 
 	private:
-		void expand_buffer(size_t size)
+		void assign(const char *string, size_t length)
 		{
-			char *temp = new char[size];
-
-			if(_buffer)
-				memcpy(temp, _buffer, _length + 1);
-
-			delete [] _buffer;
-			_buffer   = temp;
-			_capacity = size;
-		}
-
-		void collapse_buffer(size_t size)
-		{
-			char *temp = new char[size];
-
-			if(_buffer)
+			if(!string)
 			{
-				memcpy(temp, _buffer, size);
-				temp[size] = '\0';
+				_buffer[0] = '\0';
+				_length = 0;
+
+				return;
 			}
 
-			delete [] _buffer;
-			_buffer   = temp;
-			_capacity = size;
+			_length = std::min(length, Size);
+			strlcpy(_buffer, string, _length);
 		}
 
-		void assert_buffer(size_t minimum)
-		{
-			if(minimum > _capacity)
-			{
-				size_t size = std::max(minimum, _capacity * 2);
-				expand_buffer(size);
-			}
-			else if(minimum < (_capacity / 2))
-			{
-				size_t size = std::min(minimum, _capacity / 2);
-				collapse_buffer(size);
-			}
-		}
-
-		char *_buffer;
-		size_t _capacity;
+		char _buffer[Size + 1];
 		size_t _length;
 	};
 }
