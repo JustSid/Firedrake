@@ -16,11 +16,12 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libcpp/vector.h>
 #include <kern/spinlock.h>
 #include <kern/kalloc.h>
 #include <kern/kprintf.h>
+#include <libc/string.h>
 #include <libcpp/new.h>
+#include <libcpp/vector.h>
 #include <kern/scheduler/scheduler.h>
 
 #include "vfs.h"
@@ -285,7 +286,70 @@ namespace VFS
 	void UnregisterDescriptor(__unused Descriptor *descriptor)
 	{}
 
-	kern_return_t Init()
+
+	kern_return_t LoadInitrdModule(Sys::MultibootModule *module)
+	{
+		uint8_t *buffer = reinterpret_cast<uint8_t *>(module->start);
+		uint8_t *end    = reinterpret_cast<uint8_t *>(module->end);
+
+		Context *context = Context::GetActiveContext();
+
+		kprintf("loading initrd (%u bytes)... ", end - buffer);
+
+		while(buffer < end)
+		{
+			// Read the file header
+			uint32_t nameLength, binaryLength;
+
+			memcpy(&nameLength, buffer + 0, 4);
+			memcpy(&binaryLength, buffer + 4, 4);
+
+			buffer += 8;
+
+			// Read the filename
+			char *name = static_cast<char *>(kalloc(nameLength + 1));
+			memcpy(name, buffer, nameLength);
+
+			name[nameLength] = '\0';
+			buffer += nameLength;
+
+			// Create the file
+			int fd;
+			kern_return_t result = Open(context, name, O_WRONLY | O_CREAT, fd);
+
+			if(result == KERN_SUCCESS)
+			{
+				size_t left = binaryLength;
+				while(left > 0)
+				{
+					size_t written;
+					result = Write(context, fd, buffer, left, written);
+
+					if(result != KERN_SUCCESS)
+					{
+						kprintf("Failed to write %s\n", name);
+						break;
+					}
+
+					left   -= written;
+					buffer += written;
+				}
+
+				Close(context, fd);
+			}
+			else
+			{
+				kprintf("Couldn't open %s to write\n", name);
+			}
+
+			kfree(name);
+		}
+
+		kprintf("done");
+		return KERN_SUCCESS;
+	}
+
+	kern_return_t Init(Sys::MultibootHeader *info)
 	{
 		void *buffer = kalloc(sizeof(std::vector<Descriptor *>));
 		if(!buffer)
@@ -317,12 +381,28 @@ namespace VFS
 		// Create some basic folders
 		if((result = MakeDirectory("/usr", Context::GetKernelContext())) != KERN_SUCCESS)
 			return result;
-
 		if((result = MakeDirectory("/bin", Context::GetKernelContext())) != KERN_SUCCESS)
 			return result;
-
 		if((result = MakeDirectory("/etc", Context::GetKernelContext())) != KERN_SUCCESS)
 			return result;
+
+
+		// Find the initrd module
+		Sys::MultibootModule *module = info->modules;
+		for(size_t i = 0; i < info->modulesCount; i ++)
+		{
+			if(strcmp((char *)module->name, "initrd") == 0)
+			{
+				result = LoadInitrdModule(module);
+
+				if(result != KERN_SUCCESS)
+					return result;
+
+				break;
+			}
+
+			module = module->GetNext();
+		}
 
 		return KERN_SUCCESS;
 	}

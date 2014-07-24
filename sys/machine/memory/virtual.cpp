@@ -562,6 +562,43 @@ namespace Sys
 
 			return KERN_SUCCESS;
 		}
+
+		void MarkMultibootModule(MultibootModule *module)
+		{
+			vm_address_t start = VM_PAGE_ALIGN_DOWN((vm_address_t)module->start);
+			size_t pages = VM_PAGE_COUNT(VM_PAGE_ALIGN_UP((vm_address_t)module->end) - start);
+
+			_kernelDirectory->MapPage((vm_address_t)module, (vm_address_t)module, kVMFlagsKernel);
+			_kernelDirectory->MapPageRange(start, start, pages, kVMFlagsKernel);
+
+			start = VM_PAGE_ALIGN_DOWN((vm_address_t)module->name);
+			pages = VM_PAGE_COUNT(strlen((const char *)module->name));
+
+			_kernelDirectory->MapPageRange(start, start, pages, kVMFlagsKernel);
+		}
+
+		void MarkMultiboot(MultibootHeader *info)
+		{
+			vm_address_t start = VM_PAGE_ALIGN_DOWN((uintptr_t)info);
+			_kernelDirectory->MapPage(start, start, kVMFlagsKernel);
+
+			if(info->flags & MultibootHeader::Flags::CommandLine)
+			{
+				start = VM_PAGE_ALIGN_DOWN((uintptr_t)info->commandLine);
+				_kernelDirectory->MapPage(start, start, kVMFlagsKernel);
+			}
+
+			if(info->flags & MultibootHeader::Flags::Modules)
+			{
+				MultibootModule *module = info->modules;
+
+				for(size_t i = 0; i < info->modulesCount; i ++)
+				{
+					MarkMultibootModule(module);
+					module = module->GetNext();
+				}
+			}
+		}
 	}
 
 	// --------------------
@@ -572,7 +609,7 @@ namespace Sys
 	extern "C" uintptr_t kernel_begin;
 	extern "C" uintptr_t kernel_end;
 
-	kern_return_t VMInit(__unused MultibootHeader *info)
+	kern_return_t VMInit(MultibootHeader *info)
 	{
 		VM::_usePhysicalKernelPages = true;
 
@@ -589,6 +626,8 @@ namespace Sys
 
 		VM::_kernelDirectory->MapPageRange(kernelBegin, kernelBegin, VM_PAGE_COUNT(kernelEnd - kernelBegin), kVMFlagsKernel);
 		VM::_kernelDirectory->MapPageRange(0xa0000, 0xa0000, VM_PAGE_COUNT(0xc0000 - 0xa0000), kVMFlagsKernel);
+
+		VM::MarkMultiboot(info);
 
 		// Activate the kernel directory and virtual memory
 		uint32_t cr0;

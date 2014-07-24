@@ -105,7 +105,7 @@ namespace Sys
 
 
 		uint32_t GetMmapCount() const   { return mmapLength / sizeof(MultibootMmap); }
-		uint32_t getDrivesCount() const { return drivesLength / sizeof(MultibootDrive); }
+		uint32_t GetDrivesCount() const { return drivesLength / sizeof(MultibootDrive); }
 
 	} __attribute__((packed));
 

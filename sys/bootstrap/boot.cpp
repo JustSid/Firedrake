@@ -79,7 +79,7 @@ void SysInit_i486(Sys::MultibootHeader *info)
 	Sys::Init("clock", Sys::ClockInit);
 	Sys::Init("smp", Sys::SMPInit);
 	Sys::Init("scheduler", Core::SchedulerInit);
-	Sys::Init("vfs", VFS::Init);
+	Sys::Init("vfs", VFS::Init, info);
 
 	kprintf("\n\n");
 

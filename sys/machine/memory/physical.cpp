@@ -163,6 +163,36 @@ namespace Sys
 				begin += VM_PAGE_SIZE;
 			}
 		}
+
+
+
+		void MarkMultibootModule(MultibootModule *module)
+		{
+			MarkUsed((uintptr_t)module->start);
+			MarkRange((uintptr_t)module->start, (uintptr_t)module->end);
+			MarkRange((uintptr_t)module->name, (uintptr_t)module->name + strlen((const char *)module->name));
+		}
+
+		void MarkMultiboot(MultibootHeader *info)
+		{
+			MarkUsed(VM_PAGE_ALIGN_DOWN((uintptr_t)info));
+
+			if(info->flags & MultibootHeader::Flags::CommandLine)
+			{
+				MarkUsed(VM_PAGE_ALIGN_DOWN((uintptr_t)info->commandLine));
+			}
+
+			if(info->flags & MultibootHeader::Flags::Modules)
+			{
+				MultibootModule *module = info->modules;
+
+				for(size_t i = 0; i < info->modulesCount; i ++)
+				{
+					MarkMultibootModule(module);
+					module = module->GetNext();
+				}
+			}
+		}
 	}
 
 	kern_return_t PMInit(MultibootHeader *info)
@@ -205,6 +235,9 @@ namespace Sys
 		// Although most of the BIOS stuff in there is undefined, it still might be useful
 		// and it's up to grabs by the kernel
 		PM::MarkRange(0x0, 0x100000);
+
+		// Mark the multiboot module
+		PM::MarkMultiboot(info);
 
 		return KERN_SUCCESS;	
 	}
