@@ -19,7 +19,7 @@
 #include <bootstrap/multiboot.h>
 #include <libc/string.h>
 #include <libcpp/algorithm.h>
-#include <kern/spinlock.h>
+#include <libc/sys/spinlock.h>
 #include <kern/kprintf.h>
 #include "physical.h"
 #include "virtual.h"

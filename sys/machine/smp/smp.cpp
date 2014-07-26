@@ -17,7 +17,7 @@
 //
 
 #include <kern/kprintf.h>
-#include <kern/spinlock.h>
+#include <libc/sys/spinlock.h>
 #include <libc/string.h>
 #include <libc/assert.h>
 #include <machine/port.h>

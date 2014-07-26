@@ -20,7 +20,7 @@
 #define _VFS_NODE_H_
 
 #include <prefix.h>
-#include <kern/spinlock.h>
+#include <libc/sys/spinlock.h>
 #include <kern/kern_return.h>
 #include <libc/stddef.h>
 #include <libc/stdint.h>

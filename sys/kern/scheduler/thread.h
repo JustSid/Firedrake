@@ -27,7 +27,7 @@
 #include <libcpp/queue.h>
 #include <machine/cpu.h>
 #include <kern/kern_return.h>
-#include <kern/spinlock.h>
+#include <libc/sys/spinlock.h>
 
 namespace Core
 {

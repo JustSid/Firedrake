@@ -25,7 +25,7 @@
 #include <libcpp/list.h>
 #include <libcpp/bitfield.h>
 #include <kern/kern_return.h>
-#include <kern/spinlock.h>
+#include <libc/sys/spinlock.h>
 
 namespace Sys
 {

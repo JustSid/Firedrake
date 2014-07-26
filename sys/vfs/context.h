@@ -22,7 +22,7 @@
 #include <prefix.h>
 #include <machine/memory/virtual.h>
 #include <kern/kern_return.h>
-#include <kern/spinlock.h>
+#include <libc/sys/spinlock.h>
 
 namespace VFS
 {

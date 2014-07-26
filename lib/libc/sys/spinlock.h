@@ -16,23 +16,22 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <prefix.h>
-#include <libc/stdint.h>
+#ifndef _SYS_SPINLOCK_H_
+#define _SYS_SPINLOCK_H_
 
-#ifndef _SPINLOCK_H_
-#define _SPINLOCK_H_
+#include "cdefs.h"
 
-typedef int32_t spinlock_t;
+__BEGIN_DECLS
+
+typedef int spinlock_t;
 
 #define SPINLOCK_INIT 0
 #define SPINLOCK_INIT_LOCKED 1
 
-__BEGIN_DECLS
-
 void spinlock_lock(spinlock_t *lock);
-bool spinlock_try_lock(spinlock_t *lock);
+int  spinlock_try_lock(spinlock_t *lock);
 void spinlock_unlock(spinlock_t *lock);
 
 __END_DECLS
 
-#endif /* _SPINLOCK_H_ */
+#endif /* _SYS_SPINLOCK_H_ */

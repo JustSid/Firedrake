@@ -22,7 +22,7 @@
 #include <libc/stdint.h>
 #include <libcpp/bitfield.h>
 #include <kern/kern_return.h>
-#include <kern/spinlock.h>
+#include <libc/sys/spinlock.h>
 #include <bootstrap/multiboot.h>
 
 #define VM_PAGE_SHIFT 12

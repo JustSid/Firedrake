@@ -16,10 +16,9 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/sys/asm.h>
+#include "asm.h"
 
 TEXT()
-
 ENTRY(spinlock_lock)
 	movl 0x4(%esp), %ecx
 

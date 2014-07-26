@@ -28,7 +28,7 @@
 #include <machine/memory/memory.h>
 
 #include <kern/kern_return.h>
-#include <kern/spinlock.h>
+#include <libc/sys/spinlock.h>
 #include "thread.h"
 
 namespace VFS

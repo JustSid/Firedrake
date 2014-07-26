@@ -16,7 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <kern/spinlock.h>
+#include <libc/sys/spinlock.h>
 #include <kern/kalloc.h>
 #include <kern/kprintf.h>
 #include <libc/string.h>
