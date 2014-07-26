@@ -16,8 +16,8 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _ASM_H_
-#define _ASM_H_
+#ifndef _SYS_ASM_H_
+#define _SYS_ASM_H_
 
 #define FALIGN 4,0x90
 
@@ -29,4 +29,4 @@
 #define TEXT() .text; .align 4096
 #define GLOBAL(x) .global EXT(x); LEXT(x)
 
-#endif /* _ASM_H_ */
+#endif /* _SYS_ASM_H_ */

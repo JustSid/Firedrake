@@ -1,5 +1,5 @@
 //
-//  fcntl.h
+//  math.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,19 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_FCNTL_H_
-#define _SYS_FCNTL_H_
+#ifndef _MATH_H_
+#define _MATH_H_
 
-#define SEEK_SET 0
-#define SEEK_CUR 1
-#define SEEK_END 2
+#define MAX(a, b) (a > b ? a : b)
+#define MIN(a, b) (a < b ? a : b)
 
-#define O_RDONLY (1 << 0)
-#define O_WRONLY (1 << 1)
-#define O_RDWR   (1 << 2)
-#define O_APPEND (1 << 3)
-#define O_TRUNC  (1 << 4)
-#define O_EXCL   (1 << 5)
-#define O_CREAT  (1 << 6)
+static inline int abs(int i)
+{
+	return (i & ((1UL << 31) - 1));
+}
 
-#endif /* _SYS_FCNTL_H_ */
+#endif /* _MATH_H_ */

@@ -16,8 +16,8 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TYPES_H_
-#define _TYPES_H_
+#ifndef _SYS_TYPES_H_
+#define _SYS_TYPES_H_
 
 typedef long long off_t;
 
@@ -37,4 +37,4 @@ typedef long          intptr_t;
 typedef unsigned long uintptr_t;
 #endif
 
-#endif /* _TYPES_H_ */
+#endif /* _SYS_TYPES_H_ */

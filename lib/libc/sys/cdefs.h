@@ -16,8 +16,8 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _CDEFS_H_
-#define _CDEFS_H_
+#ifndef _SYS_CDEFS_H_
+#define _SYS_CDEFS_H_
 
 #define __unused      __attribute__((unused))
 #define __used        __attribute__((used))
@@ -38,4 +38,4 @@
 	#define __END_DECLS
 #endif
 
-#endif /* _CDEFS_H_ */
+#endif /* _SYS_CDEFS_H_ */
