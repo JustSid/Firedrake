@@ -71,13 +71,13 @@ namespace VFS
 		_size = size;
 	}
 
-	void Node::FillStat(Stat *stat)
+	void Node::FillStat(stat *buf)
 	{
-		stat->type = static_cast<int>(_type);
-		strcpy(stat->name, _name.c_str());
+		buf->type = static_cast<int>(_type);
+		strcpy(buf->name, _name.c_str());
 
-		stat->id = _id;
-		stat->size = _size;
+		buf->id = _id;
+		buf->size = _size;
 	}
 
 

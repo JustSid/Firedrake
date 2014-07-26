@@ -218,7 +218,7 @@ namespace VFS
 		return instance->FileRead(read, context, file, data, size);
 	}
 
-	kern_return_t ReadDir(Context *context, int fd, DirectoryEntry *entry, size_t count, off_t &read)
+	kern_return_t ReadDir(Context *context, int fd, dirent *entry, size_t count, off_t &read)
 	{
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 		File *file = task->GetFileForDescriptor(fd);
@@ -249,7 +249,7 @@ namespace VFS
 		return instance->FileSeek(result, context, file, offset, whence);
 	}
 
-	kern_return_t StatFile(Context *context, const char *path, Stat *stat)
+	kern_return_t StatFile(Context *context, const char *path, stat *buf)
 	{
 		Path resolver(path, context);
 
@@ -264,12 +264,12 @@ namespace VFS
 		Node *node = resolver.GetCurrentNode();
 		Instance *instance = node->GetInstance();
 
-		Stat temp;
+		struct stat temp;
 
 		kern_return_t result = instance->FileStat(&temp, context, node);
 		if(result == KERN_SUCCESS)
 		{
-			result = context->CopyDataIn(&temp, stat, sizeof(Stat));
+			result = context->CopyDataIn(&temp, buf, sizeof(struct stat));
 			return result;
 		}
 
@@ -328,6 +328,8 @@ namespace VFS
 					if(result != KERN_SUCCESS)
 					{
 						kprintf("Failed to write %s\n", name);
+
+						buffer += left;
 						break;
 					}
 
@@ -340,6 +342,7 @@ namespace VFS
 			else
 			{
 				kprintf("Couldn't open %s to write\n", name);
+				buffer += binaryLength;
 			}
 
 			kfree(name);
@@ -384,6 +387,8 @@ namespace VFS
 		if((result = MakeDirectory("/bin", Context::GetKernelContext())) != KERN_SUCCESS)
 			return result;
 		if((result = MakeDirectory("/etc", Context::GetKernelContext())) != KERN_SUCCESS)
+			return result;
+		if((result = MakeDirectory("/lib", Context::GetKernelContext())) != KERN_SUCCESS)
 			return result;
 
 

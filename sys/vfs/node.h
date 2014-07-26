@@ -24,15 +24,15 @@
 #include <kern/kern_return.h>
 #include <libc/stddef.h>
 #include <libc/stdint.h>
+#include <libc/sys/unistd.h>
+#include <libc/sys/dirent.h>
 #include <libcpp/atomic.h>
 #include <libcpp/string.h>
 #include <libcpp/hash_map.h>
 
-#include "stat.h"
-
 namespace VFS
 {
-	using Filename = std::fixed_string<kMaxFilename>;
+	using Filename = std::fixed_string<MAXNAME>;
 
 	class Instance;
 	class Directory;
@@ -71,7 +71,7 @@ namespace VFS
 		// Lock must be held before calling these
 		void SetName(const Filename &name);
 		void SetSize(uint64_t size);
-		void FillStat(Stat *stat);
+		void FillStat(stat *buf);
 
 	protected:
 		Node(const char *name, Instance *instance, Type type, uint64_t id);

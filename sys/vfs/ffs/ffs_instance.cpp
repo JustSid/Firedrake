@@ -205,19 +205,19 @@ namespace FFS
 		return KERN_INVALID_ARGUMENT;
 	}
 
-	kern_return_t Instance::FileStat(VFS::Stat *stat, __unused VFS::Context *context, VFS::Node *node)
+	kern_return_t Instance::FileStat(stat *buf, __unused VFS::Context *context, VFS::Node *node)
 	{	
-		node->FillStat(stat);
+		node->FillStat(buf);
 		return KERN_SUCCESS;
 	}
 
-	kern_return_t Instance::DirRead(off_t &read, VFS::DirectoryEntry *entry, VFS::Context *context, VFS::File *file, size_t count)
+	kern_return_t Instance::DirRead(off_t &read, dirent *entry, VFS::Context *context, VFS::File *file, size_t count)
 	{
 		VFS::FileDirectory *directory = static_cast<VFS::FileDirectory *>(file);
 		FFS::Node *node = static_cast<FFS::Node *>(file->GetNode());
 		node->Lock();
 
-		const VFS::DirectoryEntry *entries = directory->GetEntries() + directory->GetOffset();
+		const struct dirent *entries = directory->GetEntries() + directory->GetOffset();
 
 		size_t left = directory->GetCount() - directory->GetOffset();
 
@@ -226,7 +226,7 @@ namespace FFS
 
 		if(count > 0)
 		{
-			kern_return_t result = context->CopyDataIn(entries, entry, count * sizeof(VFS::DirectoryEntry));
+			kern_return_t result = context->CopyDataIn(entries, entry, count * sizeof(struct dirent));
 			if(result != KERN_SUCCESS)
 			{
 				node->Unlock();

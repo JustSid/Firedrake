@@ -24,13 +24,13 @@
 #include <kern/kern_return.h>
 #include <libc/stddef.h>
 #include <libc/stdint.h>
+#include <libc/sys/unistd.h>
+#include <libc/sys/dirent.h>
 #include <libc/sys/fcntl.h>
 #include <libc/sys/types.h>
 #include <libcpp/atomic.h>
 
-#include "stat.h"
 #include "node.h"
-#include "directory.h"
 
 namespace VFS
 {
@@ -62,8 +62,9 @@ namespace VFS
 		virtual kern_return_t FileRead(size_t &result, Context *context, File *file, void *data, size_t size) = 0;
 		virtual kern_return_t FileWrite(size_t &result, Context *context, File *file, const void *data, size_t size) = 0;
 		virtual kern_return_t FileSeek(off_t &result, Context *context, File *file, off_t offset, int whence) = 0;
-		virtual kern_return_t FileStat(Stat *stat, Context *context, Node *node) = 0;
-		virtual kern_return_t DirRead(off_t &result, DirectoryEntry *entry, Context *context, File *file, size_t count) = 0;
+
+		virtual kern_return_t FileStat(stat *buf, Context *context, Node *node) = 0;
+		virtual kern_return_t DirRead(off_t &result, dirent *entry, Context *context, File *file, size_t count) = 0;
 
 		Node *GetRootNode() const { return _rootNode; }
 

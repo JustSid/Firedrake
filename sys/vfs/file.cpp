@@ -56,7 +56,7 @@ namespace VFS
 
 		while(begin != end)
 		{
-			DirectoryEntry entry;
+			dirent entry;
 			Node *temp = *begin;
 
 			entry.type = static_cast<int>(temp->GetType());

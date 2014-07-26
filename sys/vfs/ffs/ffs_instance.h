@@ -39,12 +39,12 @@ namespace FFS
 
 		kern_return_t OpenFile(VFS::File *&result, VFS::Context *context, VFS::Node *node, int flags) override;
 		void CloseFile(VFS::Context *context, VFS::File *file) override;
-		kern_return_t FileStat(VFS::Stat *stat, VFS::Context *context, VFS::Node *node) override;
+		kern_return_t FileStat(stat *buf, VFS::Context *context, VFS::Node *node) override;
 
 		kern_return_t FileRead(size_t &result, VFS::Context *context, VFS::File *file, void *data, size_t size) override;
 		kern_return_t FileWrite(size_t &result, VFS::Context *context, VFS::File *file, const void *data, size_t size) override;
 		kern_return_t FileSeek(off_t &result, VFS::Context *context, VFS::File *file, off_t offset, int whence) override;
-		kern_return_t DirRead(off_t &result, VFS::DirectoryEntry *entry, VFS::Context *context, VFS::File *file, size_t count) override;
+		kern_return_t DirRead(off_t &result, dirent *entry, VFS::Context *context, VFS::File *file, size_t count) override;
 		
 	private:
 		Instance();

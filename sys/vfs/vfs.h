@@ -25,6 +25,8 @@
 #include <libc/stdint.h>
 #include <libc/sys/fcntl.h>
 #include <libc/sys/types.h>
+#include <libc/sys/unistd.h>
+#include <libc/sys/dirent.h>
 #include <kern/kern_return.h>
 
 #include "descriptor.h"
@@ -38,13 +40,13 @@ namespace VFS
 
 	kern_return_t Open(Context *context, const char *path, int flags, int &fd);
 	kern_return_t Close(Context *context, int fd);
-	kern_return_t StatFile(Context *context, const char *path, Stat *stat);
+	kern_return_t StatFile(Context *context, const char *path, stat *buf);
 
 	kern_return_t Write(Context *context, int fd, const void *data, size_t size, size_t &written);
 	kern_return_t Read(Context *context, int fd, void *data, size_t size, size_t &read);
 	kern_return_t Seek(Context *context, int fd, off_t offset, int whence, off_t &result);
 
-	kern_return_t ReadDir(Context *context, int fd, DirectoryEntry *entry, size_t count, off_t &read);
+	kern_return_t ReadDir(Context *context, int fd, dirent *entry, size_t count, off_t &read);
 
 	kern_return_t Init(Sys::MultibootHeader *info);
 }

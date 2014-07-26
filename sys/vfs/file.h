@@ -23,9 +23,9 @@
 #include <libc/stdint.h>
 #include <libc/sys/fcntl.h>
 #include <libc/sys/types.h>
+#include <libc/sys/unistd.h>
+#include <libc/sys/dirent.h>
 #include <libcpp/vector.h>
-
-#include "directory.h"
 
 namespace VFS
 {
@@ -54,10 +54,10 @@ namespace VFS
 		FileDirectory(Node *node, int flags);
 
 		size_t GetCount() const { return _entries.size(); }
-		const DirectoryEntry *GetEntries() const { return _entries.data(); }
+		const dirent *GetEntries() const { return _entries.data(); }
 
 	private:
-		std::vector<DirectoryEntry> _entries;
+		std::vector<dirent> _entries;
 	};
 
 	constexpr File *InvalidFile = (File *)0xffdeadff;
