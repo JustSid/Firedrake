@@ -22,11 +22,11 @@
 #include <prefix.h>
 #include <libc/stddef.h>
 #include <libc/stdint.h>
+#include <libc/sys/types.h>
 #include <libcpp/atomic.h>
 #include <libcpp/queue.h>
 #include <machine/cpu.h>
 #include <kern/kern_return.h>
-#include <kern/types.h>
 #include <kern/spinlock.h>
 
 namespace Core

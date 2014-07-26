@@ -1,5 +1,5 @@
 //
-//  assert.h
+//  unistd.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,19 +16,50 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _ASSERT_H_
-#define _ASSERT_H_
+#ifndef _SYS_UNISTD_H_
+#define _SYS_UNISTD_H_
 
-#include <config.h>
-#include <kern/panic.h>
+#include "types.h"
+#include "cdefs.h"
 
-#if CONFIG_RELEASE
-	#define __assert(e) (void)0
-#else
-	#define __assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed.", __func__, __LINE__, #e) : (void)0
-#endif
+__BEGIN_DECLS
 
-#define assert(e) __assert(e)
+#define MAXNAME 128
 
-#endif /* _ASSERT_H_ */
+#define DTREG 0
+#define DTDIR 1
+#define DTLNK 2
 
+struct stat
+{
+	int type;
+	char name[MAXNAME];
+
+	ino_t  id;
+	size_t size;
+};
+
+
+#ifndef __KERNEL
+
+int open(const char *path, int flags);
+void close(int fd);
+
+size_t read(int fd, void *buffer, size_t count);
+size_t write(int fd, const void *buffer, size_t count);
+off_t lseek(int fd, off_t offset, int whence);
+
+int mkdir(const char *path);
+int remove(const char *path);
+int move(const char *source, const char *target);
+int stat(const char *path, struct stat *buf);
+
+pid_t getpid();
+pid_t getppid();
+
+#endif /* __KERNEL */
+
+
+__END_DECLS
+
+#endif /* _SYS_UNISTD_H_ */

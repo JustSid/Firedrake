@@ -1,5 +1,5 @@
 //
-//  smp_bootstrap.S
+//  stddef.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,36 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/sys/asm.h>
+#ifndef _STDDEF_H_
+#define _STDDEF_H_
 
-.global smp_rendezvous_point
+#include "sys/cdefs.h"
+#include "sys/types.h"
 
-TEXT()
-ENTRY(smp_bootstrap_begin)
-	movl $0x10, %eax
-	movl %eax, %ss
-	movl %eax, %ds
-	movl %eax, %es
+#define NULL (void *)0
+#define offsetof(type, member) ((unsigned int)&(((type *)0)->member))
 
-	movl $smp_bootstrap_finish, %eax
-	jmp *%eax
+typedef int ptrdiff_t;
 
-ENTRY(smp_bootstrap_finish)
-	movl $smp_stack_top, %esp
-	
-	// Push an empty stack frame
-	pushl $0
-	pushl $0
-
-	call smp_rendezvous_point
-
-GLOBAL(smp_bootstrap_end)
-
-.bss
-
-.global smp_stack_bottom
-.global smp_stack_top
-
-smp_stack_bottom:
-.space 4096
-smp_stack_top:
+#endif /* _STDDEF_H_ */

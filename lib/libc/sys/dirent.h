@@ -1,5 +1,5 @@
 //
-//  types.h
+//  dirent.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,9 +16,26 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TYPES_H_
-#define _TYPES_H_
+#ifndef _SYS_DIRENT_H_
+#define _SYS_DIRENT_H_
 
-typedef long long off_t;
+#include "unistd.h"
 
-#endif /* _TYPES_H_ */
+struct dirent
+{
+	ino_t id;
+	char name[MAXNAME];
+	int type;
+};
+
+__BEGIN_DECLS
+
+#ifndef __KERNEL
+
+off_t readdir(int fd, struct dirent *entp, size_t count);
+
+#endif /* __KERNEL */
+
+__END_DECLS
+
+#endif /* _SYS_DIRENT_H_ */

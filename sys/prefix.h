@@ -21,6 +21,6 @@
 
 #include "config.h"
 #include "version.h"
-#include "macros.h"
+#include <libc/sys/cdefs.h>
 
 #endif /* _PREFIX_H_ */

@@ -19,7 +19,7 @@
 #ifndef _SETJMP_H_
 #define _SETJMP_H_
 
-#include <prefix.h>
+#include "sys/cdefs.h"
 
 typedef	int jmp_buf[6];
 

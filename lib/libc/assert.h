@@ -1,5 +1,5 @@
 //
-//  string.h
+//  assert.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,31 +16,24 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _STRING_H_
-#define _STRING_H_
+#ifndef _ASSERT_H_
+#define _ASSERT_H_
 
-#include <prefix.h>
-#include "stddef.h"
+#if __KERNEL
 
-#define isdigit(c) (c >= '0' && c <= '9')
-#define isspace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r')
+#include <config.h>
+#include <kern/panic.h>
 
-__BEGIN_DECLS
+#if CONFIG_RELEASE
+	#define __assert(e) (void)0
+#else
+	#define __assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed.", __func__, __LINE__, #e) : (void)0
+#endif
 
-void *memset(void *dst, int c, size_t size);
-void *memcpy(void *dst, const void *src, size_t size);
+#define assert(e) __assert(e)
 
-char *strcpy(char *dst, const char *src);
-size_t strlcpy(char *dst, const char *src, size_t size); // Similar to strncpy, but appends the NULL byte always!
-size_t strlen(const char *string);
+#endif /* __KERNEL */
 
-int strcmp(const char *str1, const char *str2);
-int strncmp(const char *str1, const char *str2, size_t size);
 
-char *strstr(char *str1, const char *str2);
-char *strpbrk(char *str1, const char *str2);
-char *strchr(char *str, int character);
+#endif /* _ASSERT_H_ */
 
-__END_DECLS
-
-#endif /* _STRING_H_ */

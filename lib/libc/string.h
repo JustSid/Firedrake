@@ -1,5 +1,5 @@
 //
-//  macros.h
+//  string.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,26 +16,32 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _MACROS_H_
-#define _MACROS_H_
+#ifndef _STRING_H_
+#define _STRING_H_
 
-#define __unused      __attribute__((unused))
-#define __used        __attribute__((used))
-#define __deprecated  __attribute__((deprecated))
-#define __unavailable __attribute__((unavailable))
+#include "sys/cdefs.h"
+#include "sys/types.h"
+#include "stddef.h"
 
-#define __inline   inline __attribute__((__always_inline__))
-#define __noinline __attribute__((noinline))
+#define isdigit(c) (c >= '0' && c <= '9')
+#define isspace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r')
 
-#define __expect_true(x)  __builtin_expect(!!(x), 1)
-#define __expect_false(x) __builtin_expect(!!(x), 0)
+__BEGIN_DECLS
 
-#ifdef   __cplusplus
-	#define __BEGIN_DECLS  extern "C" {                                            
-	#define __END_DECLS }
-#else
-	#define __BEGIN_DECLS
-	#define __END_DECLS
-#endif
+void *memset(void *dst, int c, size_t size);
+void *memcpy(void *dst, const void *src, size_t size);
 
-#endif /* _MACROS_H_ */
+char *strcpy(char *dst, const char *src);
+size_t strlcpy(char *dst, const char *src, size_t size); // Similar to strncpy, but appends the NULL byte always!
+size_t strlen(const char *string);
+
+int strcmp(const char *str1, const char *str2);
+int strncmp(const char *str1, const char *str2, size_t size);
+
+char *strstr(char *str1, const char *str2);
+char *strpbrk(char *str1, const char *str2);
+char *strchr(char *str, int character);
+
+__END_DECLS
+
+#endif /* _STRING_H_ */

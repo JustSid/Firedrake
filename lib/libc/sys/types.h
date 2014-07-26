@@ -1,5 +1,5 @@
 //
-//  smp_bootstrap.S
+//  types.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,36 +16,25 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libc/sys/asm.h>
+#ifndef _TYPES_H_
+#define _TYPES_H_
 
-.global smp_rendezvous_point
+typedef long long off_t;
 
-TEXT()
-ENTRY(smp_bootstrap_begin)
-	movl $0x10, %eax
-	movl %eax, %ss
-	movl %eax, %ds
-	movl %eax, %es
+typedef unsigned int tid_t;
+typedef int  pid_t;
 
-	movl $smp_bootstrap_finish, %eax
-	jmp *%eax
+typedef unsigned long long ino_t;
 
-ENTRY(smp_bootstrap_finish)
-	movl $smp_stack_top, %esp
-	
-	// Push an empty stack frame
-	pushl $0
-	pushl $0
+#ifndef _SIZE_T
+#define _SIZE_T
+typedef unsigned int size_t;
+#endif
 
-	call smp_rendezvous_point
+#ifndef _UINTPTR_T
+#define _UINTPTR_T
+typedef long          intptr_t;
+typedef unsigned long uintptr_t;
+#endif
 
-GLOBAL(smp_bootstrap_end)
-
-.bss
-
-.global smp_stack_bottom
-.global smp_stack_top
-
-smp_stack_bottom:
-.space 4096
-smp_stack_top:
+#endif /* _TYPES_H_ */

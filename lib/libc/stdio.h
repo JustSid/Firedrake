@@ -1,5 +1,5 @@
 //
-//  stdlib.h
+//  stdio.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,15 +16,22 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _STDLIB_H_
-#define _STDLIB_H_
+#ifndef _STDIO_H_
+#define _STDIO_H_
 
-#include <prefix.h>
+#include "sys/cdefs.h"
+#include "sys/types.h"
+#include "stddef.h"
+#include "stdarg.h"
 
 __BEGIN_DECLS
 
-int atoi(const char *string);
+int vsnprintf(char *buffer, size_t size, const char *format, va_list arg);
+int vsprintf(char *buffer, const char *format, va_list arg);
+
+int snprintf(char *dst, size_t size, const char *format, ...);
+int sprintf(char *dst, const char *format, ...);
 
 __END_DECLS
 
-#endif /* _STDLIB_H_ */
+#endif /* _STDIO_H_ */

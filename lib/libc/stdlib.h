@@ -1,5 +1,5 @@
 //
-//  types.h
+//  stdlib.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,13 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _KERN_TYPES_H_
-#define _KERN_TYPES_H_
+#ifndef _STDLIB_H_
+#define _STDLIB_H_
 
-#include <prefix.h>
-#include <libc/stdint.h>
+#include "sys/cdefs.h"
 
-typedef uint32_t tid_t;
-typedef int32_t  pid_t;
+__BEGIN_DECLS
 
-#endif /* _KERN_TYPES_H_ */
+int atoi(const char *string);
+
+__END_DECLS
+
+#endif /* _STDLIB_H_ */

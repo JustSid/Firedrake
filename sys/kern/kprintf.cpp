@@ -19,6 +19,7 @@
 #include <prefix.h>
 #include <libc/stdio.h>
 #include <libc/stdarg.h>
+#include <libc/stdint.h>
 #include <video/video.h>
 
 void kprintf(const char *format, ...)

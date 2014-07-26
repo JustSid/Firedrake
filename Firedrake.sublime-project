@@ -4,6 +4,7 @@
 		{
 			"name": "Firedrake",
 			"path": "./",
+			"follow_symlinks": true,
 			"file_exclude_patterns": ["*.sublime-workspace", "*.sublime-project", "*.gitignore"],
 			"folder_exclude_patterns": ["libkernel"]
 		}
