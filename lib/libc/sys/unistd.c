@@ -1,5 +1,5 @@
 //
-//  unistd.h
+//  unistd.c
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,52 +16,70 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_UNISTD_H_
-#define _SYS_UNISTD_H_
-
-#include "types.h"
-#include "cdefs.h"
-
-__BEGIN_DECLS
-
-#define MAXNAME 128
-
-#define DTREG 0
-#define DTDIR 1
-#define DTLNK 2
-
-struct stat
-{
-	int type;
-	char name[MAXNAME];
-
-	ino_t  id;
-	size_t size;
-};
-
+#include "unistd.h"
+#include "dirent.h"
+#include "syscall.h"
 
 #ifndef __KERNEL
 
-int open(const char *path, int flags);
-void close(int fd);
+int open(const char *path, int flags)
+{
+	return (int)syscall(SYS_Open, path, flags);
+}
+void close(int fd)
+{
+	syscall(SYS_Close, fd);
+}
 
-size_t read(int fd, void *buffer, size_t count);
-size_t write(int fd, const void *buffer, size_t count);
-off_t lseek(int fd, off_t offset, int whence);
 
-int mkdir(const char *path);
-int remove(const char *path);
-int move(const char *source, const char *target);
+size_t read(int fd, void *buffer, size_t count)
+{
+	return (size_t)syscall(SYS_Read, fd, buffer, count, 0);
+}
+size_t write(int fd, const void *buffer, size_t count)
+{
+	return (size_t)syscall(SYS_Write, fd, buffer, count);
+}
+off_t lseek(int fd, off_t offset, int whence)
+{
+	return (off_t)syscall(SYS_Seek, fd, offset, whence);
+}
+off_t readdir(int fd, struct dirent *entp, size_t count)
+{
+	return (off_t)syscall(SYS_Read, fd, entp, count, 1);
+}
 
-int stat(const char *path, struct stat *buf);
-int lstat(const char *path, struct stat *buf);
 
-pid_t getpid();
-pid_t getppid();
+int mkdir(__unused const char *path)
+{
+	return -1;
+}
+int remove(__unused const char *path)
+{
+	return -1;
+}
+int move(__unused const char *source, __unused const char *target)
+{
+	return -1;
+}
+
+int stat(const char *path, struct stat *buf)
+{
+	return (int)syscall(SYS_Stat, path, buf, 0);
+}
+int lstat(const char *path, struct stat *buf)
+{
+	return (int)syscall(SYS_Stat, path, buf, 1);
+}
+
+
+pid_t getpid()
+{
+	return (pid_t)syscall(SYS_Pid, 0);
+}
+pid_t getppid()
+{
+	return (pid_t)syscall(SYS_Pid, 1);
+}
 
 #endif /* __KERNEL */
-
-
-__END_DECLS
-
-#endif /* _SYS_UNISTD_H_ */

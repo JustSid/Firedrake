@@ -104,7 +104,7 @@ namespace FFS
 		if(_data + offset > end)
 		{
 			read = 0;
-			return KERN_RESOURCE_EXHAUSTED;
+			return KERN_SUCCESS;
 		}
 
 

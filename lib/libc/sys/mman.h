@@ -1,5 +1,5 @@
 //
-//  unistd.h
+//  mman.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,52 +16,32 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_UNISTD_H_
-#define _SYS_UNISTD_H_
+#ifndef _MMAN_H_
+#define _MMAN_H_
 
 #include "types.h"
 #include "cdefs.h"
 
+#define MAP_FAILED ((void *)-1)
+
+#define PROT_NONE   0x00
+#define PROT_READ   0x01
+#define PROT_WRITE  0x02
+#define PROT_EXEC   0x04
+
+#define MAP_SHARED      0x0001
+#define MAP_PRIVATE     0x0002
+#define MAP_ANONYMOUS   0x0004
+#define MAP_FIXED       0x0008
+
 __BEGIN_DECLS
-
-#define MAXNAME 128
-
-#define DTREG 0
-#define DTDIR 1
-#define DTLNK 2
-
-struct stat
-{
-	int type;
-	char name[MAXNAME];
-
-	ino_t  id;
-	size_t size;
-};
-
-
 #ifndef __KERNEL
 
-int open(const char *path, int flags);
-void close(int fd);
-
-size_t read(int fd, void *buffer, size_t count);
-size_t write(int fd, const void *buffer, size_t count);
-off_t lseek(int fd, off_t offset, int whence);
-
-int mkdir(const char *path);
-int remove(const char *path);
-int move(const char *source, const char *target);
-
-int stat(const char *path, struct stat *buf);
-int lstat(const char *path, struct stat *buf);
-
-pid_t getpid();
-pid_t getppid();
+void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+int munmap(void *address, size_t length);
+int mprotect(void *address, size_t length, int prot);
 
 #endif /* __KERNEL */
-
-
 __END_DECLS
 
-#endif /* _SYS_UNISTD_H_ */
+#endif /* _MMAN_H_ */

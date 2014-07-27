@@ -1,5 +1,5 @@
 //
-//  unistd.h
+//  syscall.S
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,52 +16,25 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_UNISTD_H_
-#define _SYS_UNISTD_H_
-
-#include "types.h"
-#include "cdefs.h"
-
-__BEGIN_DECLS
-
-#define MAXNAME 128
-
-#define DTREG 0
-#define DTDIR 1
-#define DTLNK 2
-
-struct stat
-{
-	int type;
-	char name[MAXNAME];
-
-	ino_t  id;
-	size_t size;
-};
-
+#include "asm.h"
 
 #ifndef __KERNEL
 
-int open(const char *path, int flags);
-void close(int fd);
+TEXT()
+ENTRY(syscall)
+	movl 0x4(%esp), %eax
+	movl $0x0, %ecx
+	int  $0x80
 
-size_t read(int fd, void *buffer, size_t count);
-size_t write(int fd, const void *buffer, size_t count);
-off_t lseek(int fd, off_t offset, int whence);
+	jecxz syscall_noError
 
-int mkdir(const char *path);
-int remove(const char *path);
-int move(const char *source, const char *target);
+	pushl %eax
+	pushl %ecx
+	call __tls_setErrno
+	popl %ecx
+	popl %eax
 
-int stat(const char *path, struct stat *buf);
-int lstat(const char *path, struct stat *buf);
+syscall_noError:
+	ret
 
-pid_t getpid();
-pid_t getppid();
-
-#endif /* __KERNEL */
-
-
-__END_DECLS
-
-#endif /* _SYS_UNISTD_H_ */
+#endif

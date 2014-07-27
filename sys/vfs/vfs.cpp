@@ -132,7 +132,8 @@ namespace VFS
 		if(resolver.GetTotalElements() == 0)
 		{
 			task->FreeFileDescriptor(fd);
-			return KERN_INVALID_ARGUMENT;
+
+			return KERN_RETURN_MAKE(ENOENT, KERN_INVALID_ARGUMENT);
 		}
 
 		if(flags & O_CREAT)
@@ -160,7 +161,8 @@ namespace VFS
 		}
 
 		task->FreeFileDescriptor(fd);
-		return KERN_RESOURCES_MISSING;
+
+		return KERN_RETURN_MAKE(ENOENT, KERN_RESOURCES_MISSING);
 	}
 	kern_return_t Close(Context *context, int fd)
 	{
@@ -168,7 +170,7 @@ namespace VFS
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file)
-			return KERN_INVALID_ARGUMENT;
+			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
 
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
@@ -185,15 +187,12 @@ namespace VFS
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 		File *file = task->GetFileForDescriptor(fd);
 
-		if(!file)
-			return KERN_INVALID_ARGUMENT;
-
-		if(!(file->GetFlags() & O_WRONLY || file->GetFlags() & O_RDWR))
-			return KERN_INVALID_ARGUMENT;
+		if(!file || !(file->GetFlags() & O_WRONLY || file->GetFlags() & O_RDWR))
+			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
 		
 		Node *node = file->GetNode();
 		if(node->IsDirectory())
-			return KERN_INVALID_ARGUMENT;
+			return KERN_RETURN_MAKE(EISDIR, KERN_INVALID_ARGUMENT);
 
 		Instance *instance = node->GetInstance();
 		return instance->FileWrite(written, context, file, data, size);
@@ -204,15 +203,12 @@ namespace VFS
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 		File *file = task->GetFileForDescriptor(fd);
 
-		if(!file)
-			return KERN_INVALID_ARGUMENT;
-
-		if(!(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
-			return KERN_INVALID_ARGUMENT;
+		if(!file || !(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
+			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
 		
 		Node *node = file->GetNode();
 		if(node->IsDirectory())
-			return KERN_INVALID_ARGUMENT;
+			return KERN_RETURN_MAKE(EISDIR, KERN_INVALID_ARGUMENT);
 
 		Instance *instance = node->GetInstance();
 		return instance->FileRead(read, context, file, data, size);
@@ -223,11 +219,8 @@ namespace VFS
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 		File *file = task->GetFileForDescriptor(fd);
 
-		if(!file)
-			return KERN_INVALID_ARGUMENT;
-
-		if(!(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
-			return KERN_INVALID_ARGUMENT;
+		if(!file || !(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
+			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
 		
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
@@ -241,7 +234,7 @@ namespace VFS
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file)
-			return KERN_INVALID_ARGUMENT;
+			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
 
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();

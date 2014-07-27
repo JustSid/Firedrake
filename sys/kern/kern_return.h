@@ -20,6 +20,7 @@
 #define _KERNRETURN_H_
 
 #include <libc/stdint.h>
+#include <libc/sys/errno.h>
 
 typedef uint32_t kern_return_t;
 
@@ -32,5 +33,22 @@ typedef uint32_t kern_return_t;
 #define KERN_RESOURCE_IN_USE    6
 #define KERN_RESOURCE_EXISTS    7
 #define KERN_RESOURCE_EXHAUSTED 8
+
+#define KERN_RETURN_MAKE(unix, kret) \
+	(((unix) << 24) | (kret & 0xffffff))
+
+#define KERN_RETURN_UNIX(val) \
+		(val >> 24)
+#define KERN_RETURN_ERROR(val) \
+		(val & 0xffffff)
+
+#if __KERNEL
+
+namespace Core
+{
+	int ErrnoFromReturn(kern_return_t value);
+}
+
+#endif
 
 #endif /* _KERNRETURN_H_ */

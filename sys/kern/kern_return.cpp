@@ -1,5 +1,5 @@
 //
-//  unistd.h
+//  kern_return.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,52 +16,47 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_UNISTD_H_
-#define _SYS_UNISTD_H_
+#include "kern_return.h"
+#include "panic.h"
 
-#include "types.h"
-#include "cdefs.h"
-
-__BEGIN_DECLS
-
-#define MAXNAME 128
-
-#define DTREG 0
-#define DTDIR 1
-#define DTLNK 2
-
-struct stat
+namespace Core
 {
-	int type;
-	char name[MAXNAME];
+	int ErrnoFromError(int value)
+	{
+		switch(value)
+		{
+			case KERN_INVALID_ADDRESS:
+				return EFAULT;
+			case KERN_INVALID_ARGUMENT:
+				return EINVAL;
+			case KERN_NO_MEMORY:
+				return ENOMEM;
+			case KERN_FAILURE:
+				return EAGAIN; // KERN_FAILURE translates not well to errno...
+			case KERN_RESOURCES_MISSING: // Neither does KERN_RESOURCES_MISSING
+				return ENOMEM;
+			case KERN_RESOURCE_IN_USE:
+				return EADDRINUSE;
+			case KERN_RESOURCE_EXISTS:
+				return EEXIST;
+			case KERN_RESOURCE_EXHAUSTED:
+				return EAGAIN;
 
-	ino_t  id;
-	size_t size;
-};
+			default:
+				panic("Unknown kern_return_t error (%d)", value);
+		}
+	}
 
+	int ErrnoFromReturn(kern_return_t value)
+	{
+		if(value == KERN_SUCCESS)
+			return 0;
 
-#ifndef __KERNEL
+		int errno = KERN_RETURN_UNIX(value);
+		if(errno)
+			return errno;
 
-int open(const char *path, int flags);
-void close(int fd);
-
-size_t read(int fd, void *buffer, size_t count);
-size_t write(int fd, const void *buffer, size_t count);
-off_t lseek(int fd, off_t offset, int whence);
-
-int mkdir(const char *path);
-int remove(const char *path);
-int move(const char *source, const char *target);
-
-int stat(const char *path, struct stat *buf);
-int lstat(const char *path, struct stat *buf);
-
-pid_t getpid();
-pid_t getppid();
-
-#endif /* __KERNEL */
-
-
-__END_DECLS
-
-#endif /* _SYS_UNISTD_H_ */
+		int error = KERN_RETURN_ERROR(value);
+		return ErrnoFromError(error);
+	}
+}

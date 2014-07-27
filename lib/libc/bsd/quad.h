@@ -53,8 +53,8 @@
  * with 48-bit longs.
  */
 
-#include <prefix.h>
-#include <libc/stdint.h>
+#include "./../sys/cdefs.h"
+#include "./../stdint.h"
 
 typedef int64_t quad_t;
 typedef uint64_t u_quad_t;

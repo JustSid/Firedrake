@@ -99,7 +99,7 @@ namespace VFS
 			return KERN_NO_MEMORY;
 
 		if(_elementsLeft == 0)
-			return KERN_RESOURCE_EXHAUSTED;
+			return KERN_RETURN_MAKE(ENOENT, KERN_RESOURCE_EXHAUSTED);
 
 		// Seek to the next element
 		while(*_element == '/')

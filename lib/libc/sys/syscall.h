@@ -1,5 +1,5 @@
 //
-//  unistd.h
+//  syscall.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,52 +16,34 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_UNISTD_H_
-#define _SYS_UNISTD_H_
+#ifndef _SYS_SYSCALL_H_
+#define _SYS_SYSCALL_H_
 
-#include "types.h"
 #include "cdefs.h"
 
 __BEGIN_DECLS
 
-#define MAXNAME 128
+#define SYS_Exit  0
+#define SYS_Open  1
+#define SYS_Close 2
+#define SYS_Read  3
+#define SYS_Write 4
+#define SYS_Seek  5
+#define SYS_Stat  6
 
-#define DTREG 0
-#define DTDIR 1
-#define DTLNK 2
+#define SYS_Mmap     12
+#define SYS_Munmap   13
+#define SYS_Mprotect 14
 
-struct stat
-{
-	int type;
-	char name[MAXNAME];
+#define SYS_Pid 35
 
-	ino_t  id;
-	size_t size;
-};
-
+#define __SYS_MaxSyscalls 128
 
 #ifndef __KERNEL
-
-int open(const char *path, int flags);
-void close(int fd);
-
-size_t read(int fd, void *buffer, size_t count);
-size_t write(int fd, const void *buffer, size_t count);
-off_t lseek(int fd, off_t offset, int whence);
-
-int mkdir(const char *path);
-int remove(const char *path);
-int move(const char *source, const char *target);
-
-int stat(const char *path, struct stat *buf);
-int lstat(const char *path, struct stat *buf);
-
-pid_t getpid();
-pid_t getppid();
-
+unsigned int syscall(int type, ...);
 #endif /* __KERNEL */
-
 
 __END_DECLS
 
-#endif /* _SYS_UNISTD_H_ */
+
+#endif /* _SYS_SYSCALL_H_ */

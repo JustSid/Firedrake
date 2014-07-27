@@ -4,7 +4,11 @@ include ../Makefile.rules
 SRCS = $(shell find $(CURDIR) -type f \( -name "*.c" -o -name "*.S" \))
 OBJS = $(addsuffix .o, $(basename $(SRCS)))
 
-all: build libc.so libc-static.a
+all:
+	${MAKE} clean
+	${MAKE} libc.so
+	${MAKE} libc-static.a
+	${MAKE} clean
 
 build: $(OBJS)
 %.o: %.c
@@ -21,7 +25,7 @@ libc-static.a: $(OBJS)
 	$(AR) rcs $@ $^
 
 clean:
-	rm $(OBJS)
+	rm -f $(OBJS)
 
 .PHONY: clean
 .PHONY: all
