@@ -1,5 +1,5 @@
 //
-//  cxa.cpp
+//  backtrace.c
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,47 +16,60 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <prefix.h>
+#include "sys/types.h"
+#include "backtrace.h"
 
-void *__dso_handle;
+#define	IsFrameAligned(x) ((((uintptr_t)x) & 0x1) == 0)
 
-extern "C"
+struct StackFrame
 {
-	void __cxa_pure_virtual()
+	struct StackFrame *next;
+	void *ret;
+};
+
+void _stacktrace(void *ebp, void **buffer, int max, int *numOut, int skip)
+{
+	struct StackFrame *frame = (struct StackFrame *)ebp;
+	*numOut = 0;
+
+	if(!IsFrameAligned(frame))
+		return;
+
+	for(; skip > 0; skip --)
 	{
-		// TODO: Panic
-		while(1)
-		{
-			__asm__ volatile("cli; hlt;");
-		}
+		if(!IsFrameAligned(frame->next) || frame->next <= frame)
+			return;
+
+		frame = frame->next;
 	}
 
-
-	int __cxa_atexit(__unused void (*f)(void *), __unused void *p, __unused void *d)
+	for(; max > 0; max --)
 	{
-		// The kernel will be alive for the whole lifetime of the machine
-		// so there is not much sense in actually destructing anything in __cxa_finalize
-		// so no need to track anything here.
-		return 0;
-	}
+		buffer[(*numOut) ++] = frame->ret;
 
-	void __cxa_finalize(__unused void *d)
-	{}
+		if(!IsFrameAligned(frame->next) || frame->next <= frame)
+			return;
+
+		frame = frame->next;
+	}
 }
 
-typedef void (*cxa_constructor_t)();
-
-extern "C" cxa_constructor_t ctors_begin;
-extern "C" cxa_constructor_t ctors_end;
-
-void cxa_init()
+int backtrace_np(void *ebp, void **buffer, int size)
 {
-	cxa_constructor_t *iterator = &ctors_begin;
-	cxa_constructor_t *end = &ctors_end;
+	if(!ebp)
+		return 0;
 
-	while(iterator != end)
-	{
-		(*iterator)();
-		iterator ++;
-	}
+	int frames;
+	_stacktrace(ebp, buffer, size, &frames, 1);
+
+	while(frames >= 1 && !buffer[frames-1]) 
+		frames --;
+
+	return frames;
+}
+
+int backtrace(void **buffer, int size)
+{
+	void *ebp = __builtin_frame_address(0);
+	return backtrace_np(ebp, buffer, size);
 }

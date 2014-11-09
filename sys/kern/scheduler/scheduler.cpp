@@ -26,11 +26,16 @@
 #include <kern/panic.h>
 #include "scheduler.h"
 
+namespace Sys
+{
+	void FinishBootstrapping();
+}
+
 namespace Core
 {
 	void KernelTask()
 	{
-		kprintf("Hello World\n");
+		Sys::FinishBootstrapping();
 
 		while(1)
 		{}
@@ -38,8 +43,6 @@ namespace Core
 
 	void IdleTask()
 	{
-		kprintf("idle task on CPU %i\n", Sys::CPU::GetCurrentCPU()->GetID());
-
 		while(1)
 			Sys::CPUHalt();
 	}
@@ -246,10 +249,10 @@ namespace Core
 
 		kern_return_t InitializeTasks()
 		{
-			_kernelTask = new Task(Sys::VM::Directory::GetKernelDirectory());
+			_kernelTask = new Task();
 			_kernelTask->AttachThread(nullptr, (Thread::Entry)&KernelTask, 0);
-
-			_idleTask = new Task(Sys::VM::Directory::GetKernelDirectory());
+			
+			_idleTask = new Task();
 			
 			for(size_t i = 0; i < _proxyCPUCount; i ++)
 			{

@@ -118,9 +118,6 @@ namespace cpp
 
 		T _value;
 	};
-
-	static_assert(std::is_standard_layout<Bitfield<uint32_t>>::value, "Bitfield<uint32_t> must be standard layout");
-	static_assert(std::is_standard_layout<Bitfield<int32_t>>::value, "Bitfield<int32_t> must be standard layout");
 }
 
 #endif /* _BITFIELD_H_ */

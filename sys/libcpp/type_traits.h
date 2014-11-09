@@ -21,33 +21,6 @@
 
 namespace std
 {
-	template<class T, T v>
-	struct integral_constant
-	{
-		static constexpr T value = v;
-		typedef T value_type;
-		typedef integral_constant type;
-
-		inline constexpr operator value_type() const { return value; }
-		inline constexpr value_type operator ()() const { return value; }
-	};
-
-	typedef integral_constant<bool, true>  true_type;
-	typedef integral_constant<bool, false> false_type;
-
-
-	template<class T>
-	struct is_const : public false_type {};
-	template<class T>
-	struct is_const<T const> : public true_type {};
-
-	template<class T>
-	struct is_volatile : public false_type {};
-	template<class T>
-	struct is_volatile<T volatile> : public true_type {};
-
-
-
 	template<class T>
 	struct remove_const { typedef T type; };
 	template<class T>
@@ -76,37 +49,6 @@ namespace std
 	    typedef typename remove_reference<T>::type Type;
 	    return static_cast<Type &&>(t);
 	}
-
-
-	template<bool B, class T = void>
-	struct enable_if
-	{};
-	 
-	template<class T>
-	struct enable_if<true, T>
-	{ typedef T type; };
-
-
-
-	template<class T>
-	struct is_pod : public integral_constant<bool, __is_pod(T)>
-	{};
-
-	template<class T>
-	struct is_literal_type : public integral_constant<bool, __is_literal(T)>
-	{};
-
-	template<class T>
-	struct is_standard_layout : public integral_constant<bool, __is_standard_layout(T)>
-	{};
-
-	template<class T>
-	struct is_trivially_copyable : public integral_constant<bool, __is_trivially_copyable(T)>
-	{};
-
-	template<class T>
-	struct is_trivial : public integral_constant<bool, __is_trivial(T)>
-	{};
 }
 
 #endif /* _TYPE_TRAITS_H_ */

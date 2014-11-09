@@ -1,5 +1,5 @@
 //
-//  cxa.cpp
+//  backtrace.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,47 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <prefix.h>
+#ifndef _BACKTRACE_H_
+#define _BACKTRACE_H_
 
-void *__dso_handle;
+#include "sys/cdefs.h"
 
-extern "C"
-{
-	void __cxa_pure_virtual()
-	{
-		// TODO: Panic
-		while(1)
-		{
-			__asm__ volatile("cli; hlt;");
-		}
-	}
+__BEGIN_DECLS
 
+int backtrace(void **buffer, int size);
+int backtrace_np(void *ebp, void **buffer, int size);
 
-	int __cxa_atexit(__unused void (*f)(void *), __unused void *p, __unused void *d)
-	{
-		// The kernel will be alive for the whole lifetime of the machine
-		// so there is not much sense in actually destructing anything in __cxa_finalize
-		// so no need to track anything here.
-		return 0;
-	}
+__END_DECLS
 
-	void __cxa_finalize(__unused void *d)
-	{}
-}
-
-typedef void (*cxa_constructor_t)();
-
-extern "C" cxa_constructor_t ctors_begin;
-extern "C" cxa_constructor_t ctors_end;
-
-void cxa_init()
-{
-	cxa_constructor_t *iterator = &ctors_begin;
-	cxa_constructor_t *end = &ctors_end;
-
-	while(iterator != end)
-	{
-		(*iterator)();
-		iterator ++;
-	}
-}
+#endif /* _BACKTRACE_H_ */

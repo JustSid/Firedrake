@@ -1,5 +1,5 @@
 //
-//  cxa.cpp
+//  loader.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,47 +16,40 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#ifndef _LOADER_H_
+#define _LOADER_H_
+
 #include <prefix.h>
+#include <kern/kern_return.h>
+#include <machine/memory/memory.h>
+#include <libc/stddef.h>
+#include <libc/stdint.h>
 
-void *__dso_handle;
-
-extern "C"
+namespace Sys
 {
-	void __cxa_pure_virtual()
+	class Executable
 	{
-		// TODO: Panic
-		while(1)
-		{
-			__asm__ volatile("cli; hlt;");
-		}
-	}
+	public:
+		Executable(VM::Directory *directory);
+		~Executable();
 
+		VM::Directory *GetDirectory() const { return _directory; }
+		vm_address_t GetEntry() const { return _entry; }
 
-	int __cxa_atexit(__unused void (*f)(void *), __unused void *p, __unused void *d)
-	{
-		// The kernel will be alive for the whole lifetime of the machine
-		// so there is not much sense in actually destructing anything in __cxa_finalize
-		// so no need to track anything here.
-		return 0;
-	}
+		kern_return_t GetState() const { return _state; }
 
-	void __cxa_finalize(__unused void *d)
-	{}
+	private:
+		kern_return_t Initialize(void *data);
+
+		kern_return_t _state;
+
+		VM::Directory *_directory;
+		vm_address_t _entry;
+
+		uintptr_t _physical;
+		vm_address_t _virtual;
+		size_t _pages;
+	};
 }
 
-typedef void (*cxa_constructor_t)();
-
-extern "C" cxa_constructor_t ctors_begin;
-extern "C" cxa_constructor_t ctors_end;
-
-void cxa_init()
-{
-	cxa_constructor_t *iterator = &ctors_begin;
-	cxa_constructor_t *end = &ctors_end;
-
-	while(iterator != end)
-	{
-		(*iterator)();
-		iterator ++;
-	}
-}
+#endif /* _LOADER_H_ */

@@ -1,5 +1,5 @@
 //
-//  cxa.cpp
+//  syscall.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,47 +16,19 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#ifndef _KERN_SYSCALL_H_
+#define _KERN_SYSCALL_H_
+
 #include <prefix.h>
+#include <libc/sys/syscall.h>
+#include <kern/kern_return.h>
 
-void *__dso_handle;
-
-extern "C"
+namespace Core
 {
-	void __cxa_pure_virtual()
-	{
-		// TODO: Panic
-		while(1)
-		{
-			__asm__ volatile("cli; hlt;");
-		}
-	}
+	typedef kern_return_t (*SyscallHandler)(uint32_t &esp, uint32_t &retVal, void *arguments);
 
-
-	int __cxa_atexit(__unused void (*f)(void *), __unused void *p, __unused void *d)
-	{
-		// The kernel will be alive for the whole lifetime of the machine
-		// so there is not much sense in actually destructing anything in __cxa_finalize
-		// so no need to track anything here.
-		return 0;
-	}
-
-	void __cxa_finalize(__unused void *d)
-	{}
+	kern_return_t SetSyscallHandler(uint32_t number, SyscallHandler handler, bool isUnixStyle);
+	kern_return_t SyscallInit();
 }
 
-typedef void (*cxa_constructor_t)();
-
-extern "C" cxa_constructor_t ctors_begin;
-extern "C" cxa_constructor_t ctors_end;
-
-void cxa_init()
-{
-	cxa_constructor_t *iterator = &ctors_begin;
-	cxa_constructor_t *end = &ctors_end;
-
-	while(iterator != end)
-	{
-		(*iterator)();
-		iterator ++;
-	}
-}
+#endif /* _KERN_SYSCALL_H_ */

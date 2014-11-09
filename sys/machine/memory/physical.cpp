@@ -40,12 +40,12 @@ namespace Sys
 		static inline void MarkUsed(uintptr_t page)
 		{
 			uint32_t index = page / VM_PAGE_SIZE;
-			_heapBitmap[index / 32] &= ~(1 << (index & 31));
+			_heapBitmap[index / 32] &= ~(INT64_C(1) << (index & 31));
 		}
 		static inline void MarkFree(uintptr_t page)
 		{
 			uint32_t index = page / VM_PAGE_SIZE;
-			_heapBitmap[index / 32] |= (1 << (index & 31));
+			_heapBitmap[index / 32] |= (INT64_C(1) << (index & 31));
 		}
 
 
@@ -73,7 +73,7 @@ namespace Sys
 				{
 					for(size_t j = 0; j < 32; j ++)
 					{
-						if(_heapBitmap[i] & (1 << j))
+						if(_heapBitmap[i] & (INT64_C(1) << j))
 						{
 							if(found == 0)
 								page = (i * 32 + j) * VM_PAGE_SIZE;
@@ -104,13 +104,12 @@ namespace Sys
 
 		kern_return_t AllocLimit(uintptr_t &address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit)
 		{
-	#if CONFIG_STRICT
 			if(pages == 0 || lowerLimit < kLowerLimit || upperLimit > kUpperLimit)
 				return KERN_INVALID_ARGUMENT;
 
 			if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
 				return KERN_INVALID_ADDRESS;
-	#endif
+
 
 			spinlock_lock(&_heapLock);
 
@@ -134,10 +133,9 @@ namespace Sys
 
 		kern_return_t Free(uintptr_t page, size_t pages)
 		{
-	#if CONFIG_STRICT
 			if(page == 0 || (page % VM_PAGE_SIZE) != 0)
 				return KERN_INVALID_ADDRESS;
-	#endif
+
 
 			spinlock_lock(&_heapLock);
 

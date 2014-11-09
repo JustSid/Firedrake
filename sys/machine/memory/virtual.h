@@ -87,7 +87,10 @@ namespace Sys
 
 			kern_return_t Alloc(vm_address_t &address, uintptr_t physical, size_t pages, Flags flags);
 			kern_return_t AllocLimit(vm_address_t &address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags);
+			kern_return_t AllocTwoSidedLimit(vm_address_t &address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags);
 			kern_return_t Free(vm_address_t address, size_t pages);
+
+			kern_return_t __Alloc_NoLockPrivate(vm_address_t &address, uintptr_t physical, size_t pages, Flags flags);
 
 			uint32_t *GetPhysicalDirectory() const { return _directory; }
 

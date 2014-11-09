@@ -1,5 +1,5 @@
 //
-//  cxa.cpp
+//  main.c
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,47 +16,12 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <prefix.h>
+#include <sys/syscall.h>
 
-void *__dso_handle;
-
-extern "C"
+int main(int argc, char *argv[])
 {
-	void __cxa_pure_virtual()
-	{
-		// TODO: Panic
-		while(1)
-		{
-			__asm__ volatile("cli; hlt;");
-		}
-	}
+	syscall(SYS_Open, "/etc/license.txt", 2);
 
-
-	int __cxa_atexit(__unused void (*f)(void *), __unused void *p, __unused void *d)
-	{
-		// The kernel will be alive for the whole lifetime of the machine
-		// so there is not much sense in actually destructing anything in __cxa_finalize
-		// so no need to track anything here.
-		return 0;
-	}
-
-	void __cxa_finalize(__unused void *d)
-	{}
-}
-
-typedef void (*cxa_constructor_t)();
-
-extern "C" cxa_constructor_t ctors_begin;
-extern "C" cxa_constructor_t ctors_end;
-
-void cxa_init()
-{
-	cxa_constructor_t *iterator = &ctors_begin;
-	cxa_constructor_t *end = &ctors_end;
-
-	while(iterator != end)
-	{
-		(*iterator)();
-		iterator ++;
-	}
+	while(1) {}
+	return 0;
 }

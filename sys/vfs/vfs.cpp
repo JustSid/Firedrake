@@ -387,6 +387,8 @@ namespace VFS
 
 		// Find the initrd module
 		Sys::MultibootModule *module = info->modules;
+		bool didLoadInitrd = false;
+
 		for(size_t i = 0; i < info->modulesCount; i ++)
 		{
 			if(strcmp((char *)module->name, "initrd") == 0)
@@ -396,11 +398,15 @@ namespace VFS
 				if(result != KERN_SUCCESS)
 					return result;
 
+				didLoadInitrd = true;
 				break;
 			}
 
 			module = module->GetNext();
 		}
+
+		if(!didLoadInitrd)
+			kprintf("Couldn't find initrd");
 
 		return KERN_SUCCESS;
 	}

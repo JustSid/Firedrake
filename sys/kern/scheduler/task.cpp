@@ -32,21 +32,57 @@ namespace Core
 		void AddThread(Thread *thread);
 	}
 
-	Task::Task(Sys::VM::Directory *directory) :
+	Task::Task() :
 		_lock(SPINLOCK_INIT),
 		_state(State::Waiting),
 		_pid(_taskPidCounter.fetch_add(1)),
 		_ring3(false),
 		_tidCounter(1),
 		_mainThread(nullptr),
-		_directory(directory),
-		_context(nullptr)
+		_directory(Sys::VM::Directory::GetKernelDirectory()),
+		_context(nullptr),
+		_executable(nullptr),
+		_result(KERN_SUCCESS)
 	{
 		memset(_files, 0, CONFIG_MAX_FILES * sizeof(VFS::File *));
 	}
 
+	Task::Task(__unused const char *path) :
+		_lock(SPINLOCK_INIT),
+		_state(State::Waiting),
+		_pid(_taskPidCounter.fetch_add(1)),
+		_ring3(true),
+		_tidCounter(1),
+		_mainThread(nullptr),
+		_directory(nullptr),
+		_context(nullptr),
+		_executable(nullptr),
+		_result(KERN_SUCCESS)
+	{
+		memset(_files, 0, CONFIG_MAX_FILES * sizeof(VFS::File *));
+
+		if((_result = Sys::VM::Directory::Create(_directory)) != KERN_SUCCESS)
+		{
+			_directory = nullptr;
+			return;
+		}
+
+		_executable = new Sys::Executable(_directory);
+
+		if((_result = _executable->GetState()) != KERN_SUCCESS)
+			return;
+
+		_result = AttachThread(nullptr, static_cast<Thread::Entry>(_executable->GetEntry()), 0);
+	}
+
 	Task::~Task()
-	{}
+	{
+		if(_directory && _directory != Sys::VM::Directory::GetKernelDirectory())
+			delete _directory;
+
+		if(_executable)
+			delete _executable;
+	}
 
 
 	kern_return_t Task::AttachThread(Thread **outthread, Thread::Entry entry, size_t stack)

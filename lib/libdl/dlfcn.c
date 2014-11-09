@@ -1,6 +1,6 @@
 //
-//  cxa.cpp
-//  Firedrake
+//  dlfcn.c
+//  libc
 //
 //  Created by Sidney Just
 //  Copyright (c) 2014 by Sidney Just
@@ -16,47 +16,27 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <prefix.h>
+// !!!
+// These are just stubs so the linker will link binaries that use one of the functions
+// linkd patches these at runtime!
 
-void *__dso_handle;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 
-extern "C"
+char *dlerror()
 {
-	void __cxa_pure_virtual()
-	{
-		// TODO: Panic
-		while(1)
-		{
-			__asm__ volatile("cli; hlt;");
-		}
-	}
-
-
-	int __cxa_atexit(__unused void (*f)(void *), __unused void *p, __unused void *d)
-	{
-		// The kernel will be alive for the whole lifetime of the machine
-		// so there is not much sense in actually destructing anything in __cxa_finalize
-		// so no need to track anything here.
-		return 0;
-	}
-
-	void __cxa_finalize(__unused void *d)
-	{}
+	return (void *)0;
+}
+void *dlopen(const char *file, int flag)
+{
+	return (void *)0;
+}
+void *dlsym(void *handle, const char *symbol)
+{
+	return (void *)0;
+}
+void dlclose(void *handle)
+{
 }
 
-typedef void (*cxa_constructor_t)();
-
-extern "C" cxa_constructor_t ctors_begin;
-extern "C" cxa_constructor_t ctors_end;
-
-void cxa_init()
-{
-	cxa_constructor_t *iterator = &ctors_begin;
-	cxa_constructor_t *end = &ctors_end;
-
-	while(iterator != end)
-	{
-		(*iterator)();
-		iterator ++;
-	}
-}
+#pragma clang diagnostic pop

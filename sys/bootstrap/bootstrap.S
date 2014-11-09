@@ -48,5 +48,5 @@ ENTRY(_start)
 .global StackTop
 
 StackBottom:
-.space 2048
+.space 8192
 StackTop:

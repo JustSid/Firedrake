@@ -32,6 +32,7 @@
 #include <machine/clock/clock.h>
 #include <machine/smp/smp.h>
 #include <kern/scheduler/scheduler.h>
+#include <kern/syscall/syscall.h>
 #include <vfs/vfs.h>
 
 const char *kVersionBeast    = "Nidhogg";
@@ -42,6 +43,8 @@ extern "C" void SysInit_i486(Sys::MultibootHeader *info) __attribute__ ((noretur
 
 namespace Sys
 {
+	Sys::MultibootHeader *bootInfo = nullptr;
+
 	template<class F, class ...Args>
 	void Init(const char *name, F &&f, Args &&... args)
 	{
@@ -58,6 +61,14 @@ namespace Sys
 			kprintf(" } ok\n");
 		}
 	}
+
+	void FinishBootstrapping()
+	{
+		Init("syscalls", Core::SyscallInit);
+		Init("vfs", VFS::Init, bootInfo);
+
+		kprintf("\n\n");
+	}
 }
 
 void SysInit_i486(Sys::MultibootHeader *info)
@@ -71,6 +82,8 @@ void SysInit_i486(Sys::MultibootHeader *info)
 	kprintf("Here be dragons\n\n");
 
 	// Run the low level initialization process
+	// Because stack is really limited, a lot of the work should be done in FinishBootstrapping() instead
+
 	Sys::Init("cpu", Sys::CPUInit);
 	Sys::Init("physical memory", Sys::PMInit, info);
 	Sys::Init("virtual memory", Sys::VMInit, info);
@@ -79,9 +92,8 @@ void SysInit_i486(Sys::MultibootHeader *info)
 	Sys::Init("clock", Sys::ClockInit);
 	Sys::Init("smp", Sys::SMPInit);
 	Sys::Init("scheduler", Core::SchedulerInit);
-	Sys::Init("vfs", VFS::Init, info);
 
-	kprintf("\n\n");
+	Sys::bootInfo = info;
 
 	// Kick off into the scheduler
 	// Once the IPI is handled by a CPU, it won't return to its current thread of execution ever again

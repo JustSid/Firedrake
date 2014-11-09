@@ -58,6 +58,14 @@ namespace Core
 		int8_t ReduceQuantum() { return (_quantum --); }
 		int8_t GetQuantum() const { return _quantum; }
 
+		uint8_t *GetUserStack() const { return _userStack; }
+		uint8_t *GetUserStackVirtual() const { return _userStackVirtual; }
+		uint8_t *GetKernelStack() const { return _kernelStack; }
+		uint8_t *GetKernelStackVirtual() const { return _kernelStackVirtual; }
+
+		size_t GetUserStackPages() const { return _userStackPages; }
+		size_t GetKernelStackPages() const { return _kernelStackPages; }
+
 		cpp::queue<Thread>::entry &GetSchedulerEntry() { return _schedulerEntry; }
 
 	private:
@@ -66,7 +74,8 @@ namespace Core
 		Thread(Task *task, Entry entry, size_t stackPages);
 
 		kern_return_t Initialize();
-		void InitializeKernelStack(bool ring3);
+		kern_return_t InitializeForRing3();
+		kern_return_t InitializeForRing0();
 
 		Task *_task;
 		tid_t _tid;

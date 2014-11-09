@@ -81,7 +81,75 @@ namespace Core
 
 	kern_return_t Thread::Initialize()
 	{
-		if(!_task->_ring3)
+		return (_task->_ring3) ? InitializeForRing3() : InitializeForRing0();
+	}
+
+	kern_return_t Thread::InitializeForRing3()
+	{
+		{
+			uintptr_t paddress;
+			vm_address_t vaddress;
+			kern_return_t result;
+
+			result = Sys::PM::Alloc(paddress, _userStackPages);
+			if(result != KERN_SUCCESS)
+			{
+				kprintf("Failed to allocate %i physicial user stack pages\n", _userStackPages);
+				return result;
+			}
+
+			result = _task->_directory->AllocLimit(vaddress, paddress, kThreadStackLimit, Sys::VM::kUpperLimit, _userStackPages, kVMFlagsKernel);
+			if(result != KERN_SUCCESS)
+			{
+				Sys::PM::Free(paddress, _userStackPages);
+
+				kprintf("Failed to allocate %i virtual user stack pages\n", _userStackPages);
+				return result;
+			}
+
+			_userStack = reinterpret_cast<uint8_t *>(paddress);
+			_userStackVirtual = reinterpret_cast<uint8_t *>(vaddress);
+
+			// Kernel stack
+			result = Sys::PM::Alloc(paddress, 1);
+			result = _task->_directory->AllocTwoSidedLimit(vaddress, paddress, kThreadStackLimit, Sys::VM::kUpperLimit, 1, kVMFlagsKernel);
+			
+			_kernelStack = reinterpret_cast<uint8_t *>(paddress);
+			_kernelStackVirtual = reinterpret_cast<uint8_t *>(vaddress);
+		}
+
+		size_t size     = _userStackPages * VM_PAGE_SIZE;
+		uint32_t *stack = reinterpret_cast<uint32_t *>(_userStackVirtual + size);
+
+		*(-- stack) = 0x23; // ss
+		*(-- stack) = (uint32_t)(_userStackVirtual + ((_userStackPages * VM_PAGE_SIZE) - 4) - (0x0 * sizeof(uint32_t)));   // esp
+		*(-- stack) = 0x200; // eflags
+		*(-- stack) = 0x1b; // cs
+		*(-- stack) = _entry; // eip
+
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+		*(-- stack) = 0x0;
+
+		*(-- stack) = 0x23;
+		*(-- stack) = 0x23;
+		*(-- stack) = 0x23;
+		*(-- stack) = 0x23;
+
+		_esp = reinterpret_cast<uint32_t>(_kernelStackVirtual + size) - sizeof(Sys::CPUState);
+		return KERN_SUCCESS;
+	}
+
+	kern_return_t Thread::InitializeForRing0()
+	{
 		{
 			uintptr_t paddress;
 			vm_address_t vaddress;
@@ -107,19 +175,13 @@ namespace Core
 			_kernelStackVirtual = reinterpret_cast<uint8_t *>(vaddress);
 		}
 
-		InitializeKernelStack(_task->_ring3);
-		return KERN_SUCCESS;
-	}
-
-	void Thread::InitializeKernelStack(bool ring3)
-	{
 		size_t size     = _kernelStackPages * VM_PAGE_SIZE;
 		uint32_t *stack = reinterpret_cast<uint32_t *>(_kernelStackVirtual + size);
 
-		*(-- stack) = ring3 ? 0x23 : 0x10; // ss
+		*(-- stack) = 0x10; // ss
 		*(-- stack) = 0x0;   // esp
 		*(-- stack) = 0x200; // eflags
-		*(-- stack) = ring3 ? 0x1b : 0x8; // cs
+		*(-- stack) = 0x8; // cs
 		*(-- stack) = _entry; // eip
 
 		*(-- stack) = 0x0;
@@ -134,12 +196,13 @@ namespace Core
 		*(-- stack) = 0x0;
 		*(-- stack) = 0x0;
 
-		*(-- stack) = ring3 ? 0x23 : 0x10;
-		*(-- stack) = ring3 ? 0x23 : 0x10;
+		*(-- stack) = 0x10;
+		*(-- stack) = 0x10;
 		*(-- stack) = 0x0;
 		*(-- stack) = 0x0;
 
-		_esp = ring3 ? reinterpret_cast<uint32_t>(_kernelStackVirtual + size) - sizeof(Sys::CPUState) : reinterpret_cast<uint32_t>(stack);
+		_esp = reinterpret_cast<uint32_t>(stack);
+		return KERN_SUCCESS;
 	}
 
 	void Thread::SetQuantum(int8_t quantum)

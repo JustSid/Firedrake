@@ -20,6 +20,7 @@
 #include <libcpp/algorithm.h>
 #include <libc/string.h>
 #include <kern/kprintf.h>
+#include <kern/panic.h>
 #include "Heap.h"
 #include "memory.h"
 
@@ -683,7 +684,7 @@ namespace Sys
 		spinlock_unlock(&_lock);
 
 		if(!didFree)
-			kprintf("Tried to free unknown pointer: %p\n", ptr);
+			panic("Tried to free unknown pointer: %p\n", ptr);
 	}
 
 	// --------------------

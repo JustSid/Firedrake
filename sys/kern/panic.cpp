@@ -20,6 +20,7 @@
 #include <machine/interrupts/interrupts.h>
 #include <libc/stdarg.h>
 #include <libc/stdio.h>
+#include <libc/backtrace.h>
 #include <video/video.h>
 #include "panic.h"
 #include "kalloc.h"
@@ -50,6 +51,14 @@ void panic_die_fancy(const char *buffer)
 		kprintf("  eax: \16\031%08x\16\27, ecx: \16\031%08x\16\27, edx: \16\031%08x\16\27, ebx: \16\031%08x\16\27\n", state->eax, state->ecx, state->edx, state->ebx);
 		kprintf("  esp: \16\031%08x\16\27, ebp: \16\031%08x\16\27, esi: \16\031%08x\16\27, edi: \16\031%08x\16\27\n", state->esp, state->ebp, state->esi, state->edi);
 		kprintf("  eip: \16\031%08x\16\27, eflags: \16\031%08x\16\27.\n", state->eip, state->eflags);
+	}
+
+	void *frames[10];
+	int num = backtrace_np((void *)state->ebp, frames, 10);
+
+	for(int i = 0; i < num; i ++)
+	{
+		kprintf("Frame: %p\n", frames[i]);
 	}
 
 	kprintf("CPU halt");

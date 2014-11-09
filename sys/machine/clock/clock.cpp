@@ -133,6 +133,9 @@ namespace Sys
 		APIC::MaskInterrupt(0x20, false);
 
 		Clock::_timerCount = Clock::CalculateAPICFrequencyAverage(Clock::_timerResolution, Clock::_timerDivisor);
+
+		
+
 		return KERN_SUCCESS;
 	}
 }

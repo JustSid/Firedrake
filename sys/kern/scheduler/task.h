@@ -23,12 +23,12 @@
 #include <libc/stddef.h>
 #include <libc/stdint.h>
 #include <libc/sys/types.h>
+#include <libc/sys/spinlock.h>
 #include <libcpp/atomic.h>
 #include <libcpp/queue.h>
 #include <machine/memory/memory.h>
-
+#include <loader/loader.h>
 #include <kern/kern_return.h>
-#include <libc/sys/spinlock.h>
 #include "thread.h"
 
 namespace VFS
@@ -53,7 +53,8 @@ namespace Core
 			Died
 		};
 
-		Task(Sys::VM::Directory *directory);
+		Task(); // This really is just to create the kernel task
+		Task(const char *path);
 		~Task();
 
 		kern_return_t AttachThread(Thread **outthread, Thread::Entry entry, size_t stack);
@@ -63,6 +64,7 @@ namespace Core
 
 		pid_t GetPid() const { return _pid; }
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
+		kern_return_t GetResult() const { return _result; }
 
 		// VFS
 		VFS::Context *GetVFSContext() const { return _context; }
@@ -78,6 +80,9 @@ namespace Core
 
 		std::atomic<int32_t> _tidCounter;
 		Sys::VM::Directory *_directory;
+
+		kern_return_t _result;
+		Sys::Executable *_executable;
 
 		cpp::queue<Thread> _threads;
 		Thread *_mainThread;
