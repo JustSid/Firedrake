@@ -22,6 +22,7 @@
 
 namespace Sys
 {
+	void Bootstrap()  __attribute__ ((noreturn));
 	void Bootstrap()
 	{
 		Personality::Bootstrap();

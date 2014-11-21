@@ -735,8 +735,8 @@ namespace Sys
 	// MARK: Initialization
 	// --------------------
 
-	extern "C" uintptr_t kernel_begin;
-	extern "C" uintptr_t kernel_end;
+	extern "C" uintptr_t __kernel_start__;
+	extern "C" uintptr_t __kernel_end__;
 
 	kern_return_t VMInit()
 	{
@@ -750,8 +750,8 @@ namespace Sys
 		}
 
 		// Map the kernel and  video RAM 1:1
-		vm_address_t kernelBegin = reinterpret_cast<vm_address_t>(&kernel_begin);
-		vm_address_t kernelEnd   = reinterpret_cast<vm_address_t>(&kernel_end);
+		vm_address_t kernelBegin = reinterpret_cast<vm_address_t>(&__kernel_start__);
+		vm_address_t kernelEnd   = reinterpret_cast<vm_address_t>(&__kernel_end__);
 
 		VM::_kernelDirectory->MapPageRange(kernelBegin, kernelBegin, VM_PAGE_COUNT(kernelEnd - kernelBegin), kVMFlagsKernel);
 		VM::_kernelDirectory->MapPageRange(0xa0000, 0xa0000, VM_PAGE_COUNT(0xc0000 - 0xa0000), kVMFlagsKernel);

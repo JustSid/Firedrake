@@ -27,8 +27,8 @@
 #include <bootstrap/multiboot.h>
 #endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
-extern "C" uintptr_t kernel_begin;
-extern "C" uintptr_t kernel_end;
+extern "C" uintptr_t __kernel_start__;
+extern "C" uintptr_t __kernel_end__;
 
 namespace Sys
 {
@@ -235,7 +235,7 @@ namespace Sys
 
 		
 		// Mark the kernel as allocated
-		PM::MarkRange(reinterpret_cast<uintptr_t>(&kernel_begin), reinterpret_cast<uintptr_t>(&kernel_end));
+		PM::MarkRange(reinterpret_cast<uintptr_t>(&__kernel_start__), reinterpret_cast<uintptr_t>(&__kernel_end__));
 
 		// Mark the first megabyte as allocated as well
 		// Although most of the BIOS stuff in there is undefined, it still might be useful
