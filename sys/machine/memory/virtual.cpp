@@ -36,7 +36,9 @@ namespace Sys
 		constexpr vm_address_t kDirectoryLength  = 1024;
 		constexpr vm_address_t kPagetableLength  = 1024;
 
-		extern "C" uint32_t *_kernelPageDirectory = nullptr;
+		extern "C" uint32_t *_kernelPageDirectory;
+		
+		uint32_t *_kernelPageDirectory = nullptr;
 
 		static Directory *_kernelDirectory = nullptr;
 		static bool _usePhysicalKernelPages;
