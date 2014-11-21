@@ -17,6 +17,7 @@
 //
 
 #include <prefix.h>
+#include <kern/panic.h>
 
 void *__dso_handle;
 
@@ -24,11 +25,7 @@ extern "C"
 {
 	void __cxa_pure_virtual()
 	{
-		// TODO: Panic
-		while(1)
-		{
-			__asm__ volatile("cli; hlt;");
-		}
+		panic("__cxa_pure_virtual()");
 	}
 
 
@@ -46,13 +43,13 @@ extern "C"
 
 typedef void (*cxa_constructor_t)();
 
-extern "C" cxa_constructor_t ctors_begin;
-extern "C" cxa_constructor_t ctors_end;
+extern "C" cxa_constructor_t __ctors_start__;
+extern "C" cxa_constructor_t __ctors_end__;
 
 void cxa_init()
 {
-	cxa_constructor_t *iterator = &ctors_begin;
-	cxa_constructor_t *end = &ctors_end;
+	cxa_constructor_t *iterator = &__ctors_start__;
+	cxa_constructor_t *end = &__ctors_end__;
 
 	while(iterator != end)
 	{

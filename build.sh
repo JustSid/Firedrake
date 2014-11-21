@@ -14,7 +14,7 @@ REMOTE_PATH="/mnt/hgfs/Firedrake"
 BASEDIR=$(dirname $0)
 QEMU_NET="-net nic,model=rtl8139 -net user"
 QEMU_CPU="-cpu core2duo -smp cores=2"
-QEMU_ARGS="$QEMU_CPU $QEMU_NET"
+QEMU_ARGS="$QEMU_CPU $QEMU_NET -serial stdio"
 
 if [ $# -eq 0 ]; then
 	if $USESSH ; then

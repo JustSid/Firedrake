@@ -9,7 +9,8 @@ SECTIONS
 
 	.text : 
 	{
-		*(multiboot)
+		*(.multiboot)
+		*(.text.boot)
 		*(.text)
 	}
 	.data ALIGN(4096) : 
@@ -22,19 +23,17 @@ SECTIONS
 	}
 	.bss ALIGN(4096) : 
 	{
+		__bss_start__ = .;
 		*(.bss)
+		. = ALIGN(4096);
+		__bss_end__ = .;
 	}
-
-	. = ALIGN(4096);
-	ctors_begin = .;
-
 	.ctors :
 	{
+		__ctors_start__ = .;
 		*(.ctors)
+		__ctors_end__ = .;
 	}
-
-	ctors_end = .;
-
 	. = ALIGN(4096);
 	kernel_end = .;
 }

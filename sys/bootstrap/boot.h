@@ -1,5 +1,5 @@
 //
-//  video.cpp
+//  boot.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,57 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "video.h"
-#include "textdevice.h"
+#ifndef _BOOT_H_
+#define _BOOT_H_
 
-namespace vd
+namespace Sys
 {
-	static video_device *_vd_activeDevice = nullptr;
-	static text_device _vd_coreDevice;
-
-	video_device::video_device()
-	{
-		backgroundColor = color::black;
-		foregroundColor = color::light_gray;
-
-		cursorX = cursorY = 0;
-
-		pendingChange = false;
-	}
-
-	video_device::~video_device()
-	{}
-
-	bool video_device::interpret_character(char character)
-	{
-		if(character == 14 || character == 15)
-		{
-			pendingChange = true;
-			foregroundChange = (character == 14);
-			
-			return true;
-		}
-
-		if(pendingChange && character >= 16 && character <= 31)
-		{
-			color nColor = static_cast<color>(character - 16);
-			set_colors(foregroundChange ? nColor : get_foreground_color(), foregroundChange ? get_background_color() : nColor);
-
-			return true;
-		}
-
-		return false;
-	}
-
-
-
-	void init()
-	{
-		_vd_activeDevice = &_vd_coreDevice;
-	}
-
-	video_device *get_active_device()
-	{
-		return _vd_activeDevice;
-	}
+	// Platform agnostic bootstrap method
+	// Sets up the Personality of the system
+	
+	void Bootstrap() __attribute__ ((noreturn));
 }
+
+#endif

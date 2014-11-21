@@ -1,5 +1,5 @@
 //
-//  kprintf.h
+//  personality.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,17 +16,47 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _KPRINTF_H_
-#define _KPRINTF_H_
+#include <libcpp/new.h>
+
+#include "personality.h"
+#include PERSONALITY_HEADER
+
+const char *kVersionBeast    = "Nidhogg";
+const char *kVersionAppendix = "";
+
+extern void cxa_init();
 
 namespace Sys
 {
-	typedef void (*OutputHandler)(const char *string, unsigned int length);
+	static uint8_t _personalitySpace[sizeof(PERSONALITY_CLASS)];
+	static Personality *_personality = nullptr;
 
-	void AddOutputHandler(OutputHandler handler);
-	void RemoveOutputHandler(OutputHandler handler);
+	Personality::Personality()
+	{}
+	Personality::~Personality()
+	{}
+
+	
+	Personality *Personality::GetPersonality()
+	{
+		return _personality;
+	}
+
+	void Personality::Bootstrap()
+	{
+		// Get the C++ runtime going
+		cxa_init();
+
+		// Create the kernel personality and let that take care of the rest of the bootstrapping
+		_personality = new(_personalitySpace) PERSONALITY_CLASS;
+
+		if(_personality)
+			_personality->InitSystem();
+	}
+
+	void Personality::PrintHeader() const
+	{
+		kprintf("Firedrake v%i.%i.%i:%i (%s, '%s' personality)\n", kVersionMajor, kVersionMinor, kVersionPatch, VersionCurrent(), kVersionBeast, GetName());
+		kprintf("Here be dragons\n\n");
+	}
 }
-
-void kprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
-
-#endif /* _KPRINTF_H_ */

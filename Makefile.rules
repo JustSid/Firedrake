@@ -11,3 +11,5 @@ CONFIG_BUILD_LIBS =
 CONFIG_EXCLUDE_FOLDERS = ! -path "*/x86/*"
 
 LIBGCC = -L "/home/justsid/opt/cross/lib/gcc/arm-none-eabi/4.8.3/" -lgcc
+
+PERSONALITY = 1

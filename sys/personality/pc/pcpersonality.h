@@ -1,5 +1,5 @@
 //
-//  kprintf.h
+//  pcpersonality.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,17 +16,29 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _KPRINTF_H_
-#define _KPRINTF_H_
+#include <personality/personality.h>
+
+#ifndef _PCPERSONALITY_H_
+#define _PCPERSONALITY_H_
+
+#if PERSONALITY == PERSONALITY_PC
 
 namespace Sys
 {
-	typedef void (*OutputHandler)(const char *string, unsigned int length);
+	class PCPersonality : public Sys::Personality
+	{
+	public:
+		PCPersonality();
 
-	void AddOutputHandler(OutputHandler handler);
-	void RemoveOutputHandler(OutputHandler handler);
+		void FinishBootstrapping() final;
+
+		const char *GetName() const final;
+
+	protected:
+		void InitSystem() final;
+	};
 }
 
-void kprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
+#endif /* PERSONALITY == PERSONALITY_PC */
 
-#endif /* _KPRINTF_H_ */
+#endif /* _PCPERSONALITY_H_ */

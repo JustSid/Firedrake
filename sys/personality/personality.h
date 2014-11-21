@@ -1,5 +1,5 @@
 //
-//  textdevice.h
+//  personality.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,39 +16,53 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "video.h"
+#ifndef _PERSONALITY_H_
+#define _PERSONALITY_H_
 
-#ifndef _TEXTDEVICE_H_
-#define _TEXTDEVICE_H_
+#include <prefix.h>
+#include <kern/kprintf.h>
+#include <kern/panic.h>
+#include <kern/kern_return.h>
+#include <libcpp/type_traits.h>
 
-namespace vd
+namespace Sys
 {
-	class text_device : public video_device
+	class Personality
 	{
 	public:
-		text_device();
+		virtual ~Personality();
 
-		bool is_text() override { return true; }
+		static void Bootstrap(); // Called once on the bootstrap CPU
+		virtual void FinishBootstrapping() = 0; // Called once from the kernel task on any CPU
 
-		size_t get_width() override { return _width; }
-		size_t get_height() override { return _height; }
-		size_t get_depth() override { return 0; }
+		static Personality *GetPersonality();
+		virtual const char *GetName() const = 0;
 
-		void set_colors(color foreground, color background);
-		void set_cursor(size_t x, size_t y);
+	protected:
+		Personality();
+		virtual void InitSystem() = 0;
 
-		void write_string(const char *string);
-		void scroll_lines(size_t lines);
-		void clear();
+		// Prints the default Firedrake header via kprintf
+		void PrintHeader() const;
 
-	private:
-		void putc(char character);
-		void color_point(size_t x, size_t y, color foreground, color background);
+		template<class F, class ...Args>
+		void Init(const char *name, F &&f, Args &&... args) const
+		{
+			kprintf("Initializing %s... { ", name);
 
-		uint8_t *_base;
-		size_t _width;
-		size_t _height;
+			kern_return_t result;
+
+			if((result = f(std::forward<Args>(args)...)) != KERN_SUCCESS)
+			{
+				kprintf("} failed\n");
+				panic("Failed to initialize %s", name); 
+			}
+			else
+			{
+				kprintf(" } ok\n");
+			}
+		}
 	};
 }
 
-#endif /* _TEXTDEVICE_H_ */
+#endif /* _PERSONALITY_H_ */

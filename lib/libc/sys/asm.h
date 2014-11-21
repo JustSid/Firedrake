@@ -19,14 +19,23 @@
 #ifndef _SYS_ASM_H_
 #define _SYS_ASM_H_
 
+#if __KERNEL
+	#include <config.h>
+#endif
+
 #define FALIGN 4,0x90
 
 #define EXT(x) x
 #define LEXT(x) x:
+#define EXTERN(x) .extern x
 
 #define	ENTRY(x) .global EXT(x); .align FALIGN; LEXT(x)
 
-#define TEXT() .text; .align 4096
 #define GLOBAL(x) .global EXT(x); LEXT(x)
+
+#define ALIGN(x) .align x;
+#define SECTION(x) .section x
+
+#define TEXT() SECTION(".text")
 
 #endif /* _SYS_ASM_H_ */

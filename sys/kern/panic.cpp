@@ -21,7 +21,6 @@
 #include <libc/stdarg.h>
 #include <libc/stdio.h>
 #include <libc/backtrace.h>
-#include <video/video.h>
 #include "panic.h"
 #include "kalloc.h"
 #include "kprintf.h"
@@ -36,13 +35,11 @@ void panic_die_fancy(const char *buffer)
 	Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
 	Sys::CPUState *state = cpu->GetLastState();
 
-	vd::video_device *device = vd::get_active_device();
-	device->write_string("\n\16\24Kernel Panic!\16\27\n");
-	device->write_string("Reason: \"");
-	device->write_string(buffer);
-	device->write_string("\"\n");
+	kprintf("\n\16\24Kernel Panic!\16\27\n");
+	kprintf("Reason: \"");
+	kprintf(buffer);
+	kprintf("\"\n");
 
-	// Use kprintf for small strings for convinience
 	kprintf("Crashing CPU: \16\031%i\16\27\n", cpu->GetID());
 
 	if(state)
@@ -66,11 +63,10 @@ void panic_die_fancy(const char *buffer)
 
 void panic_die_barebone(const char *buffer)
 {
-	vd::video_device *device = vd::get_active_device();
-	device->write_string("\n\16\24Kernel Panic!\16\27\n");
-	device->write_string("Reason: \"");
-	device->write_string(buffer);
-	device->write_string("\"\n\nCPU halt");
+	kprintf("\n\16\24Kernel Panic!\16\27\n");
+	kprintf("Reason: \"");
+	kprintf(buffer);
+	kprintf("\"\n\nCPU halt");
 }
 
 void panic_die(const char *buffer)

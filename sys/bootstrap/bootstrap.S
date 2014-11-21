@@ -18,16 +18,16 @@
 
 #include <libc/sys/asm.h>
 
-// GRUB multiboot header
-.section multiboot
-.align 4
+SECTION(".text.boot")
+
+#if PERSONALITY_BOOTLOADER == BOOTLOADER_MULTIBOOT
+ALIGN(4)
 	.int 0x1badb002
 	.int 0x0
 	.int (-0x1badb002)
+#endif /* PERSONALITY_BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 // Entry point
-TEXT()
-
 ENTRY(_start)
 	movl $StackTop, %esp
 
@@ -35,14 +35,15 @@ ENTRY(_start)
 	pushl $0
 	pushl $0
 
-	// Call the SysInit_i486() entry function with the multiboot struct as argument
+#if PERSONALITY_BOOTLOADER == BOOTLOADER_MULTIBOOT
 	pushl %ebx
-	call SysInit_i486
+#endif /* PERSONALITY_BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
+	call PERSONALITY_ENTRY
 	jmp .
 
 // Stack
-.bss
+SECTION(".bss")
 
 .global StackBottom
 .global StackTop

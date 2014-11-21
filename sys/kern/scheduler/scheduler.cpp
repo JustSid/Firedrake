@@ -23,6 +23,7 @@
 #include <libcpp/new.h>
 #include <machine/interrupts/interrupts.h>
 #include <machine/clock/clock.h>
+#include <personality/personality.h>
 #include <kern/panic.h>
 #include "scheduler.h"
 
@@ -35,7 +36,7 @@ namespace Core
 {
 	void KernelTask()
 	{
-		Sys::FinishBootstrapping();
+		Sys::Personality::GetPersonality()->FinishBootstrapping();
 
 		while(1)
 		{}

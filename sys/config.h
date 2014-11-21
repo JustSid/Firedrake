@@ -20,28 +20,48 @@
 #define _CONFIG_H_
 
 #ifndef CONFIG_RELEASE
-#define CONFIG_RELEASE 0
+	#define CONFIG_RELEASE 0
 #endif
 
 #ifndef CONFIG_STRICT
-#define CONFIG_STRICT 1
+	#define CONFIG_STRICT 1
 #endif
-
 
 #ifndef CONFIG_MAX_CPUS
-#define CONFIG_MAX_CPUS 32
-#endif
-
-#ifndef CONFIG_MAX_IOAPICS
-#define CONFIG_MAX_IOAPICS 8
-#endif
-
-#ifndef CONFIG_MAX_INTERRUPT_OVERRIDES
-#define CONFIG_MAX_INTERRUPT_OVERRIDES 32
+	#define CONFIG_MAX_CPUS 32
 #endif
 
 #ifndef CONFIG_MAX_FILES
-#define CONFIG_MAX_FILES 256
+	#define CONFIG_MAX_FILES 256
+#endif
+
+#define BOOTLOADER_MULTIBOOT 1
+#define BOOTLOADER_DASUBOOT  2
+
+
+#define PERSONALITY_PC 1
+
+#if PERSONALITY == PERSONALITY_PC
+	
+	/**
+	 * x86 PC with BIOS
+	 **/
+
+	#define PERSONALITY_HEADER "pc/pcpersonality.h"
+	#define PERSONALITY_CLASS Sys::PCPersonality
+	#define PERSONALITY_ENTRY SysInit_i686
+	#define PERSONALITY_BOOTLOADER BOOTLOADER_MULTIBOOT
+
+	#ifndef CONFIG_MAX_IOAPICS
+		#define CONFIG_MAX_IOAPICS 8
+	#endif
+
+	#ifndef CONFIG_MAX_INTERRUPT_OVERRIDES
+		#define CONFIG_MAX_INTERRUPT_OVERRIDES 32
+	#endif
+
+#else
+	#error "No or unknown personality specified!"
 #endif
 
 #endif /* _CONFIG_H_ */

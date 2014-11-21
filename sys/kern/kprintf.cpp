@@ -20,18 +20,58 @@
 #include <libc/stdio.h>
 #include <libc/stdarg.h>
 #include <libc/stdint.h>
-#include <video/video.h>
+#include <libc/string.h>
+
+#include "kprintf.h"
+
+#define kMaxOutputHandler 8
+
+namespace Sys
+{
+	static OutputHandler __outHandler[kMaxOutputHandler];
+	static size_t __outHandlerCount = 0;
+
+	void AddOutputHandler(OutputHandler handler)
+	{
+		if(__outHandlerCount == kMaxOutputHandler)
+			return;
+
+		__outHandler[__outHandlerCount ++] = handler;
+	}
+	void RemoveOutputHandler(OutputHandler handler)
+	{
+		for(size_t i = 0; i < __outHandlerCount; i ++)
+		{
+			if(__outHandler[i] == handler)
+			{
+				for(size_t j = i; j < __outHandlerCount - 1; j ++)
+					__outHandler[j] = __outHandler[j + 1];
+
+				__outHandlerCount --;
+				return;
+			}
+		}
+	}
+}
 
 void kprintf(const char *format, ...)
 {
+	if(__expect_false(Sys::__outHandlerCount == 0))
+		return;
+
 	va_list args;
 	va_start(args, format);
 
 	char buffer[512];
 	vsnprintf(buffer, 512, format, args);
 
-	vd::video_device *device = vd::get_active_device();
-	device->write_string(buffer);
+	size_t length = strlen(buffer);
+
+	for(size_t i = 0; i < Sys::__outHandlerCount; i ++)
+	{
+		if(Sys::__outHandler[i])
+			Sys::__outHandler[i](buffer, length);
+	}
 
 	va_end(args);
 }
