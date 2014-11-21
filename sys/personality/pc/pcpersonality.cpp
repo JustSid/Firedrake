@@ -21,8 +21,6 @@
 #if PERSONALITY == PERSONALITY_PC
 
 #include <prefix.h>
-#include <bootstrap/multiboot.h>
-#include <bootstrap/boot.h>
 #include <kern/kprintf.h>
 #include <kern/panic.h>
 #include <kern/kern_return.h>
@@ -38,11 +36,6 @@
 #include <kern/scheduler/scheduler.h>
 #include <kern/syscall/syscall.h>
 #include <vfs/vfs.h>
-
-namespace Sys
-{
-	Sys::MultibootHeader *bootInfo = nullptr;
-}
 
 #define COM_PORT 0x3f8
 
@@ -88,7 +81,7 @@ namespace Sys
 	void PCPersonality::FinishBootstrapping()
 	{
 		Init("syscalls", Core::SyscallInit);
-		Init("vfs", VFS::Init, bootInfo);
+		Init("vfs", VFS::Init);
 
 		kprintf("\n\n");
 	}
@@ -103,8 +96,8 @@ namespace Sys
 		// Run the low level initialization process
 		// Because stack is really limited, a lot of the work should be done in FinishBootstrapping() instead
 		Init("cpu", Sys::CPUInit);
-		Init("physical memory", Sys::PMInit, bootInfo);
-		Init("virtual memory", Sys::VMInit, bootInfo);
+		Init("physical memory", Sys::PMInit);
+		Init("virtual memory", Sys::VMInit);
 		Init("heap", Sys::HeapInit);
 		Init("interrupts", Sys::InterruptsInit);
 		Init("clock", Sys::ClockInit);
@@ -116,15 +109,6 @@ namespace Sys
 		// This means that whatever bootstrapping you want to do, MUST be done before this call
 		APIC::BroadcastIPI(0x3a, true);
 	}
-}
-
-extern "C" void SysInit_i686(Sys::MultibootHeader *info) __attribute__ ((noreturn));
-extern "C" void SysInit() __attribute__ ((noreturn));
-
-void SysInit_i686(Sys::MultibootHeader *info)
-{
-	Sys::bootInfo = info;
-	Sys::Bootstrap();
 }
 
 #endif /* PERSONALITY == PERSONALITY_PC */

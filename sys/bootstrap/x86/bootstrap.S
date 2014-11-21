@@ -1,5 +1,5 @@
 //
-//  boot.h
+//  bootstrap.S
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,15 +16,38 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _BOOT_H_
-#define _BOOT_H_
+#include <libc/sys/asm.h>
 
-namespace Sys
-{
-	// Platform agnostic bootstrap method
-	// Sets up the Personality of the system
-	
-	void Bootstrap() __attribute__ ((noreturn));
-}
+SECTION(".text.boot")
 
-#endif
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
+ALIGN(4)
+	.int 0x1badb002
+	.int 0x0
+	.int (-0x1badb002)
+#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
+
+// Entry point
+ENTRY(_start)
+	movl $StackTop, %esp
+
+	// Push an empty stack frame
+	pushl $0
+	pushl $0
+
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
+	pushl %ebx
+	call SysBoot_Multiboot
+#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
+
+	jmp .
+
+// Stack
+SECTION(".bss")
+
+.global StackBottom
+.global StackTop
+
+StackBottom:
+.space 8192
+StackTop:

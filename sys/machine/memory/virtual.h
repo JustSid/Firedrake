@@ -23,7 +23,6 @@
 #include <libcpp/bitfield.h>
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
-#include <bootstrap/multiboot.h>
 
 #define VM_PAGE_SHIFT 12
 #define VM_DIRECTORY_SHIFT 22
@@ -102,7 +101,7 @@ namespace Sys
 		};
 	}
 
-	kern_return_t VMInit(MultibootHeader *info);
+	kern_return_t VMInit();
 }
 
 #endif /* _VIRTUAL_H_ */

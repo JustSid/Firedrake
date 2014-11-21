@@ -30,6 +30,10 @@
 
 #include <vfs/ffs/ffs_descriptor.h>
 
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
+#include <bootstrap/multiboot.h>
+#endif
+
 namespace VFS
 {
 	static spinlock_t _descriptorLock = SPINLOCK_INIT;
@@ -280,11 +284,8 @@ namespace VFS
 	{}
 
 
-	kern_return_t LoadInitrdModule(Sys::MultibootModule *module)
+	kern_return_t LoadInitrdModule(uint8_t *buffer, uint8_t *end)
 	{
-		uint8_t *buffer = reinterpret_cast<uint8_t *>(module->start);
-		uint8_t *end    = reinterpret_cast<uint8_t *>(module->end);
-
 		Context *context = Context::GetActiveContext();
 
 		kprintf("loading initrd (%u bytes)... ", end - buffer);
@@ -345,7 +346,7 @@ namespace VFS
 		return KERN_SUCCESS;
 	}
 
-	kern_return_t Init(Sys::MultibootHeader *info)
+	kern_return_t Init()
 	{
 		void *buffer = kalloc(sizeof(std::vector<Descriptor *>));
 		if(!buffer)
@@ -385,15 +386,19 @@ namespace VFS
 			return result;
 
 
-		// Find the initrd module
-		Sys::MultibootModule *module = info->modules;
 		bool didLoadInitrd = false;
 
-		for(size_t i = 0; i < info->modulesCount; i ++)
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
+		Sys::MultibootModule *module = Sys::bootInfo->modules;
+
+		for(size_t i = 0; i < Sys::bootInfo->modulesCount; i ++)
 		{
 			if(strcmp((char *)module->name, "initrd") == 0)
 			{
-				result = LoadInitrdModule(module);
+				uint8_t *buffer = reinterpret_cast<uint8_t *>(module->start);
+				uint8_t *end    = reinterpret_cast<uint8_t *>(module->end);
+
+				result = LoadInitrdModule(buffer, end);
 
 				if(result != KERN_SUCCESS)
 					return result;
@@ -404,6 +409,7 @@ namespace VFS
 
 			module = module->GetNext();
 		}
+#endif
 
 		if(!didLoadInitrd)
 			kprintf("Couldn't find initrd");

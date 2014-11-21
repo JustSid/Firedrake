@@ -23,6 +23,8 @@
 #include <libc/stdint.h>
 #include <libcpp/bitfield.h>
 
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
+
 // http://www.gnu.org/software/grub/manual/multiboot/multiboot.html
 
 namespace Sys
@@ -110,6 +112,8 @@ namespace Sys
 	} __attribute__((packed));
 
 	static_assert(sizeof(MultibootHeader) == 72, "MultibootHeader must be 72 bytes exactly!");
-}
 
-#endif
+	extern MultibootHeader *bootInfo;
+}
+#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
+#endif /* _MULTIBOOT_H_ */

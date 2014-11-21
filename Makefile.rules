@@ -8,8 +8,9 @@ CONFIG_OPTIMIZATION = -O0
 CONFIG_TARGET = -m32 -mno-sse -mno-mmx
 
 CONFIG_BUILD_LIBS =
-CONFIG_EXCLUDE_FOLDERS = ! -path "*/x86/*"
+CONFIG_EXCLUDE_FOLDERS = ! -path "*/arm/*"
 
 LIBGCC = -L "/home/justsid/opt/cross/lib/gcc/arm-none-eabi/4.8.3/" -lgcc
 
 PERSONALITY = 1
+BOOTLOADER = 1

@@ -16,13 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <bootstrap/multiboot.h>
 #include <libc/string.h>
 #include <libcpp/algorithm.h>
 #include <libc/sys/spinlock.h>
 #include <kern/kprintf.h>
 #include "physical.h"
 #include "virtual.h"
+
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
+#include <bootstrap/multiboot.h>
+#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 extern "C" uintptr_t kernel_begin;
 extern "C" uintptr_t kernel_end;
@@ -163,7 +166,7 @@ namespace Sys
 		}
 
 
-
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 		void MarkMultibootModule(MultibootModule *module)
 		{
 			MarkUsed((uintptr_t)module->start);
@@ -192,10 +195,14 @@ namespace Sys
 			}
 		}
 	}
+#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
-	kern_return_t PMInit(MultibootHeader *info)
+	kern_return_t PMInit()
 	{
 		memset(PM::_heapBitmap, 0, PM::_heapWidth * sizeof(uint32_t));
+
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
+		MultibootHeader *info = bootInfo;
 
 		// Mark all free pages
 		if(!(info->flags & MultibootHeader::Flags::Mmap))
@@ -224,6 +231,7 @@ namespace Sys
 
 			mmap = mmap->GetNext();
 		}
+#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 		
 		// Mark the kernel as allocated
@@ -234,8 +242,9 @@ namespace Sys
 		// and it's up to grabs by the kernel
 		PM::MarkRange(0x0, 0x100000);
 
-		// Mark the multiboot module
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 		PM::MarkMultiboot(info);
+#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 		return KERN_SUCCESS;	
 	}

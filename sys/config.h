@@ -35,11 +35,17 @@
 	#define CONFIG_MAX_FILES 256
 #endif
 
+/**
+ * Symbolic names for personality and bootloaders
+ **/
 #define BOOTLOADER_MULTIBOOT 1
 #define BOOTLOADER_DASUBOOT  2
 
-
 #define PERSONALITY_PC 1
+
+/**
+ * Personality dependend settings
+ **/
 
 #if PERSONALITY == PERSONALITY_PC
 	
@@ -47,10 +53,8 @@
 	 * x86 PC with BIOS
 	 **/
 
-	#define PERSONALITY_HEADER "pc/pcpersonality.h"
+	#define PERSONALITY_HEADER <personality/pc/pcpersonality.h>
 	#define PERSONALITY_CLASS Sys::PCPersonality
-	#define PERSONALITY_ENTRY SysInit_i686
-	#define PERSONALITY_BOOTLOADER BOOTLOADER_MULTIBOOT
 
 	#ifndef CONFIG_MAX_IOAPICS
 		#define CONFIG_MAX_IOAPICS 8

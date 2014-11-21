@@ -20,7 +20,6 @@
 #include <libc/stddef.h>
 #include <libc/stdint.h>
 #include <kern/kern_return.h>
-#include <bootstrap/multiboot.h>
 
 #ifndef _PHYSICAL_H_
 #define _PHYSICAL_H_
@@ -37,7 +36,7 @@ namespace Sys
 		kern_return_t Free(uintptr_t page, size_t pages);
 	}
 
-	kern_return_t PMInit(MultibootHeader *info);
+	kern_return_t PMInit();
 }
 
 #endif /* _PHYSICAL_H_ */

@@ -30,3 +30,22 @@ namespace Sys
 			CPUHalt();
 	}
 }
+
+#if BOOTLOADER == BOOTLOADER_MULTIBOOT
+
+#include "multiboot.h"
+
+namespace Sys
+{
+	MultibootHeader *bootInfo = nullptr;
+}
+
+extern "C" void SysBoot_Multiboot(Sys::MultibootHeader *info) __attribute__ ((noreturn));
+
+void SysBoot_Multiboot(Sys::MultibootHeader *info)
+{
+	Sys::bootInfo = info;
+	Sys::Bootstrap();
+}
+
+#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */

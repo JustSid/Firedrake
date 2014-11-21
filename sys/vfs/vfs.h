@@ -20,7 +20,6 @@
 #define _VFS_H_
 
 #include <prefix.h>
-#include <bootstrap/multiboot.h>
 #include <libc/stddef.h>
 #include <libc/stdint.h>
 #include <libc/sys/fcntl.h>
@@ -48,7 +47,7 @@ namespace VFS
 
 	kern_return_t ReadDir(Context *context, int fd, dirent *entry, size_t count, off_t &read);
 
-	kern_return_t Init(Sys::MultibootHeader *info);
+	kern_return_t Init();
 }
 
 #endif /* _VFS_H_ */
