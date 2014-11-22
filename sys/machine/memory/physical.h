@@ -31,12 +31,12 @@ namespace Sys
 		constexpr uintptr_t kLowerLimit  = 0x1000;
 		constexpr uintptr_t kUpperLimit  = 0xfffff000;
 
-		kern_return_t Alloc(uintptr_t &address, size_t pages);
-		kern_return_t AllocLimit(uintptr_t &address, size_t pages, uintptr_t lower, uintptr_t upper);
-		kern_return_t Free(uintptr_t page, size_t pages);
+		KernReturn<uintptr_t> Alloc(size_t pages);
+		KernReturn<uintptr_t> AllocLimit(size_t pages, uintptr_t lower, uintptr_t upper);
+		KernReturn<void> Free(uintptr_t page, size_t pages);
 	}
 
-	kern_return_t PMInit();
+	KernReturn<void> PMInit();
 }
 
 #endif /* _PHYSICAL_H_ */

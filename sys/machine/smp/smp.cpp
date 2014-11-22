@@ -85,9 +85,7 @@ namespace Sys
 			spinlock_lock(&_rendezvousLock);
 
 			// Bootstrap Interrupts
-			kern_return_t result = InterruptsInitAP();
-
-			if(result != KERN_SUCCESS)
+			if(!InterruptsInitAP().IsValid())
 				RendezvousFail();
 			
 			CPU *cpu = CPU::GetCurrentCPU();
@@ -181,7 +179,7 @@ namespace Sys
 		}
 	}
 
-	kern_return_t SMPInit()
+	KernReturn<void> SMPInit()
 	{
 		// Get space to set up the protected mode GDT and the bootstrapping code
 		uint8_t *bootstrapBegin = reinterpret_cast<uint8_t *>(&smp_bootstrap_begin);
@@ -190,17 +188,16 @@ namespace Sys
 		size_t size  = (bootstrapEnd - bootstrapBegin) + sizeof(SMP::entryBitmap);
 		size_t pages = VM_PAGE_COUNT(size) + 1;
 
-		kern_return_t result;
-		vm_address_t vaddress;
+		KernReturn<vm_address_t> vaddress;
 
-		if((result = VM::Directory::GetKernelDirectory()->Alloc(vaddress, SMP_PHYSICAL_CODE, pages, kVMFlagsKernel)) != KERN_SUCCESS)
+		if((vaddress = VM::Directory::GetKernelDirectory()->Alloc(SMP_PHYSICAL_CODE, pages, kVMFlagsKernel)).IsValid() == false)
 		{
 			kprintf("failed to allocate virtual memory");
-			return result;
+			return vaddress.GetError();
 		}
 
 		// Copy the bootstrapping code and set up the GDT
-		uint8_t *buffer = reinterpret_cast<uint8_t *>(vaddress);	
+		uint8_t *buffer = reinterpret_cast<uint8_t *>(vaddress.Get());	
 		SMP::ForgeGDT(buffer + VM_PAGE_SIZE);
 
 		memcpy(buffer, SMP::entryBitmap, sizeof(SMP::entryBitmap));
@@ -223,7 +220,7 @@ namespace Sys
 			kprintf("%c", (flags & CPU::Flags::Running) ? (flags & CPU::Flags::Bootstrap) ? 'B' : 'R' : 'T');
 		}
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }
 

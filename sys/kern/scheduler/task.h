@@ -57,14 +57,14 @@ namespace Core
 		Task(const char *path);
 		~Task();
 
-		kern_return_t AttachThread(Thread **outthread, Thread::Entry entry, size_t stack);
+		KernReturn<Thread *> AttachThread( Thread::Entry entry, size_t stack);
 
 		void Lock();
 		void Unlock();
 
 		pid_t GetPid() const { return _pid; }
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
-		kern_return_t GetResult() const { return _result; }
+		uint32_t GetResult() const { return _result; }
 
 		// VFS
 		VFS::Context *GetVFSContext() const { return _context; }
@@ -81,7 +81,7 @@ namespace Core
 		std::atomic<int32_t> _tidCounter;
 		Sys::VM::Directory *_directory;
 
-		kern_return_t _result;
+		uint32_t _result;
 		Sys::Executable *_executable;
 
 		cpp::queue<Thread> _threads;

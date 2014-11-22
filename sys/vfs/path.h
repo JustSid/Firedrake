@@ -39,7 +39,7 @@ namespace VFS
 		size_t GetElementsLeft() const { return _elementsLeft; }
 		size_t GetTotalElements() const { return _totalElements; }
 
-		kern_return_t ResolveElement();
+		KernReturn<Node *> ResolveElement();
 
 	private:
 		char *_path;

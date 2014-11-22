@@ -188,7 +188,7 @@ namespace Sys
 		uint32_t GetAddress() const { return _address; }
 		uint32_t GetInterruptBase() const { return _interruptBase; }
 
-		static kern_return_t MapIOAPICs();
+		static KernReturn<void> MapIOAPICs();
 
 	private:
 		IOAPIC(uint8_t id, uint32_t address, uint32_t base);
@@ -199,8 +199,8 @@ namespace Sys
 		uint32_t _interruptBase;
 	};
 
-	kern_return_t APICInit();
-	kern_return_t APICInitCPU();
+	KernReturn<void> APICInit();
+	KernReturn<void> APICInitCPU();
 }
 
 #endif /* _APIC_H_ */

@@ -95,49 +95,49 @@ namespace VFS
 		}
 	}
 
-	kern_return_t Directory::AttachNode(Node *node)
+	KernReturn<void> Directory::AttachNode(Node *node)
 	{
 		if(node->_parent)
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		if(_children.find(node->GetName()) != _children.end())
-			return KERN_RESOURCE_EXISTS;
+			return Error(KERN_RESOURCE_EXISTS);
 
 		_children.insert(node->GetName(), node);
 		node->Retain();
 		
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
-	kern_return_t Directory::RemoveNode(Node *node)
+	KernReturn<void> Directory::RemoveNode(Node *node)
 	{
 		if(node->_parent != this)
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		auto iterator = _children.find(node->GetName());
 
 		if(iterator == _children.end())
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		_children.erase(iterator);
 		node->Release();
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
-	kern_return_t Directory::RenameNode(Node *node, const Filename &name)
+	KernReturn<void> Directory::RenameNode(Node *node, const Filename &name)
 	{
 		if(node->_parent != this)
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		auto iterator = _children.find(node->GetName());
 
 		if(iterator == _children.end())
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		_children.erase(iterator);
 		_children.insert(name, node);
 
 		node->SetName(name);
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 	Node *Directory::FindNode(const Filename &name) const
 	{

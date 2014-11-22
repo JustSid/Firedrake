@@ -76,32 +76,32 @@ namespace Sys
 			Directory(uint32_t *directory); // Shouldn't be called directly! Use Create() instead!
 			~Directory();
 
-			static kern_return_t Create(Directory *&directory);
+			static KernReturn<Directory *> Create();
 			static Directory *GetKernelDirectory();
 
-			kern_return_t MapPage(uintptr_t physical, vm_address_t virtAddress, Flags flags);
-			kern_return_t MapPageRange(uintptr_t physical, vm_address_t virtAddress, size_t pages, Flags flags);
+			KernReturn<void> MapPage(uintptr_t physical, vm_address_t virtAddress, Flags flags);
+			KernReturn<void> MapPageRange(uintptr_t physical, vm_address_t virtAddress, size_t pages, Flags flags);
 
-			kern_return_t ResolveAddress(uintptr_t &resolved, vm_address_t address);
+			KernReturn<uintptr_t> ResolveAddress(vm_address_t address);
 
-			kern_return_t Alloc(vm_address_t &address, uintptr_t physical, size_t pages, Flags flags);
-			kern_return_t AllocLimit(vm_address_t &address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags);
-			kern_return_t AllocTwoSidedLimit(vm_address_t &address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags);
-			kern_return_t Free(vm_address_t address, size_t pages);
+			KernReturn<vm_address_t> Alloc(uintptr_t physical, size_t pages, Flags flags);
+			KernReturn<vm_address_t> AllocLimit(uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags);
+			KernReturn<vm_address_t> AllocTwoSidedLimit(uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags);
+			KernReturn<void> Free(vm_address_t address, size_t pages);
 
-			kern_return_t __Alloc_NoLockPrivate(vm_address_t &address, uintptr_t physical, size_t pages, Flags flags);
+			KernReturn<vm_address_t> __Alloc_NoLockPrivate(uintptr_t physical, size_t pages, Flags flags);
 
 			uint32_t *GetPhysicalDirectory() const { return _directory; }
 
 		private:
-			kern_return_t GetPageTableEntry(uint32_t *pageDirectory, uint32_t &entry, vm_address_t vaddress);
+			KernReturn<uint32_t> GetPageTableEntry(uint32_t *pageDirectory, vm_address_t vaddress);
 
 			uint32_t *_directory;
 			spinlock_t _lock;
 		};
 	}
 
-	kern_return_t VMInit();
+	KernReturn<void> VMInit();
 }
 
 #endif /* _VIRTUAL_H_ */

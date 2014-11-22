@@ -26,7 +26,7 @@
 
 namespace Sys
 {
-	kern_return_t SMPInit();
+	KernReturn<void> SMPInit();
 }
 
 #endif /* _SMP_H_ */

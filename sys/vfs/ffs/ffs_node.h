@@ -33,11 +33,11 @@ namespace FFS
 		Node(const char *name, VFS::Instance *instance, uint64_t id);
 		~Node();
 
-		kern_return_t WriteData(VFS::Context *context, off_t offset, const void *data, size_t size, size_t &written);
-		kern_return_t ReadData(VFS::Context *context, off_t offset, void *data, size_t size, size_t &read);
+		KernReturn<size_t> WriteData(VFS::Context *context, off_t offset, const void *data, size_t size);
+		KernReturn<size_t> ReadData(VFS::Context *context, off_t offset, void *data, size_t size);
 
 	private:
-		kern_return_t AllocateMemory(size_t minimumSize);
+		KernReturn<void> AllocateMemory(size_t minimumSize);
 
 		char *_data;
 		off_t _size;

@@ -61,54 +61,51 @@ namespace Core
 	{
 		memset(_files, 0, CONFIG_MAX_FILES * sizeof(VFS::File *));
 
-		if((_result = Sys::VM::Directory::Create(_directory)) != KERN_SUCCESS)
-		{
-			_directory = nullptr;
-			return;
-		}
+		KernReturn<Sys::VM::Directory *> directory;
 
+		if((directory = Sys::VM::Directory::Create()).IsValid() == false)
+			return;
+		
+		_directory = directory;
 		_executable = new Sys::Executable(_directory);
 
 		if((_result = _executable->GetState()) != KERN_SUCCESS)
 			return;
 
-		_result = AttachThread(nullptr, static_cast<Thread::Entry>(_executable->GetEntry()), 0);
+		KernReturn<Thread *> thread = AttachThread(static_cast<Thread::Entry>(_executable->GetEntry()), 0);
+		if(!thread.IsValid())
+			_result = thread.GetError().GetCode();
 	}
 
 	Task::~Task()
 	{
-		if(_directory && _directory != Sys::VM::Directory::GetKernelDirectory())
+		if(_directory != Sys::VM::Directory::GetKernelDirectory())
 			delete _directory;
 
-		if(_executable)
-			delete _executable;
+		delete _executable;
 	}
 
 
-	kern_return_t Task::AttachThread(Thread **outthread, Thread::Entry entry, size_t stack)
+	KernReturn<Thread *> Task::AttachThread(Thread::Entry entry, size_t stack)
 	{
 		spinlock_lock(&_lock);
 
-		Thread *thread;
-		kern_return_t result = Thread::Create(thread, this, entry, stack);
+		KernReturn<Thread *> thread = Thread::Create(this, entry, stack);
 
-		if(result != KERN_SUCCESS)
+		if(!thread.IsValid())
 		{
 			spinlock_unlock(&_lock);
-			return result;
+			return thread;
 		}
 
 		if(!_mainThread)
 			_mainThread = thread;
 
-		if(outthread)
-			*outthread = thread;
-
 		_threads.insert_back(thread->_taskEntry);
 		spinlock_unlock(&_lock);
 		
 		Scheduler::AddThread(thread);
-		return KERN_SUCCESS;
+		return thread;
 	}
 
 	void Task::RemoveThread(Thread *thread)

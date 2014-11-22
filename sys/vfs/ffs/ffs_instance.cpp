@@ -26,112 +26,116 @@ namespace FFS
 {
 	Instance::Instance()
 	{
-		VFS::Node *node;
-		kern_return_t result = CreateDirectory(node, nullptr, nullptr, "");
+		KernReturn<VFS::Node *> node = CreateDirectory(nullptr, nullptr, "");
 
-		if(result == KERN_SUCCESS)
+		if(node.IsValid())
 		{
 			Initialize(node);
 			node->Release();
 		}
 	}
 
-	kern_return_t Instance::CreateFile(VFS::Node *&result, __unused VFS::Context *context, VFS::Node *parent, const char *name)
+	KernReturn<VFS::Node *> Instance::CreateFile(__unused VFS::Context *context, VFS::Node *parent, const char *name)
 	{
-		result = new FFS::Node(name, this, GetFreeID());
+		VFS::Node *node = new FFS::Node(name, this, GetFreeID());
 
-		if(result && parent)
+		if(node && parent)
 		{
 			VFS::Directory *directory = static_cast<VFS::Directory *>(parent);
 			directory->Lock();
-			kern_return_t res = directory->AttachNode(result);
+			KernReturn<void> result = directory->AttachNode(node);
 			directory->Unlock();
 
-			if(res != KERN_SUCCESS)
+			if(!result.IsValid())
 			{
-				result->Release();
-				return res;
+				node->Release();
+				return result.GetError();
 			}
 		}
 
-		return result ? KERN_SUCCESS : KERN_NO_MEMORY;
+		if(!node)
+			return Error(KERN_NO_MEMORY);
+
+		return node;
 	}
 
-	kern_return_t Instance::CreateDirectory(VFS::Node *&result, __unused VFS::Context *context, VFS::Node *parent, const char *name)
+	KernReturn<VFS::Node *> Instance::CreateDirectory(__unused VFS::Context *context, VFS::Node *parent, const char *name)
 	{
-		result = new VFS::Directory(name, this, GetFreeID());
+		VFS::Node *node = new VFS::Directory(name, this, GetFreeID());
 
-		if(result && parent)
+		if(node && parent)
 		{
 			VFS::Directory *directory = static_cast<VFS::Directory *>(parent);
 			directory->Lock();
-			kern_return_t res = directory->AttachNode(result);
+			KernReturn<void> result = directory->AttachNode(node);
 			directory->Unlock();
 
-			if(res != KERN_SUCCESS)
+			if(!result.IsValid())
 			{
-				result->Release();
-				return res;
+				node->Release();
+				return result.GetError();
 			}
 		}
 
-		return result ? KERN_SUCCESS : KERN_NO_MEMORY;
+		if(!node)
+			return Error(KERN_NO_MEMORY);
+
+		return node;
 	}
-	kern_return_t Instance::DeleteNode(__unused VFS::Context *context, __unused VFS::Node *node)
+	KernReturn<void> Instance::DeleteNode(__unused VFS::Context *context, __unused VFS::Node *node)
 	{
-		return KERN_FAILURE;
+		return Error(KERN_FAILURE);
 	}
 
 
 
-	kern_return_t Instance::LookUpNode(VFS::Node *&result, __unused VFS::Context *context, uint64_t id)
+	KernReturn<VFS::Node *> Instance::LookUpNode(__unused VFS::Context *context, uint64_t id)
 	{
 		auto iterator = _nodes.find(static_cast<uint32_t>(id));
 		if(iterator == _nodes.end())
-		{
-			result = nullptr;
-			return KERN_RESOURCES_MISSING;
-		}
+			return Error(KERN_RESOURCES_MISSING);
 
-		result = *iterator;
-		return KERN_SUCCESS;
+		return *iterator;
 	}
-	kern_return_t Instance::LookUpNode(VFS::Node *&result, __unused VFS::Context *context, VFS::Node *node, const char *name)
+	KernReturn<VFS::Node *> Instance::LookUpNode(__unused VFS::Context *context, VFS::Node *tnode, const char *name)
 	{
-		VFS::Directory *directory = static_cast<VFS::Directory *>(node);
+		VFS::Directory *directory = static_cast<VFS::Directory *>(tnode);
 
 		directory->Lock();
-		result = directory->FindNode(name);
+		VFS::Node *node = directory->FindNode(name);
 		directory->Unlock();
 
-		return result ? KERN_SUCCESS : KERN_RESOURCES_MISSING;
+		if(!node)
+			return Error(KERN_RESOURCES_MISSING);
+
+		return node;
 	}
 
 
-	kern_return_t Instance::OpenFile(VFS::File *&result, __unused VFS::Context *context, VFS::Node *node, int flags)
+	KernReturn<VFS::File *> Instance::OpenFile(__unused VFS::Context *context, VFS::Node *node, int flags)
 	{
 		if(node->IsFile())
 		{
-			result = new VFS::File(node, flags);
-			if(!result)
-				return KERN_NO_MEMORY;
+			VFS::File *file = new VFS::File(node, flags);
+			if(!file)
+				return Error(KERN_NO_MEMORY);
 
 			if(flags & O_TRUNC)
 				node->SetSize(0);
 
-			return KERN_SUCCESS;
+			return file;
 		}
 
 		if(node->IsDirectory())
 		{
-			result = new VFS::FileDirectory(node, flags);
-			if(!result)
-				return KERN_NO_MEMORY;
+			VFS::File *file = new VFS::FileDirectory(node, flags);
+			if(!file)
+				return Error(KERN_NO_MEMORY);
 			
-			return KERN_SUCCESS;
+			return file;
 		}
 
-		return KERN_FAILURE;
+		return Error(KERN_FAILURE);
 	}
 
 	void Instance::CloseFile(__unused VFS::Context *context, VFS::File *file)
@@ -140,35 +144,35 @@ namespace FFS
 	}
 
 
-	kern_return_t Instance::FileRead(size_t &read, VFS::Context *context, VFS::File *file, void *data, size_t size)
+	KernReturn<size_t> Instance::FileRead(VFS::Context *context, VFS::File *file, void *data, size_t size)
 	{
 		FFS::Node *node = static_cast<FFS::Node *>(file->GetNode());
 		node->Lock();
 
-		kern_return_t result = node->ReadData(context, file->GetOffset(), data, size, read);
+		KernReturn<size_t> result = node->ReadData(context, file->GetOffset(), data, size);
 
-		if(result == KERN_SUCCESS)
-			file->SetOffset(file->GetOffset() + read);
+		if(result.IsValid())
+			file->SetOffset(file->GetOffset() + result.Get());
 
 		node->Unlock();
 
 		return result;
 	}
-	kern_return_t Instance::FileWrite(size_t &written, VFS::Context *context, VFS::File *file, const void *data, size_t size)
+	KernReturn<size_t> Instance::FileWrite(VFS::Context *context, VFS::File *file, const void *data, size_t size)
 	{
 		FFS::Node *node = static_cast<FFS::Node *>(file->GetNode());
 		node->Lock();
 
-		kern_return_t result = node->WriteData(context, file->GetOffset(), data, size, written);
+		KernReturn<size_t> result = node->WriteData(context, file->GetOffset(), data, size);
 
-		if(result == KERN_SUCCESS)
-			file->SetOffset(file->GetOffset() + written);
+		if(result.IsValid())
+			file->SetOffset(file->GetOffset() + result.Get());
 
 		node->Unlock();
 
 		return result;
 	}
-	kern_return_t Instance::FileSeek(off_t &moved, __unused VFS::Context *context, VFS::File *file, off_t offset, int whence)
+	KernReturn<off_t> Instance::FileSeek(__unused VFS::Context *context, VFS::File *file, off_t offset, int whence)
 	{
 		FFS::Node *node = static_cast<FFS::Node *>(file->GetNode());
 		node->Lock();
@@ -189,48 +193,46 @@ namespace FFS
 
 			default:
 				node->Unlock();
-				return KERN_INVALID_ARGUMENT;
+				return Error(KERN_INVALID_ARGUMENT);
 		}
 
 		if(toffset <= node->GetSize())
 		{
 			file->SetOffset(toffset);
-			moved = static_cast<off_t>(toffset);
-
 			node->Unlock();
-			return KERN_SUCCESS;
+			
+			return static_cast<off_t>(toffset);
 		}
 
 		node->Unlock();
-		return KERN_INVALID_ARGUMENT;
+		return Error(KERN_INVALID_ARGUMENT);
 	}
 
-	kern_return_t Instance::FileStat(stat *buf, __unused VFS::Context *context, VFS::Node *node)
+	KernReturn<void> Instance::FileStat(stat *buf, __unused VFS::Context *context, VFS::Node *node)
 	{	
 		node->FillStat(buf);
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
-	kern_return_t Instance::DirRead(off_t &read, dirent *entry, VFS::Context *context, VFS::File *file, size_t count)
+	KernReturn<off_t> Instance::DirRead(dirent *entry, VFS::Context *context, VFS::File *file, size_t count)
 	{
 		VFS::FileDirectory *directory = static_cast<VFS::FileDirectory *>(file);
 		FFS::Node *node = static_cast<FFS::Node *>(file->GetNode());
 		node->Lock();
 
 		const struct dirent *entries = directory->GetEntries() + directory->GetOffset();
-
 		size_t left = directory->GetCount() - directory->GetOffset();
 
 		count = std::min(left, count);
-		read  = 0;
+		size_t read  = 0;
 
 		if(count > 0)
 		{
-			kern_return_t result = context->CopyDataIn(entries, entry, count * sizeof(struct dirent));
-			if(result != KERN_SUCCESS)
+			KernReturn<void> result = context->CopyDataIn(entries, entry, count * sizeof(struct dirent));
+			if(!result.IsValid())
 			{
 				node->Unlock();
-				return result;
+				return result.GetError();
 			}
 
 			directory->SetOffset(directory->GetOffset() + count);
@@ -238,7 +240,6 @@ namespace FFS
 		}
 
 		node->Unlock();
-
-		return KERN_SUCCESS;
+		return read;
 	}
 }

@@ -69,13 +69,13 @@ namespace Core
 		cpp::queue<Thread>::entry &GetSchedulerEntry() { return _schedulerEntry; }
 
 	private:
-		static kern_return_t Create(Thread *&result, Task *task, Entry entry, size_t stackPages);
+		static KernReturn<Thread *> Create(Task *task, Entry entry, size_t stackPages);
 		
 		Thread(Task *task, Entry entry, size_t stackPages);
 
-		kern_return_t Initialize();
-		kern_return_t InitializeForRing3();
-		kern_return_t InitializeForRing0();
+		KernReturn<void> Initialize();
+		KernReturn<void> InitializeForRing3();
+		KernReturn<void> InitializeForRing0();
 
 		Task *_task;
 		tid_t _tid;

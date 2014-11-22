@@ -40,10 +40,10 @@ namespace VFS
 	}
 
 
-	kern_return_t Context::SetCurrentDir(Node *directory)
+	KernReturn<void> Context::SetCurrentDir(Node *directory)
 	{
 		if(!directory)
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		spinlock_lock(&_lock);
 
@@ -53,12 +53,12 @@ namespace VFS
 
 		spinlock_unlock(&_lock);
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
-	kern_return_t Context::SetRootDir(Node *directory)
+	KernReturn<void> Context::SetRootDir(Node *directory)
 	{
 		if(!directory)
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		spinlock_lock(&_lock);
 
@@ -68,7 +68,7 @@ namespace VFS
 
 		spinlock_unlock(&_lock);
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
 	Node *Context::GetCurrentDir()
@@ -95,16 +95,16 @@ namespace VFS
 	}
 
 
-	kern_return_t Context::CopyDataOut(const void *data, void *target, size_t length)
+	KernReturn<void> Context::CopyDataOut(const void *data, void *target, size_t length)
 	{
 		if(!data || !target || length == 0)
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		Sys::VM::Directory *kernelDir = Sys::VM::Directory::GetKernelDirectory();
 		if(_directory == kernelDir)
 		{
 			memcpy(target, data, length);
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 		else
 		{
@@ -114,34 +114,33 @@ namespace VFS
 			size_t pages  = VM_PAGE_COUNT(length);
 			size_t offset = temp - page; 
 
-			kern_return_t result;
-			uintptr_t physical;
+			KernReturn<uintptr_t> physical;
 
-			if((result = _directory->ResolveAddress(physical, page)) != KERN_SUCCESS)
-				return KERN_INVALID_ADDRESS;
+			if((physical = _directory->ResolveAddress(page)).IsValid() == false)
+				return physical.GetError();
 			
-			if((result = kernelDir->Alloc(temp, physical, pages, kVMFlagsKernel)) != KERN_SUCCESS)
-				return KERN_NO_MEMORY;
+			KernReturn<vm_address_t> mapping;
 
-			void *mapped = reinterpret_cast<void *>(temp + offset);
-			memcpy(target, mapped, length);
+			if((mapping = kernelDir->Alloc(physical, pages, kVMFlagsKernel)).IsValid() == false)
+				return mapping.GetError();
 
-			kernelDir->Free(temp, pages);
+			memcpy(target, reinterpret_cast<void *>(mapping + offset), length);
+			kernelDir->Free(mapping, pages);
 		}
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
-	kern_return_t Context::CopyDataIn(const void *data, void *target, size_t length)
+	KernReturn<void> Context::CopyDataIn(const void *data, void *target, size_t length)
 	{
 		if(!data || !target || length == 0)
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		Sys::VM::Directory *kernelDir = Sys::VM::Directory::GetKernelDirectory();
 		if(_directory == kernelDir)
 		{
 			memcpy(target, data, length);
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 		else
 		{
@@ -151,22 +150,21 @@ namespace VFS
 			size_t pages  = VM_PAGE_COUNT(length);
 			size_t offset = temp - page; 
 
-			kern_return_t result;
-			uintptr_t physical;
+			KernReturn<uintptr_t> physical;
 
-			if((result = _directory->ResolveAddress(physical, page)) != KERN_SUCCESS)
-				return KERN_INVALID_ADDRESS;
+			if((physical = _directory->ResolveAddress(page)).IsValid() == false)
+				return physical.GetError();
 			
-			if((result = kernelDir->Alloc(temp, physical, pages, kVMFlagsKernel)) != KERN_SUCCESS)
-				return KERN_NO_MEMORY;
+			KernReturn<vm_address_t> mapping;
 
-			void *mapped = reinterpret_cast<void *>(temp + offset);
-			memcpy(target, mapped, length);
+			if((mapping = kernelDir->Alloc(physical, pages, kVMFlagsKernel)).IsValid() == false)
+				return mapping.GetError();
 
-			kernelDir->Free(temp, pages);
+			memcpy(target, reinterpret_cast<void *>(mapping + offset), length);
+			kernelDir->Free(mapping, pages);
 		}
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
 
@@ -174,7 +172,7 @@ namespace VFS
 	Context *Context::GetKernelContext()
 	{
 		static Context *_kernelContext = nullptr;
-		if(!_kernelContext)
+		if(__expect_false(!_kernelContext))
 		{
 			Core::Task *task = Core::Scheduler::GetActiveTask();
 

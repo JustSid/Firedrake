@@ -56,7 +56,7 @@ namespace ACPI
 		return nullptr;
 	}
 
-	kern_return_t RSDT::ParseMADT() const
+	KernReturn<void> RSDT::ParseMADT() const
 	{
 		MADT *madt = FindEntry<MADT>("APIC");
 		bool hasBootstrapCPU = false;
@@ -97,7 +97,7 @@ namespace ACPI
 						Sys::IOAPIC *result = Sys::IOAPIC::RegisterIOAPIC(ioapic->ioapicID, ioapic->ioapicAddress, ioapic->interruptBase);
 
 						if(!result)
-							return KERN_RESOURCES_MISSING;
+							return Error(KERN_RESOURCES_MISSING);
 
 						break;
 					}
@@ -108,7 +108,7 @@ namespace ACPI
 						Sys::IOAPIC::InterruptOverride *result = Sys::IOAPIC::RegisterInterruptOverride(override->source, override->flags, override->globalSystemInterrupt);
 
 						if(!result)
-							return KERN_RESOURCES_MISSING;
+							return Error(KERN_RESOURCES_MISSING);
 
 						break;
 					}
@@ -117,10 +117,10 @@ namespace ACPI
 				entry = entry->GetNext();
 			}
 
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 
-		return KERN_FAILURE;
+		return Error(KERN_FAILURE);
 	}
 
 
@@ -181,23 +181,23 @@ namespace ACPI
 		return nullptr;
 	}
 
-	kern_return_t Init()
+	KernReturn<void> Init()
 	{
 		if(!FindRSDP())
 		{
 			kprintf("Couldn't find ACPI table");
-			return KERN_FAILURE;
+			return Error(KERN_FAILURE);
 		}
 
-		kern_return_t result;
+		KernReturn<void> result;
 		RSDT *rsdt = _rsdp->GetRSDT();
 
-		if((result = rsdt->ParseMADT()) != KERN_SUCCESS)
+		if((result = rsdt->ParseMADT()).IsValid() == false)
 		{
 			kprintf("Failed to parse MADT");
 			return result;
 		}
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }

@@ -38,27 +38,26 @@ namespace Sys
 	};
 	TrampolineMap *_map = nullptr;
 
-	kern_return_t TrampolineInit()
+	KernReturn<void> TrampolineInit()
 	{
 		assert(sizeof(TrampolineMap) <= IR_TRAMPOLINE_PAGES * VM_PAGE_SIZE);
 
-		kern_return_t result;
-		vm_address_t vaddress;
-		uintptr_t paddress;
+		KernReturn<vm_address_t> vaddress;
+		KernReturn<uintptr_t> paddress;
 
 		// Allocate space for the trampoline map
-		result = PM::Alloc(paddress, IR_TRAMPOLINE_PAGES);
-		if(result != KERN_SUCCESS)
+		paddress = PM::Alloc(IR_TRAMPOLINE_PAGES);
+		if(paddress.IsValid() == false)
 		{
 			kprintf("failed to allocate physical trampoline area");
-			return result;
+			return paddress.GetError();
 		}
 
-		result = VM::Directory::GetKernelDirectory()->AllocLimit(vaddress, paddress, IR_TRAMPOLINE_BEGIN, VM::kUpperLimit, IR_TRAMPOLINE_PAGES, kVMFlagsKernel);
-		if(result != KERN_SUCCESS || vaddress != IR_TRAMPOLINE_BEGIN)
+		vaddress = VM::Directory::GetKernelDirectory()->AllocLimit(paddress, IR_TRAMPOLINE_BEGIN, VM::kUpperLimit, IR_TRAMPOLINE_PAGES, kVMFlagsKernel);
+		if(!vaddress.IsValid() || vaddress != IR_TRAMPOLINE_BEGIN)
 		{
 			kprintf("failed to allocate trampoline area");
-			return result;
+			return vaddress.GetError();
 		}
 		
 		_map = reinterpret_cast<TrampolineMap *>(IR_TRAMPOLINE_BEGIN);
@@ -74,7 +73,7 @@ namespace Sys
 		return TrampolineInitCPU();
 	}
 
-	kern_return_t TrampolineInitCPU()
+	KernReturn<void> TrampolineInitCPU()
 	{
 		CPU *cpu = CPU::GetCurrentCPU();
 		Trampoline *trampoline = &_map->trampoline[cpu->GetID()];
@@ -93,6 +92,6 @@ namespace Sys
 		trampoline->tss.esp0 = reinterpret_cast<uint32_t>(esp) + (VM_PAGE_SIZE - sizeof(Sys::CPUState));
 		trampoline->tss.ss0  = 0x10;
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }

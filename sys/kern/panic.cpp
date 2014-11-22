@@ -51,11 +51,11 @@ void panic_die_fancy(const char *buffer)
 	}
 
 	void *frames[10];
-	int num = backtrace_np((void *)state->ebp, frames, 10);
+	int num = state ? backtrace_np((void *)state->ebp, frames, 10) : backtrace(frames, 10);
 
 	for(int i = 0; i < num; i ++)
 	{
-		kprintf("Frame: %p\n", frames[i]);
+		kprintf("(%2i) %08x\n", (num - 1) - i, reinterpret_cast<uintptr_t>(frames[i]));
 	}
 
 	kprintf("CPU halt");

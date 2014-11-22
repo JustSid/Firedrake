@@ -43,13 +43,13 @@ namespace Sys
 		static Directory *_kernelDirectory = nullptr;
 		static bool _usePhysicalKernelPages;
 
-		__inline kern_return_t __FindFreePagesUser(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
-		__inline kern_return_t __FindFreePagesKernel(vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
-		__inline kern_return_t __FindFreePagesTwoSided(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
-		__inline kern_return_t __FindFreePages(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
-		__inline kern_return_t __MapPageNoCheck(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags, bool noLock);
-		__inline kern_return_t __MapPage(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags, bool noLock);
-		__inline kern_return_t __MapPageRange(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, size_t pages, uint32_t flags, bool noLock);
+		__inline KernReturn<vm_address_t> __FindFreePagesUser(uint32_t *pageDirectory, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
+		__inline KernReturn<vm_address_t> __FindFreePagesKernel(size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
+		__inline KernReturn<vm_address_t> __FindFreePagesTwoSided(uint32_t *pageDirectory, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
+		__inline KernReturn<vm_address_t> __FindFreePages(uint32_t *pageDirectory, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit);
+		__inline KernReturn<void> __MapPageNoCheck(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags, bool noLock);
+		__inline KernReturn<void> __MapPage(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags, bool noLock);
+		__inline KernReturn<void> __MapPageRange(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, size_t pages, uint32_t flags, bool noLock);
 
 		// --------------------
 		// MARK: -
@@ -60,25 +60,21 @@ namespace Sys
 		{
 		public:
 			ScopedDirectory(uint32_t *directory) :
-				_mapped(nullptr),
-				_isKernelDirectory(false)
+				_mapped(nullptr)
 			{
 				if(directory == _kernelPageDirectory)
 				{
-					_isKernelDirectory = true;
 					_mapped = _kernelPageDirectory;
 					return;
 				}
 
-				vm_address_t address;
-				kern_return_t result = _kernelDirectory->Alloc(address, reinterpret_cast<uintptr_t>(directory), 1, kVMFlagsKernel);
-
-				_mapped = (result == KERN_SUCCESS) ? reinterpret_cast<uint32_t *>(address) : nullptr;
+				KernReturn<vm_address_t> address = _kernelDirectory->Alloc(reinterpret_cast<uintptr_t>(directory), 1, kVMFlagsKernel);
+				_mapped = (address.IsValid()) ? reinterpret_cast<uint32_t *>(address.Get()) : nullptr;
 			}
 
 			~ScopedDirectory()
 			{
-				if(_mapped && !_isKernelDirectory)
+				if(_mapped != _kernelPageDirectory)
 					_kernelDirectory->MapPage(0x0, reinterpret_cast<vm_address_t>(_mapped), 0);
 			}
 
@@ -89,7 +85,6 @@ namespace Sys
 
 		private:
 			uint32_t *_mapped;
-			bool _isKernelDirectory;
 		};
 
 		// --------------------
@@ -102,12 +97,13 @@ namespace Sys
 		public:
 			ScopedMapping(Directory *directory, uintptr_t physical, size_t pages) :
 				_directory(directory),
-				_pages(pages)
+				_pages(pages),
+				_address(0)
 			{
-				kern_return_t result = directory->Alloc(_address, physical, pages, kVMFlagsKernel);
+				KernReturn<vm_address_t> result = directory->Alloc(physical, pages, kVMFlagsKernel);
 
-				if(result != KERN_SUCCESS)
-					_address = 0;
+				if(result.IsValid())
+					_address = result.Get();
 			}
 
 			~ScopedMapping()
@@ -157,30 +153,32 @@ namespace Sys
 			PM::Free(reinterpret_cast<uintptr_t>(_directory), 1);
 		}
 
-		kern_return_t Directory::Create(Directory *&directory)
+		KernReturn<Directory *> Directory::Create()
 		{
-			kern_return_t result;
-			uintptr_t physical;
+			KernReturn<uintptr_t> physical;
 
-			if((result = PM::Alloc(physical, 1)) != KERN_SUCCESS)
-				return result;
+			if((physical = PM::Alloc(1)).IsValid() == false)
+				return physical.GetError();
 
 			{
-				ScopedDirectory scoped(reinterpret_cast<uint32_t *>(physical));
+				ScopedDirectory scoped(reinterpret_cast<uint32_t *>(physical.Get()));
 				uint32_t *mapped = scoped.GetDirectory();
 
 				if(!mapped)
 				{
 					PM::Free(physical, 1);
-					return KERN_NO_MEMORY;
+					return Error(KERN_NO_MEMORY);
 				}
 
 				memset(mapped, 0, kDirectoryLength * sizeof(uint32_t));
 				mapped[0xff] = physical | kVMFlagsKernel;
 			}
 
-			directory = Allocate<Directory>(reinterpret_cast<uint32_t *>(physical));
-			return (directory != nullptr) ? KERN_SUCCESS : KERN_NO_MEMORY;
+			Directory *directory = Allocate<Directory>(reinterpret_cast<uint32_t *>(physical.Get()));
+			if(!directory)
+				return Error(KERN_NO_MEMORY);
+
+			return directory;
 		}
 
 		Directory *Directory::GetKernelDirectory()
@@ -188,112 +186,109 @@ namespace Sys
 			return _kernelDirectory;
 		}
 
-		kern_return_t Directory::MapPage(uintptr_t physical, vm_address_t virtAddress, Flags flags)
+		KernReturn<void> Directory::MapPage(uintptr_t physical, vm_address_t virtAddress, Flags flags)
 		{
 			spinlock_lock(&_lock);
-			kern_return_t result = __MapPage(_directory, physical, virtAddress, flags, false);
+			KernReturn<void> result = __MapPage(_directory, physical, virtAddress, flags, false);
 			spinlock_unlock(&_lock);
 
 			return result;
 		}
 
-		kern_return_t Directory::MapPageRange(uintptr_t physical, vm_address_t virtAddress, size_t pages, Flags flags)
+		KernReturn<void> Directory::MapPageRange(uintptr_t physical, vm_address_t virtAddress, size_t pages, Flags flags)
 		{
 			spinlock_lock(&_lock);
-			kern_return_t result = __MapPageRange(_directory, physical, virtAddress, pages, flags, false);
+			KernReturn<void> result = __MapPageRange(_directory, physical, virtAddress, pages, flags, false);
 			spinlock_unlock(&_lock);
 
 			return result;
 		}
 
-		kern_return_t Directory::ResolveAddress(uintptr_t &resolved, vm_address_t address)
+		KernReturn<uintptr_t> Directory::ResolveAddress(vm_address_t address)
 		{
 			ScopedDirectory scoped(_directory);
 			uint32_t *mapped = scoped.GetDirectory();
 
 			if(!mapped)
-				return KERN_NO_MEMORY;
+				return Error(KERN_NO_MEMORY);
 
 			// TODO: There really should be locking here, but that would lead to a race condition
 			// and for now it works... Probably breaks one day mysteriously and I'll spend a weekend
 			// trying to find out what the shit happened... Hi future me, sorry!
 
-			uint32_t entry;
-			kern_return_t result = GetPageTableEntry(mapped, entry, address);
+			KernReturn<uint32_t> entry = GetPageTableEntry(mapped, address);
 
-			if(resolved != KERN_SUCCESS)
-				return result;
+			if(entry.IsValid() == false)
+				return entry.GetError();
 
-			resolved = (entry & ~0xfff) | (address & 0xfff);
-			return KERN_SUCCESS;
+			uintptr_t resolved = (entry.Get() & ~0xfff) | (address & 0xfff);
+			return resolved;
 		}
 
-		kern_return_t Directory::GetPageTableEntry(uint32_t *pageDirectory, uint32_t &entry, vm_address_t vaddress)
+		KernReturn<uint32_t> Directory::GetPageTableEntry(uint32_t *pageDirectory, vm_address_t vaddress)
 		{
 			uint32_t index = vaddress / VM_PAGE_SIZE;
 			if(!(pageDirectory[index / kPagetableLength] & Flags::Present))
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 			uintptr_t physPageTable = (pageDirectory[index / kPagetableLength] & ~0xfff);
 			ScopedMapping temp(_kernelDirectory, physPageTable, 1);
+
 			uint32_t *pageTable = reinterpret_cast<uint32_t *>(temp.GetAddress());
 
 			if(pageTable[index % kPagetableLength] & Flags::Present)
-			{
-				entry = pageTable[index % kPagetableLength];
-				return KERN_SUCCESS;
-			}
+				return pageTable[index % kPagetableLength];
 
-			return KERN_INVALID_ADDRESS;
+			return Error(KERN_INVALID_ADDRESS);
 		}
 
-		kern_return_t Directory::Alloc(vm_address_t &address, uintptr_t physical, size_t pages, Flags flags)
+		KernReturn<vm_address_t> Directory::Alloc(uintptr_t physical, size_t pages, Flags flags)
 		{
-			return AllocLimit(address, physical, kLowerLimit, kUpperLimit, pages, flags);
+			return AllocLimit(physical, kLowerLimit, kUpperLimit, pages, flags);
 		}
 
-		kern_return_t Directory::AllocLimit(vm_address_t &address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags)
+		KernReturn<vm_address_t> Directory::AllocLimit(uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags)
 		{
 			ScopedDirectory scoped(_directory);
 			uint32_t *mapped = scoped.GetDirectory();
 
 			if(!mapped)
-				return KERN_NO_MEMORY;
+				return Error(KERN_NO_MEMORY);
 
 
 			spinlock_lock(&_lock);
 
-			kern_return_t result = __FindFreePages(mapped, address, pages, lower, upper);
-			if(result != KERN_SUCCESS)
+			KernReturn<vm_address_t> address = __FindFreePages(mapped, pages, lower, upper);
+			if(address.IsValid() == false)
 			{
 				spinlock_unlock(&_lock);
-				return result;
+				return address;
 			}
 
 			__MapPageRange(mapped, physical, address, pages, flags, false);
 			spinlock_unlock(&_lock);
 
-			return KERN_SUCCESS;
+			return address;
 		}
 
-		kern_return_t Directory::AllocTwoSidedLimit(vm_address_t &address, uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags)
+		KernReturn<vm_address_t> Directory::AllocTwoSidedLimit(uintptr_t physical, vm_address_t lower, vm_address_t upper, size_t pages, Flags flags)
 		{
 			ScopedDirectory scoped(_directory);
 			uint32_t *mapped = scoped.GetDirectory();
 
 			if(!mapped)
-				return KERN_NO_MEMORY;
+				return Error(KERN_NO_MEMORY);
 
 
 			spinlock_lock(&_lock);
 			spinlock_lock(&_kernelDirectory->_lock);
 
-			kern_return_t result = __FindFreePagesTwoSided(mapped, address, pages, lower, upper);
-			if(result != KERN_SUCCESS)
+			KernReturn<vm_address_t> address = __FindFreePagesTwoSided(mapped, pages, lower, upper);
+			if(address.IsValid() == false)
 			{
 				spinlock_unlock(&_kernelDirectory->_lock);
 				spinlock_unlock(&_lock);
-				return result;
+				return address;
 			}
 
 			__MapPageRange(mapped, physical, address, pages, flags, true);
@@ -302,42 +297,42 @@ namespace Sys
 			spinlock_unlock(&_kernelDirectory->_lock);
 			spinlock_unlock(&_lock);
 
-			return KERN_SUCCESS;
+			return address;
 		}
 
-		kern_return_t Directory::__Alloc_NoLockPrivate(vm_address_t &address, uintptr_t physical, size_t pages, Flags flags)
+		KernReturn<vm_address_t> Directory::__Alloc_NoLockPrivate(uintptr_t physical, size_t pages, Flags flags)
 		{
-			kern_return_t result = __FindFreePages(_directory, address, pages, kLowerLimit, kUpperLimit);
-			if(result != KERN_SUCCESS)
-				return result;
+			KernReturn<vm_address_t> address = __FindFreePages(_directory, pages, kLowerLimit, kUpperLimit);
+			if(address.IsValid() == false)
+				return address;
 
 			__MapPageRange(_directory, physical, address, pages, flags, false);
-			return KERN_SUCCESS;
+			return address;
 		}
 
-		kern_return_t Directory::Free(vm_address_t address, size_t pages)
+		KernReturn<void> Directory::Free(vm_address_t address, size_t pages)
 		{
 			ScopedDirectory scoped(_directory);
 			uint32_t *mapped = scoped.GetDirectory();
 
 			if(!mapped)
-				return KERN_NO_MEMORY;
+				return Error(KERN_NO_MEMORY);
 
 
 			spinlock_lock(&_lock);
 			__MapPageRange(mapped, 0, address, pages, 0, false);
 			spinlock_unlock(&_lock);
 			
-			return KERN_SUCCESS;	
+			return ErrorNone;	
 		}
 
-		kern_return_t __FindFreePagesUser(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
+		KernReturn<vm_address_t> __FindFreePagesUser(uint32_t *pageDirectory, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
 		{
 			if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 			if(pages == 0 || lowerLimit < kLowerLimit || upperLimit > kUpperLimit)
-				return KERN_INVALID_ARGUMENT;
+				return Error(KERN_INVALID_ARGUMENT);
 
 
 			size_t found = 0;
@@ -350,7 +345,7 @@ namespace Sys
 			vm_address_t temporaryPage = temp.GetAddress();
 
 			if(!temporaryPage)
-				return KERN_NO_MEMORY;
+				return Error(KERN_NO_MEMORY);
 
 			while(found < pages && (pageTableIndex << VM_DIRECTORY_SHIFT) < upperLimit)
 			{
@@ -396,21 +391,18 @@ namespace Sys
 			}
 
 			if(found >= pages && regionStart + (pages * VM_PAGE_SIZE) <= upperLimit)
-			{
-				address = regionStart;
-				return KERN_SUCCESS;
-			}
+				return regionStart;
 
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 		}
 
-		kern_return_t __FindFreePagesKernel(vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
+		KernReturn<vm_address_t> __FindFreePagesKernel(size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
 		{
 			if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 			if(pages == 0 || lowerLimit < kLowerLimit || upperLimit > kUpperLimit)
-				return KERN_INVALID_ARGUMENT;
+				return Error(KERN_INVALID_ARGUMENT);
 
 			size_t found = 0;
 			vm_address_t regionStart = 0;
@@ -459,21 +451,18 @@ namespace Sys
 			}
 
 			if(found >= pages && regionStart + (pages * VM_PAGE_SIZE) <= upperLimit)
-			{
-				address = regionStart;
-				return KERN_SUCCESS;
-			}
+				return regionStart;
 
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 		}
 
-		kern_return_t __FindFreePagesTwoSided(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
+		KernReturn<vm_address_t> __FindFreePagesTwoSided(uint32_t *pageDirectory, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
 		{
 			if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 			if(pages == 0 || lowerLimit < kLowerLimit || upperLimit > kUpperLimit)
-				return KERN_INVALID_ARGUMENT;
+				return Error(KERN_INVALID_ARGUMENT);
 
 			uint32_t pageTableIndex = (lowerLimit >> VM_DIRECTORY_SHIFT);
 			uint32_t pageIndex = (lowerLimit >> VM_PAGE_SHIFT) % kPagetableLength;
@@ -497,11 +486,9 @@ namespace Sys
 					if(pageDirectory[pageTableIndex] & Directory::Flags::Present)
 					{
 						uint32_t *ptable = (uint32_t *)(pageDirectory[pageTableIndex] & ~0xfff);
-						vm_address_t vaddress;
+						KernReturn<vm_address_t> vaddress = _kernelDirectory->__Alloc_NoLockPrivate((uintptr_t)ptable, 1, kVMFlagsKernel);
 
-						_kernelDirectory->__Alloc_NoLockPrivate(vaddress, (uintptr_t)ptable, 1, kVMFlagsKernel);
-
-						utable = (uint32_t *)vaddress;
+						utable = (uint32_t *)vaddress.Get();
 					}
 
 					if(_kernelPageDirectory[pageTableIndex] & Directory::Flags::Present)
@@ -550,23 +537,19 @@ namespace Sys
 			}
 
 			if(foundPages >= pages && regionStart + (pages * VM_PAGE_SIZE) <= upperLimit)
-			{
-				address = regionStart;
-				return KERN_SUCCESS;
-			}
+				return regionStart;
 
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 		}
 
-		kern_return_t __FindFreePages(uint32_t *pageDirectory, vm_address_t &address, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
+		KernReturn<vm_address_t> __FindFreePages(uint32_t *pageDirectory, size_t pages, vm_address_t lowerLimit, vm_address_t upperLimit)
 		{
-			kern_return_t result;
-			result = (pageDirectory == _kernelPageDirectory) ? __FindFreePagesKernel(address, pages, lowerLimit, upperLimit) : __FindFreePagesUser(pageDirectory, address, pages, lowerLimit, upperLimit);
+			KernReturn<vm_address_t> result = (pageDirectory == _kernelPageDirectory) ? __FindFreePagesKernel(pages, lowerLimit, upperLimit) : __FindFreePagesUser(pageDirectory, pages, lowerLimit, upperLimit);
 			return result;
 		}
 
 
-		kern_return_t __MapPageNoCheck(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags, bool noLock)
+		KernReturn<void> __MapPageNoCheck(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags, bool noLock)
 		{
 			uint32_t index = vaddress / VM_PAGE_SIZE;
 
@@ -575,26 +558,27 @@ namespace Sys
 
 			if(pageDirectory != _kernelPageDirectory)
 			{
-				kern_return_t result = noLock ? _kernelDirectory->__Alloc_NoLockPrivate(temporaryPage, 0xdeadbeef, 1, kVMFlagsKernel) : _kernelDirectory->Alloc(temporaryPage, 0xdeadbeef, 1, kVMFlagsKernel);
+				KernReturn<vm_address_t> result = noLock ? _kernelDirectory->__Alloc_NoLockPrivate(0xdeadbeef, 1, kVMFlagsKernel) : _kernelDirectory->Alloc(0xdeadbeef, 1, kVMFlagsKernel);
 
-				if(result != KERN_SUCCESS)
-					return result;
+				if(result.IsValid() == false)
+					return result.GetError();
+
+				temporaryPage = result;
 			}
 
 			if(!(pageDirectory[index / kDirectoryLength] & Directory::Flags::Present))
 			{
-				uintptr_t physical;
-				kern_return_t result = PM::Alloc(physical, 1);
+				KernReturn<uintptr_t> physical = PM::Alloc(1);
 
-				if(result != KERN_SUCCESS)
-					return result;
+				if(physical.IsValid() == false)
+					return physical.GetError();
 
-				pageTable = reinterpret_cast<uint32_t *>(physical);
-				pageDirectory[index / kDirectoryLength] = physical | kVMFlagsKernel;
+				pageTable = reinterpret_cast<uint32_t *>(physical.Get());
+				pageDirectory[index / kDirectoryLength] = physical.Get() | kVMFlagsKernel;
 
 				if(pageDirectory != _kernelPageDirectory)
 				{
-					__MapPageNoCheck(_kernelPageDirectory, physical, temporaryPage, kVMFlagsKernel, false);
+					__MapPageNoCheck(_kernelPageDirectory, physical.Get(), temporaryPage, kVMFlagsKernel, false);
 					pageTable = reinterpret_cast<uint32_t *>(temporaryPage);
 				}
 				else if(!_usePhysicalKernelPages)
@@ -625,33 +609,33 @@ namespace Sys
 			if(temporaryPage)
 				__MapPageNoCheck(_kernelPageDirectory, 0x0, temporaryPage, 0, false);
 
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 
-		kern_return_t __MapPage(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags, bool noLock)
+		KernReturn<void> __MapPage(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, uint32_t flags, bool noLock)
 		{
 			if((paddress % VM_PAGE_SIZE) || (vaddress % VM_PAGE_SIZE))
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 			if(vaddress == 0 || (paddress == 0 && flags != 0))
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 			if(flags > kVMFlagsAll)
-				return KERN_INVALID_ARGUMENT;
+				return Error(KERN_INVALID_ARGUMENT);
 
 			return __MapPageNoCheck(pageDirectory, paddress, vaddress, flags, noLock);
 		}
 
-		kern_return_t __MapPageRange(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, size_t pages, uint32_t flags, bool noLock)
+		KernReturn<void> __MapPageRange(uint32_t *pageDirectory, uintptr_t paddress, vm_address_t vaddress, size_t pages, uint32_t flags, bool noLock)
 		{
 			if((paddress % VM_PAGE_SIZE) || (vaddress % VM_PAGE_SIZE))
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 			if(vaddress == 0 || (paddress == 0 && flags != 0))
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 			if(pages == 0 || flags > kVMFlagsAll)
-				return KERN_INVALID_ARGUMENT;
+				return Error(KERN_INVALID_ARGUMENT);
 
 			for(size_t i = 0; i < pages; i ++)
 			{
@@ -662,7 +646,7 @@ namespace Sys
 				paddress += VM_PAGE_SIZE;
 			}
 
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 
 		// --------------------
@@ -670,35 +654,36 @@ namespace Sys
 		// MARK: Initialization
 		// --------------------
 
-		kern_return_t CreateKernelDirectory()
+		KernReturn<void> CreateKernelDirectory()
 		{
-			uintptr_t address;
-			kern_return_t result = PM::Alloc(address, 2);
+			KernReturn<uintptr_t> address = PM::Alloc(2);
 
-			if(result != KERN_SUCCESS)
-				return result;
+			if(address.IsValid() == false)
+				return address.GetError();
 
 			uint8_t *buffer = reinterpret_cast<uint8_t *>(address + VM_PAGE_SIZE);
 
-			_kernelPageDirectory = reinterpret_cast<uint32_t *>(address);
+			_kernelPageDirectory = reinterpret_cast<uint32_t *>(address.Get());
 			_kernelDirectory = new(buffer) Directory(_kernelPageDirectory);
 
 			memset(_kernelPageDirectory, 0, kDirectoryLength * sizeof(uint32_t));
 
 			// Initialize and map the kernel directory
-			_kernelPageDirectory[0xff] = address | kVMFlagsKernel;
+			_kernelPageDirectory[0xff] = address.Get() | kVMFlagsKernel;
 			_kernelDirectory->MapPageRange(address, address, 2, kVMFlagsKernel); // This call can't fail because of _usePhysicalKernelPages
 
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 
 #if BOOTLOADER == BOOTLOADER_MULTIBOOT
 		void MarkMultibootModule(MultibootModule *module)
 		{
 			vm_address_t start = VM_PAGE_ALIGN_DOWN((vm_address_t)module->start);
+			vm_address_t modulePage = VM_PAGE_ALIGN_DOWN((vm_address_t)module);
+
 			size_t pages = VM_PAGE_COUNT(VM_PAGE_ALIGN_UP((vm_address_t)module->end) - start);
 
-			_kernelDirectory->MapPage((vm_address_t)module, (vm_address_t)module, kVMFlagsKernel);
+			_kernelDirectory->MapPage(modulePage, modulePage, kVMFlagsKernel);
 			_kernelDirectory->MapPageRange(start, start, pages, kVMFlagsKernel);
 
 			start = VM_PAGE_ALIGN_DOWN((vm_address_t)module->name);
@@ -740,12 +725,12 @@ namespace Sys
 	extern "C" uintptr_t __kernel_start__;
 	extern "C" uintptr_t __kernel_end__;
 
-	kern_return_t VMInit()
+	KernReturn<void> VMInit()
 	{
 		VM::_usePhysicalKernelPages = true;
 
-		kern_return_t result = VM::CreateKernelDirectory();
-		if(result != KERN_SUCCESS)
+		KernReturn<void> result = VM::CreateKernelDirectory();
+		if(result.IsValid() == false)
 		{
 			kprintf("Failed to create kernel page directory!\n");
 			return result;
@@ -769,6 +754,6 @@ namespace Sys
 		__asm__ volatile("mov %0, %%cr0" : : "r" (cr0 | (1 << 31)));
 
 		VM::_usePhysicalKernelPages = false;
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}	
 }

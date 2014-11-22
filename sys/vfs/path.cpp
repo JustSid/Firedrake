@@ -93,13 +93,13 @@ namespace VFS
 		return name;
 	}
 
-	kern_return_t Path::ResolveElement()
+	KernReturn<Node *> Path::ResolveElement()
 	{
 		if(!_path)
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 
 		if(_elementsLeft == 0)
-			return KERN_RETURN_MAKE(ENOENT, KERN_RESOURCE_EXHAUSTED);
+			return Error(KERN_RESOURCE_EXHAUSTED, ENOENT);
 
 		// Seek to the next element
 		while(*_element == '/')
@@ -119,26 +119,25 @@ namespace VFS
 
 		
 		// Look up the next node
-		Node *next;
 		Instance *instance = _node->GetInstance();
 
-		kern_return_t result = instance->LookUpNode(next, _context, _node, _name.c_str());
-		if(result != KERN_SUCCESS)
+		KernReturn<Node *> result = instance->LookUpNode(_context, _node, _name.c_str());
+		if(!result.IsValid())
 		{
 			// Revert to the old state and bail
 			if(element)
 				_element[offset] = '/';
 
-			return result;
+			return result.GetError();
 		}
 
 		_node->Release();
-		_node = next;
+		_node = result;
 
 		// Advance to the next element
 		_element += offset + 1;
 		_elementsLeft --;
 
-		return KERN_SUCCESS;
+		return _node;
 	}
 }

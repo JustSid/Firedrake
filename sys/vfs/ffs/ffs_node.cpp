@@ -17,6 +17,7 @@
 //
 
 #include <machine/memory/memory.h>
+#include <kern/kprintf.h>
 #include <libcpp/algorithm.h>
 #include <vfs/context.h>
 #include "ffs_node.h"
@@ -38,7 +39,7 @@ namespace FFS
 			Sys::Free(_data, Sys::VM::Directory::GetKernelDirectory(), _pages);
 	}
 
-	kern_return_t Node::AllocateMemory(size_t minimumSize)
+	KernReturn<void> Node::AllocateMemory(size_t minimumSize)
 	{
 		if(!_data)
 		{
@@ -46,10 +47,10 @@ namespace FFS
 
 			_data = Sys::Alloc<char>(Sys::VM::Directory::GetKernelDirectory(), pages, kVMFlagsKernel);
 			if(!_data)
-				return KERN_NO_MEMORY;
+				return Error(KERN_NO_MEMORY);
 
 			_pages = pages;
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 
 		size_t pages = VM_PAGE_COUNT(minimumSize);
@@ -57,7 +58,7 @@ namespace FFS
 		{
 			char *temp = Sys::Alloc<char>(Sys::VM::Directory::GetKernelDirectory(), pages, kVMFlagsKernel);
 			if(!temp)
-				return KERN_NO_MEMORY;
+				return Error(KERN_NO_MEMORY);
 
 			memcpy(temp, _data, _size);
 			Sys::Free(_data, Sys::VM::Directory::GetKernelDirectory(), _pages);
@@ -66,35 +67,28 @@ namespace FFS
 			_pages = pages;
 		}
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
-	kern_return_t Node::WriteData(VFS::Context *context, off_t offset, const void *data, size_t size, size_t &written)
+	KernReturn<size_t> Node::WriteData(VFS::Context *context, off_t offset, const void *data, size_t size)
 	{
 		size = std::min(size, kNodeMaxChunkSize);
 
-		kern_return_t result;
-		if((result = AllocateMemory(_size + size)) != KERN_SUCCESS)
-		{
-			written = 0;
-			return result;
-		}
+		KernReturn<void> result;
 
-		if((result = context->CopyDataOut(data, _data + offset, size)) != KERN_SUCCESS)
-		{
-			written = 0;
-			return result;
-		}
+		if((result = AllocateMemory(_size + size)).IsValid() == false)
+			return result.GetError();
+
+		if((result = Error(context->CopyDataOut(data, _data + offset, size))).IsValid() == false)
+			return result.GetError();
 
 		if(offset + size > _size)
 			_size += (offset + size) - _size;
 
 		SetSize(_size);
-
-		written = size;
-		return KERN_SUCCESS;
+		return size;
 	}
-	kern_return_t Node::ReadData(VFS::Context *context, off_t offset, void *data, size_t size, size_t &read)
+	KernReturn<size_t> Node::ReadData(VFS::Context *context, off_t offset, void *data, size_t size)
 	{
 		char *end = _data + _size;
 		char *preferredEnd = _data + offset + size;
@@ -102,27 +96,19 @@ namespace FFS
 		end = std::min(end, preferredEnd);
 
 		if(_data + offset > end)
-		{
-			read = 0;
-			return KERN_SUCCESS;
-		}
-
+			return 0;
 
 		size = end - (_data + offset);
 		size = std::min(size, kNodeMaxChunkSize);
 
 		if(size > 0)
 		{
-			kern_return_t result;
+			KernReturn<void> result;
 
-			if((result = context->CopyDataIn(_data + offset, data, size)) != KERN_SUCCESS)
-			{
-				read = 0;
-				return result;
-			}
+			if((result = Error(context->CopyDataIn(_data + offset, data, size))).IsValid() == false)
+				return result.GetError();
 		}
 
-		read = size;
-		return KERN_SUCCESS;
+		return size;
 	}
 }

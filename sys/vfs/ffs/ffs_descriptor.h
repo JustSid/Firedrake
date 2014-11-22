@@ -26,10 +26,10 @@ namespace FFS
 	class Descriptor : public VFS::Descriptor
 	{
 	public:
-		kern_return_t CreateInstance(VFS::Instance *&instance) final;
+		KernReturn<VFS::Instance *> CreateInstance() final;
 		void DestroyInstance(VFS::Instance *instance) final;
 
-		static kern_return_t CreateAndRegister(VFS::Descriptor *&result);
+		static KernReturn<VFS::Descriptor *> CreateAndRegister();
 
 	protected:
 		Descriptor();

@@ -202,39 +202,39 @@ namespace Sys
 	}
 
 
-	kern_return_t InterruptsInit()
+	KernReturn<void> InterruptsInit()
 	{
-		kern_return_t result;
+		KernReturn<void> result;
 
 		cli();
 
 		kprintf("apic");
-		if((result = APICInit()) != KERN_SUCCESS)
+		if((result = APICInit()).IsValid() == false)
 			return result;
 
 		kprintf(", trampoline");
-		if((result = TrampolineInit()) != KERN_SUCCESS)
+		if((result = TrampolineInit()).IsValid() == false)
 			return result;
 
 		panic_init();
 		sti();
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
-	kern_return_t InterruptsInitAP()
+	KernReturn<void> InterruptsInitAP()
 	{
-		kern_return_t result;
+		KernReturn<void> result;
 
 		cli();
 
-		if((result = APICInitCPU()) != KERN_SUCCESS)
+		if((result = APICInitCPU()).IsValid() == false)
 			return result;
 
-		if((result = TrampolineInitCPU()) != KERN_SUCCESS)
+		if((result = TrampolineInitCPU()).IsValid() == false)
 			return result;
 
 		sti();
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }

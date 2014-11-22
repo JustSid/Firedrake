@@ -27,32 +27,31 @@ namespace FFS
 		VFS::Descriptor("ffs", Flags::Persistent)
 	{}
 
-	kern_return_t Descriptor::CreateAndRegister(VFS::Descriptor *&descriptor)
+	KernReturn<VFS::Descriptor *> Descriptor::CreateAndRegister()
 	{
 		void *buffer = kalloc(sizeof(Descriptor));
 		if(!buffer)
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 
-		kern_return_t result;
-		descriptor = new(buffer) Descriptor();
+		KernReturn<void> result;
+		VFS::Descriptor *descriptor = new(buffer) Descriptor();
 
-		if((result = descriptor->Register()) != KERN_SUCCESS)
+		if((result = descriptor->Register()).IsValid() == false)
 		{
 			delete descriptor;
-			return result;
+			return result.GetError();
 		}
 
-		return KERN_SUCCESS;
+		return descriptor;
 	}
 
-	kern_return_t Descriptor::CreateInstance(VFS::Instance *&instance)
+	KernReturn<VFS::Instance *> Descriptor::CreateInstance()
 	{
 		void *buffer = kalloc(sizeof(Instance));
 		if(!buffer)
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 
-		instance = new(buffer) Instance();
-		return KERN_SUCCESS;
+		return new(buffer) Instance();
 	}
 	
 	void Descriptor::DestroyInstance(__unused VFS::Instance *instance)

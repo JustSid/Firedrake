@@ -30,21 +30,21 @@ namespace FFS
 	public:
 		friend class Descriptor;
 
-		kern_return_t CreateFile(VFS::Node *&result, VFS::Context *context, VFS::Node *parent, const char *name) override;
-		kern_return_t CreateDirectory(VFS::Node *&result, VFS::Context *context, VFS::Node *parent, const char *name) override;
-		kern_return_t DeleteNode(VFS::Context *context, VFS::Node *node) override;
+		KernReturn<VFS::Node *> CreateFile(VFS::Context *context, VFS::Node *parent, const char *name) override;
+		KernReturn<VFS::Node *> CreateDirectory(VFS::Context *context, VFS::Node *parent, const char *name) override;
+		KernReturn<void> DeleteNode(VFS::Context *context, VFS::Node *node) override;
 
-		kern_return_t LookUpNode(VFS::Node *&result, VFS::Context *context, uint64_t id) override;
-		kern_return_t LookUpNode(VFS::Node *&result, VFS::Context *context, VFS::Node *node, const char *name) override;
+		KernReturn<VFS::Node *> LookUpNode(VFS::Context *context, uint64_t id) override;
+		KernReturn<VFS::Node *> LookUpNode(VFS::Context *context, VFS::Node *node, const char *name) override;
 
-		kern_return_t OpenFile(VFS::File *&result, VFS::Context *context, VFS::Node *node, int flags) override;
+		KernReturn<VFS::File *> OpenFile(VFS::Context *context, VFS::Node *node, int flags) override;
 		void CloseFile(VFS::Context *context, VFS::File *file) override;
-		kern_return_t FileStat(stat *buf, VFS::Context *context, VFS::Node *node) override;
+		KernReturn<void> FileStat(stat *buf, VFS::Context *context, VFS::Node *node) override;
 
-		kern_return_t FileRead(size_t &result, VFS::Context *context, VFS::File *file, void *data, size_t size) override;
-		kern_return_t FileWrite(size_t &result, VFS::Context *context, VFS::File *file, const void *data, size_t size) override;
-		kern_return_t FileSeek(off_t &result, VFS::Context *context, VFS::File *file, off_t offset, int whence) override;
-		kern_return_t DirRead(off_t &result, dirent *entry, VFS::Context *context, VFS::File *file, size_t count) override;
+		KernReturn<size_t> FileRead(VFS::Context *context, VFS::File *file, void *data, size_t size) override;
+		KernReturn<size_t> FileWrite(VFS::Context *context, VFS::File *file, const void *data, size_t size) override;
+		KernReturn<off_t> FileSeek(VFS::Context *context, VFS::File *file, off_t offset, int whence) override;
+		KernReturn<off_t> DirRead(dirent *entry, VFS::Context *context, VFS::File *file, size_t count) override;
 		
 	private:
 		Instance();

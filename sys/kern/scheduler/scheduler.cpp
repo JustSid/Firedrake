@@ -248,22 +248,20 @@ namespace Core
 			return ScheduleOnCPU(esp, cpu);
 		}
 
-		kern_return_t InitializeTasks()
+		KernReturn<void> InitializeTasks()
 		{
 			_kernelTask = new Task();
-			_kernelTask->AttachThread(nullptr, (Thread::Entry)&KernelTask, 0);
+			_kernelTask->AttachThread((Thread::Entry)&KernelTask, 0);
 			
 			_idleTask = new Task();
 			
 			for(size_t i = 0; i < _proxyCPUCount; i ++)
 			{
-				Thread *thread;
-				kern_return_t result;
+				KernReturn<Thread *> thread;
 
-				if((result = _idleTask->AttachThread(&thread, (Thread::Entry)&IdleTask, 0)) != KERN_SUCCESS)
-					return result;
+				if((thread = _idleTask->AttachThread((Thread::Entry)&IdleTask, 0)).IsValid() == false)
+					return thread.GetError();
 				
-
 				CPUProxy *proxy = _proxyCPUs + i;
 
 				thread->SetRunningCPU(proxy->cpu);
@@ -273,17 +271,17 @@ namespace Core
 				proxy->activeThread = thread;
 			}
 
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 	}
 
-	kern_return_t SchedulerInit()
+	KernReturn<void> SchedulerInit()
 	{
 		size_t count = Sys::CPU::GetCPUCount();
 		void *data = kalloc(count * sizeof(Scheduler::CPUProxy));
 
 		if(!data)
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 
 		Scheduler::_proxyCPUCount = count;
 		Scheduler::_proxyCPUs     = reinterpret_cast<Scheduler::CPUProxy *>(data);
@@ -293,14 +291,14 @@ namespace Core
 			new(&Scheduler::_proxyCPUs[i]) Scheduler::CPUProxy(Sys::CPU::GetCPUWithID(i));
 		}
 
-		kern_return_t result;
+		KernReturn<void> result;
 
-		if((result = Scheduler::InitializeTasks()) != KERN_SUCCESS)
+		if((result = Scheduler::InitializeTasks()).IsValid() == false)
 			return result;
 
 		Sys::SetInterruptHandler(0x35, &Scheduler::ScheduleOnCPU);
 		Sys::SetInterruptHandler(0x3a, &Scheduler::ActivateCPUFromIPI);
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }

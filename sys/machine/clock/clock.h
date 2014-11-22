@@ -34,7 +34,7 @@ namespace Sys
 		void AwaitPitTicks(uint32_t ticks);
 	}
 
-	kern_return_t ClockInit();
+	KernReturn<void> ClockInit();
 }
 
 #endif /* _CLOCK_H_ */

@@ -94,21 +94,20 @@ namespace Sys
 		}
 	}
 
-	kern_return_t AllocationProxy::Free()
+	KernReturn<void> AllocationProxy::Free()
 	{
 		if(GetType() == HeapZoneAllocationType::Used)
 			return _zone->FreeAllocation(_allocation);
 
-		return KERN_INVALID_ARGUMENT;
+		return Error(KERN_INVALID_ARGUMENT);
 	}
 
-	kern_return_t AllocationProxy::UseWithSize(void *&outPointer, size_t size)
+	KernReturn<void *> AllocationProxy::UseWithSize( size_t size)
 	{
 		if(GetType() != HeapZoneAllocationType::Free)
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
-		kern_return_t result = _zone->UseAllocation(outPointer, _allocation, size);
-		return result;
+		return _zone->UseAllocation(_allocation, size);
 	}
 
 
@@ -404,7 +403,7 @@ namespace Sys
 		return nullptr;
 	}
 
-	kern_return_t HeapZone::FreeAllocation(void *tallocation)
+	KernReturn<void> HeapZone::FreeAllocation(void *tallocation)
 	{
 		if(IsTiny())
 		{
@@ -424,10 +423,10 @@ namespace Sys
 		_freeAllocations ++;
 		_changes ++;
 
-		return KERN_INVALID_ARGUMENT;
+		return Error(KERN_SUCCESS);
 	}
 
-	kern_return_t HeapZone::UseAllocation(void *&outPointer, void *tallocation, size_t size)
+	KernReturn<void *> HeapZone::UseAllocation(void *tallocation, size_t size)
 	{
 		size_t required = size + kHeapAllocationExtraPadding;
 
@@ -457,9 +456,7 @@ namespace Sys
 				_freeAllocations --;
 				_freeSize -= allocation->size;
 
-				outPointer = reinterpret_cast<void *>(_begin + allocation->offset);
-
-				return KERN_SUCCESS;
+				return reinterpret_cast<void *>(_begin + allocation->offset);
 			}
 		}
 		else
@@ -488,16 +485,14 @@ namespace Sys
 				_freeAllocations --;
 				_freeSize -= allocation->size;
 
-				outPointer = reinterpret_cast<void *>(allocation->pointer);
-
-				return KERN_SUCCESS;
+				return reinterpret_cast<void *>(allocation->pointer);
 			}
 		}
 
-		return KERN_INVALID_ARGUMENT;
+		return Error(KERN_INVALID_ARGUMENT);
 	}
 
-	kern_return_t HeapZone::Create(HeapZone *&zone, size_t size)
+	KernReturn<HeapZone *> HeapZone::Create(size_t size)
 	{
 		HeapZoneType type = _HeapZoneTypeForSize(size);
 		size_t pages;
@@ -525,10 +520,9 @@ namespace Sys
 		uint8_t *buffer = Alloc<uint8_t>(VM::Directory::GetKernelDirectory(), pages, kVMFlagsKernel);
 
 		if(!buffer)
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 
-		zone = new(buffer) HeapZone(buffer + VM_PAGE_SIZE, buffer + (pages * VM_PAGE_SIZE), pages, type);
-		return KERN_SUCCESS;
+		return new(buffer) HeapZone(buffer + VM_PAGE_SIZE, buffer + (pages * VM_PAGE_SIZE), pages, type);
 	}
 
 	// --------------------
@@ -570,14 +564,12 @@ namespace Sys
 	{
 		AllocationProxy proxy;
 
-		void *pointer;
 		bool result = zone->FreeAllocationForSize(proxy, size);
-
 		if(result)
 		{
-			kern_return_t retVal = proxy.UseWithSize(pointer, size);
+			KernReturn<void *> pointer = proxy.UseWithSize(size);
 
-			if(retVal == KERN_SUCCESS)
+			if(pointer.IsValid())
 				return pointer;
 		}
 
@@ -597,16 +589,19 @@ namespace Sys
 		// Large allocations require a complete zone for themselves
 		if(type == HeapZoneType::Large)
 		{
-			HeapZone *zone;
-			kern_return_t result = HeapZone::Create(zone, size);
+			KernReturn<HeapZone *> zone = HeapZone::Create(size);
 
-			if(result == KERN_SUCCESS)
+			if(zone.IsValid())
 			{
 				pointer = AllocateFromZone(zone, size);
 				_zones.push_back(zone);
 			}
 
 			spinlock_unlock(&_lock);
+
+			if(pointer && _flags & Flags::Secure)
+				memset(pointer, 0, size);
+
 			return pointer;
 		}
 
@@ -627,10 +622,9 @@ namespace Sys
 		// Create a new zone if needed
 		if(!pointer)
 		{
-			HeapZone *zone;
-			kern_return_t result = HeapZone::Create(zone, size);
+			KernReturn<HeapZone *> zone = HeapZone::Create(size);
 
-			if(result == KERN_SUCCESS)
+			if(zone.IsValid())
 			{
 				pointer = AllocateFromZone(zone, size);
 				_zones.push_back(zone);
@@ -699,9 +693,9 @@ namespace Sys
 		return _genericHeap;
 	}
 
-	kern_return_t HeapInit()
+	KernReturn<void> HeapInit()
 	{
 		_genericHeap = new Heap(Heap::Flags::Aligned);
-		return (_genericHeap != nullptr) ? KERN_SUCCESS : KERN_NO_MEMORY;
+		return (_genericHeap != nullptr) ? Error(KERN_SUCCESS) : Error(KERN_NO_MEMORY);
 	}
 }

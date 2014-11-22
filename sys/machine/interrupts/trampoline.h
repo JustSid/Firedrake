@@ -37,8 +37,8 @@ namespace Sys
 		TSS tss;
 	};
 
-	kern_return_t TrampolineInit();
-	kern_return_t TrampolineInitCPU();
+	KernReturn<void> TrampolineInit();
+	KernReturn<void> TrampolineInitCPU();
 }
 
 #endif /* _TRAMPOLINE_H_ */

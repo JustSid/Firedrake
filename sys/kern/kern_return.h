@@ -22,8 +22,6 @@
 #include <libc/stdint.h>
 #include <libc/sys/errno.h>
 
-typedef uint32_t kern_return_t;
-
 #define KERN_SUCCESS 0
 #define KERN_INVALID_ADDRESS    1
 #define KERN_INVALID_ARGUMENT   2
@@ -34,21 +32,222 @@ typedef uint32_t kern_return_t;
 #define KERN_RESOURCE_EXISTS    7
 #define KERN_RESOURCE_EXHAUSTED 8
 
-#define KERN_RETURN_MAKE(unix, kret) \
-	(((unix) << 24) | (kret & 0xffffff))
-
-#define KERN_RETURN_UNIX(val) \
-		(val >> 24)
-#define KERN_RETURN_ERROR(val) \
-		(val & 0xffffff)
-
 #if __KERNEL
 
-namespace Core
+#include <libcpp/type_traits.h>
+#include "panic.h"
+
+class Error
 {
-	int ErrnoFromReturn(kern_return_t value);
-}
+public:
+	Error() :
+		_code(KERN_SUCCESS)
+	{}
+	Error(uint32_t code) :
+		_code(code)
+	{}
+	Error(uint32_t code, uint32_t errno) : 
+		_code((errno << 24) | (code & 0xffffff))
+	{}
+	Error(const Error &other) :
+		_code(other._code)
+	{}
 
-#endif
+	Error &operator =(const Error &other)
+	{
+		_code = other._code;
+		return *this;
+	}
 
+	bool operator ==(const Error &other) const { return (GetCode() == other.GetCode()); }
+	bool operator !=(const Error &other) const { return (GetCode() != other.GetCode()); }
+
+	operator bool () { return (GetCode() != KERN_SUCCESS); }
+
+	uint32_t GetCode() const { return (_code & 0xffffff); }
+	uint32_t GetErrno() const;
+
+private:
+	uint32_t _code;
+};
+
+#define ErrorNone Error(KERN_SUCCESS)
+
+template<class T>
+class KernReturn;
+
+template<class T>
+class KernReturn
+{
+public:
+	KernReturn() :
+		_error(KERN_SUCCESS),
+		_acknowledged(false)
+	{}
+	
+	KernReturn(const T &value) :
+		_value(value),
+		_error(KERN_SUCCESS),
+		_acknowledged(false)
+	{}
+	
+	KernReturn(const Error &e) :
+		_error(e),
+		_acknowledged(false)
+	{}
+	
+	KernReturn(KernReturn &&other) :
+		_error(other._error),
+		_value(std::move(other._value)),
+		_acknowledged(other._acknowledged)
+	{
+		other._acknowledged = true;
+	}
+	
+	KernReturn &operator =(KernReturn &&other)
+	{
+		_error        = other._error;
+		_value        = std::move(other._value);
+		_acknowledged = other._acknowledged;
+		
+		other._acknowledged = true;
+		return *this;
+	}
+	
+	~KernReturn()
+	{
+		if(!_acknowledged)
+			panic("Unacknowledged KernReturn, code: %d!", _error.GetCode());
+	}
+	
+	operator T() const { return Get(); }
+	operator Error() const { _acknowledged = true; return _error; }
+
+	bool IsValid() const { _acknowledged = true; return (_error.GetCode() == KERN_SUCCESS); }
+	Error GetError() const { return _error; }
+	T Get() const { Validate(); return _value; }
+
+	void Suppress() { _acknowledged = true; }
+	
+private:
+	void Validate() const { if(!IsValid()) { panic("Attempted to access an invalid KernReturn"); } }
+
+	T _value;
+	Error _error;
+	mutable bool _acknowledged;
+};
+
+template<class T>
+class KernReturn<T *>
+{
+public:
+	KernReturn() :
+		_error(KERN_SUCCESS),
+		_acknowledged(false)
+	{}
+	
+	KernReturn(T *value) :
+		_value(value),
+		_error(KERN_SUCCESS),
+		_acknowledged(false)
+	{}
+	
+	KernReturn(const Error &e) :
+		_error(e),
+		_acknowledged(false)
+	{}
+	
+	KernReturn(KernReturn &&other) :
+		_error(other._error),
+		_value(std::move(other._value)),
+		_acknowledged(other._acknowledged)
+	{
+		other._acknowledged = true;
+	}
+	
+	KernReturn &operator =(KernReturn &&other)
+	{
+		_error        = other._error;
+		_value        = std::move(other._value);
+		_acknowledged = other._acknowledged;
+		
+		other._acknowledged = true;
+		return *this;
+	}
+	
+	~KernReturn()
+	{
+		if(!_acknowledged)
+			panic("Unacknowledged KernReturn, code: %d!", _error.GetCode());
+	}
+	
+	operator T *() const { return Get(); }
+	operator Error() const { _acknowledged = true; return _error; }
+
+	T *operator ->() { return Get(); }
+	const T *operator ->() const { return Get(); }
+	
+	bool IsValid() const { _acknowledged = true; return (_error.GetCode() == KERN_SUCCESS); }
+	Error GetError() const { return _error; }
+	T *Get() const { Validate(); return _value; }
+
+	void Suppress() { _acknowledged = true; }
+	
+private:
+	void Validate() const { if(!IsValid()) { panic("Attempted to access an invalid KernReturn"); } }
+
+	T *_value;
+	Error _error;
+	mutable bool _acknowledged;
+};
+
+template<>
+struct KernReturn<void>
+{
+public:
+	KernReturn() :
+		_error(KERN_SUCCESS),
+		_acknowledged(false)
+	{}
+	
+	KernReturn(const Error &e) :
+		_error(e),
+		_acknowledged(false)
+	{}
+	
+	KernReturn(KernReturn &&other) :
+		_error(other._error),
+		_acknowledged(other._acknowledged)
+	{
+		other._acknowledged = true;
+	}
+	
+	KernReturn &operator =(KernReturn &&other)
+	{
+		_error = other._error;
+		_acknowledged = other._acknowledged;
+		
+		other._acknowledged = true;
+		return *this;
+	}
+	
+	~KernReturn()
+	{
+		if(!_acknowledged && _error.GetCode() != KERN_SUCCESS)
+			panic("Unacknowledged KernReturn, code: %d!", _error.GetCode());
+	}
+
+	operator Error() const { _acknowledged = true; return _error; }
+	
+	bool IsValid() const { _acknowledged = true; return (_error.GetCode() == KERN_SUCCESS); }
+	Error GetError() const { return _error; }
+
+	void Suppress() { _acknowledged = true; }
+	
+private:
+	Error _error;
+	mutable bool _acknowledged;
+};
+
+#endif /* __KERNEL */
 #endif /* _KERNRETURN_H_ */

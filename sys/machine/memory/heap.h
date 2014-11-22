@@ -58,8 +58,8 @@ namespace Sys
 		size_t GetSize() const;
 		void *GetPointer() const;
 
-		kern_return_t Free();
-		kern_return_t UseWithSize(void *&outPointer, size_t size);
+		KernReturn<void> Free();
+		KernReturn<void *> UseWithSize(size_t size);
 
 	private:
 		AllocationProxy(void *allocation, const HeapZone *zone);
@@ -75,7 +75,7 @@ namespace Sys
 		friend class AllocationProxy;
 		friend class Heap;
 
-		static kern_return_t Create(HeapZone *&zone, size_t size);
+		static KernReturn<HeapZone *> Create(size_t size);
 		void operator delete(void *ptr);
 
 		bool IsTiny() const;
@@ -97,8 +97,8 @@ namespace Sys
 
 		void *FindUnusedAllocation() const;
 		void *FindAllocationForPointer(void *ptr) const;
-		kern_return_t UseAllocation(void *&outPointer, void *allocation, size_t size);
-		kern_return_t FreeAllocation(void *allocation);
+		KernReturn<void *> UseAllocation(void *allocation, size_t size);
+		KernReturn<void> FreeAllocation(void *allocation);
 
 		HeapZoneType _type;
 		uint32_t _changes;
@@ -156,7 +156,7 @@ namespace Sys
 		Flags _flags;
 	};
 
-	kern_return_t HeapInit();
+	KernReturn<void> HeapInit();
 }
 
 #endif /* _HEAP_H_ */

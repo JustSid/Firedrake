@@ -154,19 +154,17 @@ namespace Sys
 		return *(volatile uint32_t *)(_address + 0x10);
 	}
 
-	kern_return_t IOAPIC::MapIOAPICs()
+	KernReturn<void> IOAPIC::MapIOAPICs()
 	{
 		VM::Directory *directory = VM::Directory::GetKernelDirectory();
 		for(size_t i = 0; i < _ioapicCount; i ++)
 		{
 			IOAPIC *ioapic = _ioapic + i;
 
-			vm_address_t address;
-			kern_return_t result = directory->AllocLimit(address, ioapic->_address, VM::kKernelLimit, VM::kUpperLimit, 1, kVMFlagsKernelNoCache);
+			KernReturn<vm_address_t> address = directory->AllocLimit(ioapic->_address, VM::kKernelLimit, VM::kUpperLimit, 1, kVMFlagsKernelNoCache);
 
-			if(result != KERN_SUCCESS)
-				return result;
-
+			if(address.IsValid() == false)
+				return address.GetError();
 
 			ioapic->_address = address;
 
@@ -174,7 +172,7 @@ namespace Sys
 			ioapic->_maxRedirectionEntry = (version >> 16) & 0xff;
 		}
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
 	// --------------------
@@ -313,27 +311,25 @@ namespace Sys
 			return base;
 		}
 
-		kern_return_t MapBase()
+		KernReturn<void> MapBase()
 		{
-			kern_return_t result;
-			vm_address_t vaddress;
-
+			KernReturn<vm_address_t> vaddress;
 			uintptr_t paddress = GetBase();
 
-			result = VM::Directory::GetKernelDirectory()->AllocLimit(vaddress, paddress, VM::kKernelLimit, VM::kUpperLimit, 1, kVMFlagsKernelNoCache);
-			if(result != KERN_SUCCESS)
+			vaddress = VM::Directory::GetKernelDirectory()->AllocLimit(paddress, VM::kKernelLimit, VM::kUpperLimit, 1, kVMFlagsKernelNoCache);
+			if(!vaddress.IsValid())
 			{
 				kprintf("couldn't allocate APIC memory");
-				return result;
+				return vaddress.GetError();
 			}
 
 			_apicPhysicalBase = paddress;
 			_apicBase         = vaddress;
 
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 
-		kern_return_t MapBaseAP()
+		KernReturn<void> MapBaseAP()
 		{
 			uintptr_t paddress = GetBase();
 			if(paddress != _apicPhysicalBase) // Just in case an AP has a different APIC base
@@ -344,7 +340,7 @@ namespace Sys
 				Sys::CPUWriteMSR(0x1b, value);
 			}
 
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 
 		uint32_t Vector(uint8_t interrupt, bool masked)
@@ -401,18 +397,18 @@ namespace Sys
 		outb(0xa1, 0xff);
 	}
 
-	kern_return_t APICInit()
+	KernReturn<void> APICInit()
 	{
-		kern_return_t result;
+		KernReturn<void> result;
 		MaskPIC();
 
-		if((result = APIC::MapBase()) != KERN_SUCCESS)
+		if((result = APIC::MapBase()).IsValid() == false)
 		{
 			kprintf("failed to map APIC");
 			return result;
 		}
 
-		if((result = IOAPIC::MapIOAPICs()) != KERN_SUCCESS)
+		if((result = IOAPIC::MapIOAPICs()).IsValid() == false)
 		{
 			kprintf("failed to map I/O APIC(s)");
 			return result;
@@ -421,11 +417,11 @@ namespace Sys
 		return APICInitCPU();
 	}
 
-	kern_return_t APICInitCPU()
+	KernReturn<void> APICInitCPU()
 	{
-		kern_return_t result;
+		KernReturn<void> result;
 
-		if((result = APIC::MapBaseAP()) != KERN_SUCCESS)
+		if((result = APIC::MapBaseAP()).IsValid() == false)
 		{
 			kprintf("failed to map APIC");
 			return result;
@@ -447,6 +443,6 @@ namespace Sys
 		APIC::Write(APIC::Register::LVT_LINT0,   APIC::Vector(0x37, false));
 		APIC::Write(APIC::Register::LVT_LINT1,   APIC::Vector(0x38, false));
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }

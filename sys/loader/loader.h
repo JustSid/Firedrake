@@ -36,12 +36,12 @@ namespace Sys
 		VM::Directory *GetDirectory() const { return _directory; }
 		vm_address_t GetEntry() const { return _entry; }
 
-		kern_return_t GetState() const { return _state; }
+		uint32_t GetState() const { return _state; }
 
 	private:
-		kern_return_t Initialize(void *data);
+		KernReturn<void> Initialize(void *data);
 
-		kern_return_t _state;
+		uint32_t _state;
 
 		VM::Directory *_directory;
 		vm_address_t _entry;

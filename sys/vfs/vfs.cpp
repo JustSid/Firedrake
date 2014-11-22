@@ -48,133 +48,129 @@ namespace VFS
 	}
 
 
-	kern_return_t MakeDirectory(const char *path, Context *context)
+	KernReturn<void> MakeDirectory(const char *path, Context *context)
 	{
 		Path resolver(path, context);
 
 		while(resolver.GetElementsLeft() > 1)
 		{
-			kern_return_t result = resolver.ResolveElement();
+			KernReturn<Node *> result = resolver.ResolveElement();
 
-			if(result != KERN_SUCCESS)
-				return result;
+			if(!result.IsValid())
+				return result.GetError();
 		}
 
 		Node *node = resolver.GetCurrentNode();
 		if(!node->IsDirectory())
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 		
 		node->Retain();
 
 		Filename name = resolver.GetNextName();
-
-		if(resolver.ResolveElement() == KERN_SUCCESS)
+		
+		if(resolver.ResolveElement().IsValid())
 		{
 			node->Release();
-			return KERN_RESOURCE_EXISTS;
+			return Error(KERN_RESOURCE_EXISTS);
 		}
 
 
-		Node *directory;
 		Instance *instance = node->GetInstance();
-		kern_return_t result = instance->CreateDirectory(directory, context, node, name.c_str());
+		KernReturn<Node *> result = instance->CreateDirectory(context, node, name.c_str());
 
 		node->Release();
 
-		return result;
+		if(!result.IsValid())
+			return result.GetError();
+
+		return ErrorNone;
 	}
 
-	kern_return_t Open(Context *context, const char *path, int flags, int &fd)
+	KernReturn<int> Open(Context *context, const char *path, int flags)
 	{
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 
-		fd = task->AllocateFileDescriptor();
+		int fd = task->AllocateFileDescriptor();
 		if(fd == -1)
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 
 		Path resolver(path, context);
 
 		while(resolver.GetElementsLeft() > 1)
 		{
-			kern_return_t result = resolver.ResolveElement();
+			KernReturn<Node *> result = resolver.ResolveElement();
 
-			if(result != KERN_SUCCESS)
+			if(result.IsValid() == false)
 			{
 				task->FreeFileDescriptor(fd);
-				return result;
+				return result.GetError();
 			}
 		}
 
 		Node *parent = resolver.GetCurrentNode();
+		KernReturn<Node *> node = (resolver.GetElementsLeft() > 0) ? resolver.ResolveElement() : nullptr;
 
-		kern_return_t result = (resolver.GetElementsLeft() > 0) ? resolver.ResolveElement() : KERN_SUCCESS;
-		Node *node = (result == KERN_SUCCESS) ? resolver.GetCurrentNode() : nullptr;
-
-		if(node)
+		if(node.IsValid() && node.Get())
 		{
 			if(flags & O_EXCL)
 			{
 				task->FreeFileDescriptor(fd);
-				return KERN_RESOURCE_EXISTS;
+				return Error(KERN_RESOURCE_EXISTS);
 			}
 
 			Instance *instance = node->GetInstance();
-			File *file;
 
-			result = instance->OpenFile(file, context, node, flags);
-			if(result != KERN_SUCCESS)
+			KernReturn<File *> file = instance->OpenFile(context, node, flags);
+			if(!file.IsValid())
 			{
 				task->FreeFileDescriptor(fd);
-				return result;
+				return file.GetError();
 			}
 
 			task->SetFileForDescriptor(file, fd);
-
-			return KERN_SUCCESS;
+			return fd;
 		}
 
 		if(resolver.GetTotalElements() == 0)
 		{
 			task->FreeFileDescriptor(fd);
-
-			return KERN_RETURN_MAKE(ENOENT, KERN_INVALID_ARGUMENT);
+			return Error(KERN_INVALID_ARGUMENT, ENOENT);
 		}
 
 		if(flags & O_CREAT)
 		{
-			File *file;
 			Instance *instance = parent->GetInstance();
 
-			result = instance->CreateFile(node, context, parent, resolver.GetCurrentName().c_str());
-			if(result != KERN_SUCCESS)
+			node = instance->CreateFile(context, parent, resolver.GetCurrentName().c_str());
+			if(!node.IsValid())
 			{	
 				task->FreeFileDescriptor(fd);
-				return result;
+				return node.GetError();
 			}
 
 
-			result = instance->OpenFile(file, context, node, flags);
-			if(result != KERN_SUCCESS)
+			KernReturn<File *> file = instance->OpenFile(context, node, flags);
+			if(!file.IsValid())
 			{
 				task->FreeFileDescriptor(fd);
-				return result;
+				return file.GetError();
 			}
 
 			task->SetFileForDescriptor(file, fd);
-			return KERN_SUCCESS;
+			return fd;
 		}
 
 		task->FreeFileDescriptor(fd);
 
-		return KERN_RETURN_MAKE(ENOENT, KERN_RESOURCES_MISSING);
+		return Error(KERN_RESOURCES_MISSING, ENOENT);
 	}
-	kern_return_t Close(Context *context, int fd)
+	KernReturn<void> Close(Context *context, int fd)
 	{
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file)
-			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
+			return Error(KERN_INVALID_ARGUMENT, EBADF);
 
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
@@ -182,80 +178,80 @@ namespace VFS
 		instance->CloseFile(context, file);
 		task->FreeFileDescriptor(fd);
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
 
-	kern_return_t Write(Context *context, int fd, const void *data, size_t size, size_t &written)
+	KernReturn<size_t> Write(Context *context, int fd, const void *data, size_t size)
 	{
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file || !(file->GetFlags() & O_WRONLY || file->GetFlags() & O_RDWR))
-			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
+			return Error(KERN_INVALID_ARGUMENT, EBADF);
 		
 		Node *node = file->GetNode();
 		if(node->IsDirectory())
-			return KERN_RETURN_MAKE(EISDIR, KERN_INVALID_ARGUMENT);
+			return Error(KERN_INVALID_ARGUMENT, EISDIR);
 
 		Instance *instance = node->GetInstance();
-		return instance->FileWrite(written, context, file, data, size);
+		return instance->FileWrite(context, file, data, size);
 	}
 
-	kern_return_t Read(Context *context, int fd, void *data, size_t size, size_t &read)
+	KernReturn<size_t> Read(Context *context, int fd, void *data, size_t size)
 	{
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file || !(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
-			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
+			return Error(KERN_INVALID_ARGUMENT, EBADF);
 		
 		Node *node = file->GetNode();
 		if(node->IsDirectory())
-			return KERN_RETURN_MAKE(EISDIR, KERN_INVALID_ARGUMENT);
+			return Error(KERN_INVALID_ARGUMENT, EISDIR);
 
 		Instance *instance = node->GetInstance();
-		return instance->FileRead(read, context, file, data, size);
+		return instance->FileRead(context, file, data, size);
 	}
 
-	kern_return_t ReadDir(Context *context, int fd, dirent *entry, size_t count, off_t &read)
+	KernReturn<off_t> ReadDir(Context *context, int fd, dirent *entry, size_t count)
 	{
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file || !(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
-			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
+			return Error(KERN_INVALID_ARGUMENT, EBADF);
 		
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
 
-		return instance->DirRead(read, entry, context, file, count);
+		return instance->DirRead(entry, context, file, count);
 	}
 
-	kern_return_t Seek(Context *context, int fd, off_t offset, int whence, off_t &result)
+	KernReturn<off_t> Seek(Context *context, int fd, off_t offset, int whence)
 	{
 		Core::Task *task = Core::Scheduler::GetActiveTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file)
-			return KERN_RETURN_MAKE(EBADF, KERN_INVALID_ARGUMENT);
+			return Error(KERN_INVALID_ARGUMENT, EBADF);
 
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
 
-		return instance->FileSeek(result, context, file, offset, whence);
+		return instance->FileSeek(context, file, offset, whence);
 	}
 
-	kern_return_t StatFile(Context *context, const char *path, stat *buf)
+	KernReturn<void> StatFile(Context *context, const char *path, stat *buf)
 	{
 		Path resolver(path, context);
 
 		while(resolver.GetElementsLeft() > 0)
 		{
-			kern_return_t result = resolver.ResolveElement();
+			KernReturn<Node *> result = resolver.ResolveElement();
 
-			if(result != KERN_SUCCESS)
-				return result;
+			if(!result.IsValid())
+				return result.GetError();
 		}
 
 		Node *node = resolver.GetCurrentNode();
@@ -263,8 +259,8 @@ namespace VFS
 
 		struct stat temp;
 
-		kern_return_t result = instance->FileStat(&temp, context, node);
-		if(result == KERN_SUCCESS)
+		KernReturn<void> result = instance->FileStat(&temp, context, node);
+		if(result.IsValid())
 		{
 			result = context->CopyDataIn(&temp, buf, sizeof(struct stat));
 			return result;
@@ -284,7 +280,7 @@ namespace VFS
 	{}
 
 
-	kern_return_t LoadInitrdModule(uint8_t *buffer, uint8_t *end)
+	KernReturn<void> LoadInitrdModule(uint8_t *buffer, uint8_t *end)
 	{
 		Context *context = Context::GetActiveContext();
 
@@ -308,18 +304,16 @@ namespace VFS
 			buffer += nameLength;
 
 			// Create the file
-			int fd;
-			kern_return_t result = Open(context, name, O_WRONLY | O_CREAT, fd);
+			KernReturn<int> fd = Open(context, name, O_WRONLY | O_CREAT);
 
-			if(result == KERN_SUCCESS)
+			if(fd.IsValid())
 			{
 				size_t left = binaryLength;
 				while(left > 0)
 				{
-					size_t written;
-					result = Write(context, fd, buffer, left, written);
+					KernReturn<size_t> written = Write(context, fd, buffer, left);
 
-					if(result != KERN_SUCCESS)
+					if(!written.IsValid())
 					{
 						kprintf("Failed to write %s\n", name);
 
@@ -343,46 +337,50 @@ namespace VFS
 		}
 
 		kprintf("done");
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
-	kern_return_t Init()
+	KernReturn<void> Init()
 	{
 		void *buffer = kalloc(sizeof(std::vector<Descriptor *>));
 		if(!buffer)
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 
 		_descriptors = new(buffer) std::vector<Descriptor *>();
 
 		// Create the default file systems
-		kern_return_t result;
-		Descriptor *descriptor;
+		KernReturn<Descriptor *>descriptor;
 
-		if((result = FFS::Descriptor::CreateAndRegister(descriptor)) != KERN_SUCCESS)
+		if((descriptor = FFS::Descriptor::CreateAndRegister()).IsValid() == false)
 		{
 			kprintf("Failed to register FFS");
-			return result;
+			return descriptor.GetError();
 		}
 
 		// Create the root file system
-		if((result = descriptor->CreateInstance(_rootInstance)) != KERN_SUCCESS)
+		KernReturn<Instance *> instance;
+
+		if((instance = descriptor->CreateInstance()).IsValid() == false)
 		{
 			kprintf("Failed to create root instance");
-			return result;
+			return instance.GetError();
 		}
 
+		_rootInstance = instance;
 		_rootNode = _rootInstance->GetRootNode();
 
 		Context::GetKernelContext(); // Initializes the kernel context and associates it with the kernel task
 
 		// Create some basic folders
-		if((result = MakeDirectory("/usr", Context::GetKernelContext())) != KERN_SUCCESS)
+		KernReturn<void> result;
+
+		if((result = MakeDirectory("/usr", Context::GetKernelContext())).IsValid() == false)
 			return result;
-		if((result = MakeDirectory("/bin", Context::GetKernelContext())) != KERN_SUCCESS)
+		if((result = MakeDirectory("/bin", Context::GetKernelContext())).IsValid() == false)
 			return result;
-		if((result = MakeDirectory("/etc", Context::GetKernelContext())) != KERN_SUCCESS)
+		if((result = MakeDirectory("/etc", Context::GetKernelContext())).IsValid() == false)
 			return result;
-		if((result = MakeDirectory("/lib", Context::GetKernelContext())) != KERN_SUCCESS)
+		if((result = MakeDirectory("/lib", Context::GetKernelContext())).IsValid() == false)
 			return result;
 
 
@@ -400,10 +398,9 @@ namespace VFS
 
 				result = LoadInitrdModule(buffer, end);
 
-				if(result != KERN_SUCCESS)
-					return result;
+				if(result.IsValid())
+					didLoadInitrd = true;
 
-				didLoadInitrd = true;
 				break;
 			}
 
@@ -414,6 +411,6 @@ namespace VFS
 		if(!didLoadInitrd)
 			kprintf("Couldn't find initrd");
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }

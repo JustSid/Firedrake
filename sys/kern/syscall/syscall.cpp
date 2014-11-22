@@ -38,10 +38,10 @@ namespace Core
 	spinlock_t _entryLock;
 
 
-	kern_return_t SetSyscallHandler(uint32_t number, SyscallHandler handler, size_t argSize, bool isUnixStyle)
+	KernReturn<void> SetSyscallHandler(uint32_t number, SyscallHandler handler, size_t argSize, bool isUnixStyle)
 	{
 		if(number >= __SYS_MaxSyscalls)
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 
 		spinlock_lock(&_entryLock);
 
@@ -51,7 +51,7 @@ namespace Core
 
 		spinlock_unlock(&_entryLock);
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
 	uint32_t HandleSyscall(uint32_t esp, Sys::CPU *cpu)
@@ -80,8 +80,6 @@ namespace Core
 		// this mapping madness, but oh well, who cares?!	
 		if(entry.argSize > 0)
 		{
-			vm_address_t address;
-
 			uint32_t offset = ((uint8_t *)state->esp) - thread->GetUserStackVirtual();
 			uintptr_t stack = ((uintptr_t)thread->GetUserStack()) + offset + 8; // Jump over the return address and syscall number
 
@@ -89,9 +87,9 @@ namespace Core
 			size_t pages = VM_PAGE_COUNT((stack - aligned) + entry.argSize);
 
 			Sys::VM::Directory *directory = Sys::VM::Directory::GetKernelDirectory();
-			kern_return_t result = directory->Alloc(address, aligned, pages, kVMFlagsKernel);
+			KernReturn<vm_address_t> address = directory->Alloc(aligned, pages, kVMFlagsKernel);
 
-			if(result != KERN_SUCCESS)
+			if(address.IsValid() == false)
 			{
 				state->eax = -1;
 				state->ecx = (entry.unixSyscall) ? ENOMEM : KERN_NO_MEMORY;
@@ -115,11 +113,14 @@ namespace Core
 		}
 
 		// Call the actual handler of the system call
-		kern_return_t result = entry.handler(esp, state->eax, arguments);
-		if(result != KERN_SUCCESS)
+		KernReturn<uint32_t> result = entry.handler(esp, arguments);
+		if(result.IsValid() == false)
 		{
-			state->ecx = (entry.unixSyscall) ? ErrnoFromReturn(result) : result;
+			Error error = result.GetError();
+			state->ecx = entry.unixSyscall ? error.GetErrno() : error.GetCode();
 		}
+
+		state->eax = result;
 
 		if(arguments)
 			kfree(arguments);
@@ -127,12 +128,12 @@ namespace Core
 		return esp;
 	}
 
-	kern_return_t SyscallInit()
+	KernReturn<void> SyscallInit()
 	{
 		memset(_entries, 0, __SYS_MaxSyscalls * sizeof(SyscallEntry));
 
 		Sys::SetInterruptHandler(0x80, HandleSyscall);
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }

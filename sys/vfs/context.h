@@ -36,11 +36,11 @@ namespace VFS
 		Node *GetCurrentDir(); // Returns retained node!
 		Node *GetRootDir(); // Returns retained node!
 
-		kern_return_t SetCurrentDir(Node *currentDir);
-		kern_return_t SetRootDir(Node *rootDir);
+		KernReturn<void> SetCurrentDir(Node *currentDir);
+		KernReturn<void> SetRootDir(Node *rootDir);
 
-		kern_return_t CopyDataOut(const void *data, void *target, size_t length);
-		kern_return_t CopyDataIn(const void *data, void *target, size_t length);
+		KernReturn<void> CopyDataOut(const void *data, void *target, size_t length);
+		KernReturn<void> CopyDataIn(const void *data, void *target, size_t length);
 
 		static Context *GetKernelContext();
 		static Context *GetActiveContext();

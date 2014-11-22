@@ -52,7 +52,7 @@ namespace VFS
 		return false;
 	}
 
-	kern_return_t Descriptor::Register()
+	KernReturn<void> Descriptor::Register()
 	{
 		Lock();
 		if(_registered)
@@ -60,7 +60,7 @@ namespace VFS
 			kprintf("Descriptor already registered!\n");
 			Unlock();
 
-			return KERN_RESOURCE_IN_USE;
+			return Error(KERN_RESOURCE_IN_USE);
 		}
 
 		_registered = true;
@@ -68,9 +68,9 @@ namespace VFS
 		RegisterDescriptor(this);
 		Unlock();
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
-	kern_return_t Descriptor::Unregister()
+	KernReturn<void> Descriptor::Unregister()
 	{
 		Lock();
 
@@ -79,7 +79,7 @@ namespace VFS
 			kprintf("Descriptor not registered!\n");
 			Unlock();
 
-			return KERN_RESOURCES_MISSING;
+			return Error(KERN_RESOURCES_MISSING);
 		}
 
 		_registered = false;
@@ -87,7 +87,7 @@ namespace VFS
 		UnregisterDescriptor(this);
 		Unlock();
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
 	void Descriptor::Lock()

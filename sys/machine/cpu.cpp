@@ -214,7 +214,7 @@ namespace Sys
 	// Bootstrap
 	// -----
 
-	kern_return_t CPUInit()
+	KernReturn<void> CPUInit()
 	{
 		// We need need an APIC and MSRs to run Firedrake
 		CPUInfo info;
@@ -222,20 +222,20 @@ namespace Sys
 		if(!(info.GetFeatures() & CPUInfo::Feature::APIC) || !(info.GetFeatures() & CPUInfo::Feature::MSR))
 		{
 			kprintf("unsupported CPU (no MSR and/or APIC present)");
-			return KERN_RESOURCES_MISSING;
+			return Error(KERN_RESOURCES_MISSING);
 		}
 
-		kern_return_t result;
-		if((result = ACPI::Init()) != KERN_SUCCESS)
+		KernReturn<void> result;
+		if((result = ACPI::Init()).IsValid() == false)
 			return result;
 
 		if(!_bootstrapCPU)
 		{
 			kprintf("no bootstrap CPU");
-			return KERN_FAILURE;
+			return Error(KERN_FAILURE);
 		}
 
 		kprintf("%i %s", CPU::GetCPUCount(), (CPU::GetCPUCount() == 1) ? "CPU" : "CPUs");
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }

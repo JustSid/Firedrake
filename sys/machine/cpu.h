@@ -300,7 +300,7 @@ namespace Sys
 		__asm__ volatile("hlt");
 	}
 
-	kern_return_t CPUInit();
+	KernReturn<void> CPUInit();
 }
 
 #endif

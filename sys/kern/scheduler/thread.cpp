@@ -61,61 +61,60 @@ namespace Core
 	Thread::~Thread()
 	{}
 
-	kern_return_t Thread::Create(Thread *&thread, Task *task, Entry entry, size_t stackPages)
+	KernReturn<Thread *> Thread::Create(Task *task, Entry entry, size_t stackPages)
 	{
 		void *buffer = kalloc(sizeof(Thread));
 		if(!buffer)
-			return KERN_NO_MEMORY;
+			return Error(KERN_NO_MEMORY);
 
-		thread = new(buffer) Thread(task, entry, stackPages);
+		Thread *thread = new(buffer) Thread(task, entry, stackPages);
 
-		kern_return_t result;
-		if((result = thread->Initialize()) != KERN_SUCCESS)
+		KernReturn<void> result;
+		if((result = thread->Initialize()).IsValid() == false)
 		{
 			delete thread;
-			return result;
+			return result.GetError();
 		}
 		
-		return KERN_SUCCESS;
+		return thread;
 	}
 
-	kern_return_t Thread::Initialize()
+	KernReturn<void> Thread::Initialize()
 	{
 		return (_task->_ring3) ? InitializeForRing3() : InitializeForRing0();
 	}
 
-	kern_return_t Thread::InitializeForRing3()
+	KernReturn<void> Thread::InitializeForRing3()
 	{
 		{
-			uintptr_t paddress;
-			vm_address_t vaddress;
-			kern_return_t result;
+			KernReturn<uintptr_t> paddress;
+			KernReturn<vm_address_t> vaddress;
 
-			result = Sys::PM::Alloc(paddress, _userStackPages);
-			if(result != KERN_SUCCESS)
+			paddress = Sys::PM::Alloc(_userStackPages);
+			if(paddress.IsValid() == false)
 			{
 				kprintf("Failed to allocate %i physicial user stack pages\n", _userStackPages);
-				return result;
+				return paddress.GetError();
 			}
 
-			result = _task->_directory->AllocLimit(vaddress, paddress, kThreadStackLimit, Sys::VM::kUpperLimit, _userStackPages, kVMFlagsKernel);
-			if(result != KERN_SUCCESS)
+			vaddress = _task->_directory->AllocLimit(paddress, kThreadStackLimit, Sys::VM::kUpperLimit, _userStackPages, kVMFlagsKernel);
+			if(vaddress.IsValid() == false)
 			{
 				Sys::PM::Free(paddress, _userStackPages);
 
 				kprintf("Failed to allocate %i virtual user stack pages\n", _userStackPages);
-				return result;
+				return vaddress.GetError();
 			}
 
-			_userStack = reinterpret_cast<uint8_t *>(paddress);
-			_userStackVirtual = reinterpret_cast<uint8_t *>(vaddress);
+			_userStack = reinterpret_cast<uint8_t *>(paddress.Get());
+			_userStackVirtual = reinterpret_cast<uint8_t *>(vaddress.Get());
 
 			// Kernel stack
-			result = Sys::PM::Alloc(paddress, 1);
-			result = _task->_directory->AllocTwoSidedLimit(vaddress, paddress, kThreadStackLimit, Sys::VM::kUpperLimit, 1, kVMFlagsKernel);
+			paddress = Sys::PM::Alloc(1);
+			vaddress = _task->_directory->AllocTwoSidedLimit(paddress, kThreadStackLimit, Sys::VM::kUpperLimit, 1, kVMFlagsKernel);
 			
-			_kernelStack = reinterpret_cast<uint8_t *>(paddress);
-			_kernelStackVirtual = reinterpret_cast<uint8_t *>(vaddress);
+			_kernelStack = reinterpret_cast<uint8_t *>(paddress.Get());
+			_kernelStackVirtual = reinterpret_cast<uint8_t *>(vaddress.Get());
 		}
 
 		size_t size     = _userStackPages * VM_PAGE_SIZE;
@@ -145,34 +144,33 @@ namespace Core
 		*(-- stack) = 0x23;
 
 		_esp = reinterpret_cast<uint32_t>(_kernelStackVirtual + size) - sizeof(Sys::CPUState);
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
-	kern_return_t Thread::InitializeForRing0()
+	KernReturn<void> Thread::InitializeForRing0()
 	{
 		{
-			uintptr_t paddress;
-			vm_address_t vaddress;
-			kern_return_t result;
+			KernReturn<uintptr_t> paddress;
+			KernReturn<vm_address_t> vaddress;
 
-			result = Sys::PM::Alloc(paddress, _kernelStackPages);
-			if(result != KERN_SUCCESS)
+			paddress = Sys::PM::Alloc(_kernelStackPages);
+			if(paddress.IsValid() == false)
 			{
 				kprintf("Failed to allocate %i physicial kernel stack pages\n", _kernelStackPages);
-				return result;
+				return paddress.GetError();
 			}
 
-			result = _task->_directory->AllocLimit(vaddress, paddress, kThreadStackLimit, Sys::VM::kUpperLimit, _kernelStackPages, kVMFlagsKernel);
-			if(result != KERN_SUCCESS)
+			vaddress = _task->_directory->AllocLimit(paddress, kThreadStackLimit, Sys::VM::kUpperLimit, _kernelStackPages, kVMFlagsKernel);
+			if(vaddress.IsValid() == false)
 			{
 				Sys::PM::Free(paddress, _kernelStackPages);
 
 				kprintf("Failed to allocate %i virtual kernel stack pages\n", _kernelStackPages);
-				return result;
+				return vaddress.GetError();
 			}
 
-			_kernelStack = reinterpret_cast<uint8_t *>(paddress);
-			_kernelStackVirtual = reinterpret_cast<uint8_t *>(vaddress);
+			_kernelStack = reinterpret_cast<uint8_t *>(paddress.Get());
+			_kernelStackVirtual = reinterpret_cast<uint8_t *>(vaddress.Get());
 		}
 
 		size_t size     = _kernelStackPages * VM_PAGE_SIZE;
@@ -202,7 +200,7 @@ namespace Core
 		*(-- stack) = 0x0;
 
 		_esp = reinterpret_cast<uint32_t>(stack);
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 
 	void Thread::SetQuantum(int8_t quantum)

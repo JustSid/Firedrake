@@ -50,9 +50,9 @@ namespace Sys
 		{
 			kprintf("Initializing %s... { ", name);
 
-			kern_return_t result;
+			auto result = f(std::forward<Args>(args)...);
 
-			if((result = f(std::forward<Args>(args)...)) != KERN_SUCCESS)
+			if(!result.IsValid())
 			{
 				kprintf("} failed\n");
 				panic("Failed to initialize %s", name); 

@@ -65,7 +65,7 @@ namespace ACPI
 			return static_cast<T *>(FindHeader(signature));
 		}
 
-		kern_return_t ParseMADT() const;
+		KernReturn<void> ParseMADT() const;
 	} __attribute__((packed));
 
 	struct MADT : public RSDTHeader
@@ -110,7 +110,7 @@ namespace ACPI
 		uint16_t flags;
 	} __attribute__((packed));
 
-	kern_return_t Init();
+	KernReturn<void> Init();
 }
 
 #endif /* _ACPI_H_ */

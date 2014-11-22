@@ -45,7 +45,7 @@ namespace Core
 		uint32_t ScheduleOnCPU(uint32_t esp, Sys::CPU *cpu);
 	}
 
-	kern_return_t SchedulerInit();
+	KernReturn<void> SchedulerInit();
 }
 
 #endif

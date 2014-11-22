@@ -53,12 +53,12 @@ namespace VFS
 		const char *GetName() const { return _name.c_str(); }
 		Flags GetFlags() const { return _flags; }
 
-		virtual kern_return_t CreateInstance(Instance *&instance) = 0;
+		virtual KernReturn<Instance *> CreateInstance() = 0;
 		virtual void DestroyInstance(Instance *instance) = 0;
 
 		// Must be called at some point
-		kern_return_t Register();
-		kern_return_t Unregister();
+		KernReturn<void> Register();
+		KernReturn<void> Unregister();
 
 	protected:
 		Descriptor(const char *name, Flags flags);

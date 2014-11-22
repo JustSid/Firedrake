@@ -127,7 +127,7 @@ namespace Sys
 		}
 	}
 
-	kern_return_t ClockInit()
+	KernReturn<void> ClockInit()
 	{
 		SetInterruptHandler(0x20, &Clock::PITTick);
 		APIC::MaskInterrupt(0x20, false);
@@ -136,6 +136,6 @@ namespace Sys
 
 		
 
-		return KERN_SUCCESS;
+		return ErrorNone;
 	}
 }

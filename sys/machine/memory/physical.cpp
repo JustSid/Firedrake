@@ -100,18 +100,18 @@ namespace Sys
 
 
 
-		kern_return_t Alloc(uintptr_t &address, size_t pages)
+		KernReturn<uintptr_t> Alloc(size_t pages)
 		{
-			return AllocLimit(address, pages, kLowerLimit, kUpperLimit);
+			return AllocLimit(pages, kLowerLimit, kUpperLimit);
 		}
 
-		kern_return_t AllocLimit(uintptr_t &address, size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit)
+		KernReturn<uintptr_t> AllocLimit(size_t pages, uintptr_t lowerLimit, uintptr_t upperLimit)
 		{
 			if(pages == 0 || lowerLimit < kLowerLimit || upperLimit > kUpperLimit)
-				return KERN_INVALID_ARGUMENT;
+				return Error(KERN_INVALID_ARGUMENT);
 
 			if((lowerLimit % VM_PAGE_SIZE) || (upperLimit % VM_PAGE_SIZE))
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 
 			spinlock_lock(&_heapLock);
@@ -129,15 +129,17 @@ namespace Sys
 			}
 
 			spinlock_unlock(&_heapLock);
-			address = page;
-			
-			return page ? KERN_SUCCESS : KERN_NO_MEMORY;
+
+			if(!page)
+				return Error(KERN_NO_MEMORY);
+
+			return page;
 		}
 
-		kern_return_t Free(uintptr_t page, size_t pages)
+		KernReturn<void> Free(uintptr_t page, size_t pages)
 		{
 			if(page == 0 || (page % VM_PAGE_SIZE) != 0)
-				return KERN_INVALID_ADDRESS;
+				return Error(KERN_INVALID_ADDRESS);
 
 
 			spinlock_lock(&_heapLock);
@@ -149,7 +151,7 @@ namespace Sys
 			}
 
 			spinlock_unlock(&_heapLock);
-			return KERN_SUCCESS;
+			return ErrorNone;
 		}
 
 
@@ -197,7 +199,7 @@ namespace Sys
 	}
 #endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
-	kern_return_t PMInit()
+	KernReturn<void> PMInit()
 	{
 		memset(PM::_heapBitmap, 0, PM::_heapWidth * sizeof(uint32_t));
 
@@ -208,7 +210,7 @@ namespace Sys
 		if(!(info->flags & MultibootHeader::Flags::Mmap))
 		{
 			kprintf("No mmap info present!");
-			return KERN_INVALID_ARGUMENT;
+			return Error(KERN_INVALID_ARGUMENT);
 		}
 
 
@@ -246,6 +248,6 @@ namespace Sys
 		PM::MarkMultiboot(info);
 #endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
-		return KERN_SUCCESS;	
+		return ErrorNone;	
 	}
 }

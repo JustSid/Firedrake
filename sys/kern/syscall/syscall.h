@@ -25,10 +25,10 @@
 
 namespace Core
 {
-	typedef kern_return_t (*SyscallHandler)(uint32_t &esp, uint32_t &retVal, void *arguments);
+	typedef KernReturn<uint32_t> (*SyscallHandler)(uint32_t &esp, void *arguments);
 
-	kern_return_t SetSyscallHandler(uint32_t number, SyscallHandler handler, bool isUnixStyle);
-	kern_return_t SyscallInit();
+	KernReturn<void> SetSyscallHandler(uint32_t number, SyscallHandler handler, bool isUnixStyle);
+	KernReturn<void> SyscallInit();
 }
 
 #endif /* _KERN_SYSCALL_H_ */

@@ -21,7 +21,7 @@
 
 namespace Core
 {
-	int ErrnoFromError(int value)
+	int ErrnoFromCode(uint32_t value)
 	{
 		switch(value)
 		{
@@ -43,20 +43,16 @@ namespace Core
 				return EAGAIN;
 
 			default:
-				panic("Unknown kern_return_t error (%d)", value);
+				panic("Unknown error code (%d)", value);
 		}
 	}
+}
 
-	int ErrnoFromReturn(kern_return_t value)
-	{
-		if(value == KERN_SUCCESS)
-			return 0;
+uint32_t Error::GetErrno() const
+{
+	int errno = (_code >> 24);
+	if(errno)
+		return errno;
 
-		int errno = KERN_RETURN_UNIX(value);
-		if(errno)
-			return errno;
-
-		int error = KERN_RETURN_ERROR(value);
-		return ErrnoFromError(error);
-	}
+	return Core::ErrnoFromCode(_code);
 }

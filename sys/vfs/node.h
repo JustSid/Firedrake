@@ -128,9 +128,9 @@ namespace VFS
 		~Directory() override;
 
 		// Lock must be held before calling these
-		kern_return_t AttachNode(Node *node);
-		kern_return_t RemoveNode(Node *node);
-		kern_return_t RenameNode(Node *node, const Filename &name); // Calls SetName() on the node!
+		KernReturn<void> AttachNode(Node *node);
+		KernReturn<void> RemoveNode(Node *node);
+		KernReturn<void> RenameNode(Node *node, const Filename &name); // Calls SetName() on the node!
 
 		Node *FindNode(const Filename &name) const;
 

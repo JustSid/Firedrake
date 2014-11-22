@@ -44,8 +44,8 @@ namespace Sys
 	void SetInterruptHandler(uint8_t vector, InterruptHandler handler);
 	void IDTInit(uint64_t *idt, uint32_t offset);
 
-	kern_return_t InterruptsInit();
-	kern_return_t InterruptsInitAP();
+	KernReturn<void> InterruptsInit();
+	KernReturn<void> InterruptsInitAP();
 }
 
 #endif /* _INTERRUPTS_H_ */

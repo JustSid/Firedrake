@@ -48,23 +48,23 @@ namespace VFS
 
 		virtual void CleanNode(Node *node);
 
-		virtual kern_return_t CreateFile(Node *&result, Context *context, Node *parent, const char *name) = 0;
-		virtual kern_return_t CreateDirectory(Node *&result, Context *context, Node *parent, const char *name) = 0;
-		virtual kern_return_t DeleteNode(Context *context, Node *node) = 0;
+		virtual KernReturn<Node *> CreateFile(Context *context, Node *parent, const char *name) = 0;
+		virtual KernReturn<Node *> CreateDirectory(Context *context, Node *parent, const char *name) = 0;
+		virtual KernReturn<void> DeleteNode(Context *context, Node *node) = 0;
 
-		virtual kern_return_t LookUpNode(Node *&result, Context *context, uint64_t id) = 0;
-		virtual kern_return_t LookUpNode(Node *&result, Context *context, Node *node, const char *name) = 0;
+		virtual KernReturn<Node *> LookUpNode(Context *context, uint64_t id) = 0;
+		virtual KernReturn<Node *> LookUpNode(Context *context, Node *node, const char *name) = 0;
 
 
-		virtual kern_return_t OpenFile(File *&result, Context *context, Node *node, int flags) = 0;
+		virtual KernReturn<File *> OpenFile(Context *context, Node *node, int flags) = 0;
 		virtual void CloseFile(Context *context, File *file) = 0;
 
-		virtual kern_return_t FileRead(size_t &result, Context *context, File *file, void *data, size_t size) = 0;
-		virtual kern_return_t FileWrite(size_t &result, Context *context, File *file, const void *data, size_t size) = 0;
-		virtual kern_return_t FileSeek(off_t &result, Context *context, File *file, off_t offset, int whence) = 0;
+		virtual KernReturn<size_t> FileRead(Context *context, File *file, void *data, size_t size) = 0;
+		virtual KernReturn<size_t> FileWrite(Context *context, File *file, const void *data, size_t size) = 0;
+		virtual KernReturn<off_t> FileSeek(Context *context, File *file, off_t offset, int whence) = 0;
 
-		virtual kern_return_t FileStat(stat *buf, Context *context, Node *node) = 0;
-		virtual kern_return_t DirRead(off_t &result, dirent *entry, Context *context, File *file, size_t count) = 0;
+		virtual KernReturn<void> FileStat(stat *buf, Context *context, Node *node) = 0;
+		virtual KernReturn<off_t> DirRead(dirent *entry, Context *context, File *file, size_t count) = 0;
 
 		Node *GetRootNode() const { return _rootNode; }
 
