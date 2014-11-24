@@ -65,6 +65,18 @@ namespace std
 	};
 
 	template<>
+	struct hash<char>
+	{
+		size_t operator() (char value) const
+		{
+			size_t hash = static_cast<size_t>(value) * 2654435761;
+			hash %= 0x100000000;
+
+			return hash;
+		}
+	};
+
+	template<>
 	struct hash<const char *>
 	{
 		size_t operator() (const char *value) const

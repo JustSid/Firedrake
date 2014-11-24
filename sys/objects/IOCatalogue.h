@@ -1,5 +1,5 @@
 //
-//  type_traits.h
+//  IOCatalogue.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,54 +16,59 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TYPE_TRAITS_H_
-#define _TYPE_TRAITS_H_
+#ifndef _IOCATALOGUE_H_
+#define _IOCATALOGUE_H_
 
-namespace std
+#include <libcpp/vector.h>
+#include <libc/sys/spinlock.h>
+#include <libc/string.h>
+
+#if __KERNEL
+#include <kern/kern_return.h>
+#endif
+
+namespace IO
 {
-	template<class T>
-	struct remove_const { typedef T type; };
-	template<class T>
-	struct remove_const<const T> { typedef T type; };
-
-	template<class T>
-	struct remove_reference { typedef T type; };
-
-	template<class T>
-	struct remove_reference<T &> { typedef T type; };
-
-	template<class T>
-	struct remove_reference<T &&> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T*> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T* const> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T* volatile> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T* const volatile> { typedef T type; };
-
-	
-
-	template<class T>
-	inline T&& forward(typename std::remove_reference<T>::type &t) noexcept
+	class MetaClass
 	{
-		return static_cast<T &&>(t);
-	}
+	public:
+		MetaClass *GetSuperClass() const;
 
-	template<class T>
-	inline typename remove_reference<T>::type &&move(T &&t) noexcept
+		const char *GetName() const;
+		const char *GetFullname() const;
+
+		bool InheritsFromClass(MetaClass *other) const;
+
+	protected:
+		MetaClass(MetaClass *super, const char *signature);
+
+	private:
+		MetaClass *_super;
+
+		char *_name;
+		char *_fullname;
+	};
+
+	class Catalogue
 	{
-	    typedef typename remove_reference<T>::type Type;
-	    return static_cast<Type &&>(t);
-	}
+	public:
+		static Catalogue *GetSharedInstance();
+
+		MetaClass *GetClassWithName(const char *name);
+
+	protected:
+		Catalogue();
+
+	private:
+		void AddMetaClass(MetaClass *meta);
+
+		std::vector<MetaClass *> _classes;
+		spinlock_t _lock;
+	};
+
+#if __KERNEL
+	KernReturn<void> CatalogueInit();
+#endif
 }
 
-#endif /* _TYPE_TRAITS_H_ */
+#endif /* _IOCATALOGUE_H_ */

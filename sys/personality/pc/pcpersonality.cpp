@@ -33,6 +33,7 @@
 #include <machine/interrupts/interrupts.h>
 #include <machine/clock/clock.h>
 #include <machine/smp/smp.h>
+#include <objects/IOCatalogue.h>
 #include <kern/scheduler/scheduler.h>
 #include <kern/syscall/syscall.h>
 #include <vfs/vfs.h>
@@ -99,6 +100,7 @@ namespace Sys
 		Init("physical memory", Sys::PMInit);
 		Init("virtual memory", Sys::VMInit);
 		Init("heap", Sys::HeapInit);
+		Init("objects", IO::CatalogueInit);
 		Init("interrupts", Sys::InterruptsInit);
 		Init("clock", Sys::ClockInit);
 		Init("smp", Sys::SMPInit);

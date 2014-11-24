@@ -1,5 +1,5 @@
 //
-//  type_traits.h
+//  IORuntime.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,54 +16,54 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TYPE_TRAITS_H_
-#define _TYPE_TRAITS_H_
+#ifndef _IORUNTIME_H_
+#define _IORUNTIME_H_
 
-namespace std
+#include <libc/stdint.h>
+#include <libcpp/type_traits.h>
+#include <kern/panic.h>
+
+namespace IO
 {
-	template<class T>
-	struct remove_const { typedef T type; };
-	template<class T>
-	struct remove_const<const T> { typedef T type; };
+	constexpr size_t kNotFound = static_cast<size_t>(-1);
 
-	template<class T>
-	struct remove_reference { typedef T type; };
-
-	template<class T>
-	struct remove_reference<T &> { typedef T type; };
-
-	template<class T>
-	struct remove_reference<T &&> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T*> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T* const> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T* volatile> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T* const volatile> { typedef T type; };
-
-	
-
-	template<class T>
-	inline T&& forward(typename std::remove_reference<T>::type &t) noexcept
+	template <class T>
+	class PIMPL
 	{
-		return static_cast<T &&>(t);
-	}
+	public:
+		template<class ...Args>
+		PIMPL(Args &&...args) :
+			_ptr(new T(std::forward<Args>(args)...))
+		{}
 
-	template<class T>
-	inline typename remove_reference<T>::type &&move(T &&t) noexcept
-	{
-	    typedef typename remove_reference<T>::type Type;
-	    return static_cast<Type &&>(t);
-	}
+		~PIMPL()
+		{
+			delete _ptr;
+		}
+		
+		operator T* ()
+		{
+			return _ptr;
+		}
+		operator const T* () const
+		{
+			return _ptr;
+		}
+		
+		T *operator ->()
+		{
+			return _ptr;
+		}
+		const T *operator ->() const
+		{
+			return _ptr;
+		}
+		
+	private:
+		T *_ptr;
+	};
 }
 
-#endif /* _TYPE_TRAITS_H_ */
+#define IOAssert(e, message) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed, %s", __func__, __LINE__, #e, message) : (void)0
+
+#endif /* _IORUNTIME_H_ */

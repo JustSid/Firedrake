@@ -1,5 +1,5 @@
 //
-//  type_traits.h
+//  IOString.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,54 +16,40 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _TYPE_TRAITS_H_
-#define _TYPE_TRAITS_H_
+#ifndef _IOSTRING_H_
+#define _IOSTRING_H_
 
-namespace std
+#include "IOObject.h"
+
+namespace IO
 {
-	template<class T>
-	struct remove_const { typedef T type; };
-	template<class T>
-	struct remove_const<const T> { typedef T type; };
-
-	template<class T>
-	struct remove_reference { typedef T type; };
-
-	template<class T>
-	struct remove_reference<T &> { typedef T type; };
-
-	template<class T>
-	struct remove_reference<T &&> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T*> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T* const> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T* volatile> { typedef T type; };
-
-	template<class T>
-	struct remove_pointer<T* const volatile> { typedef T type; };
-
-	
-
-	template<class T>
-	inline T&& forward(typename std::remove_reference<T>::type &t) noexcept
+	class String : public Object
 	{
-		return static_cast<T &&>(t);
-	}
+	public:
+		String *Init();
+		String *InitWithCString(const char *string);
 
-	template<class T>
-	inline typename remove_reference<T>::type &&move(T &&t) noexcept
-	{
-	    typedef typename remove_reference<T>::type Type;
-	    return static_cast<Type &&>(t);
-	}
+		size_t GetHash() const override;
+		bool IsEqual(Object *other) const override;
+		bool IsEqual(const char *string) const;
+
+		size_t GetLength() const;
+		char GetCharacterAtIndex(size_t index) const;
+		const char *GetCString() const;
+
+	protected:
+		void Dealloc() override;
+
+	private:
+		void CalculateHash();
+
+		char *_storage;
+		size_t _length;
+		size_t _hash;
+		uint32_t _flags;
+
+		IODeclareMeta(String)
+	};
 }
 
-#endif /* _TYPE_TRAITS_H_ */
+#endif /* _IOSTRING_H_ */
