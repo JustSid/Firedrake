@@ -64,13 +64,10 @@ namespace VFS
 	{
 		if(_path)
 			kfree(_path);
-
-		if(_node)
-			_node->Release();
 	}
 
 
-	Filename Path::GetNextName()
+	IO::StrongRef<IO::String> Path::GetNextName()
 	{
 		while(*_element == '/')
 			_element ++;
@@ -85,7 +82,7 @@ namespace VFS
 			_element[offset] = '\0';
 		}
 
-		Filename name(_element);
+		IO::StrongRef<IO::String> name = IOTransferRef(IO::String::Alloc()->InitWithCString(_element));
 
 		if(element)
 			_element[offset] = '/';
@@ -114,14 +111,13 @@ namespace VFS
 			offset = element - _element;
 			_element[offset] = '\0';
 		}
-
-		_name = _element;
-
+		
+		_name = IOTransferRef(IO::String::Alloc()->InitWithCString(_element));
 		
 		// Look up the next node
 		Instance *instance = _node->GetInstance();
 
-		KernReturn<Node *> result = instance->LookUpNode(_context, _node, _name.c_str());
+		KernReturn<IO::StrongRef<Node>> result = instance->LookUpNode(_context, _node, _name->GetCString());
 		if(!result.IsValid())
 		{
 			// Revert to the old state and bail
@@ -131,13 +127,12 @@ namespace VFS
 			return result.GetError();
 		}
 
-		_node->Release();
 		_node = result;
 
 		// Advance to the next element
 		_element += offset + 1;
 		_elementsLeft --;
 
-		return _node;
+		return _node.Load();
 	}
 }

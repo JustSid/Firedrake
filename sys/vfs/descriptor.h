@@ -28,10 +28,14 @@
 #include <libcpp/string.h>
 #include <libcpp/vector.h>
 
+#include <objects/IOObject.h>
+#include <objects/IOString.h>
+#include <objects/IOArray.h>
+
 namespace VFS
 {
 	class Instance;
-	class Descriptor
+	class Descriptor : public IO::Object
 	{
 	public:
 		struct Flags : cpp::Bitfield<uint32_t>
@@ -48,9 +52,7 @@ namespace VFS
 			};
 		};
 
-		virtual ~Descriptor();
-
-		const char *GetName() const { return _name.c_str(); }
+		const char *GetName() const { return _name->GetCString(); }
 		Flags GetFlags() const { return _flags; }
 
 		virtual KernReturn<Instance *> CreateInstance() = 0;
@@ -61,7 +63,8 @@ namespace VFS
 		KernReturn<void> Unregister();
 
 	protected:
-		Descriptor(const char *name, Flags flags);
+		Descriptor *Init(const char *name, Flags flags);
+		void Dealloc() override;
 
 		// Must be called while locked
 		void AddInstance(Instance *instance);
@@ -71,13 +74,15 @@ namespace VFS
 		void Unlock();
 
 	private:
-		std::fixed_string<32> _name;
+		IO::String *_name;
 		spinlock_t _lock;
 		Flags _flags;
 
 		bool _registered;
 
-		std::vector<Instance *> _instances;
+		IO::Array *_instances;
+
+		IODeclareMetaVirtual(Descriptor)
 	};
 }
 

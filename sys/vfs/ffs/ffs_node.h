@@ -30,11 +30,13 @@ namespace FFS
 	class Node : public VFS::Node
 	{
 	public:
-		Node(const char *name, VFS::Instance *instance, uint64_t id);
-		~Node();
+		Node *Init(const char *name, VFS::Instance *instance, uint64_t id);
 
 		KernReturn<size_t> WriteData(VFS::Context *context, off_t offset, const void *data, size_t size);
 		KernReturn<size_t> ReadData(VFS::Context *context, off_t offset, void *data, size_t size);
+
+	protected:
+		void Dealloc() override;
 
 	private:
 		KernReturn<void> AllocateMemory(size_t minimumSize);
@@ -42,6 +44,8 @@ namespace FFS
 		char *_data;
 		off_t _size;
 		size_t _pages;
+
+		IODeclareMeta(Node)
 	};
 }
 

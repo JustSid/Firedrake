@@ -51,22 +51,19 @@ namespace VFS
 		Directory *directory = static_cast<Directory *>(node);
 		directory->Lock();
 
-		auto begin = directory->GetBegin();
-		auto end   = directory->GetEnd();
+		const IO::Dictionary *children = directory->GetChildren();
+		children->Enumerate<Node, IO::String>([&](Node *node, IO::String *filename, bool &stop) {
 
-		while(begin != end)
-		{
 			dirent entry;
-			Node *temp = *begin;
 
-			entry.type = static_cast<int>(temp->GetType());
-			entry.id   = temp->GetID();
+			entry.type = static_cast<int>(node->GetType());
+			entry.id   = node->GetID();
 
-			strcpy(entry.name, temp->GetName().c_str());
+			strlcpy(entry.name, filename->GetCString(), MAXNAME);
 
 			_entries.push_back(std::move(entry));
-			begin ++;
-		}
+
+		});
 
 		directory->Unlock();
 	}

@@ -26,18 +26,17 @@
 #include <libc/stdint.h>
 #include <libc/sys/unistd.h>
 #include <libc/sys/dirent.h>
-#include <libcpp/atomic.h>
-#include <libcpp/string.h>
-#include <libcpp/hash_map.h>
+
+#include <objects/IOObject.h>
+#include <objects/IODictionary.h>
+#include <objects/IOString.h>
 
 namespace VFS
 {
-	using Filename = std::fixed_string<MAXNAME>;
-
 	class Instance;
 	class Directory;
 
-	class Node
+	class Node : public IO::Object
 	{
 	public:
 		friend class Directory;
@@ -49,8 +48,6 @@ namespace VFS
 			Link
 		};
 
-		virtual ~Node();
-
 		bool IsFile() const { return (_type == Type::File); }
 		bool IsDirectory() const { return (_type == Type::Directory); }
 		bool IsLink() const { return (_type == Type::Link); }
@@ -58,87 +55,57 @@ namespace VFS
 		uint64_t GetID() const { return _id; }
 		uint64_t GetSize() const { return _size; }
 		Type GetType() const { return _type; }
-		const Filename &GetName() const { return _name; }
+		IO::String *GetName() const { return _name; }
 		Instance *GetInstance() const { return _instance; }
 		Directory *GetDirectory() const { return _parent; }
-
-		void Retain();
-		void Release();
 
 		void Lock();
 		void Unlock();
 
 		// Lock must be held before calling these
-		void SetName(const Filename &name);
+		void SetName(const char *name);
 		void SetSize(uint64_t size);
+
 		void FillStat(stat *buf);
 
 	protected:
-		Node(const char *name, Instance *instance, Type type, uint64_t id);
+		Node *Init(const char *name, Instance *instance, Type type, uint64_t id);
+		void Dealloc() override;
+
 		spinlock_t _lock;
 
 	private:
-		Filename _name;
+		IO::String *_name;
 		uint64_t _id;
 		uint64_t _size;
 		Type _type;
 
 		Directory *_parent;
 		Instance *_instance;
-		std::atomic<uint32_t> _references;
-	};
-}
 
-namespace std
-{
-	template<>
-	struct hash<VFS::Filename>
-	{
-		size_t operator() (const VFS::Filename &name) const
-		{
-			size_t hash   = 0;
-			size_t length = name.length();
-
-			const char *string = name.c_str();
-
-			for(size_t i = 0; i < length; i ++)
-				hash_combine(hash, static_cast<int32_t>(string[i]));
-
-			return hash;
-		}
+		IODeclareMeta(Node)
 	};
 
-	template<>
-	struct equal_to<VFS::Filename>
-	{
-	public:
-		bool operator() (const VFS::Filename &a, const VFS::Filename &b) const
-		{
-			return (a == b);
-		}
-	};
-}
-
-namespace VFS
-{
 	class Directory : public Node
 	{
 	public:
-		Directory(const char *name, Instance *instance, uint64_t id);
-		~Directory() override;
+		Directory *Init(const char *name, Instance *instance, uint64_t id);
 
 		// Lock must be held before calling these
 		KernReturn<void> AttachNode(Node *node);
 		KernReturn<void> RemoveNode(Node *node);
-		KernReturn<void> RenameNode(Node *node, const Filename &name); // Calls SetName() on the node!
+		KernReturn<void> RenameNode(Node *node, const char *filename); // Calls SetName() on the node!
 
-		Node *FindNode(const Filename &name) const;
+		IO::StrongRef<Node> FindNode(const char *filename) const;
+		const IO::Dictionary *GetChildren() const { return _children; }
 
-		std::hash_map<Filename, Node *>::iterator GetBegin() { return _children.begin(); }
-		std::hash_map<Filename, Node *>::iterator GetEnd() { return _children.end(); }
+	protected:
+		void Dealloc() override;
 
 	private:
-		std::hash_map<Filename, Node *> _children;
+		IO::Dictionary *_children;
+
+		IODeclareMeta(Directory)
 	};
 }
 

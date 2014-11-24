@@ -18,38 +18,50 @@
 
 #include <kern/kprintf.h>
 #include "descriptor.h"
+#include "instance.h"
 
 namespace VFS
 {
+	IODefineMeta(Descriptor, IO::Object)
+
 	void RegisterDescriptor(Descriptor *descriptor);
 	void UnregisterDescriptor(Descriptor *descriptor);
 
-	Descriptor::Descriptor(const char *name, Flags flags) :
-		_name(name),
-		_flags(flags),
-		_lock(SPINLOCK_INIT),
-		_registered(false)
-	{}
-
-	Descriptor::~Descriptor()
+	Descriptor *Descriptor::Init(const char *name, Flags flags)
 	{
+		if(!Object::Init())
+			return nullptr;
 
+		_name  = IO::String::Alloc()->InitWithCString(name);
+		_flags = flags;
+		_lock  = SPINLOCK_INIT;
+		_registered = false;
+		_instances  = IO::Array::Alloc()->Init();
+
+		return this;
 	}
+
+	void Descriptor::Dealloc()
+	{
+		_instances->Release();
+		_name->Release();
+
+		Object::Dealloc();
+	}
+
 
 	void Descriptor::AddInstance(Instance *instance)
 	{
-		_instances.push_back(instance);
+		_instances->AddObject(instance);
 	}
 	bool Descriptor::RemoveInstance(Instance *instance)
 	{
-		auto iterator = std::find(_instances.begin(), _instances.end(), instance);
-		if(iterator != _instances.end())
-		{
-			_instances.erase(iterator);
-			return true;
-		}
-		
-		return false;
+		size_t index = _instances->GetIndexOfObject(instance);
+		if(index != IO::kNotFound)
+			return false;
+
+		_instances->RemoveObjectAtIndex(index);
+		return true;
 	}
 
 	KernReturn<void> Descriptor::Register()

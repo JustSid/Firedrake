@@ -16,42 +16,34 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libcpp/new.h>
+#include <kern/kprintf.h>
 #include <vfs/instance.h>
 #include "ffs_descriptor.h"
 #include "ffs_instance.h"
 
 namespace FFS
 {
-	Descriptor::Descriptor() :
-		VFS::Descriptor("ffs", Flags::Persistent)
-	{}
+	IODefineMeta(Descriptor, VFS::Descriptor)
 
-	KernReturn<VFS::Descriptor *> Descriptor::CreateAndRegister()
+	Descriptor *Descriptor::Init()
 	{
-		void *buffer = kalloc(sizeof(Descriptor));
-		if(!buffer)
-			return Error(KERN_NO_MEMORY);
+		if(!VFS::Descriptor::Init("ffs", Flags::Persistent))
+			return nullptr;
 
 		KernReturn<void> result;
-		VFS::Descriptor *descriptor = new(buffer) Descriptor();
 
-		if((result = descriptor->Register()).IsValid() == false)
+		if((result = Register()).IsValid() == false)
 		{
-			delete descriptor;
-			return result.GetError();
+			kprintf("Failed to register FFS, reason %d\n", result.GetError().GetCode());
+			return nullptr;
 		}
 
-		return descriptor;
+		return this;
 	}
 
 	KernReturn<VFS::Instance *> Descriptor::CreateInstance()
 	{
-		void *buffer = kalloc(sizeof(Instance));
-		if(!buffer)
-			return Error(KERN_NO_MEMORY);
-
-		return new(buffer) Instance();
+		return Instance::Alloc()->Init();
 	}
 	
 	void Descriptor::DestroyInstance(__unused VFS::Instance *instance)

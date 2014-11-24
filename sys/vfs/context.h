@@ -24,6 +24,8 @@
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
 
+#include <objects/IOObject.h>
+
 namespace VFS
 {
 	class Node;
@@ -33,8 +35,8 @@ namespace VFS
 		Context(Sys::VM::Directory *directory, Node *currentDir);
 		~Context();
 
-		Node *GetCurrentDir(); // Returns retained node!
-		Node *GetRootDir(); // Returns retained node!
+		IO::StrongRef<Node> GetCurrentDir(); // Returns retained node!
+		IO::StrongRef<Node> GetRootDir(); // Returns retained node!
 
 		KernReturn<void> SetCurrentDir(Node *currentDir);
 		KernReturn<void> SetRootDir(Node *rootDir);

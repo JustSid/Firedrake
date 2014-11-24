@@ -21,14 +21,15 @@
 
 namespace VFS
 {
-	Instance::Instance() :
-		_lock(SPINLOCK_INIT),
-		_lastID(0),
-		_rootNode(nullptr)
-	{}
+	IODefineMeta(Instance, IO::Object)
 
-	Instance::~Instance()
-	{}
+	Instance *Instance::Init(Node *rootNode)
+	{
+		_lock = SPINLOCK_INIT;
+		_lastID = 0;
+		_rootNode = rootNode->Retain();
+	}
+
 
 	void Instance::Lock()
 	{
@@ -45,11 +46,5 @@ namespace VFS
 	uint64_t Instance::GetFreeID()
 	{
 		return (_lastID ++);
-	}
-
-	void Instance::Initialize(Node *rootNode)
-	{
-		_rootNode = rootNode;
-		_rootNode->Retain();
 	}
 }

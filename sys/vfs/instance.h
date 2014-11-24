@@ -30,6 +30,8 @@
 #include <libc/sys/types.h>
 #include <libcpp/atomic.h>
 
+#include <objects/IOObject.h>
+
 #include "node.h"
 
 namespace VFS
@@ -38,11 +40,9 @@ namespace VFS
 	class Context;
 	class File;
 
-	class Instance
+	class Instance : public IO::Object
 	{
 	public:
-		virtual ~Instance();
-
 		void Lock();
 		void Unlock();
 
@@ -52,8 +52,8 @@ namespace VFS
 		virtual KernReturn<Node *> CreateDirectory(Context *context, Node *parent, const char *name) = 0;
 		virtual KernReturn<void> DeleteNode(Context *context, Node *node) = 0;
 
-		virtual KernReturn<Node *> LookUpNode(Context *context, uint64_t id) = 0;
-		virtual KernReturn<Node *> LookUpNode(Context *context, Node *node, const char *name) = 0;
+		virtual KernReturn<IO::StrongRef<Node>> LookUpNode(Context *context, uint64_t id) = 0;
+		virtual KernReturn<IO::StrongRef<Node>> LookUpNode(Context *context, Node *node, const char *name) = 0;
 
 
 		virtual KernReturn<File *> OpenFile(Context *context, Node *node, int flags) = 0;
@@ -69,16 +69,17 @@ namespace VFS
 		Node *GetRootNode() const { return _rootNode; }
 
 	protected:
-		Instance();
+		Instance *Init(Node *rootNode);
 
 		uint64_t GetFreeID();
-		void Initialize(Node *rootNode);
 
 		spinlock_t _lock;
 
 	private:
 		std::atomic<uint64_t> _lastID;
 		Node *_rootNode;
+
+		IODeclareMetaVirtual(Instance)
 	};
 }
 

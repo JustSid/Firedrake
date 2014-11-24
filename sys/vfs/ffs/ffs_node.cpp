@@ -26,17 +26,26 @@ namespace FFS
 {
 	constexpr size_t kNodeMaxChunkSize = VM_PAGE_SIZE * 10;
 
-	Node::Node(const char *name, VFS::Instance *instance, uint64_t id) :
-		VFS::Node(name, instance, VFS::Node::Type::File, id),
-		_data(nullptr),
-		_size(0),
-		_pages(0)
+	IODefineMeta(Node, VFS::Node)
+
+	Node *Node::Init(const char *name, VFS::Instance *instance, uint64_t id)
 	{
+		if(!VFS::Node::Init(name, instance, VFS::Node::Type::File, id))
+			return nullptr;
+
+		_data = nullptr;
+		_size = 0;
+		_pages = 0;
+
+		return this;
 	}
-	Node::~Node()
+
+	void Node::Dealloc()
 	{
 		if(_data)
 			Sys::Free(_data, Sys::VM::Directory::GetKernelDirectory(), _pages);
+
+		VFS::Node::Dealloc();
 	}
 
 	KernReturn<void> Node::AllocateMemory(size_t minimumSize)

@@ -71,24 +71,18 @@ namespace VFS
 		return ErrorNone;
 	}
 
-	Node *Context::GetCurrentDir()
+	IO::StrongRef<Node> Context::GetCurrentDir()
 	{
 		spinlock_lock(&_lock);
-
-		Node *node = _currentDir;
-		node->Retain();
-
+		IO::StrongRef<Node> node = _currentDir;
 		spinlock_unlock(&_lock);
 
 		return node;
 	}
-	Node *Context::GetRootDir()
+	IO::StrongRef<Node> Context::GetRootDir()
 	{
 		spinlock_lock(&_lock);
-
-		Node *node = _root;
-		node->Retain();
-
+		IO::StrongRef<Node> node = _root;
 		spinlock_unlock(&_lock);
 
 		return node;

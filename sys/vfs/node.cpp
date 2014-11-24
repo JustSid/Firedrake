@@ -24,33 +24,32 @@
 
 namespace VFS
 {
-	Node::Node(const char *name, Instance *instance, Type type, uint64_t id) :
-		_instance(instance),
-		_type(type),
-		_id(id),
-		_size(0),
-		_lock(SPINLOCK_INIT),
-		_references(1),
-		_parent(nullptr)
+	IODefineMeta(Node, IO::Object)
+	IODefineMeta(Directory, Node)
+
+	Node *Node::Init(const char *name, Instance *instance, Type type, uint64_t id)
 	{
-		SetName(name);
+		if(!Object::Init())
+			return nullptr;
+
+		_name = IO::String::Alloc()->InitWithCString(name);
+		_instance = instance;
+		_id = id;
+		_type = type;
+		_size = 0;
+		_lock = SPINLOCK_INIT;
+		_parent = nullptr;
+
+		return this;
 	}
 
-	Node::~Node()
-	{}
+	void Node::Dealloc()
+	{
+		_name->Release();
+		Object::Dealloc();
+	}
+	
 
-	void Node::Retain()
-	{
-		_references ++;
-	}
-	void Node::Release()
-	{
-		if((-- _references) == 0)
-		{
-			_instance->CleanNode(this);
-			delete this;
-		}
-	}
 
 	void Node::Lock()
 	{
@@ -62,9 +61,10 @@ namespace VFS
 	}
 
 
-	void Node::SetName(const Filename &name)
+	void Node::SetName(const char *name)
 	{
-		_name = name;
+		SafeRelease(_name);
+		_name = IO::String::Alloc()->InitWithCString(name);
 	}
 	void Node::SetSize(uint64_t size)
 	{
@@ -74,79 +74,86 @@ namespace VFS
 	void Node::FillStat(stat *buf)
 	{
 		buf->type = static_cast<int>(_type);
-		strcpy(buf->name, _name.c_str());
+		strlcpy(buf->name, _name->GetCString(), MAXNAME);
 
-		buf->id = _id;
+		buf->id   = _id;
 		buf->size = _size;
 	}
 
 
 
-	Directory::Directory(const char *name, Instance *instance, uint64_t id) :
-		Node(name, instance, Type::Directory, id)
-	{}
-
-	Directory::~Directory()
+	Directory *Directory::Init(const char *name, Instance *instance, uint64_t id)
 	{
-		for(auto iterator = _children.begin(); iterator != _children.end(); iterator ++)
-		{
-			Node *node = *iterator;
-			node->Release();
-		}
+		if(!Node::Init(name, instance, Type::Directory, id))
+			return nullptr;
+
+		_children = IO::Dictionary::Alloc()->Init();
+
+		return this;
+	}
+
+	void Directory::Dealloc()
+	{
+		_children->Release();
+		Node::Dealloc();
 	}
 
 	KernReturn<void> Directory::AttachNode(Node *node)
 	{
-		if(node->_parent)
+		if(!node || node->_parent)
 			return Error(KERN_INVALID_ARGUMENT);
 
-		if(_children.find(node->GetName()) != _children.end())
+		if(_children->GetObjectForKey(node->GetName()))
 			return Error(KERN_RESOURCE_EXISTS);
 
-		_children.insert(node->GetName(), node);
-		node->Retain();
-		
+		_children->SetObjectForKey(node, node->GetName());		
 		return ErrorNone;
 	}
 	KernReturn<void> Directory::RemoveNode(Node *node)
 	{
+		if(!node || node->_parent != this)
+			return Error(KERN_INVALID_ARGUMENT);
+
+		if(_children->GetObjectForKey(node->GetName()) != node)
+			return Error(KERN_INVALID_ARGUMENT); 
+
+		_children->RemoveObjectForKey(node->GetName());
+		return ErrorNone;
+	}
+	KernReturn<void> Directory::RenameNode(Node *node, const char *filename)
+	{
 		if(node->_parent != this)
 			return Error(KERN_INVALID_ARGUMENT);
 
-		auto iterator = _children.find(node->GetName());
-
-		if(iterator == _children.end())
+		Node *result = _children->GetObjectForKey<Node>(node->GetName());
+		if(result != node)
 			return Error(KERN_INVALID_ARGUMENT);
 
-		_children.erase(iterator);
+		IO::String *temp = IO::String::Alloc()->InitWithCString(filename);
+		result = _children->GetObjectForKey<Node>(temp);
+		temp->Release();
+
+		if(result)
+			return Error(KERN_RESOURCE_EXISTS);
+
+
+		// Actually rename and update the child
+		node->Retain();
+
+		_children->RemoveObjectForKey(node->GetName());
+		node->SetName(filename);
+		_children->SetObjectForKey(node, node->GetName());
+
 		node->Release();
 
 		return ErrorNone;
 	}
-	KernReturn<void> Directory::RenameNode(Node *node, const Filename &name)
+	IO::StrongRef<Node> Directory::FindNode(const char *filename) const
 	{
-		if(node->_parent != this)
-			return Error(KERN_INVALID_ARGUMENT);
+		IO::String *temp = IO::String::Alloc()->InitWithCString(filename);
+		IO::StrongRef<Node> node = _children->GetObjectForKey<Node>(temp);
+		temp->Release();
 
-		auto iterator = _children.find(node->GetName());
-
-		if(iterator == _children.end())
-			return Error(KERN_INVALID_ARGUMENT);
-
-		_children.erase(iterator);
-		_children.insert(name, node);
-
-		node->SetName(name);
-		return ErrorNone;
-	}
-	Node *Directory::FindNode(const Filename &name) const
-	{
-		auto iterator = _children.find(name);
-		Node *result = (iterator != _children.end()) ? *iterator : nullptr;
-
-		if(result)
-			result->Retain();
-
-		return result;
+		return node;
 	}
 }

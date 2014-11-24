@@ -28,14 +28,14 @@ namespace FFS
 	class Instance : public VFS::Instance
 	{
 	public:
-		friend class Descriptor;
+		Instance *Init();
 
 		KernReturn<VFS::Node *> CreateFile(VFS::Context *context, VFS::Node *parent, const char *name) override;
 		KernReturn<VFS::Node *> CreateDirectory(VFS::Context *context, VFS::Node *parent, const char *name) override;
 		KernReturn<void> DeleteNode(VFS::Context *context, VFS::Node *node) override;
 
-		KernReturn<VFS::Node *> LookUpNode(VFS::Context *context, uint64_t id) override;
-		KernReturn<VFS::Node *> LookUpNode(VFS::Context *context, VFS::Node *node, const char *name) override;
+		KernReturn<IO::StrongRef<VFS::Node>> LookUpNode(VFS::Context *context, uint64_t id) override;
+		KernReturn<IO::StrongRef<VFS::Node>> LookUpNode(VFS::Context *context, VFS::Node *node, const char *name) override;
 
 		KernReturn<VFS::File *> OpenFile(VFS::Context *context, VFS::Node *node, int flags) override;
 		void CloseFile(VFS::Context *context, VFS::File *file) override;
@@ -46,10 +46,7 @@ namespace FFS
 		KernReturn<off_t> FileSeek(VFS::Context *context, VFS::File *file, off_t offset, int whence) override;
 		KernReturn<off_t> DirRead(dirent *entry, VFS::Context *context, VFS::File *file, size_t count) override;
 		
-	private:
-		Instance();
-
-		std::hash_map<uint32_t, VFS::Node *> _nodes;
+		IODeclareMeta(Instance)
 	};
 }
 

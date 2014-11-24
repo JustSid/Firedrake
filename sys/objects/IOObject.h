@@ -79,6 +79,19 @@ namespace IO
 		IO::MetaClass *GetClass() const override; \
 		static IO::MetaClass *GetMetaClass();
 
+#define IODeclareMetaVirtual(cls) \
+	public: \
+		cls *Retain() \
+		{ \
+			return static_cast<cls *>(Object::Retain()); \
+		} \
+		cls *Release() \
+		{ \
+			return static_cast<cls *>(Object::Release()); \
+		} \
+		IO::MetaClass *GetClass() const override; \
+		static IO::MetaClass *GetMetaClass();
+
 #define IODefineMeta(cls, super) \
 	class cls##MetaType : public IO::MetaClass \
 	{ \

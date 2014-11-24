@@ -24,24 +24,30 @@
 
 namespace FFS
 {
-	Instance::Instance()
+	IODefineMeta(Instance, VFS::Instance)
+
+	Instance *Instance::Init()
 	{
 		KernReturn<VFS::Node *> node = CreateDirectory(nullptr, nullptr, "");
 
-		if(node.IsValid())
-		{
-			Initialize(node);
-			node->Release();
-		}
+		if(!node.IsValid())
+			return nullptr;
+
+		if(!VFS::Instance::Init(node))
+			return nullptr;
+
+		node->Release();
+		return this;
 	}
 
 	KernReturn<VFS::Node *> Instance::CreateFile(__unused VFS::Context *context, VFS::Node *parent, const char *name)
 	{
-		VFS::Node *node = new FFS::Node(name, this, GetFreeID());
+		VFS::Node *node = FFS::Node::Alloc()->Init(name, this, GetFreeID());
 
 		if(node && parent)
 		{
 			VFS::Directory *directory = static_cast<VFS::Directory *>(parent);
+
 			directory->Lock();
 			KernReturn<void> result = directory->AttachNode(node);
 			directory->Unlock();
@@ -61,7 +67,7 @@ namespace FFS
 
 	KernReturn<VFS::Node *> Instance::CreateDirectory(__unused VFS::Context *context, VFS::Node *parent, const char *name)
 	{
-		VFS::Node *node = new VFS::Directory(name, this, GetFreeID());
+		VFS::Node *node = VFS::Directory::Alloc()->Init(name, this, GetFreeID());
 
 		if(node && parent)
 		{
@@ -89,20 +95,16 @@ namespace FFS
 
 
 
-	KernReturn<VFS::Node *> Instance::LookUpNode(__unused VFS::Context *context, uint64_t id)
+	KernReturn<IO::StrongRef<VFS::Node>> Instance::LookUpNode(__unused VFS::Context *context, uint64_t id)
 	{
-		auto iterator = _nodes.find(static_cast<uint32_t>(id));
-		if(iterator == _nodes.end())
-			return Error(KERN_RESOURCES_MISSING);
-
-		return *iterator;
+		return Error(KERN_RESOURCES_MISSING);
 	}
-	KernReturn<VFS::Node *> Instance::LookUpNode(__unused VFS::Context *context, VFS::Node *tnode, const char *name)
+	KernReturn<IO::StrongRef<VFS::Node>> Instance::LookUpNode(__unused VFS::Context *context, VFS::Node *tnode, const char *name)
 	{
 		VFS::Directory *directory = static_cast<VFS::Directory *>(tnode);
 
 		directory->Lock();
-		VFS::Node *node = directory->FindNode(name);
+		IO::StrongRef<VFS::Node> node = directory->FindNode(name);
 		directory->Unlock();
 
 		if(!node)

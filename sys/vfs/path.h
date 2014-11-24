@@ -32,9 +32,9 @@ namespace VFS
 		Path(const char *path, Context *context);
 		~Path();
 
-		Node *GetCurrentNode() const { return _node; }
-		const Filename &GetCurrentName() const { return _name; }
-		Filename GetNextName();
+		IO::StrongRef<Node> GetCurrentNode() const { return _node; }
+		IO::StrongRef<IO::String> GetCurrentName() const { return _name; }
+		IO::StrongRef<IO::String> GetNextName();
 
 		size_t GetElementsLeft() const { return _elementsLeft; }
 		size_t GetTotalElements() const { return _totalElements; }
@@ -45,10 +45,10 @@ namespace VFS
 		char *_path;
 		char *_element;
 
-		Filename _name;
-
 		Context *_context;
-		Node *_node;
+
+		IO::StrongRef<IO::String> _name;
+		IO::StrongRef<Node> _node;
 
 		size_t _totalElements;
 		size_t _elementsLeft;

@@ -28,6 +28,7 @@
 #include "path.h"
 #include "file.h"
 
+#include <objects/IOArray.h>
 #include <vfs/ffs/ffs_descriptor.h>
 
 #if BOOTLOADER == BOOTLOADER_MULTIBOOT
@@ -37,7 +38,7 @@
 namespace VFS
 {
 	static spinlock_t _descriptorLock = SPINLOCK_INIT;
-	static std::vector<Descriptor *> *_descriptors;
+	static IO::Array *_descriptors;
 
 	static Instance *_rootInstance = nullptr;
 	static Node *_rootNode = nullptr;
@@ -66,7 +67,7 @@ namespace VFS
 		
 		node->Retain();
 
-		Filename name = resolver.GetNextName();
+		IO::StrongRef<IO::String> name = resolver.GetNextName();
 		
 		if(resolver.ResolveElement().IsValid())
 		{
@@ -76,7 +77,7 @@ namespace VFS
 
 
 		Instance *instance = node->GetInstance();
-		KernReturn<Node *> result = instance->CreateDirectory(context, node, name.c_str());
+		KernReturn<Node *> result = instance->CreateDirectory(context, node, name->GetCString());
 
 		node->Release();
 
@@ -141,7 +142,7 @@ namespace VFS
 		{
 			Instance *instance = parent->GetInstance();
 
-			node = instance->CreateFile(context, parent, resolver.GetCurrentName().c_str());
+			node = instance->CreateFile(context, parent, resolver.GetCurrentName()->GetCString());
 			if(!node.IsValid())
 			{	
 				task->FreeFileDescriptor(fd);
@@ -273,7 +274,7 @@ namespace VFS
 	void RegisterDescriptor(Descriptor *descriptor)
 	{
 		spinlock_lock(&_descriptorLock);
-		_descriptors->push_back(descriptor);
+		_descriptors->AddObject(descriptor);
 		spinlock_unlock(&_descriptorLock);
 	}
 	void UnregisterDescriptor(__unused Descriptor *descriptor)
@@ -342,25 +343,22 @@ namespace VFS
 
 	KernReturn<void> Init()
 	{
-		void *buffer = kalloc(sizeof(std::vector<Descriptor *>));
-		if(!buffer)
+		_descriptors = IO::Array::Alloc()->Init();
+
+		if(!_descriptors)
 			return Error(KERN_NO_MEMORY);
 
-		_descriptors = new(buffer) std::vector<Descriptor *>();
+		Descriptor *ffs = FFS::Descriptor::Alloc()->Init();
 
-		// Create the default file systems
-		KernReturn<Descriptor *>descriptor;
-
-		if((descriptor = FFS::Descriptor::CreateAndRegister()).IsValid() == false)
+		if(!ffs)
 		{
 			kprintf("Failed to register FFS");
-			return descriptor.GetError();
+			return Error(KERN_NO_MEMORY);
 		}
-
 		// Create the root file system
 		KernReturn<Instance *> instance;
 
-		if((instance = descriptor->CreateInstance()).IsValid() == false)
+		if((instance = ffs->CreateInstance()).IsValid() == false)
 		{
 			kprintf("Failed to create root instance");
 			return instance.GetError();
