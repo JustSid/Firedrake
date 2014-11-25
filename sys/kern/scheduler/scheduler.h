@@ -22,7 +22,6 @@
 #include <prefix.h>
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
-#include <libcpp/singleton.h>
 #include <libcpp/queue.h>
 #include <machine/cpu.h>
 

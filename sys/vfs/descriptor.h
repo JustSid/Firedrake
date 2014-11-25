@@ -25,7 +25,6 @@
 #include <libc/stddef.h>
 #include <libc/stdint.h>
 #include <libcpp/bitfield.h>
-#include <libcpp/string.h>
 #include <libcpp/vector.h>
 
 #include <objects/IOObject.h>

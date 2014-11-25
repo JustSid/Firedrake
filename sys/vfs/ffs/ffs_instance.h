@@ -20,7 +20,6 @@
 #define _FFS_INSTANCE_H_
 
 #include <vfs/instance.h>
-#include <libcpp/hash_map.h>
 
 namespace FFS
 {
