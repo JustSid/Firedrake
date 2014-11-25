@@ -27,8 +27,11 @@
 #include <libcpp/atomic.h>
 #include <libcpp/queue.h>
 #include <machine/memory/memory.h>
-#include <os/loader/loader.h>
 #include <kern/kern_return.h>
+#include <os/loader/loader.h>
+#include <objects/IOObject.h>
+#include <objects/IOArray.h>
+
 #include "thread.h"
 
 namespace VFS
@@ -39,7 +42,7 @@ namespace VFS
 
 namespace OS
 {
-	class Task
+	class Task : public IO::Object
 	{
 	public:
 		friend class Thread;
@@ -53,9 +56,8 @@ namespace OS
 			Died
 		};
 
-		Task(); // This really is just to create the kernel task
-		Task(const char *path);
-		~Task();
+		KernReturn<Task *> Init();
+		KernReturn<Task *> InitWithFile(const char *path);
 
 		KernReturn<Thread *> AttachThread( Thread::Entry entry, size_t stack);
 
@@ -64,7 +66,6 @@ namespace OS
 
 		pid_t GetPid() const { return _pid; }
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
-		uint32_t GetResult() const { return _result; }
 
 		// VFS
 		VFS::Context *GetVFSContext() const { return _context; }
@@ -75,16 +76,17 @@ namespace OS
 		int AllocateFileDescriptor();
 		void FreeFileDescriptor(int fd);
 
+	protected:
+		void Dealloc() override;
+
 	private:
 		void RemoveThread(Thread *thread);
 
-		std::atomic<int32_t> _tidCounter;
 		Sys::VM::Directory *_directory;
-
-		uint32_t _result;
 		Executable *_executable;
 
-		cpp::queue<Thread> _threads;
+		std::atomic<int32_t> _tidCounter;
+		IO::Array *_threads;
 		Thread *_mainThread;
 
 		spinlock_t _lock;
@@ -95,6 +97,8 @@ namespace OS
 
 		VFS::Context *_context;
 		VFS::File *_files[CONFIG_MAX_FILES];
+
+		IODeclareMeta(Task)
 	};
 }
 

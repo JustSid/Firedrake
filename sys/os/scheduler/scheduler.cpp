@@ -250,10 +250,10 @@ namespace OS
 
 		KernReturn<void> InitializeTasks()
 		{
-			_kernelTask = new Task();
+			_kernelTask = Task::Alloc()->Init();
 			_kernelTask->AttachThread((Thread::Entry)&KernelTask, 0);
 			
-			_idleTask = new Task();
+			_idleTask = Task::Alloc()->Init();
 			
 			for(size_t i = 0; i < _proxyCPUCount; i ++)
 			{

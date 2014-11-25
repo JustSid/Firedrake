@@ -31,7 +31,7 @@ namespace OS
 	class Executable : public IO::Object
 	{
 	public:
-		KernReturn<Executable *> Init(Sys::VM::Directory *directory);
+		KernReturn<Executable *> Init(Sys::VM::Directory *directory, const char *path);
 
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
 		vm_address_t GetEntry() const { return _entry; }

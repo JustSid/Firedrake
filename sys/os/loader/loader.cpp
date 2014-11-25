@@ -26,7 +26,7 @@ namespace OS
 {
 	IODefineMeta(Executable, IO::Object)
 
-	KernReturn<Executable *> Executable::Init(Sys::VM::Directory *directory)
+	KernReturn<Executable *> Executable::Init(Sys::VM::Directory *directory, const char *path)
 	{
 		if(!IO::Object::Init())
 			return Error(KERN_FAILURE);
@@ -41,7 +41,7 @@ namespace OS
 		KernReturn<int> fd;
 		VFS::Context *context = VFS::Context::GetKernelContext();
 
-		if((fd = VFS::Open(context, "/bin/test.bin", O_RDONLY)).IsValid() == false)
+		if((fd = VFS::Open(context, path, O_RDONLY)).IsValid() == false)
 			return fd.GetError();
 
 		KernReturn<void> result;

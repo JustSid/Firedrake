@@ -29,59 +29,55 @@ namespace OS
 {
 	constexpr vm_address_t kThreadStackLimit = 0xffff000;
 
-	Thread::Thread(Task *task, Entry entry, size_t stackPages) :
-		_task(task),
-		_lock(SPINLOCK_INIT),
-		_quantum(0),
-		_entry(entry),
-		_pinnedCPU(nullptr),
-		_runningCPU(nullptr),
-		_schedulerEntry(this),
-		_taskEntry(this),
-		_kernelStack(nullptr),
-		_kernelStackVirtual(nullptr),
-		_userStack(nullptr),
-		_userStackVirtual(nullptr)
+	IODefineMeta(Thread, IO::Object)
+
+	Thread::Thread() :
+		_schedulerEntry(this)
+	{}
+
+	KernReturn<Thread *> Thread::Init(Task *task, Entry entry, size_t stackPages)
 	{
+		if(!IO::Object::Init())
+			return Error(KERN_FAILURE);
+
+		_task  = task;
+		_entry = entry;
+		_esp   = 0;
+		_lock  = SPINLOCK_INIT;
+		_quantum = 0;
+		_pinnedCPU = _runningCPU = nullptr;
+		_kernelStack = nullptr;
+		_kernelStackVirtual = nullptr;
+		_userStack = nullptr;
+		_userStackVirtual = nullptr;
+
 		_tid = _task->_tidCounter.fetch_add(1);
-		_esp = 0;
 
 		if(_task->_ring3)
 		{
 			_userStackPages   = std::min<size_t>(64, std::max<size_t>(24, stackPages));
 			_kernelStackPages = 4;
+
+			KernReturn<void> result = InitializeForRing3();
+			if(!result.IsValid())
+				return result.GetError();
 		}
 		else
 		{
 			_kernelStackPages = std::min<size_t>(32, std::max<size_t>(12, stackPages));
 			_userStackPages   = 0;
+
+			KernReturn<void> result = InitializeForRing0();
+			if(!result.IsValid())
+				return result.GetError();
 		}
+
+		return this;
 	}
 
-	Thread::~Thread()
-	{}
-
-	KernReturn<Thread *> Thread::Create(Task *task, Entry entry, size_t stackPages)
+	void Thread::Dealloc()
 	{
-		void *buffer = kalloc(sizeof(Thread));
-		if(!buffer)
-			return Error(KERN_NO_MEMORY);
-
-		Thread *thread = new(buffer) Thread(task, entry, stackPages);
-
-		KernReturn<void> result;
-		if((result = thread->Initialize()).IsValid() == false)
-		{
-			delete thread;
-			return result.GetError();
-		}
-		
-		return thread;
-	}
-
-	KernReturn<void> Thread::Initialize()
-	{
-		return (_task->_ring3) ? InitializeForRing3() : InitializeForRing0();
+		IO::Object::Dealloc();
 	}
 
 	KernReturn<void> Thread::InitializeForRing3()

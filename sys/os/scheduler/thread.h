@@ -28,18 +28,17 @@
 #include <machine/cpu.h>
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
+#include <objects/IOObject.h>
 
 namespace OS
 {
 	class Task;
 
-	class Thread
+	class Thread : public IO::Object
 	{
 	public:
 		friend class Task;
 		typedef uint32_t Entry;
-
-		~Thread();
 
 		void Lock();
 		void Unlock();
@@ -69,11 +68,11 @@ namespace OS
 		cpp::queue<Thread>::entry &GetSchedulerEntry() { return _schedulerEntry; }
 
 	private:
-		static KernReturn<Thread *> Create(Task *task, Entry entry, size_t stackPages);
-		
-		Thread(Task *task, Entry entry, size_t stackPages);
+		Thread();
 
-		KernReturn<void> Initialize();
+		KernReturn<Thread *> Init(Task *task, Entry entry, size_t stackPages);
+		void Dealloc() override;
+
 		KernReturn<void> InitializeForRing3();
 		KernReturn<void> InitializeForRing0();
 
@@ -85,7 +84,6 @@ namespace OS
 		Sys::CPU *_runningCPU;
 
 		cpp::queue<Thread>::entry _schedulerEntry;
-		cpp::queue<Thread>::entry _taskEntry;
 
 		int8_t _quantum;
 
@@ -99,6 +97,8 @@ namespace OS
 
 		uint32_t _esp;
 		uint32_t _entry;
+
+		IODeclareMeta(Thread)
 	};
 }
 

@@ -26,68 +26,78 @@
 namespace OS
 {
 	static std::atomic<pid_t> _taskPidCounter;
+	IODefineMeta(Task, IO::Object)
 
 	namespace Scheduler
 	{
 		void AddThread(Thread *thread);
 	}
 
-	Task::Task() :
-		_lock(SPINLOCK_INIT),
-		_state(State::Waiting),
-		_pid(_taskPidCounter.fetch_add(1)),
-		_ring3(false),
-		_tidCounter(1),
-		_mainThread(nullptr),
-		_directory(Sys::VM::Directory::GetKernelDirectory()),
-		_context(nullptr),
-		_executable(nullptr),
-		_result(KERN_SUCCESS)
+	KernReturn<Task *> Task::Init()
 	{
+		if(!IO::Object::Init())
+			return Error(KERN_FAILURE);
+
+		_lock = SPINLOCK_INIT;
+		_state = State::Waiting;
+		_pid = _taskPidCounter.fetch_add(1);
+		_ring3 = false;
+		_tidCounter = 1;
+		_mainThread = nullptr;
+		_directory = Sys::VM::Directory::GetKernelDirectory();
+		_context = nullptr;
+		_executable = nullptr;
+		_threads = IO::Array::Alloc()->Init();
+
 		memset(_files, 0, CONFIG_MAX_FILES * sizeof(VFS::File *));
+		return this;
 	}
 
-	Task::Task(__unused const char *path) :
-		_lock(SPINLOCK_INIT),
-		_state(State::Waiting),
-		_pid(_taskPidCounter.fetch_add(1)),
-		_ring3(true),
-		_tidCounter(1),
-		_mainThread(nullptr),
-		_directory(nullptr),
-		_context(nullptr),
-		_executable(nullptr),
-		_result(KERN_SUCCESS)
+	KernReturn<Task *> Task::InitWithFile(const char *path)
 	{
-		memset(_files, 0, CONFIG_MAX_FILES * sizeof(VFS::File *));
+		KernReturn<Task *> result = Init();
+		if(!result.IsValid())
+			return result.GetError();
+
+		_ring3 = true;
+		_directory = nullptr;
 
 		KernReturn<Sys::VM::Directory *> directory;
-
 		if((directory = Sys::VM::Directory::Create()).IsValid() == false)
-			return;
-		
-		_directory = directory;
-		_executable = Executable::Alloc()->Init(_directory);
+			return directory.GetError();
+
+		KernReturn<Executable *> executable;
+		if((executable = Executable::Alloc()->Init(directory, path)).IsValid() == false)
+			return executable.GetError();
+
+		_directory  = directory;
+		_executable = executable;
 
 		KernReturn<Thread *> thread = AttachThread(static_cast<Thread::Entry>(_executable->GetEntry()), 0);
 		if(!thread.IsValid())
-			_result = thread.GetError().GetCode();
+			return thread.GetError();
+
+		return this;
 	}
 
-	Task::~Task()
+
+	void Task::Dealloc()
 	{
+		_executable->Release();
+
 		if(_directory != Sys::VM::Directory::GetKernelDirectory())
 			delete _directory;
 
-		delete _executable;
+		IO::Object::Dealloc();
 	}
+
 
 
 	KernReturn<Thread *> Task::AttachThread(Thread::Entry entry, size_t stack)
 	{
 		spinlock_lock(&_lock);
 
-		KernReturn<Thread *> thread = Thread::Create(this, entry, stack);
+		KernReturn<Thread *> thread = Thread::Alloc()->Init(this, entry, stack);
 
 		if(!thread.IsValid())
 		{
@@ -98,7 +108,7 @@ namespace OS
 		if(!_mainThread)
 			_mainThread = thread;
 
-		_threads.insert_back(thread->_taskEntry);
+		_threads->AddObject(thread);
 		spinlock_unlock(&_lock);
 		
 		Scheduler::AddThread(thread);
@@ -108,7 +118,7 @@ namespace OS
 	void Task::RemoveThread(Thread *thread)
 	{
 		spinlock_lock(&_lock);
-		_threads.erase(thread->_taskEntry);
+		_threads->RemoveObject(thread);
 		spinlock_unlock(&_lock);
 	}
 
