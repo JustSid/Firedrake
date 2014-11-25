@@ -25,15 +25,15 @@
 #include <libc/stddef.h>
 #include <libc/stdint.h>
 
-namespace Sys
+namespace OS
 {
 	class Executable
 	{
 	public:
-		Executable(VM::Directory *directory);
+		Executable(Sys::VM::Directory *directory);
 		~Executable();
 
-		VM::Directory *GetDirectory() const { return _directory; }
+		Sys::VM::Directory *GetDirectory() const { return _directory; }
 		vm_address_t GetEntry() const { return _entry; }
 
 		uint32_t GetState() const { return _state; }
@@ -43,7 +43,7 @@ namespace Sys
 
 		uint32_t _state;
 
-		VM::Directory *_directory;
+		Sys::VM::Directory *_directory;
 		vm_address_t _entry;
 
 		uintptr_t _physical;

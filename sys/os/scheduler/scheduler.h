@@ -28,7 +28,7 @@
 #include "task.h"
 #include "thread.h"
 
-namespace Core
+namespace OS
 {
 	namespace Scheduler
 	{

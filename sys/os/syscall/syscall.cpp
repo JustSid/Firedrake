@@ -20,12 +20,12 @@
 #include <libc/string.h>
 #include <machine/interrupts/interrupts.h>
 #include <machine/memory/memory.h>
-#include <kern/scheduler/scheduler.h>
+#include <os/scheduler/scheduler.h>
 #include <kern/kprintf.h>
 #include <kern/kalloc.h>
 #include "syscall.h"
 
-namespace Core
+namespace OS
 {
 	struct SyscallEntry
 	{

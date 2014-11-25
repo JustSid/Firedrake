@@ -34,8 +34,8 @@
 #include <machine/clock/clock.h>
 #include <machine/smp/smp.h>
 #include <objects/IOCatalogue.h>
-#include <kern/scheduler/scheduler.h>
-#include <kern/syscall/syscall.h>
+#include <os/scheduler/scheduler.h>
+#include <os/syscall/syscall.h>
 #include <vfs/vfs.h>
 
 #define COM_PORT 0x3f8
@@ -81,7 +81,7 @@ namespace Sys
 
 	void PCPersonality::FinishBootstrapping()
 	{
-		Init("syscalls", Core::SyscallInit);
+		Init("syscalls", OS::SyscallInit);
 		Init("vfs", VFS::Init);
 
 		kprintf("\n\n");
@@ -104,7 +104,7 @@ namespace Sys
 		Init("interrupts", Sys::InterruptsInit);
 		Init("clock", Sys::ClockInit);
 		Init("smp", Sys::SMPInit);
-		Init("scheduler", Core::SchedulerInit);
+		Init("scheduler", OS::SchedulerInit);
 
 		// Kick off into the scheduler
 		// Once the IPI is handled by a CPU, it won't return to its current thread of execution ever again

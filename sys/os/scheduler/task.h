@@ -27,7 +27,7 @@
 #include <libcpp/atomic.h>
 #include <libcpp/queue.h>
 #include <machine/memory/memory.h>
-#include <loader/loader.h>
+#include <os/loader/loader.h>
 #include <kern/kern_return.h>
 #include "thread.h"
 
@@ -37,7 +37,7 @@ namespace VFS
 	class File;
 }
 
-namespace Core
+namespace OS
 {
 	class Task
 	{
@@ -82,7 +82,7 @@ namespace Core
 		Sys::VM::Directory *_directory;
 
 		uint32_t _result;
-		Sys::Executable *_executable;
+		Executable *_executable;
 
 		cpp::queue<Thread> _threads;
 		Thread *_mainThread;

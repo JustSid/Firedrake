@@ -19,7 +19,7 @@
 #include "kern_return.h"
 #include "panic.h"
 
-namespace Core
+namespace OS
 {
 	int ErrnoFromCode(uint32_t value)
 	{
@@ -54,5 +54,5 @@ uint32_t Error::GetErrno() const
 	if(errno)
 		return errno;
 
-	return Core::ErrnoFromCode(_code);
+	return OS::ErrnoFromCode(_code);
 }

@@ -22,9 +22,9 @@
 #include "elf.h"
 #include "loader.h"
 
-namespace Sys
+namespace OS
 {
-	Executable::Executable(VM::Directory *directory) :
+	Executable::Executable(Sys::VM::Directory *directory) :
 		_directory(directory),
 		_state(KERN_SUCCESS),
 		_entry(0),

@@ -23,7 +23,7 @@
 #include "scheduler.h"
 #include "task.h"
 
-namespace Core
+namespace OS
 {
 	static std::atomic<pid_t> _taskPidCounter;
 
@@ -67,7 +67,7 @@ namespace Core
 			return;
 		
 		_directory = directory;
-		_executable = new Sys::Executable(_directory);
+		_executable = new Executable(_directory);
 
 		if((_result = _executable->GetState()) != KERN_SUCCESS)
 			return;

@@ -25,7 +25,7 @@
 #include "task.h"
 #include "thread.h"
 
-namespace Core
+namespace OS
 {
 	constexpr vm_address_t kThreadStackLimit = 0xffff000;
 

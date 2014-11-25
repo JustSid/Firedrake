@@ -32,7 +32,7 @@ namespace Sys
 	void FinishBootstrapping();
 }
 
-namespace Core
+namespace OS
 {
 	void KernelTask()
 	{

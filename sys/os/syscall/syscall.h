@@ -23,7 +23,7 @@
 #include <libc/sys/syscall.h>
 #include <kern/kern_return.h>
 
-namespace Core
+namespace OS
 {
 	typedef KernReturn<uint32_t> (*SyscallHandler)(uint32_t &esp, void *arguments);
 

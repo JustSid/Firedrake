@@ -29,7 +29,7 @@
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
 
-namespace Core
+namespace OS
 {
 	class Task;
 

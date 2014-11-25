@@ -17,7 +17,7 @@
 //
 
 #include <libc/string.h>
-#include <kern/scheduler/scheduler.h>
+#include <os/scheduler/scheduler.h>
 #include "context.h"
 #include "vfs.h"
 
@@ -168,7 +168,7 @@ namespace VFS
 		static Context *_kernelContext = nullptr;
 		if(__expect_false(!_kernelContext))
 		{
-			Core::Task *task = Core::Scheduler::GetActiveTask();
+			OS::Task *task = OS::Scheduler::GetActiveTask();
 
 			_kernelContext = new Context(Sys::VM::Directory::GetKernelDirectory(), VFS::GetRootNode());
 			task->_context = _kernelContext;
@@ -179,7 +179,7 @@ namespace VFS
 
 	Context *Context::GetActiveContext()
 	{
-		Core::Task *task = Core::Scheduler::GetActiveTask();
+		OS::Task *task = OS::Scheduler::GetActiveTask();
 		return task->_context;
 	}
 }
