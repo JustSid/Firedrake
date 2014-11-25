@@ -95,7 +95,7 @@ namespace FFS
 
 
 
-	KernReturn<IO::StrongRef<VFS::Node>> Instance::LookUpNode(__unused VFS::Context *context, uint64_t id)
+	KernReturn<IO::StrongRef<VFS::Node>> Instance::LookUpNode(__unused VFS::Context *context, __unused uint64_t id)
 	{
 		return Error(KERN_RESOURCES_MISSING);
 	}

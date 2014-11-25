@@ -185,7 +185,7 @@ namespace Core
 
 				} while(thread != original);
 
-				if(!thread)
+				if(!thread || !found)
 				{
 					thread = proxy->idleThread;
 					thread->Lock();

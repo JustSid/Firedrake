@@ -28,6 +28,8 @@ namespace VFS
 		_lock = SPINLOCK_INIT;
 		_lastID = 0;
 		_rootNode = rootNode->Retain();
+
+		return this;
 	}
 
 

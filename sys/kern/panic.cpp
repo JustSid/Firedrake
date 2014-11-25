@@ -55,7 +55,7 @@ void panic_die_fancy(const char *buffer)
 
 	for(int i = 0; i < num; i ++)
 	{
-		kprintf("(%2i) %08x\n", (num - 1) - i, reinterpret_cast<uintptr_t>(frames[i]));
+		kprintf("(%2i) %08x\n", (num - 1) - i, reinterpret_cast<uint32_t>(frames[i]));
 	}
 
 	kprintf("CPU halt");
