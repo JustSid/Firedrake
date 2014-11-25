@@ -67,10 +67,7 @@ namespace OS
 			return;
 		
 		_directory = directory;
-		_executable = new Executable(_directory);
-
-		if((_result = _executable->GetState()) != KERN_SUCCESS)
-			return;
+		_executable = Executable::Alloc()->Init(_directory);
 
 		KernReturn<Thread *> thread = AttachThread(static_cast<Thread::Entry>(_executable->GetEntry()), 0);
 		if(!thread.IsValid())

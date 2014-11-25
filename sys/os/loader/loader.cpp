@@ -24,22 +24,25 @@
 
 namespace OS
 {
-	Executable::Executable(Sys::VM::Directory *directory) :
-		_directory(directory),
-		_state(KERN_SUCCESS),
-		_entry(0),
-		_physical(0),
-		_virtual(0),
-		_pages(0)
+	IODefineMeta(Executable, IO::Object)
+
+	KernReturn<Executable *> Executable::Init(Sys::VM::Directory *directory)
 	{
+		if(!IO::Object::Init())
+			return Error(KERN_FAILURE);
+
+		_directory = directory;
+		_entry    = 0;
+		_physical = 0;
+		_virtual  = 0;
+		_pages    = 0;
+
+		KernReturn<void> status;
 		KernReturn<int> fd;
 		VFS::Context *context = VFS::Context::GetKernelContext();
 
 		if((fd = VFS::Open(context, "/bin/test.bin", O_RDONLY)).IsValid() == false)
-		{
-			_state = fd.GetError().GetCode();
-			return;
-		}
+			return fd.GetError();
 
 		KernReturn<void> result;
 		KernReturn<off_t> size;
@@ -51,7 +54,7 @@ namespace OS
 		// Get the size of the file and allocate enough storage
 		if((size = VFS::Seek(context, fd, 0, SEEK_END)).IsValid() == false)
 		{
-			_state = size.GetError().GetCode();
+			status = size.GetError();
 			goto exit;
 		}
 
@@ -60,14 +63,14 @@ namespace OS
 
 		if(!buffer)
 		{
-			_state = KERN_NO_MEMORY;
+			status = Error(KERN_NO_MEMORY);
 			goto exit;
 		}
 
 		// Rewind
 		if(!VFS::Seek(context, fd, 0, SEEK_SET).IsValid())
 		{
-			_state = KERN_FAILURE;
+			status = Error(KERN_FAILURE);
 			goto exit;
 		}
 
@@ -81,7 +84,7 @@ namespace OS
 
 			if(!read.IsValid())
 			{
-				_state = read.GetError().GetCode();
+				status = read.GetError();
 				goto exit;
 			}
 
@@ -89,28 +92,33 @@ namespace OS
 			left -= read;
 		}
 
-		result = Initialize(buffer);
-		_state = result.IsValid() ? KERN_SUCCESS : result.GetError().GetCode();
+		result = Load(buffer);
+		status = result.IsValid() ? ErrorNone : result.GetError();
 
 	exit:
 		VFS::Close(context, fd);
+		delete[] buffer;
 
-		if(buffer)
-			delete[] buffer;
+		if(!status.IsValid())
+			return status.GetError();
+
+		return this;
 	}
 
-	Executable::~Executable()
+	void Executable::Dealloc()
 	{
 		if(_virtual)
 			_directory->Free(_virtual, _pages);
 
 		if(_physical)
 			Sys::PM::Free(_physical, _pages);
+
+		IO::Object::Dealloc();
 	}
 
 
 
-	KernReturn<void> Executable::Initialize(void *data)
+	KernReturn<void> Executable::Load(void *data)
 	{
 		char *begin = static_cast<char *>(data);
 		elf_header_t *header = static_cast<elf_header_t *>(data);

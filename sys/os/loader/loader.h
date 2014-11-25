@@ -24,24 +24,23 @@
 #include <machine/memory/memory.h>
 #include <libc/stddef.h>
 #include <libc/stdint.h>
+#include <objects/IOObject.h>
 
 namespace OS
 {
-	class Executable
+	class Executable : public IO::Object
 	{
 	public:
-		Executable(Sys::VM::Directory *directory);
-		~Executable();
+		KernReturn<Executable *> Init(Sys::VM::Directory *directory);
 
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
 		vm_address_t GetEntry() const { return _entry; }
 
-		uint32_t GetState() const { return _state; }
+	protected:
+		void Dealloc() override;
 
 	private:
-		KernReturn<void> Initialize(void *data);
-
-		uint32_t _state;
+		KernReturn<void> Load(void *data);
 
 		Sys::VM::Directory *_directory;
 		vm_address_t _entry;
@@ -49,6 +48,8 @@ namespace OS
 		uintptr_t _physical;
 		vm_address_t _virtual;
 		size_t _pages;
+
+		IODeclareMeta(Executable)
 	};
 }
 
