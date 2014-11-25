@@ -37,12 +37,11 @@ namespace VFS
 	class Descriptor : public IO::Object
 	{
 	public:
-		struct Flags : cpp::Bitfield<uint32_t>
+		struct Flags : cpp::bitfield<uint32_t>
 		{
-			Flags()
-			{}
+			Flags() = default;
 			Flags(int value) :
-				Bitfield(value)
+				bitfield(value)
 			{}
 
 			enum

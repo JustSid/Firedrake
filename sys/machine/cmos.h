@@ -41,12 +41,11 @@ namespace Sys
 			StateB = 0xb
 		};
 
-		struct Flags : public cpp::Bitfield<uint8_t>
+		struct Flags : public cpp::bitfield<uint8_t>
 		{	
-			Flags()
-			{}
+			Flags() = default;
 			Flags(int value) :
-				Bitfield(value)
+				bitfield(value)
 			{}
 
 			enum

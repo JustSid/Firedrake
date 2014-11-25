@@ -65,7 +65,7 @@ namespace Sys
 
 	struct MultibootHeader
 	{
-		struct Flags : public cpp::Bitfield<uint32_t>
+		struct Flags : public cpp::bitfield<uint32_t>
 		{
 			enum
 			{
@@ -109,7 +109,7 @@ namespace Sys
 		uint32_t GetMmapCount() const   { return mmapLength / sizeof(MultibootMmap); }
 		uint32_t GetDrivesCount() const { return drivesLength / sizeof(MultibootDrive); }
 
-	} __attribute__((packed));
+	};
 
 	static_assert(sizeof(MultibootHeader) == 72, "MultibootHeader must be 72 bytes exactly!");
 

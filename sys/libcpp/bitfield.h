@@ -24,16 +24,14 @@
 namespace cpp
 {
 	template<class T, bool overloadT = false>
-	struct Bitfield;
+	struct bitfield;
 
 
 	template<class T>
-	struct Bitfield<T, false>
+	struct bitfield<T, false>
 	{
-		Bitfield() :
-			_value(0)
-		{}
-		Bitfield(T value) :
+		bitfield() = default;
+		bitfield(T value) :
 			_value(value)
 		{}
 
@@ -74,12 +72,10 @@ namespace cpp
 	};
 
 	template<class T>
-	struct Bitfield<T, true>
+	struct bitfield<T, true>
 	{
-		Bitfield() :
-			_value(0)
-		{}
-		Bitfield(T value) :
+		bitfield() = default;
+		bitfield(T value) :
 			_value(value)
 		{}
 

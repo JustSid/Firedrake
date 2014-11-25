@@ -98,12 +98,11 @@ namespace Sys
 	class CPUInfo
 	{
 	public:
-		struct Feature : public cpp::Bitfield<uint64_t, true>
+		struct Feature : public cpp::bitfield<uint64_t, true>
 		{
-			Feature()
-			{}
+			Feature() = default;
 			Feature(uint64_t value) :
-				Bitfield(value)
+				bitfield(value)
 			{}
 
 			enum
@@ -201,13 +200,11 @@ namespace Sys
 	class CPU
 	{
 	public:
-		struct Flags : cpp::Bitfield<uint32_t>
+		struct Flags : cpp::bitfield<uint32_t>
 		{
-			Flags()
-			{}
-
+			Flags() = default;
 			Flags(int value) :
-				Bitfield(value)
+				bitfield(value)
 			{}
 
 			enum
