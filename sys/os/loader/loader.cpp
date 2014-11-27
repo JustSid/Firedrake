@@ -79,9 +79,8 @@ namespace OS
 		// Read the file
 		while(left > 0)
 		{
-			KernReturn<size_t> read;
-			 VFS::Read(context, fd, temp, left);
-
+			KernReturn<size_t> read = VFS::Read(context, fd, temp, left);
+			
 			if(!read.IsValid())
 			{
 				status = read.GetError();

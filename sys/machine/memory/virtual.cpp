@@ -341,7 +341,7 @@ namespace Sys
 			size_t pageTableIndex = (lowerLimit >> VM_DIRECTORY_SHIFT);
 			size_t pageIndex = (lowerLimit >> VM_PAGE_SHIFT) % kPagetableLength;
 
-			ScopedMapping temp(_kernelDirectory, 0xdeadbeef, 1);
+			ScopedMapping temp(_kernelDirectory, 0xdeadb000, 1);
 			vm_address_t temporaryPage = temp.GetAddress();
 
 			if(!temporaryPage)
@@ -558,7 +558,7 @@ namespace Sys
 
 			if(pageDirectory != _kernelPageDirectory)
 			{
-				KernReturn<vm_address_t> result = noLock ? _kernelDirectory->__Alloc_NoLockPrivate(0xdeadbeef, 1, kVMFlagsKernel) : _kernelDirectory->Alloc(0xdeadbeef, 1, kVMFlagsKernel);
+				KernReturn<vm_address_t> result = noLock ? _kernelDirectory->__Alloc_NoLockPrivate(0xdeadb000, 1, kVMFlagsKernel) : _kernelDirectory->Alloc(0xdeadb000, 1, kVMFlagsKernel);
 
 				if(result.IsValid() == false)
 					return result.GetError();

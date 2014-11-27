@@ -500,7 +500,7 @@ namespace Sys
 		switch(type)
 		{
 			case HeapZoneType::Tiny:
-				pages = 1;
+				pages = 2;
 				break;
 
 			case HeapZoneType::Small:
