@@ -21,6 +21,8 @@
 #include "IOArray.h"
 #include "IODictionary.h"
 #include "IOString.h"
+#include "IONumber.h"
+#include "IONull.h"
 
 namespace IO
 {
@@ -154,7 +156,11 @@ namespace IO
 		Array::GetMetaClass();
 		Dictionary::GetMetaClass();
 		String::GetMetaClass();
-		
+		Number::GetMetaClass();
+		Null::GetMetaClass();
+
+		Null::GetNull(); // Get the shared Null class to avoid race conditions
+
 		return ErrorNone;
 	}
 #endif
