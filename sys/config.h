@@ -31,10 +31,6 @@
 	#define CONFIG_MAX_CPUS 32
 #endif
 
-#ifndef CONFIG_MAX_FILES
-	#define CONFIG_MAX_FILES 256
-#endif
-
 /**
  * Symbolic names for personality and bootloaders
  **/

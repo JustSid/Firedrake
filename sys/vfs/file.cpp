@@ -24,16 +24,25 @@
 
 namespace VFS
 {
-	File::File(Node *node, int flags) :
-		_node(node),
-		_flags(flags),
-		_offset(0)
+	IODefineMeta(File, IO::Object)
+	IODefineMeta(FileDirectory, File)
+
+	File *File::Init(Node *node, int flags)
 	{
-		_node->Retain();
+		if(!IO::Object::Init())
+			return nullptr;
+
+		_node   = node->Retain();
+		_flags  = flags;
+		_offset = 0;
+
+		return this;
 	}
-	File::~File()
+
+	void File::Dealloc()
 	{
 		_node->Release();
+		IO::Object::Dealloc();
 	}
 
 	void File::SetOffset(off_t offset)
@@ -42,9 +51,12 @@ namespace VFS
 	}
 
 
-	FileDirectory::FileDirectory(Node *node, int flags) :
-		File(node, flags)
+
+	FileDirectory *FileDirectory::Init(Node *node, int flags)
 	{
+		if(!File::Init(node, flags))
+			return nullptr;
+
 		if(!node->IsDirectory())
 			panic("Node must be directory!");
 
@@ -66,6 +78,7 @@ namespace VFS
 		});
 
 		directory->Unlock();
+		return this;
 	}
 }
 

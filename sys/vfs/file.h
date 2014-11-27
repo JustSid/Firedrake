@@ -26,15 +26,15 @@
 #include <libc/sys/unistd.h>
 #include <libc/sys/dirent.h>
 #include <libcpp/vector.h>
+#include <objects/IOObject.h>
 
 namespace VFS
 {
 	class Node;
-	class File
+	class File : public IO::Object
 	{
 	public:
-		File(Node *node, int flags);
-		virtual ~File();
+		File *Init(Node *node, int flags);
 
 		Node *GetNode() const { return _node; }
 		off_t GetOffset() const { return _offset; }
@@ -42,22 +42,29 @@ namespace VFS
 
 		void SetOffset(off_t offset);
 
+	protected:
+		void Dealloc() override;
+
 	private:
 		Node *_node;
 		off_t _offset;
 		int _flags;
+
+		IODeclareMeta(File)
 	};
 
 	class FileDirectory : public File
 	{
 	public:
-		FileDirectory(Node *node, int flags);
+		FileDirectory *Init(Node *node, int flags);
 
 		size_t GetCount() const { return _entries.size(); }
 		const dirent *GetEntries() const { return _entries.data(); }
 
 	private:
 		std::vector<dirent> _entries;
+
+		IODeclareMeta(FileDirectory)
 	};
 
 	constexpr File *InvalidFile = (File *)0xffdeadff;

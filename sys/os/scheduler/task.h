@@ -31,6 +31,9 @@
 #include <os/loader/loader.h>
 #include <objects/IOObject.h>
 #include <objects/IOArray.h>
+#include <objects/IODictionary.h>
+#include <objects/IONumber.h>
+#include <objects/IONull.h>
 
 #include "thread.h"
 
@@ -96,7 +99,8 @@ namespace OS
 		bool _ring3;
 
 		VFS::Context *_context;
-		VFS::File *_files[CONFIG_MAX_FILES];
+		IO::Dictionary *_files;
+		std::atomic<int32_t> _fileCounter;
 
 		IODeclareMeta(Task)
 	};

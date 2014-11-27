@@ -118,7 +118,7 @@ namespace FFS
 	{
 		if(node->IsFile())
 		{
-			VFS::File *file = new VFS::File(node, flags);
+			VFS::File *file = VFS::File::Alloc()->Init(node, flags);
 			if(!file)
 				return Error(KERN_NO_MEMORY);
 
@@ -130,7 +130,7 @@ namespace FFS
 
 		if(node->IsDirectory())
 		{
-			VFS::File *file = new VFS::FileDirectory(node, flags);
+			VFS::File *file = VFS::FileDirectory::Alloc()->Init(node, flags);
 			if(!file)
 				return Error(KERN_NO_MEMORY);
 			
@@ -142,7 +142,7 @@ namespace FFS
 
 	void Instance::CloseFile(__unused VFS::Context *context, VFS::File *file)
 	{
-		delete file;
+		file->Release();
 	}
 
 

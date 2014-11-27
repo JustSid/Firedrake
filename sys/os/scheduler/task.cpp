@@ -46,10 +46,11 @@ namespace OS
 		_mainThread = nullptr;
 		_directory = Sys::VM::Directory::GetKernelDirectory();
 		_context = nullptr;
+		_fileCounter = 0;
+		_files = IO::Dictionary::Alloc()->Init();
 		_executable = nullptr;
 		_threads = IO::Array::Alloc()->Init();
 
-		memset(_files, 0, CONFIG_MAX_FILES * sizeof(VFS::File *));
 		return this;
 	}
 
@@ -87,6 +88,8 @@ namespace OS
 
 		if(_directory != Sys::VM::Directory::GetKernelDirectory())
 			delete _directory;
+
+		_files->Release();
 
 		IO::Object::Dealloc();
 	}
@@ -135,44 +138,41 @@ namespace OS
 
 	VFS::File *Task::GetFileForDescriptor(int fd)
 	{
-		if(fd >= CONFIG_MAX_FILES)
-			panic("File descriptor >= CONFIG_MAX_FILES!");
+		IO::Number *lookup = IO::Number::Alloc()->InitWithInt32(fd);
 
 		Lock();
-		VFS::File *file = _files[fd];
+		VFS::File *file = _files->GetObjectForKey<VFS::File>(lookup);
 		Unlock();
 
-		return (file != VFS::InvalidFile) ? file : nullptr;
+		lookup->Release();
+		return file;
 	}
 	void Task::SetFileForDescriptor(VFS::File *file, int fd)
 	{
-		if(fd >= CONFIG_MAX_FILES)
-			panic("File descriptor >= CONFIG_MAX_FILES!");
-
-		if(file == nullptr)
-			file = VFS::InvalidFile;
+		IO::Number *lookup = IO::Number::Alloc()->InitWithInt32(fd);
 
 		Lock();
-		_files[fd] = file;
+
+		if(file)
+			_files->SetObjectForKey(file, lookup);
+		else
+			_files->SetObjectForKey(IO::Null::GetNull(), lookup);
+
 		Unlock();
+
+		lookup->Release();
 	}
+
 
 	int Task::AllocateFileDescriptor()
 	{
+		int fd = (_fileCounter ++);
+
 		Lock();
-		
-		int fd = -1;
 
-		for(int i = 0; i < CONFIG_MAX_FILES; i ++)
-		{
-			if(_files[i] == nullptr)
-			{
-				_files[i] = VFS::InvalidFile;
-				fd = i;
-
-				break;
-			}
-		}
+		IO::Number *lookup = IO::Number::Alloc()->InitWithInt32(fd);
+		_files->SetObjectForKey(IO::Null::GetNull(), lookup);
+		lookup->Release();
 
 		Unlock();
 
@@ -180,11 +180,12 @@ namespace OS
 	}
 	void Task::FreeFileDescriptor(int fd)
 	{
-		if(fd >= CONFIG_MAX_FILES)
-			panic("File descriptor >= CONFIG_MAX_FILES!");
-
 		Lock();
-		_files[fd] = nullptr;
+
+		IO::Number *lookup = IO::Number::Alloc()->InitWithInt32(fd);
+		_files->RemoveObjectForKey(lookup);
+		lookup->Release();
+
 		Unlock();
 	}
 }
