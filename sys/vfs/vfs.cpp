@@ -89,7 +89,7 @@ namespace VFS
 
 	KernReturn<int> Open(Context *context, const char *path, int flags)
 	{
-		OS::Task *task = OS::Scheduler::GetActiveTask();
+		OS::Task *task = context->GetTask();
 
 		int fd = task->AllocateFileDescriptor();
 		if(fd == -1)
@@ -167,7 +167,7 @@ namespace VFS
 	}
 	KernReturn<void> Close(Context *context, int fd)
 	{
-		OS::Task *task = OS::Scheduler::GetActiveTask();
+		OS::Task *task = context->GetTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file)
@@ -185,7 +185,7 @@ namespace VFS
 
 	KernReturn<size_t> Write(Context *context, int fd, const void *data, size_t size)
 	{
-		OS::Task *task = OS::Scheduler::GetActiveTask();
+		OS::Task *task = context->GetTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file || !(file->GetFlags() & O_WRONLY || file->GetFlags() & O_RDWR))
@@ -201,7 +201,7 @@ namespace VFS
 
 	KernReturn<size_t> Read(Context *context, int fd, void *data, size_t size)
 	{
-		OS::Task *task = OS::Scheduler::GetActiveTask();
+		OS::Task *task = context->GetTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file || !(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
@@ -217,7 +217,7 @@ namespace VFS
 
 	KernReturn<off_t> ReadDir(Context *context, int fd, dirent *entry, size_t count)
 	{
-		OS::Task *task = OS::Scheduler::GetActiveTask();
+		OS::Task *task = context->GetTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file || !(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
@@ -231,7 +231,7 @@ namespace VFS
 
 	KernReturn<off_t> Seek(Context *context, int fd, off_t offset, int whence)
 	{
-		OS::Task *task = OS::Scheduler::GetActiveTask();
+		OS::Task *task = context->GetTask();
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file)
@@ -283,7 +283,7 @@ namespace VFS
 
 	KernReturn<void> LoadInitrdModule(uint8_t *buffer, uint8_t *end)
 	{
-		Context *context = Context::GetActiveContext();
+		Context *context = Context::GetKernelContext();
 
 		kprintf("loading initrd (%u bytes)... ", end - buffer);
 

@@ -23,6 +23,7 @@
 #include <machine/memory/virtual.h>
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
+#include <os/scheduler/task.h>
 
 #include <objects/IOObject.h>
 
@@ -32,8 +33,10 @@ namespace VFS
 	class Context
 	{
 	public:
-		Context(Sys::VM::Directory *directory, Node *currentDir);
+		Context(OS::Task *task, Sys::VM::Directory *directory, Node *currentDir);
 		~Context();
+
+		OS::Task *GetTask() const { return _task; }
 
 		IO::StrongRef<Node> GetCurrentDir(); // Returns retained node!
 		IO::StrongRef<Node> GetRootDir(); // Returns retained node!
@@ -53,6 +56,7 @@ namespace VFS
 		Node *_currentDir;
 		Node *_root;
 		Sys::VM::Directory *_directory;
+		OS::Task *_task;
 	};
 }
 

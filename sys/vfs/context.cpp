@@ -23,8 +23,9 @@
 
 namespace VFS
 {
-	Context::Context(Sys::VM::Directory *directory, Node *current) :
+	Context::Context(OS::Task *task, Sys::VM::Directory *directory, Node *current) :
 		_lock(SPINLOCK_INIT),
+		_task(task),
 		_directory(directory),
 		_currentDir(current),
 		_root(VFS::GetRootNode())
@@ -168,9 +169,9 @@ namespace VFS
 		static Context *_kernelContext = nullptr;
 		if(__expect_false(!_kernelContext))
 		{
-			OS::Task *task = OS::Scheduler::GetActiveTask();
+			OS::Task *task = OS::Scheduler::GetKernelTask();
 
-			_kernelContext = new Context(Sys::VM::Directory::GetKernelDirectory(), VFS::GetRootNode());
+			_kernelContext = new Context(task, Sys::VM::Directory::GetKernelDirectory(), VFS::GetRootNode());
 			task->_context = _kernelContext;
 		}
 
