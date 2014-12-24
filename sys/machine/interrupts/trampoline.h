@@ -39,6 +39,8 @@ namespace Sys
 
 	KernReturn<void> TrampolineInit();
 	KernReturn<void> TrampolineInitCPU();
+
+	KernReturn<void> TrampolineMapIntoDirectory(VM::Directory *directory);
 }
 
 #endif /* _TRAMPOLINE_H_ */

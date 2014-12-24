@@ -20,6 +20,7 @@
 #include <kern/panic.h>
 #include <libc/string.h>
 #include <vfs/file.h>
+#include <machine/interrupts/trampoline.h>
 #include "scheduler.h"
 #include "task.h"
 
@@ -73,6 +74,8 @@ namespace OS
 
 		_directory  = directory;
 		_executable = executable;
+
+		Sys::TrampolineMapIntoDirectory(_directory);
 
 		KernReturn<Thread *> thread = AttachThread(static_cast<Thread::Entry>(_executable->GetEntry()), 0);
 		if(!thread.IsValid())

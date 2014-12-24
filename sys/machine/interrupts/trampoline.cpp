@@ -36,7 +36,9 @@ namespace Sys
 		uint8_t buffer[VM_PAGE_SIZE];
 		Trampoline trampoline[CONFIG_MAX_CPUS];
 	};
+	
 	TrampolineMap *_map = nullptr;
+	uintptr_t _physicalTrampoline = 0x0;
 
 	KernReturn<void> TrampolineInit()
 	{
@@ -61,6 +63,7 @@ namespace Sys
 		}
 		
 		_map = reinterpret_cast<TrampolineMap *>(IR_TRAMPOLINE_BEGIN);
+		_physicalTrampoline = paddress;
 
 		// Fix up the idt section
 		uintptr_t idtBegin = reinterpret_cast<uintptr_t>(&idt_begin);
@@ -91,6 +94,15 @@ namespace Sys
 		uint32_t *esp = Alloc<uint32_t>(directory, 1, kVMFlagsKernel);
 		trampoline->tss.esp0 = reinterpret_cast<uint32_t>(esp) + (VM_PAGE_SIZE - sizeof(Sys::CPUState));
 		trampoline->tss.ss0  = 0x10;
+
+		return ErrorNone;
+	}
+
+	KernReturn<void> TrampolineMapIntoDirectory(VM::Directory *directory)
+	{
+		KernReturn<vm_address_t> vaddress = directory->AllocLimit(_physicalTrampoline, IR_TRAMPOLINE_BEGIN, VM::kUpperLimit, IR_TRAMPOLINE_PAGES, kVMFlagsKernel);
+		if(!vaddress.IsValid() || vaddress != IR_TRAMPOLINE_BEGIN)
+			return vaddress.GetError();
 
 		return ErrorNone;
 	}
