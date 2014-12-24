@@ -38,6 +38,8 @@ namespace OS
 		Thread *GetActiveThread();
 		Thread *GetActiveThread(Sys::CPU *cpu);
 
+		Task *GetKernelTask();
+
 		void ActivateCPU(Sys::CPU *cpu);
 
 		uint32_t RescheduleOnCPU(uint32_t esp, Sys::CPU *cpu);

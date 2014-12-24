@@ -56,7 +56,7 @@ namespace OS
 		if(_task->_ring3)
 		{
 			_userStackPages   = std::min<size_t>(64, std::max<size_t>(24, stackPages));
-			_kernelStackPages = 4;
+			_kernelStackPages = 1;
 
 			KernReturn<void> result = InitializeForRing3();
 			if(!result.IsValid())
@@ -106,15 +106,15 @@ namespace OS
 			_userStackVirtual = reinterpret_cast<uint8_t *>(vaddress.Get());
 
 			// Kernel stack
-			paddress = Sys::PM::Alloc(1);
-			vaddress = _task->_directory->AllocTwoSidedLimit(paddress, kThreadStackLimit, Sys::VM::kUpperLimit, 1, kVMFlagsKernel);
+			paddress = Sys::PM::Alloc(_kernelStackPages);
+			vaddress = _task->_directory->AllocTwoSidedLimit(paddress, kThreadStackLimit, Sys::VM::kUpperLimit, _kernelStackPages, kVMFlagsKernel);
 			
 			_kernelStack = reinterpret_cast<uint8_t *>(paddress.Get());
 			_kernelStackVirtual = reinterpret_cast<uint8_t *>(vaddress.Get());
 		}
 
-		size_t size     = _userStackPages * VM_PAGE_SIZE;
-		uint32_t *stack = reinterpret_cast<uint32_t *>(_userStackVirtual + size);
+		size_t size     = _kernelStackPages * VM_PAGE_SIZE;
+		uint32_t *stack = reinterpret_cast<uint32_t *>(_kernelStackVirtual + size);
 
 		*(-- stack) = 0x23; // ss
 		*(-- stack) = (uint32_t)(_userStackVirtual + ((_userStackPages * VM_PAGE_SIZE) - 4) - (0x0 * sizeof(uint32_t)));   // esp

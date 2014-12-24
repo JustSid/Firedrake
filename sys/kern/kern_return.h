@@ -143,7 +143,8 @@ class KernReturn<T *>
 public:
 	KernReturn() :
 		_error(KERN_SUCCESS),
-		_acknowledged(false)
+		_acknowledged(false),
+		_value(nullptr)
 	{}
 	
 	KernReturn(T *value) :

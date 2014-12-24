@@ -115,6 +115,11 @@ namespace OS
 			return thread;
 		}
 
+		Task *GetKernelTask()
+		{
+			return _kernelTask;
+		}
+
 		// --------------------
 		// MARK: -
 		// MARK: Thread handling
@@ -217,7 +222,7 @@ namespace OS
 			Sys::Trampoline *data = cpu->GetTrampoline();
 
 			data->pageDirectory = task->GetDirectory()->GetPhysicalDirectory();
-			data->tss.esp0      = thread->GetESP() + sizeof(Sys::CPUState);
+			data->tss.esp0 = thread->GetESP() + sizeof(Sys::CPUState);
 
 			return thread->GetESP();
 		}
@@ -227,7 +232,7 @@ namespace OS
 			CPUProxy *proxy = &_proxyCPUs[cpu->GetID()];
 			assert(proxy && proxy->active == false);
 
-			proxy->active    = true;
+			proxy->active = true;
 			proxy->firstRun = true;
 
 			proxy->activeThread = proxy->idleThread;
@@ -241,10 +246,11 @@ namespace OS
 
 		uint32_t ActivateCPUFromIPI(uint32_t esp, Sys::CPU *cpu)
 		{
+			ActivateCPU(cpu);
+
 			Sys::APIC::SetTimer(Sys::Clock::GetTimerDivisor(), Sys::APIC::TimerMode::Periodic, Sys::Clock::GetTimerCount());
 			Sys::APIC::ArmTimer(Sys::Clock::GetTimerCount());
 
-			ActivateCPU(cpu);
 			return ScheduleOnCPU(esp, cpu);
 		}
 
