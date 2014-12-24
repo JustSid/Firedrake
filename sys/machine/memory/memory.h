@@ -67,30 +67,6 @@ namespace Sys
 			PM::Free(pmemory, pages);
 		}
 	}
-
-
-
-	template<class T>
-	T *Allocate()
-	{
-		void *buffer = kalloc(sizeof(T));
-		if(!buffer)
-			return nullptr;
-
-		T *result = new(buffer) T();
-		return result;
-	}
-
-	template<class T, class ... Args>
-	T *Allocate(Args&&... args)
-	{
-		void *buffer = kalloc(sizeof(T));
-		if(!buffer)
-			return nullptr;
-
-		T *result = new(buffer) T(std::forward<Args>(args)...);
-		return result;
-	}
 }
 
 #endif /* _MEMORY_H_ */

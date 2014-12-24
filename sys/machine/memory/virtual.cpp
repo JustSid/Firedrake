@@ -174,7 +174,7 @@ namespace Sys
 				mapped[0xff] = physical | kVMFlagsKernel;
 			}
 
-			Directory *directory = Allocate<Directory>(reinterpret_cast<uint32_t *>(physical.Get()));
+			Directory *directory = new Directory(reinterpret_cast<uint32_t *>(physical.Get()));
 			if(!directory)
 				return Error(KERN_NO_MEMORY);
 
