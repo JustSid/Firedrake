@@ -18,6 +18,7 @@
 
 #include <machine/port.h>
 #include <machine/cpu.h>
+#include <machine/debug.h>
 #include <kern/kprintf.h>
 #include <kern/panic.h>
 #include "interrupts.h"
@@ -202,6 +203,8 @@ namespace Sys
 	}
 
 
+	extern uint32_t HandleWatchpoint(uint32_t esp, Sys::CPU *cpu);
+
 	KernReturn<void> InterruptsInit()
 	{
 		KernReturn<void> result;
@@ -215,6 +218,8 @@ namespace Sys
 		kprintf(", trampoline");
 		if((result = TrampolineInit()).IsValid() == false)
 			return result;
+
+		SetInterruptHandler(1, HandleWatchpoint);
 
 		panic_init();
 		sti();
