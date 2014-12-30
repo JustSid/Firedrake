@@ -155,7 +155,8 @@ namespace OS
 				return esp;
 
 			Thread *thread = proxy->activeThread;
-			thread->Lock();
+			if(!thread->TryLock())
+				return esp;
 
 			if(__expect_true(!proxy->firstRun))
 				thread->SetESP(esp);
@@ -178,15 +179,17 @@ namespace OS
 					spinlock_unlock(&_threadLock);
 
 					thread = entry->get();
-					thread->Lock();
 
-					if(thread->IsSchedulable(cpu))
+					if(thread->TryLock())
 					{
-						found = true;
-						break;
-					}
+						if(thread->IsSchedulable(cpu))
+						{
+							found = true;
+							break;
+						}
 
-					thread->Unlock();
+						thread->Unlock();
+					}
 
 				} while(thread != original);
 
@@ -205,6 +208,7 @@ namespace OS
 
 				if(thread != original)
 				{
+					// The original thread could be locked before, so the lock isn't held deeper in the system
 					original->Lock();
 					original->SetRunningCPU(nullptr);
 					original->Unlock();

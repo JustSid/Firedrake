@@ -232,4 +232,8 @@ namespace OS
 	{
 		spinlock_unlock(&_lock);
 	}
+	bool Thread::TryLock()
+	{
+		return spinlock_try_lock(&_lock);
+	}
 }

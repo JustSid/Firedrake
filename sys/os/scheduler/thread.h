@@ -42,6 +42,7 @@ namespace OS
 
 		void Lock();
 		void Unlock();
+		bool TryLock();
 
 		void SetQuantum(int8_t quantum);
 		void SetESP(uint32_t esp);
