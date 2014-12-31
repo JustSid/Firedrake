@@ -19,143 +19,104 @@
 #ifndef _HEAP_H_
 #define _HEAP_H_
 
-#include <prefix.h>
-#include <libc/stddef.h>
 #include <libc/stdint.h>
-#include <libcpp/list.h>
-#include <libcpp/bitfield.h>
-#include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
+#include <kern/kern_return.h>
 
 namespace Sys
 {
-	enum class HeapZoneType
-	{
-		Tiny, // Less than 64 bytes
-		Small, // Less than 256
-		Medium, // Less than 2048
-		Large // Everything else
-	};
-
-	enum class HeapZoneAllocationType : uint8_t
-	{
-		Free,
-		Used,
-		Unused
-	};
-
-	class HeapZone;
-	class Heap;
-
-	class AllocationProxy
-	{
-	public:
-		friend class HeapZone;
-
-		AllocationProxy() {}
-
-		HeapZoneAllocationType GetType() const;
-		size_t GetSize() const;
-		void *GetPointer() const;
-
-		KernReturn<void> Free();
-		KernReturn<void *> UseWithSize(size_t size);
-
-	private:
-		AllocationProxy(void *allocation, const HeapZone *zone);
-
-		HeapZone *_zone;
-		void *_allocation;
-		bool _tiny;
-	};
-
-	class HeapZone : public cpp::list<HeapZone>::node
-	{
-	public:
-		friend class AllocationProxy;
-		friend class Heap;
-
-		static KernReturn<HeapZone *> Create(size_t size);
-		void operator delete(void *ptr);
-
-		bool IsTiny() const;
-		bool IsEmpty() const { return _allocations == _freeAllocations; }
-		bool CanAllocate(size_t size) const;
-		bool ContainsAllocation(void *ptr) const;
-
-		size_t GetFreeSize() const { return _freeSize; }
-		HeapZoneType GetType() const { return _type; }
-
-		void Defragment();
-
-	private:
-		HeapZone(uint8_t *start, uint8_t *end, size_t pages, HeapZoneType type);
-
-		bool FreeAllocationForSize(AllocationProxy &proxy, size_t size) const;
-		bool AllocationForPointer(AllocationProxy &proxy, void *ptr) const;
-		bool UnusedAllocation(AllocationProxy &proxy) const;
-
-		void *FindUnusedAllocation() const;
-		void *FindAllocationForPointer(void *ptr) const;
-		KernReturn<void *> UseAllocation(void *allocation, size_t size);
-		KernReturn<void> FreeAllocation(void *allocation);
-
-		HeapZoneType _type;
-		uint32_t _changes;
-
-		uint8_t *_begin;
-		uint8_t *_end;
-
-		size_t _pages;
-		size_t _freeSize;
-
-		size_t _maxAllocations;
-		size_t _freeAllocations;
-		size_t _allocations;
-
-		uint8_t *_firstAllocation;
-		uint8_t *_lastAllocation;
-	};
-
 	class Heap
 	{
 	public:
-		struct Flags : cpp::bitfield<uint32_t>
-		{
-			Flags() = default;
-			Flags(int value) :
-				bitfield(value)
-			{}
 
-			enum
-			{
-				Secure  = (1 << 0),
-				Aligned = (1 << 1)
-			};
-		};
-
-		Heap(Flags flags);
+		Heap();
 		~Heap();
-
-		static Heap *GetGenericHeap();
 
 		void *operator new(size_t size);
 		void operator delete(void *ptr);
 
-		size_t GetZoneCount() const { return _zones.get_count(); }
+		static Heap *GetGenericHeap();
 
-		void *Allocate(size_t size);
-		void Free(void *ptr);
+		void *Allocate(size_t size, size_t alignment = 4);
+		void Free(void *pointer);
+
+		void Dump();
 
 	private:
-		void *AllocateFromZone(HeapZone *zone, size_t size);
+		struct __Allocation
+		{
+			enum class Type : uint8_t
+			{
+				Free,
+				Allocated,
+				Unused
+			};
 
+			Type type;
+			size_t size;
+			size_t padding;
+			uint8_t *pointer;
+		};
+
+		class Arena
+		{
+		public:
+			enum class Type : uint8_t
+			{
+				Tiny = 0,
+				Small = 1,
+				Medium = 2,
+				Large = 3
+			};
+
+			static Type GetTypeForSize(size_t size);
+
+			Arena(Heap *heap, Type type, size_t sizeHint);
+			~Arena();
+
+			void *operator new(size_t size);
+			void operator delete(void *ptr);
+
+			bool CanAllocate(size_t size);
+			bool ContainsAllocation(void *pointer);
+			bool IsEmpty() const { return (_allocations == _freeAllocations); }
+
+			void *Allocate(size_t size, size_t alignment);
+			void Free(void *pointer);
+
+			void Defragment();
+			void Dump();
+
+			Arena *next;
+			Arena *prev;
+
+		private:
+			__Allocation *FindFreeAllocation(size_t size, size_t alignment);
+			__Allocation *GetAllocationForPointer(void *pointer);
+
+			Heap *_heap;
+			size_t _changes;
+
+			uint8_t *_begin;
+			uint8_t *_end;
+
+			__Allocation *_allocationStart;
+			__Allocation *_allocationEnd;
+			__Allocation *_cacheAllocation;
+
+			size_t _pages;
+			size_t _allocationPages;
+
+			size_t _freeBytes;
+			size_t _allocations;
+			size_t _freeAllocations;
+		};
+
+		Arena *_arenas[4]; // Linked list for every arena type
 		spinlock_t _lock;
-		cpp::list<HeapZone> _zones;
-		Flags _flags;
 	};
 
 	KernReturn<void> HeapInit();
 }
 
-#endif /* _HEAP_H_ */
+#endif
