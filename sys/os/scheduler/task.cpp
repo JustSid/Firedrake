@@ -21,6 +21,7 @@
 #include <libc/string.h>
 #include <vfs/file.h>
 #include <machine/interrupts/trampoline.h>
+#include <machine/debug.h>
 #include "scheduler.h"
 #include "task.h"
 
@@ -51,7 +52,7 @@ namespace OS
 		_files = IO::Dictionary::Alloc()->Init();
 		_executable = nullptr;
 		_threads = IO::Array::Alloc()->Init();
-
+		_name = nullptr;
 		return this;
 	}
 
@@ -61,6 +62,10 @@ namespace OS
 		if(!result.IsValid())
 			return result.GetError();
 
+		IO::String *name = IO::String::Alloc()->InitWithCString(path);
+		SetName(name);
+		name->Release();
+
 		_ring3 = true;
 		_directory = nullptr;
 
@@ -68,11 +73,12 @@ namespace OS
 		if((directory = Sys::VM::Directory::Create()).IsValid() == false)
 			return directory.GetError();
 
+		_directory = directory;
+
 		KernReturn<Executable *> executable;
-		if((executable = Executable::Alloc()->Init(directory, path)).IsValid() == false)
+		if((executable = Executable::Alloc()->Init(_directory, path)).IsValid() == false)
 			return executable.GetError();
 
-		_directory  = directory;
 		_executable = executable;
 
 		Sys::TrampolineMapIntoDirectory(_directory);
@@ -94,10 +100,17 @@ namespace OS
 
 		_files->Release();
 
+		IO::SafeRelease(_name);
+
 		IO::Object::Dealloc();
 	}
 
 
+	void Task::SetName(IO::String *name)
+	{
+		IO::SafeRelease(_name);
+		_name = IO::SafeRetain(name);
+	}
 
 	KernReturn<Thread *> Task::AttachThread(Thread::Entry entry, size_t stack)
 	{

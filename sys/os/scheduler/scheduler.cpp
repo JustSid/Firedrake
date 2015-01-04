@@ -261,10 +261,12 @@ namespace OS
 		KernReturn<void> InitializeTasks()
 		{
 			_kernelTask = Task::Alloc()->Init();
+			_kernelTask->SetName(IO::String::Alloc()->InitWithCString("kernel_task"));
 			_kernelTask->AttachThread((Thread::Entry)&KernelTask, 0);
 			
 			_idleTask = Task::Alloc()->Init();
-			
+			_idleTask->SetName(IO::String::Alloc()->InitWithCString("idle_task"));
+
 			for(size_t i = 0; i < _proxyCPUCount; i ++)
 			{
 				KernReturn<Thread *> thread;

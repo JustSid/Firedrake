@@ -31,6 +31,7 @@
 #include <os/loader/loader.h>
 #include <objects/IOObject.h>
 #include <objects/IOArray.h>
+#include <objects/IOString.h>
 #include <objects/IODictionary.h>
 #include <objects/IONumber.h>
 #include <objects/IONull.h>
@@ -64,11 +65,15 @@ namespace OS
 
 		KernReturn<Thread *> AttachThread( Thread::Entry entry, size_t stack);
 
+		void SetName(IO::String *name);
+
 		void Lock();
 		void Unlock();
 
 		pid_t GetPid() const { return _pid; }
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
+
+		IO::String *GetName() const { return _name; }
 
 		// VFS
 		VFS::Context *GetVFSContext() const { return _context; }
@@ -91,6 +96,8 @@ namespace OS
 		std::atomic<int32_t> _tidCounter;
 		IO::Array *_threads;
 		Thread *_mainThread;
+
+		IO::String *_name;
 
 		spinlock_t _lock;
 		pid_t _pid;
