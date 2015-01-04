@@ -103,4 +103,9 @@ namespace Sys
 	KernReturn<void> VMInit();
 }
 
+static inline void invlpg(vm_address_t addr)
+{
+	__asm__ volatile("invlpg (%0)" :: "r" (addr) : "memory");
+}
+
 #endif /* _VIRTUAL_H_ */

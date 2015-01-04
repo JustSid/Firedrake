@@ -609,6 +609,8 @@ namespace Sys
 			if(temporaryPage)
 				__MapPageNoCheck(_kernelPageDirectory, 0x0, temporaryPage, 0, false);
 
+			invlpg(vaddress);
+
 			return ErrorNone;
 		}
 
