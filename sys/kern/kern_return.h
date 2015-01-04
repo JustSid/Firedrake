@@ -37,27 +37,34 @@
 #include <libcpp/type_traits.h>
 #include "panic.h"
 
+namespace IO
+{
+	class String;
+}
+
 class Error
 {
 public:
 	Error() :
-		_code(KERN_SUCCESS)
+		_code(KERN_SUCCESS),
+		_description(nullptr)
 	{}
 	Error(uint32_t code) :
-		_code(code)
+		_code(code),
+		_description(nullptr)
 	{}
 	Error(uint32_t code, uint32_t errno) : 
-		_code((errno << 24) | (code & 0xffffff))
-	{}
-	Error(const Error &other) :
-		_code(other._code)
+		_code((errno << 24) | (code & 0xffffff)),
+		_description(nullptr)
 	{}
 
-	Error &operator =(const Error &other)
-	{
-		_code = other._code;
-		return *this;
-	}
+	Error(uint32_t code, const char *description, ...);
+	Error(uint32_t code, uint32_t errno, const char *description, ...);
+	
+	Error(const Error &other);
+	~Error();
+
+	Error &operator =(const Error &other);
 
 	bool operator ==(const Error &other) const { return (GetCode() == other.GetCode()); }
 	bool operator !=(const Error &other) const { return (GetCode() != other.GetCode()); }
@@ -66,9 +73,11 @@ public:
 
 	uint32_t GetCode() const { return (_code & 0xffffff); }
 	uint32_t GetErrno() const;
+	const char *GetDescription() const;
 
 private:
 	uint32_t _code;
+	IO::String *_description;
 };
 
 #define ErrorNone Error(KERN_SUCCESS)
@@ -99,7 +108,7 @@ public:
 	KernReturn(KernReturn &&other) :
 		_error(other._error),
 		_value(std::move(other._value)),
-		_acknowledged(other._acknowledged)
+		_acknowledged(false)
 	{
 		other._acknowledged = true;
 	}
@@ -108,7 +117,7 @@ public:
 	{
 		_error        = other._error;
 		_value        = std::move(other._value);
-		_acknowledged = other._acknowledged;
+		_acknowledged = false;
 		
 		other._acknowledged = true;
 		return *this;
@@ -117,7 +126,10 @@ public:
 	~KernReturn()
 	{
 		if(!_acknowledged)
-			panic("Unacknowledged KernReturn, code: %d!", _error.GetCode());
+		{
+			const char *message = _error.GetDescription();
+			panic("Unacknowledged KernReturn, error: <%d:%s>!", _error.GetCode(), message);
+		}
 	}
 	
 	operator T() const { return Get(); }
@@ -130,7 +142,14 @@ public:
 	void Suppress() { _acknowledged = true; }
 	
 private:
-	void Validate() const { if(!IsValid()) { panic("Attempted to access an invalid KernReturn"); } }
+	void Validate() const
+	{ 
+		if(!IsValid())
+		{
+			const char *message = _error.GetDescription();
+			panic("Attempted to access an invalid KernReturn, error: <%d:%s>", _error.GetCode(), message); 
+		} 
+	}
 
 	T _value;
 	Error _error;
@@ -161,7 +180,7 @@ public:
 	KernReturn(KernReturn &&other) :
 		_error(other._error),
 		_value(std::move(other._value)),
-		_acknowledged(other._acknowledged)
+		_acknowledged(false)
 	{
 		other._acknowledged = true;
 	}
@@ -170,7 +189,7 @@ public:
 	{
 		_error        = other._error;
 		_value        = std::move(other._value);
-		_acknowledged = other._acknowledged;
+		_acknowledged = false;
 		
 		other._acknowledged = true;
 		return *this;
@@ -179,7 +198,10 @@ public:
 	~KernReturn()
 	{
 		if(!_acknowledged)
-			panic("Unacknowledged KernReturn, code: %d!", _error.GetCode());
+		{
+			const char *message = _error.GetDescription();
+			panic("Unacknowledged KernReturn, error: <%d:%s>!", _error.GetCode(), message);
+		}
 	}
 	
 	operator T *() const { return Get(); }
@@ -195,7 +217,14 @@ public:
 	void Suppress() { _acknowledged = true; }
 	
 private:
-	void Validate() const { if(!IsValid()) { panic("Attempted to access an invalid KernReturn"); } }
+	void Validate() const
+	{ 
+		if(!IsValid())
+		{
+			const char *message = _error.GetDescription();
+			panic("Attempted to access an invalid KernReturn, error: <%d:%s>", _error.GetCode(), message); 
+		} 
+	}
 
 	T *_value;
 	Error _error;
@@ -218,7 +247,7 @@ public:
 	
 	KernReturn(KernReturn &&other) :
 		_error(other._error),
-		_acknowledged(other._acknowledged)
+		_acknowledged(false)
 	{
 		other._acknowledged = true;
 	}
@@ -226,7 +255,7 @@ public:
 	KernReturn &operator =(KernReturn &&other)
 	{
 		_error = other._error;
-		_acknowledged = other._acknowledged;
+		_acknowledged = false;
 		
 		other._acknowledged = true;
 		return *this;
@@ -235,7 +264,10 @@ public:
 	~KernReturn()
 	{
 		if(!_acknowledged && _error.GetCode() != KERN_SUCCESS)
-			panic("Unacknowledged KernReturn, code: %d!", _error.GetCode());
+		{
+			const char *message = _error.GetDescription();
+			panic("Unacknowledged KernReturn, error: <%d:%s>!", _error.GetCode(), message);
+		}
 	}
 
 	operator Error() const { _acknowledged = true; return _error; }

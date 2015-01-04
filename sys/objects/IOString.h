@@ -19,6 +19,7 @@
 #ifndef _IOSTRING_H_
 #define _IOSTRING_H_
 
+#include <libc/stdarg.h>
 #include "IOObject.h"
 
 namespace IO
@@ -28,6 +29,8 @@ namespace IO
 	public:
 		String *Init();
 		String *InitWithCString(const char *string);
+		String *InitWithFormat(const char *format, ...);
+		String *InitWithFormatAndArguments(const char *format, va_list args);
 
 		size_t GetHash() const override;
 		bool IsEqual(Object *other) const override;

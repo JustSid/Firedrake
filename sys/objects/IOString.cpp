@@ -17,11 +17,11 @@
 //
 
 #include <libc/string.h>
+#include <libc/stdio.h>
 #include <libcpp/functional.h>
+#include <kern/kalloc.h>
 #include "IORuntime.h"
 #include "IOString.h"
-
-#include <kern/kprintf.h>
 
 #define kIOStringFlagOwnedStorage (1 << 0)
 
@@ -52,6 +52,34 @@ namespace IO
 
 		_storage = new char[_length + 1];
 		strcpy(_storage, string);
+
+		CalculateHash();
+		return this;
+	}
+
+	String *String::InitWithFormat(const char *format, ...)
+	{
+		va_list args;
+		va_start(args, format);
+
+		String *result = InitWithFormatAndArguments(format, args);
+
+		va_end(args);
+
+		return result;
+	}
+
+	String *String::InitWithFormatAndArguments(const char *format, va_list args)
+	{
+		if(!Object::Init())
+			return nullptr;
+
+		_storage = new char[1024];
+		_flags = kIOStringFlagOwnedStorage;
+
+		vsnprintf(_storage, 1024, format, args);
+
+		_length = strlen(_storage);
 
 		CalculateHash();
 		return this;

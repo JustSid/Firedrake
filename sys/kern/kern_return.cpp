@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <objects/IOString.h>
 #include "kern_return.h"
 #include "panic.h"
 
@@ -48,6 +49,47 @@ namespace OS
 	}
 }
 
+
+
+
+Error::Error(uint32_t code, const char *description, ...) :
+	_code(code),
+	_description(nullptr)
+{
+	va_list args;
+	va_start(args, description);
+	_description = IO::String::Alloc()->InitWithFormatAndArguments(description, args);
+	va_end(args);
+}
+
+Error::Error(uint32_t code, uint32_t errno, const char *description, ...) : 
+	_code((errno << 24) | (code & 0xffffff)),
+	_description(nullptr)
+{
+	va_list args;
+	va_start(args, description);
+	_description = IO::String::Alloc()->InitWithFormatAndArguments(description, args);
+	va_end(args);
+}
+
+Error::Error(const Error &other) :
+	_code(other._code),
+	_description(IO::SafeRetain(other._description))
+{}
+
+Error::~Error()
+{
+	IO::SafeRelease(_description);
+}
+
+Error &Error::operator =(const Error &other)
+{
+	_code = other._code;
+	_description = IO::SafeRetain(other._description);
+
+	return *this;
+}
+
 uint32_t Error::GetErrno() const
 {
 	int errno = (_code >> 24);
@@ -55,4 +97,9 @@ uint32_t Error::GetErrno() const
 		return errno;
 
 	return OS::ErrnoFromCode(_code);
+}
+
+const char *Error::GetDescription() const
+{
+	return _description ? _description->GetCString() : nullptr;
 }
