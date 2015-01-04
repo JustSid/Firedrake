@@ -32,8 +32,8 @@ namespace Sys
 	template<class T=void>
 	T *Alloc(VM::Directory *dir, size_t pages, uint32_t flags)
 	{
-		KernReturn<uintptr_t> pmemory;
-		KernReturn<vm_address_t> vmemory;
+		KernReturn<uintptr_t> pmemory(0x0);
+		KernReturn<vm_address_t> vmemory(0x0);
 
 		pmemory = PM::Alloc(pages);
 		if(pmemory.IsValid() == false)
@@ -46,10 +46,10 @@ namespace Sys
 		return reinterpret_cast<T *>(vmemory.Get());
 
 	alloc_failed:
-		if(pmemory)
+		if(pmemory.IsValid() && pmemory.Get())
 			PM::Free(pmemory, pages);
 
-		if(vmemory)
+		if(vmemory.IsValid() && vmemory.Get())
 			dir->Free(vmemory, pages);
 
 		return nullptr;
@@ -58,9 +58,7 @@ namespace Sys
 	template<class T>
 	void Free(T *ptr, VM::Directory *dir, size_t pages)
 	{
-		KernReturn<uintptr_t> pmemory;
-
-		pmemory = dir->ResolveAddress(reinterpret_cast<vm_address_t>(ptr));
+		KernReturn<uintptr_t> pmemory = dir->ResolveAddress(reinterpret_cast<vm_address_t>(ptr));
 		if(pmemory.IsValid())
 		{
 			dir->Free(reinterpret_cast<vm_address_t>(ptr), pages);
