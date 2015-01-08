@@ -18,7 +18,6 @@
 
 #include <libc/sys/asm.h>
 
-.global _kernelPageDirectory
 .global ir_handl_interrupt
 
 TEXT()
@@ -128,7 +127,8 @@ ENTRY(idt_entry_handler)
 	cld
 
 	// Load the current page directory and the kernel ones into eax and ecx respectively
-	movl (_kernelPageDirectory), %ecx
+	movl $0xffb00000, %ecx
+	movl (%ecx), %ecx
 	movl %cr3, %eax
 
 	// Load the kernels page directory if it isn't active yet
@@ -151,14 +151,16 @@ ENTRY(idt_entry_handler)
 	movl %fs, %eax
 	imull $0x89c, %eax // 0x89c == sizeof(Sys::Trampoline)
 
-	movl $0xffb00000, %ecx
+	movl $0xffb01000, %ecx
 	addl %eax, %ecx
 
 	movl (%ecx), %ecx
 
 	// Load the new page directory if it is NOT the kernels page directory
 	// This potentially saves trashing the TLB a few times
-	cmpl (_kernelPageDirectory), %ecx
+	movl $0xffb00000, %eax
+	movl (%eax), %eax
+	cmpl %eax, %ecx
 	jz 1f
 
 	movl %ecx, %cr3

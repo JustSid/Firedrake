@@ -33,7 +33,8 @@ namespace Sys
 {
 	struct TrampolineMap
 	{
-		uint8_t buffer[VM_PAGE_SIZE];
+		uint8_t buffer[VM_PAGE_SIZE]; // Contains the trampoline area executable code
+		uint8_t buffer2[VM_PAGE_SIZE]; // Contains auxiliary data, for now just the address of the kernel page directory
 		Trampoline trampoline[CONFIG_MAX_CPUS];
 	};
 	
@@ -73,6 +74,11 @@ namespace Sys
 		assert(size <= VM_PAGE_SIZE);
 
 		memcpy(_map->buffer, &idt_begin, idtEnd - idtBegin);
+
+		// Write the physical page directory of the kernel
+		uint32_t **directory = reinterpret_cast<uint32_t **>(&_map->buffer2);
+		*directory = VM::Directory::GetKernelDirectory()->GetPhysicalDirectory();
+
 		return TrampolineInitCPU();
 	}
 
