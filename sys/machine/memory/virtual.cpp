@@ -171,7 +171,6 @@ namespace Sys
 				}
 
 				memset(mapped, 0, kDirectoryLength * sizeof(uint32_t));
-				mapped[0xff] = physical | kVMFlagsKernel;
 			}
 
 			Directory *directory = new Directory(reinterpret_cast<uint32_t *>(physical.Get()));
@@ -188,8 +187,14 @@ namespace Sys
 
 		KernReturn<void> Directory::MapPage(uintptr_t physical, vm_address_t virtAddress, Flags flags)
 		{
+			ScopedDirectory scoped(_directory);
+			uint32_t *mapped = scoped.GetDirectory();
+
+			if(!mapped)
+				return Error(KERN_NO_MEMORY);
+
 			spinlock_lock(&_lock);
-			KernReturn<void> result = __MapPage(_directory, physical, virtAddress, flags, false);
+			KernReturn<void> result = __MapPage(mapped, physical, virtAddress, flags, false);
 			spinlock_unlock(&_lock);
 
 			return result;
@@ -197,8 +202,14 @@ namespace Sys
 
 		KernReturn<void> Directory::MapPageRange(uintptr_t physical, vm_address_t virtAddress, size_t pages, Flags flags)
 		{
+			ScopedDirectory scoped(_directory);
+			uint32_t *mapped = scoped.GetDirectory();
+
+			if(!mapped)
+				return Error(KERN_NO_MEMORY);
+
 			spinlock_lock(&_lock);
-			KernReturn<void> result = __MapPageRange(_directory, physical, virtAddress, pages, flags, false);
+			KernReturn<void> result = __MapPageRange(mapped, physical, virtAddress, pages, flags, false);
 			spinlock_unlock(&_lock);
 
 			return result;
@@ -228,10 +239,10 @@ namespace Sys
 		KernReturn<uint32_t> Directory::GetPageTableEntry(uint32_t *pageDirectory, vm_address_t vaddress)
 		{
 			uint32_t index = vaddress / VM_PAGE_SIZE;
-			if(!(pageDirectory[index / kPagetableLength] & Flags::Present))
+			if(!(pageDirectory[index / kDirectoryLength] & Flags::Present))
 				return Error(KERN_INVALID_ADDRESS);
 
-			uintptr_t physPageTable = (pageDirectory[index / kPagetableLength] & ~0xfff);
+			uintptr_t physPageTable = (pageDirectory[index / kDirectoryLength] & ~0xfff);
 			ScopedMapping temp(_kernelDirectory, physPageTable, 1);
 
 			uint32_t *pageTable = reinterpret_cast<uint32_t *>(temp.GetAddress());
@@ -574,16 +585,26 @@ namespace Sys
 					return physical.GetError();
 
 				pageTable = reinterpret_cast<uint32_t *>(physical.Get());
-				pageDirectory[index / kDirectoryLength] = physical.Get() | kVMFlagsKernel;
 
 				if(pageDirectory != _kernelPageDirectory)
 				{
+					pageDirectory[index / kDirectoryLength] = physical.Get() | kVMFlagsUserlandRW;
+
 					__MapPageNoCheck(_kernelPageDirectory, physical.Get(), temporaryPage, kVMFlagsKernel, false);
 					pageTable = reinterpret_cast<uint32_t *>(temporaryPage);
 				}
-				else if(!_usePhysicalKernelPages)
-				{
-					pageTable = reinterpret_cast<uint32_t *>((kKernelPageTables + ((sizeof(uint32_t) * index) & ~0xfff)));
+				else
+				{	
+					pageDirectory[index / kDirectoryLength] = physical.Get() | kVMFlagsKernel;
+
+					if(__expect_true(!_usePhysicalKernelPages))
+					{
+						pageTable = reinterpret_cast<uint32_t *>((kKernelPageTables + ((sizeof(uint32_t) * index) & ~0xfff)));
+					}
+					else
+					{
+						pageTable = reinterpret_cast<uint32_t *>(physical.Get());
+					}
 				}
 
 				memset(pageTable, 0, kPagetableLength);
@@ -599,7 +620,7 @@ namespace Sys
 				}
 				else
 				{
-					uint32_t temp = _usePhysicalKernelPages ? (pageDirectory[index / kDirectoryLength] & ~0xfff) : kKernelPageTables + ((sizeof(uint32_t) * index) & ~0xfff);
+					uint32_t temp = __expect_false(_usePhysicalKernelPages) ? (pageDirectory[index / kDirectoryLength] & ~0xfff) : kKernelPageTables + ((sizeof(uint32_t) * index) & ~0xfff);
 					pageTable = reinterpret_cast<uint32_t *>(temp);
 				}
 			}
@@ -671,8 +692,10 @@ namespace Sys
 			memset(_kernelPageDirectory, 0, kDirectoryLength * sizeof(uint32_t));
 
 			// Initialize and map the kernel directory
-			_kernelPageDirectory[0xff] = address.Get() | kVMFlagsKernel;
-			_kernelDirectory->MapPageRange(address, address, 2, kVMFlagsKernel); // This call can't fail because of _usePhysicalKernelPages
+			uint32_t index = kKernelPageTables / VM_PAGE_SIZE;
+
+			_kernelPageDirectory[index / kDirectoryLength] = address.Get() | kVMFlagsKernel;
+			_kernelDirectory->MapPageRange(address, address, 2, kVMFlagsKernel);
 
 			return ErrorNone;
 		}
