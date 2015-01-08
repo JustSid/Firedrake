@@ -67,7 +67,6 @@ namespace OS
 			goto exit;
 		}
 
-		// Rewind
 		if(!VFS::Seek(context, fd, 0, SEEK_SET).IsValid())
 		{
 			status = Error(KERN_FAILURE);
@@ -106,9 +105,6 @@ namespace OS
 
 	void Executable::Dealloc()
 	{
-		if(_virtual)
-			_directory->Free(_virtual, _pages);
-
 		if(_physical)
 			Sys::PM::Free(_physical, _pages);
 
@@ -150,28 +146,21 @@ namespace OS
 			}
 		}
 
-		minAddress = VM_PAGE_ALIGN_DOWN(minAddress);
-		maxAddress = VM_PAGE_ALIGN_UP(maxAddress);
-
-		_pages = VM_PAGE_COUNT(maxAddress - minAddress);
+		_virtual = VM_PAGE_ALIGN_DOWN(minAddress);
+		_pages   = VM_PAGE_COUNT(maxAddress - minAddress);
 
 		KernReturn<uintptr_t> physical;
-		KernReturn<vm_address_t> virt;
 
 		if((physical = Sys::PM::Alloc(_pages)).IsValid() == false)
 		{
 			_physical = 0x0;
 			return physical.GetError();
 		}
-
-		if((virt = _directory->Alloc(physical, _pages, kVMFlagsUserlandRW)).IsValid() == false)
-		{
-			_virtual = 0x0;
-			return virt.GetError();
-		}
+		
+		if((_directory->MapPageRange(physical, _virtual, _pages, kVMFlagsUserlandRW)).IsValid() == false)
+			return Error(KERN_NO_MEMORY);
 		
 		_physical = physical;
-		_virtual  = virt;
 
 		// Copy the date into the physical memory
 		KernReturn<vm_address_t> kernel;

@@ -38,6 +38,8 @@ namespace OS
 	{
 		Sys::Personality::GetPersonality()->FinishBootstrapping();
 
+		__unused Task *task = Task::Alloc()->InitWithFile("/bin/test.bin");
+
 		while(1)
 		{}
 	}

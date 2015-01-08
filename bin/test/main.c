@@ -21,7 +21,5 @@
 int main(int argc, char *argv[])
 {
 	syscall(SYS_Open, "/etc/license.txt", 2);
-
-	while(1) {}
 	return 0;
 }

@@ -93,7 +93,7 @@ namespace OS
 				return paddress.GetError();
 			}
 
-			vaddress = _task->_directory->AllocLimit(paddress, kThreadStackLimit, Sys::VM::kUpperLimit, _userStackPages, kVMFlagsKernel);
+			vaddress = _task->_directory->AllocLimit(paddress, kThreadStackLimit, Sys::VM::kUpperLimit, _userStackPages, kVMFlagsUserlandRW);
 			if(vaddress.IsValid() == false)
 			{
 				Sys::PM::Free(paddress, _userStackPages);
@@ -117,7 +117,7 @@ namespace OS
 		uint32_t *stack = reinterpret_cast<uint32_t *>(_kernelStackVirtual + size);
 
 		*(-- stack) = 0x23; // ss
-		*(-- stack) = (uint32_t)(_userStackVirtual + ((_userStackPages * VM_PAGE_SIZE) - 4) - (0x0 * sizeof(uint32_t)));   // esp
+		*(-- stack) = (uint32_t)(_userStackVirtual + ((_userStackPages * VM_PAGE_SIZE) - 4));   // esp
 		*(-- stack) = 0x200; // eflags
 		*(-- stack) = 0x1b; // cs
 		*(-- stack) = _entry; // eip
