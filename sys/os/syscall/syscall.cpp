@@ -19,7 +19,6 @@
 #include <libc/sys/spinlock.h>
 #include <libc/string.h>
 #include <machine/interrupts/interrupts.h>
-#include <machine/memory/memory.h>
 #include <os/scheduler/scheduler.h>
 #include <kern/kprintf.h>
 #include <kern/kalloc.h>
@@ -36,6 +35,39 @@ namespace OS
 
 	SyscallEntry _entries[__SYS_MaxSyscalls];
 	spinlock_t _entryLock;
+
+
+	SyscallScopedMapping::SyscallScopedMapping(const void *pointer, size_t size) :
+		_address(0x0),
+		_pointer(0x0),
+		_pages(0)
+	{
+		Task *task = Scheduler::GetActiveTask();
+
+		vm_address_t ptr = reinterpret_cast<vm_address_t>(const_cast<void *>(pointer));
+
+		vm_address_t base = VM_PAGE_ALIGN_DOWN(ptr);
+		vm_address_t offset = ptr - base;
+
+		if(!base)
+			return;
+
+		Sys::VM::Directory *directory = task->GetDirectory();
+		KernReturn<uintptr_t> physical = directory->ResolveAddress(base);
+
+		if(!physical.IsValid())
+			return;
+
+		_pages = VM_PAGE_COUNT(size + offset);
+		_address = Sys::VM::Directory::GetKernelDirectory()->Alloc(physical, _pages, kVMFlagsKernel);
+		_pointer = _address + offset;
+	}
+
+	SyscallScopedMapping::~SyscallScopedMapping()
+	{
+		if(_address)
+			Sys::VM::Directory::GetKernelDirectory()->Free(_address, _pages);
+	}
 
 
 	KernReturn<void> SetSyscallHandler(uint32_t number, SyscallHandler handler, size_t argSize, bool isUnixStyle)
@@ -65,7 +97,7 @@ namespace OS
 
 		if(!entry.handler)
 		{
-			kprintf("No one known handler for syscall %i\n", state->eax);
+			kprintf("No known handler for syscall %i\n", state->eax);
 			return esp; // TODO: Should probably kill the process
 		}
 
@@ -118,9 +150,12 @@ namespace OS
 		{
 			Error error = result.GetError();
 			state->ecx = entry.unixSyscall ? error.GetErrno() : error.GetCode();
+			state->eax = -1;
 		}
-
-		state->eax = result;
+		else
+		{
+			state->eax = result;
+		}
 
 		if(arguments)
 			kfree(arguments);

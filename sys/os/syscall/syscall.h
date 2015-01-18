@@ -22,12 +22,43 @@
 #include <prefix.h>
 #include <libc/sys/syscall.h>
 #include <kern/kern_return.h>
+#include <machine/memory/memory.h>
 
 namespace OS
 {
 	typedef KernReturn<uint32_t> (*SyscallHandler)(uint32_t &esp, void *arguments);
 
-	KernReturn<void> SetSyscallHandler(uint32_t number, SyscallHandler handler, bool isUnixStyle);
+	class SyscallScopedMapping
+	{
+	public:
+		SyscallScopedMapping(const void *pointer, size_t size);
+		~SyscallScopedMapping();
+
+		template<class T>
+		KernReturn<T *> GetMemory() const
+		{
+			KernReturn<void *> result = __GetMemory();
+			if(!result.IsValid())
+				return result.GetError();
+
+			return reinterpret_cast<T *>(result.Get());
+		}
+
+	private:
+		KernReturn<void *> __GetMemory() const
+		{
+			if(!_pointer)
+				return Error(KERN_NO_MEMORY);
+
+			return reinterpret_cast<void *>(_pointer);
+		}
+
+		vm_address_t _address;
+		vm_address_t _pointer;
+		size_t _pages;
+	};
+
+	KernReturn<void> SetSyscallHandler(uint32_t number, SyscallHandler handler, size_t argSize, bool isUnixStyle);
 	KernReturn<void> SyscallInit();
 }
 

@@ -440,6 +440,6 @@ namespace VFS
 		if(!didLoadInitrd)
 			kprintf("Couldn't find initrd");
 
-		return ErrorNone;
+		return Syscall_VFSInit();
 	}
 }
