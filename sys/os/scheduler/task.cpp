@@ -20,6 +20,7 @@
 #include <kern/panic.h>
 #include <libc/string.h>
 #include <vfs/file.h>
+#include <vfs/vfs.h>
 #include <machine/interrupts/trampoline.h>
 #include <machine/debug.h>
 #include "scheduler.h"
@@ -74,6 +75,10 @@ namespace OS
 			return directory.GetError();
 
 		_directory = directory;
+		_context = new VFS::Context(this, _directory, VFS::GetRootNode());
+
+		if(!_context)
+			return Error(KERN_NO_MEMORY);
 
 		KernReturn<Executable *> executable;
 		if((executable = Executable::Alloc()->Init(_directory, path)).IsValid() == false)
