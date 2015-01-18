@@ -210,13 +210,13 @@ namespace FFS
 		return Error(KERN_INVALID_ARGUMENT);
 	}
 
-	KernReturn<void> Instance::FileStat(stat *buf, __unused VFS::Context *context, VFS::Node *node)
+	KernReturn<void> Instance::FileStat(__unused VFS::Context *context, stat *buf, VFS::Node *node)
 	{	
 		node->FillStat(buf);
 		return ErrorNone;
 	}
 
-	KernReturn<off_t> Instance::DirRead(dirent *entry, VFS::Context *context, VFS::File *file, size_t count)
+	KernReturn<off_t> Instance::DirRead(VFS::Context *context, dirent *entry, VFS::File *file, size_t count)
 	{
 		VFS::FileDirectory *directory = static_cast<VFS::FileDirectory *>(file);
 		FFS::Node *node = static_cast<FFS::Node *>(file->GetNode());
@@ -243,5 +243,22 @@ namespace FFS
 
 		node->Unlock();
 		return read;
+	}
+
+	KernReturn<void> Instance::Mount(VFS::Context *context, VFS::Instance *instance, VFS::Directory *target, const char *name)
+	{
+		VFS::Mountpoint *mountpoint = VFS::Mountpoint::Alloc()->Init(name, instance, this, GetFreeID());
+		if(!mountpoint)
+			return Error(KERN_NO_MEMORY);
+
+		target->Lock();
+		KernReturn<void> result = target->AttachNode(mountpoint);
+		target->Unlock();
+
+		return result;
+	}
+	KernReturn<void> Instance::Unmount(VFS::Context *context, VFS::Mountpoint *target)
+	{
+		return Error(KERN_FAILURE);
 	}
 }

@@ -45,8 +45,11 @@ namespace VFS
 	KernReturn<size_t> Read(Context *context, int fd, void *data, size_t size);
 	KernReturn<off_t> Seek(Context *context, int fd, off_t offset, int whence);
 
-	KernReturn<void> MakeDirectory(const char *path, Context *context);
+	KernReturn<void> MakeDirectory(Context *context, const char *path);
 	KernReturn<off_t> ReadDir(Context *context, int fd, dirent *entry, size_t count);
+
+	KernReturn<void> Mount(Context *context, Instance *instance, const char *target);
+	KernReturn<void> Unmount(Context *context, const char *path);
 
 	KernReturn<void> Init();
 }

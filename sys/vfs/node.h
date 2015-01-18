@@ -39,39 +39,40 @@ namespace VFS
 	class Node : public IO::Object
 	{
 	public:
-		friend class Directory;
-
 		enum class Type
 		{
 			File,
 			Directory,
-			Link
+			Link,
+			Mountpoint
 		};
+
+		Node *Init(const char *name, Instance *instance, Type type, uint64_t id);
+		void Dealloc() override;
 
 		bool IsFile() const { return (_type == Type::File); }
 		bool IsDirectory() const { return (_type == Type::Directory); }
 		bool IsLink() const { return (_type == Type::Link); }
+		bool IsMountpoint() const { return (_type == Type::Mountpoint); }
 
 		uint64_t GetID() const { return _id; }
 		uint64_t GetSize() const { return _size; }
 		Type GetType() const { return _type; }
 		IO::String *GetName() const { return _name; }
 		Instance *GetInstance() const { return _instance; }
-		Directory *GetDirectory() const { return _parent; }
+		Directory *GetParent() const { return _parent; }
 
 		void Lock();
 		void Unlock();
 
 		// Lock must be held before calling these
-		void SetName(const char *name);
-		void SetSize(uint64_t size);
+		virtual void SetName(const char *name);
+		virtual void SetSize(uint64_t size);
 
-		void FillStat(stat *buf);
+		virtual void FillStat(stat *buf);
+		virtual void SetParent(Directory *parent);
 
 	protected:
-		Node *Init(const char *name, Instance *instance, Type type, uint64_t id);
-		void Dealloc() override;
-
 		spinlock_t _lock;
 
 	private:
@@ -90,6 +91,7 @@ namespace VFS
 	{
 	public:
 		Directory *Init(const char *name, Instance *instance, uint64_t id);
+		void Dealloc() override;
 
 		// Lock must be held before calling these
 		KernReturn<void> AttachNode(Node *node);
@@ -99,13 +101,41 @@ namespace VFS
 		IO::StrongRef<Node> FindNode(const char *filename) const;
 		const IO::Dictionary *GetChildren() const { return _children; }
 
-	protected:
-		void Dealloc() override;
-
 	private:
 		IO::Dictionary *_children;
 
 		IODeclareMeta(Directory)
+	};
+
+	class Link : public Node
+	{
+	public:
+		Link *Init(const char *name, Node *target, Instance *instance, uint64_t id);
+		void Dealloc() override;
+
+		IO::StrongRef<Node> GetTarget() const { return _target; }
+
+	private:
+		Node *_target;
+
+		IODeclareMeta(Link)
+	};
+
+	class Mountpoint : public Node
+	{
+	public:
+		Mountpoint *Init(const char *name, Instance *target, Instance *instance, uint64_t id);
+		void Dealloc() override;
+
+		void SetParent(Directory *parent) override;
+
+		IO::StrongRef<Node> GetLinkedNode() const { return _linkedNode; }
+
+	private:
+		Instance *_target;
+		Node *_linkedNode;
+
+		IODeclareMeta(Mountpoint)
 	};
 }
 

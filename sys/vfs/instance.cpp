@@ -28,8 +28,17 @@ namespace VFS
 		_lock = SPINLOCK_INIT;
 		_lastID = 0;
 		_rootNode = rootNode->Retain();
+		_mountpoint = nullptr;
 
 		return this;
+	}
+
+	void Instance::Dealloc()
+	{
+		IO::SafeRelease(_mountpoint);
+		IO::SafeRelease(_rootNode);
+
+		IO::Object::Dealloc();
 	}
 
 
@@ -48,5 +57,11 @@ namespace VFS
 	uint64_t Instance::GetFreeID()
 	{
 		return (_lastID ++);
+	}
+
+	void Instance::SetMountpoint(Mountpoint *node)
+	{
+		IO::SafeRelease(_mountpoint);
+		_mountpoint	= IO::SafeRetain(node);
 	}
 }

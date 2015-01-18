@@ -129,6 +129,11 @@ namespace VFS
 
 		_node = result;
 
+		if(_node->IsLink())
+			_node = _node->Downcast<Link>()->GetTarget();
+		if(_node->IsMountpoint())
+			_node = _node->Downcast<Mountpoint>()->GetLinkedNode();
+
 		// Advance to the next element
 		_element += offset + 1;
 		_elementsLeft --;

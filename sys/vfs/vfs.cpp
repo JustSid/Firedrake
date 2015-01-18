@@ -49,7 +49,7 @@ namespace VFS
 	}
 
 
-	KernReturn<void> MakeDirectory(const char *path, Context *context)
+	KernReturn<void> MakeDirectory(Context *context, const char *path)
 	{
 		Path resolver(path, context);
 
@@ -226,7 +226,7 @@ namespace VFS
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
 
-		return instance->DirRead(entry, context, file, count);
+		return instance->DirRead(context, entry, file, count);
 	}
 
 	KernReturn<off_t> Seek(Context *context, int fd, off_t offset, int whence)
@@ -260,7 +260,7 @@ namespace VFS
 
 		struct stat temp;
 
-		KernReturn<void> result = instance->FileStat(&temp, context, node);
+		KernReturn<void> result = instance->FileStat(context, &temp, node);
 		if(result.IsValid())
 		{
 			result = context->CopyDataIn(&temp, buf, sizeof(struct stat));
@@ -268,6 +268,35 @@ namespace VFS
 		}
 
 		return result;
+	}
+
+
+	KernReturn<void> Mount(Context *context, Instance *instance, const char *target)
+	{
+		Path resolver(target, context);
+
+		while(resolver.GetElementsLeft() > 1)
+		{
+			KernReturn<Node *> result = resolver.ResolveElement();
+
+			if(!result.IsValid())
+				return result.GetError();
+		}
+
+		Node *node = resolver.GetCurrentNode();
+		IO::StrongRef<IO::String> name = resolver.GetCurrentName();
+
+		if(!node->IsDirectory())
+			return Error(KERN_INVALID_ARGUMENT, ENOTDIR);
+
+		Instance *nInstance = node->GetInstance();
+
+		return nInstance->Mount(context, instance, static_cast<Directory *>(node), name->GetCString());
+	}
+
+	KernReturn<void> Unmount(Context *context, const char *path)
+	{
+		return ErrorNone;
 	}
 
 
@@ -341,6 +370,8 @@ namespace VFS
 		return ErrorNone;
 	}
 
+	extern KernReturn<void> Syscall_VFSInit();
+
 	KernReturn<void> Init()
 	{
 		_descriptors = IO::Array::Alloc()->Init();
@@ -372,13 +403,13 @@ namespace VFS
 		// Create some basic folders
 		KernReturn<void> result;
 
-		if((result = MakeDirectory("/usr", Context::GetKernelContext())).IsValid() == false)
+		if((result = MakeDirectory(Context::GetKernelContext(), "/usr")).IsValid() == false)
 			return result;
-		if((result = MakeDirectory("/bin", Context::GetKernelContext())).IsValid() == false)
+		if((result = MakeDirectory(Context::GetKernelContext(), "/bin")).IsValid() == false)
 			return result;
-		if((result = MakeDirectory("/etc", Context::GetKernelContext())).IsValid() == false)
+		if((result = MakeDirectory(Context::GetKernelContext(), "/etc")).IsValid() == false)
 			return result;
-		if((result = MakeDirectory("/lib", Context::GetKernelContext())).IsValid() == false)
+		if((result = MakeDirectory(Context::GetKernelContext(), "/lib")).IsValid() == false)
 			return result;
 
 

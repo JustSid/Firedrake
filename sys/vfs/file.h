@@ -66,8 +66,6 @@ namespace VFS
 
 		IODeclareMeta(FileDirectory)
 	};
-
-	constexpr File *InvalidFile = (File *)0xffdeadff;
 }
 
 #endif /* _VFS_FILE_H_ */

@@ -38,12 +38,15 @@ namespace FFS
 
 		KernReturn<VFS::File *> OpenFile(VFS::Context *context, VFS::Node *node, int flags) override;
 		void CloseFile(VFS::Context *context, VFS::File *file) override;
-		KernReturn<void> FileStat(stat *buf, VFS::Context *context, VFS::Node *node) override;
+		KernReturn<void> FileStat(VFS::Context *context, stat *buf, VFS::Node *node) override;
 
 		KernReturn<size_t> FileRead(VFS::Context *context, VFS::File *file, void *data, size_t size) override;
 		KernReturn<size_t> FileWrite(VFS::Context *context, VFS::File *file, const void *data, size_t size) override;
 		KernReturn<off_t> FileSeek(VFS::Context *context, VFS::File *file, off_t offset, int whence) override;
-		KernReturn<off_t> DirRead(dirent *entry, VFS::Context *context, VFS::File *file, size_t count) override;
+		KernReturn<off_t> DirRead(VFS::Context *context, dirent *entry, VFS::File *file, size_t count) override;
+
+		KernReturn<void> Mount(VFS::Context *context, VFS::Instance *instance, VFS::Directory *target, const char *name) override;
+		KernReturn<void> Unmount(VFS::Context *context, VFS::Mountpoint *target) override;
 		
 		IODeclareMeta(Instance)
 	};

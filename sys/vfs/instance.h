@@ -43,8 +43,12 @@ namespace VFS
 	class Instance : public IO::Object
 	{
 	public:
+		void Dealloc() override;
+
 		void Lock();
 		void Unlock();
+
+		virtual void SetMountpoint(Mountpoint *node);
 
 		virtual void CleanNode(Node *node);
 
@@ -63,8 +67,11 @@ namespace VFS
 		virtual KernReturn<size_t> FileWrite(Context *context, File *file, const void *data, size_t size) = 0;
 		virtual KernReturn<off_t> FileSeek(Context *context, File *file, off_t offset, int whence) = 0;
 
-		virtual KernReturn<void> FileStat(stat *buf, Context *context, Node *node) = 0;
-		virtual KernReturn<off_t> DirRead(dirent *entry, Context *context, File *file, size_t count) = 0;
+		virtual KernReturn<void> FileStat(Context *context, stat *buf, Node *node) = 0;
+		virtual KernReturn<off_t> DirRead(Context *context, dirent *entry, File *file, size_t count) = 0;
+
+		virtual KernReturn<void> Mount(Context *context, Instance *instance, Directory *target, const char *name) = 0;
+		virtual KernReturn<void> Unmount(Context *context, Mountpoint *target) = 0;
 
 		Node *GetRootNode() const { return _rootNode; }
 
@@ -78,6 +85,7 @@ namespace VFS
 	private:
 		std::atomic<uint64_t> _lastID;
 		Node *_rootNode;
+		Mountpoint *_mountpoint;
 
 		IODeclareMetaVirtual(Instance)
 	};

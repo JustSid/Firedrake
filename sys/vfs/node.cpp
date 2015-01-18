@@ -26,6 +26,8 @@ namespace VFS
 {
 	IODefineMeta(Node, IO::Object)
 	IODefineMeta(Directory, Node)
+	IODefineMeta(Link, Node)
+	IODefineMeta(Mountpoint, Node)
 
 	Node *Node::Init(const char *name, Instance *instance, Type type, uint64_t id)
 	{
@@ -80,6 +82,11 @@ namespace VFS
 		buf->size = _size;
 	}
 
+	void Node::SetParent(Directory *parent)
+	{
+		_parent = parent;
+	}
+
 
 
 	Directory *Directory::Init(const char *name, Instance *instance, uint64_t id)
@@ -100,29 +107,33 @@ namespace VFS
 
 	KernReturn<void> Directory::AttachNode(Node *node)
 	{
-		if(!node || node->_parent)
+		if(!node || node->GetParent())
 			return Error(KERN_INVALID_ARGUMENT);
 
 		if(_children->GetObjectForKey(node->GetName()))
 			return Error(KERN_RESOURCE_EXISTS);
 
-		_children->SetObjectForKey(node, node->GetName());		
+		_children->SetObjectForKey(node, node->GetName());
+		node->SetParent(this);
+
 		return ErrorNone;
 	}
 	KernReturn<void> Directory::RemoveNode(Node *node)
 	{
-		if(!node || node->_parent != this)
+		if(!node || node->GetParent() != this)
 			return Error(KERN_INVALID_ARGUMENT);
 
 		if(_children->GetObjectForKey(node->GetName()) != node)
 			return Error(KERN_INVALID_ARGUMENT); 
 
 		_children->RemoveObjectForKey(node->GetName());
+		node->SetParent(nullptr);
+
 		return ErrorNone;
 	}
 	KernReturn<void> Directory::RenameNode(Node *node, const char *filename)
 	{
-		if(node->_parent != this)
+		if(node->GetParent() != this)
 			return Error(KERN_INVALID_ARGUMENT);
 
 		Node *result = _children->GetObjectForKey<Node>(node->GetName());
@@ -155,5 +166,48 @@ namespace VFS
 		temp->Release();
 
 		return node;
+	}
+
+
+	Link *Link::Init(const char *name, Node *target, Instance *instance, uint64_t id)
+	{
+		if(!Node::Init(name, instance, Type::Link, id))
+			return nullptr;
+
+		_target = target->Retain();
+
+		return this;
+	}
+
+	void Link::Dealloc()
+	{
+		_target->Release();
+		Node::Dealloc();
+	}
+
+
+	Mountpoint *Mountpoint::Init(const char *name, Instance *target, Instance *instance, uint64_t id)
+	{
+		if(!Node::Init(name, instance, Type::Mountpoint, id))
+			return nullptr;
+
+		_target = target->Retain();
+		_linkedNode = _target->GetRootNode();
+
+		_target->SetMountpoint(this);
+
+		return this;
+	}
+
+	void Mountpoint::Dealloc()
+	{
+		_target->Release();
+		Node::Dealloc();
+	}
+
+	void Mountpoint::SetParent(Directory *parent)
+	{
+		Node::SetParent(parent);
+		_linkedNode->SetParent(parent);
 	}
 }
