@@ -43,7 +43,7 @@ namespace OS
 
 		_lock = SPINLOCK_INIT;
 		_state = State::Waiting;
-		_pid = _taskPidCounter.fetch_add(1);
+		_pid = _taskPidCounter.fetch_add(1) + 1;
 		_ring3 = false;
 		_tidCounter = 1;
 		_mainThread = nullptr;
