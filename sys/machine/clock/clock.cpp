@@ -19,6 +19,7 @@
 #include <machine/port.h>
 #include <kern/kprintf.h>
 #include <libcpp/atomic.h>
+#include <os/scheduler/scheduler.h>
 #include "clock.h"
 
 namespace Sys
@@ -26,23 +27,31 @@ namespace Sys
 	namespace Clock
 	{
 		std::atomic<uint32_t> _pitTicks = 0;
+		bool _pitActive = false;
 
 		static Sys::APIC::TimerDivisor _timerDivisor = Sys::APIC::TimerDivisor::DivideBy16;
-		static uint32_t _timerResolution = 1000;
-		static uint32_t _timerCount      = 0;
+		static uint32_t _timerResolution = 100; // In Hertz
+		static uint32_t _timerApicCount  = 0;
 
-		APIC::TimerDivisor GetTimerDivisor()
+		static uint32_t _timeMsec        = 0;
+		static uint64_t _timeTicks       = 0;
+		static uint32_t _timeMsecPerTick = 0;
+
+		
+
+		uint64_t GetMicroseconds()
 		{
-			return _timerDivisor;
+			return _timeMsec;
 		}
-		uint32_t GetTimerCount()
+		uint64_t GetTicks()
 		{
-			return _timerCount;
+			return _timeTicks;
 		}
-		uint32_t GetTimerResolution()
+		uint32_t GetMillisecondsPerTick()
 		{
-			return _timerResolution;
+			return _timeMsecPerTick;
 		}
+
 
 
 		uint32_t PITTick(uint32_t esp, __unused CPU *cpu)
@@ -51,7 +60,7 @@ namespace Sys
 			return esp;
 		}
 
-		void AwaitPitTicks(uint32_t ticks)
+		void AwaitPITTicks(uint32_t ticks)
 		{
 			constexpr int divisor = 11931;
 
@@ -64,6 +73,26 @@ namespace Sys
 			while(_pitTicks.load() < target)
 				CPUHalt();
 		}
+
+		bool ActivatePIT()
+		{
+			if(!_pitActive)
+			{
+				SetInterruptHandler(0x20, &Clock::PITTick);
+				APIC::MaskInterrupt(0x20, false);
+
+				_pitActive = true;
+				return false;
+			}
+
+			return true;
+		}
+		void DeactivatePIT()
+		{
+			APIC::MaskInterrupt(0x20, true);
+			_pitActive = false;
+		}
+
 
 		uint32_t CalculateAPICFrequency(uint32_t resolution, APIC::TimerDivisor apicDivisor)
 		{
@@ -101,7 +130,7 @@ namespace Sys
 			APIC::ArmTimer(0xffffffff);
 
 			// Wait...
-			AwaitPitTicks(1);
+			AwaitPITTicks(1);
 
 			// Unarm the APIC
 			APIC::UnarmTimer();
@@ -116,25 +145,71 @@ namespace Sys
 			return counter;
 		}
 
-		uint32_t CalculateAPICFrequencyAverage(uint32_t resolution, Sys::APIC::TimerDivisor apic_divisor)
+		uint32_t CalculateAPICFrequencyAverage(uint32_t resolution, Sys::APIC::TimerDivisor divisor)
 		{
 			uint32_t accumulator = 0;
 
 			for(int i = 0; i < 10; i++)
-				accumulator += CalculateAPICFrequency(resolution, apic_divisor);
+				accumulator += CalculateAPICFrequency(resolution, divisor);
 
 			return accumulator / 10;
+		}
+
+
+
+		uint32_t ClockTick(uint32_t esp, Sys::CPU *cpu)
+		{
+			_timeTicks ++;
+			_timeMsec += _timeMsecPerTick;
+
+			return OS::Scheduler::ScheduleOnCPU(esp, cpu);
+		}
+
+		uint32_t ClockTickSimple(uint32_t esp, Sys::CPU *cpu)
+		{
+			_timeTicks ++;
+			_timeMsec += _timeMsecPerTick;
+
+			return esp;
+		}
+
+
+
+		uint32_t ActivateCPUClock(uint32_t esp, Sys::CPU *cpu)
+		{
+			OS::Scheduler::ActivateCPU(cpu);
+
+			Sys::APIC::SetTimer(_timerDivisor, Sys::APIC::TimerMode::Periodic, _timerApicCount);
+			Sys::APIC::ArmTimer(_timerApicCount);
+
+			return OS::Scheduler::ScheduleOnCPU(esp, cpu);
+		}
+
+		void ActivateClock()
+		{
+			APIC::UnarmTimer();
+
+			Sys::SetInterruptHandler(0x35, &Clock::ClockTick);
+			Sys::SetInterruptHandler(0x3a, &Clock::ActivateCPUClock);
+
+			APIC::BroadcastIPI(0x3a, true);
 		}
 	}
 
 	KernReturn<void> ClockInit()
 	{
-		SetInterruptHandler(0x20, &Clock::PITTick);
-		APIC::MaskInterrupt(0x20, false);
+		Clock::ActivatePIT();
 
-		Clock::_timerCount = Clock::CalculateAPICFrequencyAverage(Clock::_timerResolution, Clock::_timerDivisor);
+		Clock::_timerApicCount = Clock::CalculateAPICFrequencyAverage(Clock::_timerResolution, Clock::_timerDivisor);
+		Clock::_timeMsecPerTick = (1000 / Clock::_timerResolution) * 1000;
 
-		
+		Clock::DeactivatePIT();
+
+
+		Sys::SetInterruptHandler(0x35, &Clock::ClockTickSimple);
+
+		Sys::APIC::SetTimer(Clock::_timerDivisor, APIC::TimerMode::Periodic, Clock::_timerApicCount);
+		Sys::APIC::ArmTimer(Clock::_timerApicCount);
 
 		return ErrorNone;
 	}

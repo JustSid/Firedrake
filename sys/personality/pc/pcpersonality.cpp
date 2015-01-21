@@ -36,6 +36,7 @@
 #include <objects/IOCatalogue.h>
 #include <os/scheduler/scheduler.h>
 #include <os/syscall/syscall.h>
+#include <os/ipc/IPC.h>
 #include <vfs/vfs.h>
 
 #define COM_PORT 0x3f8
@@ -105,11 +106,9 @@ namespace Sys
 		Init("clock", Sys::ClockInit);
 		Init("smp", Sys::SMPInit);
 		Init("scheduler", OS::SchedulerInit);
+		Init("ipc", OS::IPCInit);
 
-		// Kick off into the scheduler
-		// Once the IPI is handled by a CPU, it won't return to its current thread of execution ever again
-		// This means that whatever bootstrapping you want to do, MUST be done before this call
-		APIC::BroadcastIPI(0x3a, true);
+		Sys::Clock::ActivateClock();
 	}
 }
 

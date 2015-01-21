@@ -111,7 +111,7 @@ namespace Sys
 			APIC::SendIPI(0x0f, cpu, vector);
 
 			// Wait 10ms for the CPU to initialize
-			Clock::AwaitPitTicks(1);
+			Clock::AwaitPITTicks(1);
 
 			vector = ((SMP_PHYSICAL_CODE / 0x1000) & 0xff) | APIC_ICR_DSS_OTHERS | APIC_ICR_DM_STARTUP | APIC_ICR_LV_ASSERT;
 			APIC::SendIPI(0x0, cpu, vector);
@@ -119,7 +119,7 @@ namespace Sys
 			// Wait up to 100ms for the rendezvous to happen
 			for(int i = 0; i < 10; i ++)
 			{
-				Clock::AwaitPitTicks(1);
+				Clock::AwaitPITTicks(1);
 				CPUHalt();
 
 				if(spinlock_try_lock(&_rendezvousLock))
@@ -145,6 +145,8 @@ namespace Sys
 
 		void Kickoff()
 		{
+			bool wasActive = Clock::ActivatePIT();
+
 			// Start up all CPUs
 			size_t count = CPU::GetCPUCount();
 			for(size_t i = 0; i < count; i ++)
@@ -156,6 +158,9 @@ namespace Sys
 
 				KickoffCPU(cpu);
 			}
+
+			if(!wasActive)
+				Clock::DeactivatePIT();
 		}
 
 		void ForgeGDT(uint8_t *buffer)

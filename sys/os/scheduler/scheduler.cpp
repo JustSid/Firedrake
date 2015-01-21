@@ -250,16 +250,6 @@ namespace OS
 		// MARK: Misc & Initialization
 		// --------------------
 
-		uint32_t ActivateCPUFromIPI(uint32_t esp, Sys::CPU *cpu)
-		{
-			ActivateCPU(cpu);
-
-			Sys::APIC::SetTimer(Sys::Clock::GetTimerDivisor(), Sys::APIC::TimerMode::Periodic, Sys::Clock::GetTimerCount());
-			Sys::APIC::ArmTimer(Sys::Clock::GetTimerCount());
-
-			return ScheduleOnCPU(esp, cpu);
-		}
-
 		KernReturn<void> InitializeTasks()
 		{
 			_kernelTask = Task::Alloc()->Init();
@@ -309,9 +299,6 @@ namespace OS
 
 		if((result = Scheduler::InitializeTasks()).IsValid() == false)
 			return result;
-
-		Sys::SetInterruptHandler(0x35, &Scheduler::ScheduleOnCPU);
-		Sys::SetInterruptHandler(0x3a, &Scheduler::ActivateCPUFromIPI);
 
 		return ErrorNone;
 	}

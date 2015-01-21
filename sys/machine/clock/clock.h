@@ -27,11 +27,15 @@ namespace Sys
 {
 	namespace Clock
 	{
-		APIC::TimerDivisor GetTimerDivisor();
-		uint32_t GetTimerCount();
-		uint32_t GetTimerResolution();
+		uint64_t GetMicroseconds();
+		uint64_t GetTicks();
+		uint32_t GetMillisecondsPerTick();
 
-		void AwaitPitTicks(uint32_t ticks);
+		bool ActivatePIT();
+		void DeactivatePIT();
+		void AwaitPITTicks(uint32_t ticks);
+
+		void ActivateClock();
 	}
 
 	KernReturn<void> ClockInit();
