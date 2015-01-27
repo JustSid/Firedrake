@@ -36,6 +36,7 @@
 #include <objects/IOCatalogue.h>
 #include <os/scheduler/scheduler.h>
 #include <os/syscall/syscall.h>
+#include <os/waitqueue.h>
 #include <os/ipc/IPC.h>
 #include <vfs/vfs.h>
 
@@ -106,6 +107,7 @@ namespace Sys
 		Init("clock", Sys::ClockInit);
 		Init("smp", Sys::SMPInit);
 		Init("scheduler", OS::SchedulerInit);
+		Init("waitqueue", OS::WaitqueueInit);
 		Init("ipc", OS::IPCInit);
 
 		Sys::Clock::ActivateClock();
