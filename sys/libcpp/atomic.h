@@ -44,7 +44,7 @@ namespace std
 			_value = value;
 		}
 
-		uint32_t load()
+		uint32_t load() const
 		{
 			memory_barrier();
 			return _value;
@@ -151,7 +151,7 @@ namespace std
 			_value = value;
 		}
 
-		int32_t load()
+		int32_t load() const
 		{
 			memory_barrier();
 			return _value;
@@ -258,7 +258,7 @@ namespace std
 			_value = value;
 		}
 
-		uint64_t load()
+		uint64_t load() const
 		{
 			memory_barrier();
 			return _value;
@@ -365,7 +365,7 @@ namespace std
 			_value = value;
 		}
 
-		int64_t load()
+		int64_t load() const
 		{
 			memory_barrier();
 			return _value;

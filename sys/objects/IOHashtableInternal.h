@@ -22,11 +22,11 @@
 #include <libcpp/algorithm.h>
 #include <libc/stdint.h>
 
-#define kRIOashTablePrimitiveCount 64
+#define kIOHashTablePrimitiveCount 64
 
 namespace IO
 {
-	static const size_t kHashTableCapacity[kRIOashTablePrimitiveCount] =
+	static const size_t kHashTableCapacity[kIOHashTablePrimitiveCount] =
 	{
 		3, 7, 13, 23, 41, 71, 127, 191, 251, 383, 631, 1087, 1723,
 		2803, 4523, 7351, 11959, 19447, 31231, 50683, 81919, 132607,
@@ -35,7 +35,7 @@ namespace IO
 		111638519, 180634607, 292272623, 472907251
 	};
 	
-	static const size_t kHashTableMaxCount[kRIOashTablePrimitiveCount] =
+	static const size_t kHashTableMaxCount[kIOHashTablePrimitiveCount] =
 	{
 		3, 6, 11, 19, 32, 52, 85, 118, 155, 237, 390, 672, 1065,
 		1732, 2795, 4543, 7391, 12019, 19302, 31324, 50629, 81956,
@@ -73,9 +73,9 @@ namespace IO
 		{
 			size_t primitive = 0;
 			
-			for(size_t i = 0; i < kRIOashTablePrimitiveCount; i ++)
+			for(size_t i = 0; i < kIOHashTablePrimitiveCount; i ++)
 			{
-				if(kHashTableCapacity[i] > capacity || i == kRIOashTablePrimitiveCount - 1)
+				if(kHashTableCapacity[i] > capacity || i == kIOHashTablePrimitiveCount - 1)
 				{
 					primitive = i;
 					break;
@@ -263,7 +263,7 @@ namespace IO
 		
 		void GrowIfPossible()
 		{
-			if(_count >= kHashTableMaxCount[_primitive] && _primitive < kRIOashTablePrimitiveCount)
+			if(_count >= kHashTableMaxCount[_primitive] && _primitive < kIOHashTablePrimitiveCount)
 				Rehash(_primitive + 1);
 		}
 		

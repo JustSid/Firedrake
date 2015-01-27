@@ -26,7 +26,7 @@ ENTRY(syscall)
 	movl $0x0, %ecx
 	int  $0x80
 
-	jecxz syscall_noError
+	jecxz 1f
 
 	pushl %eax
 	pushl %ecx
@@ -34,7 +34,7 @@ ENTRY(syscall)
 	popl %ecx
 	popl %eax
 
-syscall_noError:
+1:
 	ret
 
 #endif
