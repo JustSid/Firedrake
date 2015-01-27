@@ -1,5 +1,5 @@
 //
-//  waitqueue.cpp
+//  waitqueue.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -21,10 +21,11 @@
 
 #include <prefix.h>
 #include <libc/stdint.h>
+#include <kern/kern_return.h>
 
 namespace OS
 {
-	void Wait(void *channel);
+	KernReturn<void> Wait(void *channel);
 
 	void Wakeup(void *channel);
 	void WakeupOne(void *channel);

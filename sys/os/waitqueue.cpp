@@ -90,6 +90,18 @@ namespace OS
 			return _waiters.end();
 		}
 
+		Thread *PopAny()
+		{
+			Thread *thread = *_waiters.end();
+			_waiters.erase(_waiters.end());
+
+			return thread;
+		}
+		bool IsEmpty() const
+		{
+			return (_waiters.size() == 0);
+		}
+
 	private:
 		std::vector<Thread *> _waiters;
 
@@ -103,7 +115,7 @@ namespace OS
 	static spinlock_t _waitLock;
 
 
-	void Wait(void *channel)
+	KernReturn<void> Wait(void *channel)
 	{
 		WaitqueueLookup *lookup = WaitqueueLookup::Alloc()->Init(channel);
 
@@ -125,6 +137,8 @@ namespace OS
 
 		lookup->Release();
 		Scheduler::ForceReschedule(); // Make sure we don't return until Wakeup() is called
+
+		return ErrorNone;
 	}
 	
 	void Wakeup(void *channel)
@@ -134,6 +148,12 @@ namespace OS
 		spinlock_lock(&_waitLock);
 
 		WaitqueueEntry *entry = _waitqueue->GetObjectForKey<WaitqueueEntry>(lookup);
+		if(!entry)
+		{
+			spinlock_unlock(&_waitLock);
+			return;
+		}
+
 		entry->Retain();
 
 		_waitqueue->RemoveObjectForKey(lookup);
@@ -151,6 +171,29 @@ namespace OS
 
 		entry->Release();
 		lookup->Release();
+	}
+
+	void WakeupOne(void *channel)
+	{
+		WaitqueueLookup *lookup = WaitqueueLookup::Alloc()->Init(channel);
+
+		spinlock_lock(&_waitLock);
+
+		WaitqueueEntry *entry = _waitqueue->GetObjectForKey<WaitqueueEntry>(lookup);
+		if(!entry)
+		{
+			spinlock_unlock(&_waitLock);
+			return;
+		}
+
+		Thread *thread = entry->PopAny();
+
+		if(entry->IsEmpty())
+			_waitqueue->RemoveObjectForKey(lookup);
+
+		spinlock_unlock(&_waitLock);
+
+		thread->Unblock();
 	}
 
 	KernReturn<void> WaitqueueInit()
