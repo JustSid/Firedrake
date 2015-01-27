@@ -34,6 +34,7 @@ namespace OS
 	{
 		Task *GetActiveTask();
 		Task *GetActiveTask(Sys::CPU *cpu);
+		Task *GetTaskWithPID(pid_t pid);
 
 		Thread *GetActiveThread();
 		Thread *GetActiveThread(Sys::CPU *cpu);

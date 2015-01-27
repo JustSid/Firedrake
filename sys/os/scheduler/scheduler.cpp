@@ -38,7 +38,7 @@ namespace OS
 	{
 		Sys::Personality::GetPersonality()->FinishBootstrapping();
 
-		__unused Task *task = Task::Alloc()->InitWithFile("/bin/test.bin");
+		//__unused Task *task = Task::Alloc()->InitWithFile(Scheduler::GetKernelTask(), "/bin/test.bin");
 
 		while(1)
 		{}
@@ -120,6 +120,29 @@ namespace OS
 		Task *GetKernelTask()
 		{
 			return _kernelTask;
+		}
+
+		Task *GetTaskWithPID(pid_t pid)
+		{
+			spinlock_lock(&_threadLock);
+
+			cpp::queue<Thread>::entry *entry = _activeThreads.get_head();
+			while(entry)
+			{
+				Thread *thread = entry->get();
+				Task *task = thread->GetTask();
+
+				if(task->GetPid() == pid)
+				{
+					spinlock_unlock(&_threadLock);
+					return task;
+				}
+
+				entry = entry->get_next();
+			}
+
+			spinlock_unlock(&_threadLock);
+			return nullptr;
 		}
 
 		// --------------------
@@ -252,11 +275,11 @@ namespace OS
 
 		KernReturn<void> InitializeTasks()
 		{
-			_kernelTask = Task::Alloc()->Init();
+			_kernelTask = Task::Alloc()->Init(nullptr);
 			_kernelTask->SetName(IO::String::Alloc()->InitWithCString("kernel_task"));
 			_kernelTask->AttachThread((Thread::Entry)&KernelTask, 0);
 			
-			_idleTask = Task::Alloc()->Init();
+			_idleTask = Task::Alloc()->Init(_kernelTask);
 			_idleTask->SetName(IO::String::Alloc()->InitWithCString("idle_task"));
 
 			for(size_t i = 0; i < _proxyCPUCount; i ++)

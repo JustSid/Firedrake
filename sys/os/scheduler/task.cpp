@@ -36,11 +36,12 @@ namespace OS
 		void AddThread(Thread *thread);
 	}
 
-	KernReturn<Task *> Task::Init()
+	KernReturn<Task *> Task::Init(Task *parent)
 	{
 		if(!IO::Object::Init())
 			return Error(KERN_FAILURE);
 
+		_parent = parent;
 		_lock = SPINLOCK_INIT;
 		_state = State::Waiting;
 		_pid = _taskPidCounter.fetch_add(1) + 1;
@@ -57,9 +58,9 @@ namespace OS
 		return this;
 	}
 
-	KernReturn<Task *> Task::InitWithFile(const char *path)
+	KernReturn<Task *> Task::InitWithFile(Task *parent, const char *path)
 	{
-		KernReturn<Task *> result = Init();
+		KernReturn<Task *> result = Init(parent);
 		if(!result.IsValid())
 			return result.GetError();
 

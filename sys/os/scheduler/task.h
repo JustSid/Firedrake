@@ -60,8 +60,8 @@ namespace OS
 			Died
 		};
 
-		KernReturn<Task *> Init();
-		KernReturn<Task *> InitWithFile(const char *path);
+		KernReturn<Task *> Init(Task *parent);
+		KernReturn<Task *> InitWithFile(Task *parent, const char *path);
 
 		KernReturn<Thread *> AttachThread( Thread::Entry entry, size_t stack);
 
@@ -69,6 +69,8 @@ namespace OS
 
 		void Lock();
 		void Unlock();
+
+		Task *GetParent() const { return _parent; }
 
 		pid_t GetPid() const { return _pid; }
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
@@ -90,6 +92,7 @@ namespace OS
 	private:
 		void RemoveThread(Thread *thread);
 
+		Task *_parent;
 		Sys::VM::Directory *_directory;
 		Executable *_executable;
 
