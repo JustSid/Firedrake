@@ -51,6 +51,9 @@ namespace OS
 
 		bool IsSchedulable(Sys::CPU *cpu) const;
 
+		void Block();
+		void Unblock();
+
 		Task *GetTask() const { return _task; }
 		tid_t GetTid() const { return _tid; }
 		uint32_t GetESP() const { return _esp; }
@@ -87,6 +90,7 @@ namespace OS
 		cpp::queue<Thread>::entry _schedulerEntry;
 
 		int8_t _quantum;
+		std::atomic<uint32_t> _blocks;
 
 		size_t _userStackPages;
 		uint8_t *_userStack;

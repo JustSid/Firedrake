@@ -162,6 +162,11 @@ namespace OS
 		// MARK: Scheduling
 		// --------------------
 
+		void ForceReschedule()
+		{
+			__asm__ volatile("int $0x3f");
+		}
+
 		uint32_t RescheduleOnCPU(uint32_t esp, Sys::CPU *cpu)
 		{
 			CPUProxy *proxy = &_proxyCPUs[cpu->GetID()];
@@ -322,6 +327,8 @@ namespace OS
 
 		if((result = Scheduler::InitializeTasks()).IsValid() == false)
 			return result;
+
+		Sys::SetInterruptHandler(0x3f, Scheduler::RescheduleOnCPU);
 
 		return ErrorNone;
 	}

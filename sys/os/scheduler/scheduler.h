@@ -45,6 +45,7 @@ namespace OS
 
 		uint32_t RescheduleOnCPU(uint32_t esp, Sys::CPU *cpu);
 		uint32_t ScheduleOnCPU(uint32_t esp, Sys::CPU *cpu);
+		void ForceReschedule();
 	}
 
 	KernReturn<void> SchedulerInit();

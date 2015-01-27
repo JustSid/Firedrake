@@ -45,6 +45,7 @@ namespace OS
 		_esp   = 0;
 		_lock  = SPINLOCK_INIT;
 		_quantum = 0;
+		_blocks = 0;
 		_pinnedCPU = _runningCPU = nullptr;
 		_kernelStack = nullptr;
 		_kernelStackVirtual = nullptr;
@@ -218,10 +219,19 @@ namespace OS
 
 	bool Thread::IsSchedulable(Sys::CPU *cpu) const
 	{
-		if(_runningCPU || (_pinnedCPU && _pinnedCPU != cpu))
+		if((_runningCPU && _runningCPU != cpu) || (_pinnedCPU && _pinnedCPU != cpu))
 			return false;
 
-		return true;
+		return (_blocks.load() == 0);
+	}
+
+	void Thread::Block()
+	{
+		_blocks ++;
+	}
+	void Thread::Unblock()
+	{
+		_blocks --;
 	}
 
 	void Thread::Lock()
