@@ -22,10 +22,12 @@
 #include <prefix.h>
 #include <libc/stdint.h>
 #include <kern/kern_return.h>
+#include <objects/IOFunction.h>
 
 namespace OS
 {
 	KernReturn<void> Wait(void *channel);
+	KernReturn<void> WaitWithCallback(void *channel, IO::Function<void ()> &&callback);
 
 	void Wakeup(void *channel);
 	void WakeupOne(void *channel);

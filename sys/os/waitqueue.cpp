@@ -117,6 +117,11 @@ namespace OS
 
 	KernReturn<void> Wait(void *channel)
 	{
+		return WaitWithCallback(channel, []{});
+	}
+
+	KernReturn<void> WaitWithCallback(void *channel, IO::Function<void ()> &&callback)
+	{
 		WaitqueueLookup *lookup = WaitqueueLookup::Alloc()->Init(channel);
 
 		spinlock_lock(&_waitLock);
@@ -136,6 +141,8 @@ namespace OS
 		spinlock_unlock(&_waitLock);
 
 		lookup->Release();
+
+		callback();
 		Scheduler::ForceReschedule(); // Make sure we don't return until Wakeup() is called
 
 		return ErrorNone;
