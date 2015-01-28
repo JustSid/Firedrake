@@ -23,26 +23,13 @@
 #include <libcpp/new.h>
 #include <machine/interrupts/interrupts.h>
 #include <machine/clock/clock.h>
-#include <personality/personality.h>
 #include <kern/panic.h>
 #include "scheduler.h"
 
-namespace Sys
-{
-	void FinishBootstrapping();
-}
 
 namespace OS
 {
-	void KernelTask()
-	{
-		Sys::Personality::GetPersonality()->FinishBootstrapping();
-
-		//__unused Task *task = Task::Alloc()->InitWithFile(Scheduler::GetKernelTask(), "/bin/test.bin");
-
-		while(1)
-		{}
-	}
+	void KernelTaskMain();
 
 	void IdleTask()
 	{
@@ -282,7 +269,7 @@ namespace OS
 		{
 			_kernelTask = Task::Alloc()->Init(nullptr);
 			_kernelTask->SetName(IO::String::Alloc()->InitWithCString("kernel_task"));
-			_kernelTask->AttachThread((Thread::Entry)&KernelTask, 0);
+			_kernelTask->AttachThread((Thread::Entry)&KernelTaskMain, 0);
 			
 			_idleTask = Task::Alloc()->Init(_kernelTask);
 			_idleTask->SetName(IO::String::Alloc()->InitWithCString("idle_task"));
