@@ -155,7 +155,7 @@ namespace VFS
 			if((mapping = kernelDir->Alloc(physical, pages, kVMFlagsKernel)).IsValid() == false)
 				return mapping.GetError();
 
-			memcpy(target, reinterpret_cast<void *>(mapping + offset), length);
+			memcpy(reinterpret_cast<void *>(mapping + offset), data, length);
 			kernelDir->Free(mapping, pages);
 		}
 
