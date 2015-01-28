@@ -1,31 +1,34 @@
-## Overview
-This branch contains the complete rewrite of Firedrake, the goal is a more "modern" kernel which goes away from the classical UNIX approach. Since Firedrake is in no way anything more than a simple hobby, I decided that it would be best to try out things on my own instead of just copying what everyone else did.
+# Overview
 
-The kernel itself is written in a crude mix between C and C++ and there is definitely more potential to rewrite parts to be more real C++ and less legacy C (this is partially due to the fact that some code simply got taken from the original Firedrake source and because the libc++ subset implemented is severly lacking).
+Firedrake is my little kernel project. It’s nothing fancy, but it runs on bare metal so suck it! It’s pretty much my go to hobby project when I feel like tinkering with low level stuff, so don’t expect any coherent development or anything serious: This is a just for fun project and I work on whatever seems fun at the time. That being said, the goal is to get a somewhat working OS together, even if it’s just a text based shell.
 
-### Bucket list
-These are the things I want to implement in Firedrake in the next time, in no particular order
+The project has gone through many iterations, refactorings and rewrites. It started out as pure C project and is now a C++11 based kernel with a simple C interface into the userland. This probably isn’t the end of the refactoring/rewrite process, as I love to throw old stuff away and replace it by newer and better things. So, the message clearly is: *here be dragons*.
 
- * IPC
- * VFS
- * ELF loader
- * Runtime link editor in the kernel
- * Driver framework
- * Full ACPI support
+## Features
 
-### Already implemented
-Some notworthy things that got already implemented in Firedrake
+Every feature here is implemented in a *very* simply and rudimentary form! If it sounds impressive, I assure you, it’s not!
 
- * Memory management (physical, virtual, slab allocator)
- * Interrupts through APIC(s) and I/O APIC(s)
- * Basic threading and task support (including a simple scheduler)
- * SMP (ACPI is used to read out all CPUs and they are already started and take part in the scheduling process)
+* Virtual and physical memory management
+* Pre-emptive multitasking
+* SMP support
+* Virtual file system
+* IPC
+* ELF executable loader
+* System call interface
 
-## Building
-Not much has changed for building Firedrake. Same tools, same procedure, same build scripts.
+Of these features, all of them need work to improve them! For example, the ELF loader can’t handle dynamically linked libraries right now, and the scheduler isn’t SMP aware and likes to move threads around CPUs.
 
-## License
-Firedrake is released under the permissive MIT license. For more informations, please read the [LICENSE](LICENSE.md) file.
+Additionally, there is no video output. Everything is done through the UART, so if you throw it at bare metal, make sure to read the UART, otherwise you will miss most of the fun.
 
-### Third party code
-Firedrake uses code from the FreeBSD project for 64bit software integer division. The code can be found in /sys/libc/bsd/ and is released under the BSD license. See the [README](sys/libc/bsd/README.md) inside /sys/libc/bsd for more informations.
+# Building Firedrake
+
+Building Firedrake requires a linux machine and some common binaries. If you use the Sublime Text project, you can simply use `cmd + b`, or your local equivalent, to build the project. Otherwise, the `build.sh` file contains everything needed to build it and it can be invoked directly.
+
+However, before you can build, you need to symlink the `/lib/libc` folder into the `sys` folder, as the kernel shares the C library with the user land. Additionally, you need the following packages installed:
+
+* GCC
+* binutils
+* xorriso
+* grub-mkrescue
+
+If the build is successful, the `boot` folder will contain a `Firedrake.iso` file which can be either thrown against a Virtual Machine or bare metal.
