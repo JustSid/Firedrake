@@ -16,10 +16,39 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <sys/syscall.h>
+#include <sys/unistd.h>
+#include <sys/fcntl.h>
+#include <ipc/ipc_message.h>
+#include <ipc/ipc_port.h>
+#include <string.h>
+#include <stdio.h>
+
+void puts(const char *string)
+{
+	char buffer[255];
+
+	ipc_header_t *header = (ipc_header_t *)buffer;
+	header->sender = ipc_task_port();
+	header->receiver = 4294967297; // Echo port, hard coded
+	header->flags = 0;
+	header->size = strlen(string) + 1;
+
+	char *data = (char *)IPC_GET_DATA(header);
+	strcpy(data, string);
+
+	ipc_write(header);
+}
 
 int main(int argc, char *argv[])
 {
-	syscall(SYS_Open, "/etc/license.txt", 2);
+	int fd = open("/etc/license.txt", O_RDONLY);
+
+	char temp[129];
+	read(fd, temp, 128);
+	temp[128] = '\0';
+
+	close(fd);
+
+	puts(temp);
 	return 0;
 }
