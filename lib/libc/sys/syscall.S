@@ -37,4 +37,9 @@ ENTRY(syscall)
 1:
 	ret
 
+ENTRY(kern_trap)
+	movl 0x4(%esp), %eax
+	int  $0x81
+	ret
+
 #endif

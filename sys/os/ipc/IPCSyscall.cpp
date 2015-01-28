@@ -70,12 +70,14 @@ namespace OS
 			OS::SyscallScopedMapping headerMapping(arguments->header, arguments->size + sizeof(ipc_header_t));
 			ipc_header_t *header = headerMapping.GetMemory<ipc_header_t>();
 			
+			KernReturn<void> result;
+
 			switch(arguments->mode)
 			{
 				case IPC_READ:
 				{
 					Message *message = Message::Alloc()->Init(header);
-					Read(message);
+					result = Read(message);
 					message->Release();
 					
 					break;
@@ -84,12 +86,15 @@ namespace OS
 				case IPC_WRITE:
 				{
 					Message *message = Message::Alloc()->Init(header);
-					Write(message);
+					result = Write(message);
 					message->Release();
 
 					break;
 				}
 			}
+
+			if(!result.IsValid())
+				return result.GetError();
 
 			return KERN_SUCCESS;
 		}

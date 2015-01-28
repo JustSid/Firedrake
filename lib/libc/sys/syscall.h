@@ -23,6 +23,7 @@
 
 __BEGIN_DECLS
 
+/* Syscall */
 #define SYS_Exit  0
 #define SYS_Open  1
 #define SYS_Close 2
@@ -32,18 +33,20 @@ __BEGIN_DECLS
 #define SYS_Stat  6
 #define SYS_Pid   7
 
-#define SYS_IPC_TaskPort   32
-#define SYS_IPC_ThreadPort 33
-#define SYS_IPC_Message    34
-
 #define SYS_Mmap     40
 #define SYS_Munmap   41
 #define SYS_Mprotect 42
 
-#define __SYS_MaxSyscalls 128
+/* Message Trap */
+#define SYS_IPC_TaskPort   128
+#define SYS_IPC_ThreadPort 129
+#define SYS_IPC_Message    130
+
+#define __SYS_MaxSyscalls 256
 
 #ifndef __KERNEL
 unsigned int syscall(int type, ...);
+unsigned int kern_trap(int type, ...);
 #endif /* __KERNEL */
 
 __END_DECLS

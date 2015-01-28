@@ -101,6 +101,11 @@ namespace OS
 			return esp; // TODO: Should probably kill the process
 		}
 
+		// TODO: Check the entry point
+		// syscall comes in through interrupt 0x80,
+		// whereas kern_trap comes in through interrupt 0x81,
+		// difference being that unix style syscalls are handled by syscall
+		// and non-unix style syscalls are handled by kern_trap
 
 
 		Thread *thread = Scheduler::GetActiveThread();
@@ -146,16 +151,26 @@ namespace OS
 
 		// Call the actual handler of the system call
 		KernReturn<uint32_t> result = entry.handler(esp, arguments);
-		if(result.IsValid() == false)
+
+		if(entry.unixSyscall)
 		{
-			Error error = result.GetError();
-			state->ecx = entry.unixSyscall ? error.GetErrno() : error.GetCode();
-			state->eax = -1;
+			if(result.IsValid() == false)
+			{
+				Error error = result.GetError();
+				state->ecx = error.GetErrno();
+				state->eax = -1;
+			}
+			else
+			{
+				// The syscall sets ecx to 0, so it's all good.
+				state->eax = result;
+			}
 		}
 		else
 		{
-			state->eax = result;
+			state->eax = (result.IsValid() == false) ? result.GetError().GetCode() : KERN_SUCCESS;
 		}
+		
 
 		if(arguments)
 			kfree(arguments);
@@ -168,6 +183,7 @@ namespace OS
 		memset(_entries, 0, __SYS_MaxSyscalls * sizeof(SyscallEntry));
 
 		Sys::SetInterruptHandler(0x80, HandleSyscall);
+		Sys::SetInterruptHandler(0x81, HandleSyscall);
 
 		return ErrorNone;
 	}

@@ -24,14 +24,14 @@
 ipc_port_t ipc_task_port()
 {
 	ipc_port_t result;
-	syscall(SYS_IPC_TaskPort, &result);
+	kern_trap(SYS_IPC_TaskPort, &result);
 
 	return result;
 }
 ipc_port_t ipc_thread_port()
 {
 	ipc_port_t result;
-	syscall(SYS_IPC_ThreadPort, &result);
+	kern_trap(SYS_IPC_ThreadPort, &result);
 
 	return result;
 }
