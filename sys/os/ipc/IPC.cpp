@@ -43,9 +43,91 @@ namespace OS
 			return port;
 		}
 
+		KernReturn<void> ValidateMessage(Message *message, Task *sender)
+		{
+			ipc_port_t sendPortName = message->GetSender();
+			IO::StrongRef<Port> sendPort = nullptr;
+
+			if(sendPortName != IPC_PORT_NULL)
+			{
+				pid_t sendPid = IPCGetPID(sendPortName);
+
+				if(sendPid != sender->GetPid())
+					return Error(KERN_ACCESS_VIOLATION);
+
+				// Check if this is a send port
+				sendPort = LookupPort(sendPortName);
+				if(!sendPort)
+					return Error(KERN_INVALID_ARGUMENT);
+
+				if((sendPort->GetRights() & Port::Rights::Receive))
+					return Error(KERN_IPC_NO_SENDER);
+			}
+			else
+			{
+				// If no sender is set, the Task port is used instead
+				ipc_header_t *header = message->GetHeader();
+				sendPort = sender->GetTaskPort();
+
+				header->sender = sendPort->GetPortName();
+			}
+
+
+			// Make sure the receiver grants us rights to send to it
+			IO::StrongRef<Port> port = LookupPort(message->GetReceiver());
+			if(!port)
+				return Error(KERN_INVALID_ARGUMENT);
+
+			Port::Rights rights = port->GetRights();
+			pid_t pid = IPCGetPID(message->GetReceiver());
+
+			if(!(rights & IPC::Port::Rights::Receive))
+				return Error(KERN_IPC_NO_RECEIVER);
+
+			// If anyone is allowed to send, or if we send to ourselves, everything is A-okay
+			if((rights & IPC::Port::Rights::Any) || pid == sender->GetPid())
+				return ErrorNone;
+
+			if((rights & IPC::Port::Rights::Inherited))
+			{
+				Task *parent = sender->GetParent();
+
+				if(parent && parent->GetPid() == pid)
+					return ErrorNone;
+			}
+
+			// Check if the task or port is granted special send rights
+			port->Lock();
+
+			if(port->HasTaskRight(sender))
+			{
+				port->Unlock();
+				return ErrorNone;
+			}
+
+			if(port->HasPortRight(sendPort))
+			{
+				port->Unlock();
+				return ErrorNone;
+			}
+
+			port->Unlock();
+
+			return Error(KERN_ACCESS_VIOLATION);
+		}
+
+
+
 
 		KernReturn<void> Write(Message *message)
 		{
+			KernReturn<void> result = ValidateMessage(message, Scheduler::GetActiveTask());
+			if(!result.IsValid())
+			{
+				kprintf("Validation failed!");
+				return result;
+			}
+
 			IO::StrongRef<Port> port = LookupPort(message->GetReceiver());
 			if(!port)
 				return Error(KERN_INVALID_ARGUMENT);
@@ -67,6 +149,14 @@ namespace OS
 			IO::StrongRef<Port> port = LookupPort(message->GetReceiver());
 			if(!port)
 				return Error(KERN_INVALID_ARGUMENT);
+
+			// Validate that we can even read from that port
+			Task *receiver = Scheduler::GetActiveTask();
+			if(receiver->GetPid() != (pid_t)IPCGetPID(message->GetReceiver()))
+				return Error(KERN_ACCESS_VIOLATION);
+
+			if(!(port->GetRights() & Port::Rights::Receive))
+				return Error(KERN_IPC_NO_RECEIVER);
 
 			ipc_header_t *header = message->GetHeader();
 

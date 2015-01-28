@@ -22,10 +22,12 @@
 #include <prefix.h>
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
+#include <libc/ipc/ipc_port.h>
 #include <libcpp/bitfield.h>
 #include <objects/IOObject.h>
 #include <objects/IOString.h>
 #include <objects/IOArray.h>
+#include <objects/IOSet.h>
 #include "IPCMessage.h"
 
 namespace OS
@@ -49,8 +51,9 @@ namespace OS
 
 				enum
 				{
-					Descendents = (1 << 0),
-					Any = (1 << 1)
+					Any = (1 << 0), // No special rights required to send to that port
+					Inherited = (1 << 1), // Only child tasks and especially granted ports can send
+					Receive = (1 << 2) // Port is a receiving port, otherwise it's a sending port
 				};
 			};
 
@@ -59,9 +62,19 @@ namespace OS
 			void Lock();
 			void Unlock();
 
+			void AddPortRight(Port *other);
+			void AddTaskRight(Task *task);
+
+			void RemovePortRight(Port *other);
+			void RemoveTaskRight(Task *task);
+
+			bool HasPortRight(Port *port);
+			bool HasTaskRight(Task *task);
+
 			uint16_t GetName() const { return _name; }
 			ipc_port_t GetPortName() const;
 			System *GetSystem() const { return _system; }
+			Rights GetRights() const { return _rights; }
 
 			void PushMessage(Message *message);
 
@@ -75,7 +88,9 @@ namespace OS
 			Rights _rights;
 			uint16_t _name;
 
-			IO::Array *_connections;
+			IO::Set *_portRights;
+			IO::Set *_taskRights;
+
 			IO::Array *_queue;
 
 			System *_system;

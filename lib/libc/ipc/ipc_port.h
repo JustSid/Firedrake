@@ -23,6 +23,8 @@
 
 __BEGIN_DECLS
 
+#define IPC_PORT_NULL ((ipc_port_t)0)
+
 ipc_port_t ipc_task_port();
 ipc_port_t ipc_thread_port();
 

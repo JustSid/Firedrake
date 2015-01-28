@@ -31,6 +31,10 @@
 #define KERN_RESOURCE_IN_USE    6
 #define KERN_RESOURCE_EXISTS    7
 #define KERN_RESOURCE_EXHAUSTED 8
+#define KERN_TIMEOUT            9
+#define KERN_ACCESS_VIOLATION   10
+#define KERN_IPC_NO_RECEIVER    11
+#define KERN_IPC_NO_SENDER      12
 
 #if __KERNEL
 

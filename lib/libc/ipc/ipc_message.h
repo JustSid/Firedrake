@@ -28,11 +28,13 @@ __BEGIN_DECLS
 #define IPC_READ  1
 
 #define IPC_HEADER_FLAG_BLOCK (1 << 0)
+#define IPC_HEADER_FLAG_RESPONSE (1 << 1)
 
 typedef struct
 {
 	ipc_port_t sender;
 	ipc_port_t receiver;
+	ipc_port_t reply; // If IPC_HEADER_FLAG_RESPONSE is set, a port to which to send the response
 	ipc_sequence_t sequence;
 	ipc_bits_t flags;
 	ipc_size_t size;

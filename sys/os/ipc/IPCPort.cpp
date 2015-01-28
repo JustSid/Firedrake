@@ -17,6 +17,7 @@
 //
 
 #include <os/scheduler/task.h>
+#include <objects/IONumber.h>
 #include "IPCPort.h"
 #include "IPCMessage.h"
 
@@ -34,8 +35,9 @@ namespace OS
 			_rights = rights;
 			_name = name;
 			_system = system;
-			_connections = IO::Array::Alloc()->Init();
 			_queue = IO::Array::Alloc()->Init();
+			_portRights = IO::Set::Alloc()->Init();
+			_taskRights = IO::Set::Alloc()->Init();
 			_lock = SPINLOCK_INIT;
 
 			return this;
@@ -43,8 +45,10 @@ namespace OS
 
 		void Port::Dealloc()
 		{
-			IO::SafeRelease(_connections);
 			IO::SafeRelease(_queue);
+
+			IO::SafeRelease(_portRights);
+			IO::SafeRelease(_taskRights);
 
 			IO::Object::Dealloc();
 		}
@@ -57,6 +61,52 @@ namespace OS
 		void Port::Unlock()
 		{
 			spinlock_unlock(&_lock);
+		}
+
+
+		void Port::AddPortRight(Port *other)
+		{
+			IO::Number *number = IO::Number::Alloc()->InitWithUint64(other->GetPortName());
+			_portRights->AddObject(number);
+			number->Release();
+		}
+		void Port::AddTaskRight(Task *task)
+		{
+			IO::Number *number = IO::Number::Alloc()->InitWithUint32(task->GetPid());
+			_taskRights->AddObject(number);
+			number->Release();
+		}
+
+
+		void Port::RemovePortRight(Port *other)
+		{
+			IO::Number *number = IO::Number::Alloc()->InitWithUint64(other->GetPortName());
+			_portRights->RemoveObject(number);
+			number->Release();
+		}
+		void Port::RemoveTaskRight(Task *task)
+		{
+			IO::Number *number = IO::Number::Alloc()->InitWithUint32(task->GetPid());
+			_taskRights->RemoveObject(number);
+			number->Release();
+		}
+
+
+		bool Port::HasPortRight(Port *other)
+		{
+			IO::Number *number = IO::Number::Alloc()->InitWithUint64(other->GetPortName());
+			bool result = _portRights->ContainsObject(number);
+			number->Release();
+
+			return result;
+		}
+		bool Port::HasTaskRight(Task *task)
+		{
+			IO::Number *number = IO::Number::Alloc()->InitWithUint32(task->GetPid());
+			bool result = _taskRights->ContainsObject(number);
+			number->Release();
+
+			return result;
 		}
 
 

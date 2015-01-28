@@ -27,9 +27,13 @@
 
 namespace OS
 {
+	class Task;
+
 	namespace IPC
 	{
 		KernReturn<IO::StrongRef<Port>> LookupPort(ipc_port_t name);
+
+		KernReturn<void> ValidateMessage(Message *message, Task *sender);
 
 		KernReturn<void> Read(Message *message);
 		KernReturn<void> Write(Message *message);
