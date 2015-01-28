@@ -20,6 +20,7 @@
 #include "IOCatalogue.h"
 #include "IOArray.h"
 #include "IODictionary.h"
+#include "IOSet.h"
 #include "IOString.h"
 #include "IONumber.h"
 #include "IONull.h"
@@ -155,6 +156,7 @@ namespace IO
 		Object::GetMetaClass();
 		Array::GetMetaClass();
 		Dictionary::GetMetaClass();
+		Set::GetMetaClass();
 		String::GetMetaClass();
 		Number::GetMetaClass();
 		Null::GetMetaClass();
