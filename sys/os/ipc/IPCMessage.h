@@ -1,9 +1,9 @@
 //
-//  syscall.h
+//  IPCMessage.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated 
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation 
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
@@ -16,37 +16,52 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_SYSCALL_H_
-#define _SYS_SYSCALL_H_
+#ifndef _IPCMESSAGE_H_
+#define _IPCMESSAGE_H_
 
-#include "cdefs.h"
+#include <prefix.h>
+#include <kern/kern_return.h>
+#include <machine/memory/virtual.h>
+#include <objects/IOObject.h>
+#include <libc/ipc/ipc_message.h>
 
-__BEGIN_DECLS
+#define IPCCreateName(pid, system, port) \
+	((static_cast<ipc_port_t>((pid)) << 32) | ((system) << 16) | (port))
 
-#define SYS_Exit  0
-#define SYS_Open  1
-#define SYS_Close 2
-#define SYS_Read  3
-#define SYS_Write 4
-#define SYS_Seek  5
-#define SYS_Stat  6
-#define SYS_Pid   7
+#define IPCGetPID(name) \
+	((name) >> 32)
+#define IPCGetSystem(name) \
+	(((name) >> 16) & 0xffff)
+#define IPCGetPort(name) \
+	((name) & 0xffff)
 
-#define SYS_IPC_TaskPort   32
-#define SYS_IPC_ThreadPort 33
-#define SYS_IPC_Message    34
+namespace OS
+{
+	namespace IPC
+	{
+		class System;
 
-#define SYS_Mmap     40
-#define SYS_Munmap   41
-#define SYS_Mprotect 42
+		class Message : public IO::Object
+		{
+		public:
+			Message *Init(ipc_header_t *header);
+			Message *InitAsCopy(const Message *other);
 
-#define __SYS_MaxSyscalls 128
+			void Dealloc() override;
 
-#ifndef __KERNEL
-unsigned int syscall(int type, ...);
-#endif /* __KERNEL */
+			ipc_header_t *GetHeader() const { return _header; }
 
-__END_DECLS
+			ipc_port_t GetSender() const { return _header->sender; }
+			ipc_port_t GetReceiver() const { return _header->receiver; }
 
+		private:
+			ipc_header_t *_header;
+			void *_buffer;
+			bool _ownsData;
 
-#endif /* _SYS_SYSCALL_H_ */
+			IODeclareMeta(Message)
+		};
+	}
+}
+
+#endif /* _IPCMESSAGE_H_ */

@@ -1,9 +1,9 @@
 //
-//  syscall.h
+//  ipc_message.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated 
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation 
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
@@ -16,37 +16,34 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_SYSCALL_H_
-#define _SYS_SYSCALL_H_
+#ifndef _IPC_IPC_MESSAGE_H_
+#define _IPC_IPC_MESSAGE_H_
 
-#include "cdefs.h"
+#include "../sys/cdefs.h"
+#include "ipc_types.h"
 
 __BEGIN_DECLS
 
-#define SYS_Exit  0
-#define SYS_Open  1
-#define SYS_Close 2
-#define SYS_Read  3
-#define SYS_Write 4
-#define SYS_Seek  5
-#define SYS_Stat  6
-#define SYS_Pid   7
+#define IPC_WRITE 0
+#define IPC_READ  1
 
-#define SYS_IPC_TaskPort   32
-#define SYS_IPC_ThreadPort 33
-#define SYS_IPC_Message    34
+#define IPC_HEADER_FLAG_BLOCK (1 << 0)
 
-#define SYS_Mmap     40
-#define SYS_Munmap   41
-#define SYS_Mprotect 42
+typedef struct
+{
+	ipc_port_t sender;
+	ipc_port_t receiver;
+	ipc_sequence_t sequence;
+	ipc_bits_t flags;
+	ipc_size_t size;
+	ipc_size_t realSize; // Only used when reading, to signal the actual size of the packet
+} ipc_header_t;
 
-#define __SYS_MaxSyscalls 128
+#define IPC_GET_DATA(header) (((unsigned char *)header) + sizeof(ipc_header_t))
 
-#ifndef __KERNEL
-unsigned int syscall(int type, ...);
-#endif /* __KERNEL */
+ipc_return_t ipc_write(ipc_header_t *header);
+ipc_return_t ipc_read(ipc_header_t *header);
 
 __END_DECLS
 
-
-#endif /* _SYS_SYSCALL_H_ */
+#endif /* _IPC_IPC_MESSAGE_H_ */

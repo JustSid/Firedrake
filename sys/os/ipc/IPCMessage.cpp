@@ -1,9 +1,9 @@
 //
-//  syscall.h
+//  IPCMessage.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated 
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation 
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
@@ -16,37 +16,48 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_SYSCALL_H_
-#define _SYS_SYSCALL_H_
+#include <kern/kalloc.h>
+#include "IPCMessage.h"
 
-#include "cdefs.h"
+namespace OS
+{
+	namespace IPC
+	{
+		IODefineMeta(Message, IO::Object)
 
-__BEGIN_DECLS
+		Message *Message::Init(ipc_header_t *header)
+		{
+			if(!IO::Object::Init())
+				return nullptr;
 
-#define SYS_Exit  0
-#define SYS_Open  1
-#define SYS_Close 2
-#define SYS_Read  3
-#define SYS_Write 4
-#define SYS_Seek  5
-#define SYS_Stat  6
-#define SYS_Pid   7
+			_header = header;
+			_ownsData = false;
 
-#define SYS_IPC_TaskPort   32
-#define SYS_IPC_ThreadPort 33
-#define SYS_IPC_Message    34
+			return this;
+		}
 
-#define SYS_Mmap     40
-#define SYS_Munmap   41
-#define SYS_Mprotect 42
+		Message *Message::InitAsCopy(const Message *other)
+		{
+			if(!IO::Object::Init())
+				return nullptr;
 
-#define __SYS_MaxSyscalls 128
+			ipc_header_t *otherHeader = other->GetHeader();
+			void *blob = kalloc(otherHeader->size + sizeof(ipc_header_t));
+			
+			memcpy(blob, otherHeader, otherHeader->size + sizeof(ipc_header_t));
 
-#ifndef __KERNEL
-unsigned int syscall(int type, ...);
-#endif /* __KERNEL */
+			_header = reinterpret_cast<ipc_header_t *>(blob);
+			_ownsData = true;
 
-__END_DECLS
+			return this;
+		}
 
+		void Message::Dealloc()
+		{
+			if(_ownsData)
+				kfree(_header);
 
-#endif /* _SYS_SYSCALL_H_ */
+			IO::Object::Dealloc();
+		}
+	}
+}

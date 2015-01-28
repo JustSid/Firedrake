@@ -55,6 +55,13 @@ namespace OS
 		_executable = nullptr;
 		_threads = IO::Array::Alloc()->Init();
 		_name = nullptr;
+
+		_ipcSystems = IO::Dictionary::Alloc()->Init();
+		_taskSystem = AllocateIPCSystem(0);
+		_threadSystem = AllocateIPCSystem(1);
+
+		_taskPort = _taskSystem->AllocatePort(0, IPC::Port::Rights::Any);
+
 		return this;
 	}
 
@@ -105,6 +112,8 @@ namespace OS
 			delete _directory;
 
 		_files->Release();
+		_threads->Release();
+		_ipcSystems->Release();
 
 		IO::SafeRelease(_name);
 
@@ -209,5 +218,39 @@ namespace OS
 		lookup->Release();
 
 		Unlock();
+	}
+
+
+	KernReturn<IPC::System *> Task::AllocateIPCSystem(uint16_t name)
+	{
+		IO::Number *lookup = IO::Number::Alloc()->InitWithUint16(name);
+
+		Lock();
+
+		if(_ipcSystems->GetObjectForKey(lookup))
+		{
+			Unlock();
+
+			lookup->Release();
+			return Error(KERN_RESOURCE_EXISTS);
+		}
+
+		IPC::System *system = IPC::System::Alloc()->Init(this, name);
+		_ipcSystems->SetObjectForKey(system, lookup);
+
+		Unlock();
+
+		return system;
+	}
+	IO::StrongRef<IPC::System> Task::GetIPCSystem(uint16_t name)
+	{
+		IO::Number *lookup = IO::Number::Alloc()->InitWithUint16(name);
+
+		Lock();
+		IO::StrongRef<IPC::System> system = _ipcSystems->GetObjectForKey<IPC::System>(lookup);
+		Unlock();
+
+		lookup->Release();
+		return system;
 	}
 }

@@ -1,9 +1,9 @@
 //
-//  syscall.h
+//  IPCSystem.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated 
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation 
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
@@ -16,37 +16,46 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _SYS_SYSCALL_H_
-#define _SYS_SYSCALL_H_
+#ifndef _IPCSYSTEM_H_
+#define _IPCSYSTEM_H_
 
-#include "cdefs.h"
+#include <prefix.h>
+#include <libc/sys/spinlock.h>
+#include <objects/IOObject.h>
+#include <objects/IOString.h>
+#include <objects/IODictionary.h>
+#include "IPCPort.h"
 
-__BEGIN_DECLS
+namespace OS
+{
+	class Task;
 
-#define SYS_Exit  0
-#define SYS_Open  1
-#define SYS_Close 2
-#define SYS_Read  3
-#define SYS_Write 4
-#define SYS_Seek  5
-#define SYS_Stat  6
-#define SYS_Pid   7
+	namespace IPC
+	{
+		class System : public IO::Object
+		{
+		public:
+			System *Init(Task *task, uint16_t name);
+			void Dealloc() override;
 
-#define SYS_IPC_TaskPort   32
-#define SYS_IPC_ThreadPort 33
-#define SYS_IPC_Message    34
+			void Lock();
+			void Unlock();
 
-#define SYS_Mmap     40
-#define SYS_Munmap   41
-#define SYS_Mprotect 42
+			uint16_t GetName() const { return _name; }
+			Task *GetTask() const { return _task; }
 
-#define __SYS_MaxSyscalls 128
+			Port *AllocatePort(uint16_t name, Port::Rights rights);
+			IO::StrongRef<Port> GetPort(uint16_t name);
 
-#ifndef __KERNEL
-unsigned int syscall(int type, ...);
-#endif /* __KERNEL */
+		private:
+			Task *_task;
+			uint16_t _name;
+			IO::Dictionary *_ports;
+			spinlock_t _lock;
 
-__END_DECLS
+			IODeclareMeta(System)
+		};
+	}
+}
 
-
-#endif /* _SYS_SYSCALL_H_ */
+#endif /* _IPCSYSTEM_H_ */

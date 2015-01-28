@@ -84,6 +84,7 @@ namespace Sys
 	void PCPersonality::FinishBootstrapping()
 	{
 		Init("syscalls", OS::SyscallInit);
+		Init("ipc", OS::IPCInit);
 		Init("vfs", VFS::Init);
 
 		kprintf("\n\n");
@@ -108,7 +109,6 @@ namespace Sys
 		Init("smp", Sys::SMPInit);
 		Init("scheduler", OS::SchedulerInit);
 		Init("waitqueue", OS::WaitqueueInit);
-		Init("ipc", OS::IPCInit);
 
 		Sys::Clock::ActivateClock();
 	}

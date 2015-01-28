@@ -35,6 +35,7 @@
 #include <objects/IODictionary.h>
 #include <objects/IONumber.h>
 #include <objects/IONull.h>
+#include <os/ipc/IPC.h>
 
 #include "thread.h"
 
@@ -86,6 +87,14 @@ namespace OS
 		int AllocateFileDescriptor();
 		void FreeFileDescriptor(int fd);
 
+		// IPC
+		IPC::System *GetTaskSystem() const { return _taskSystem; }
+		IPC::System *GetThreadSystem() const { return _threadSystem; }
+		IPC::Port *GetTaskPort() const { return _taskPort; }
+
+		KernReturn<IPC::System *> AllocateIPCSystem(uint16_t name);
+		IO::StrongRef<IPC::System> GetIPCSystem(uint16_t name);
+
 	protected:
 		void Dealloc() override;
 
@@ -111,6 +120,11 @@ namespace OS
 		VFS::Context *_context;
 		IO::Dictionary *_files;
 		std::atomic<int32_t> _fileCounter;
+
+		IO::Dictionary *_ipcSystems;
+		IPC::System *_taskSystem;
+		IPC::System *_threadSystem;
+		IPC::Port *_taskPort;
 
 		IODeclareMeta(Task)
 	};

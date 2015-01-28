@@ -53,6 +53,7 @@ namespace OS
 		_userStackVirtual = nullptr;
 
 		_tid = _task->_tidCounter.fetch_add(1);
+		_threadPort = _task->GetThreadSystem()->AllocatePort(static_cast<uint16_t>(_tid), IPC::Port::Rights::Any);
 
 		if(_task->_ring3)
 		{

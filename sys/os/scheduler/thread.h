@@ -29,6 +29,7 @@
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
 #include <objects/IOObject.h>
+#include <os/ipc/IPCPort.h>
 
 namespace OS
 {
@@ -70,6 +71,7 @@ namespace OS
 		size_t GetKernelStackPages() const { return _kernelStackPages; }
 
 		cpp::queue<Thread>::entry &GetSchedulerEntry() { return _schedulerEntry; }
+		IPC::Port *GetThreadPort() const { return _threadPort; }
 
 	private:
 		Thread();
@@ -102,6 +104,8 @@ namespace OS
 
 		uint32_t _esp;
 		uint32_t _entry;
+
+		IPC::Port *_threadPort;
 
 		IODeclareMeta(Thread)
 	};
