@@ -31,12 +31,12 @@ namespace OS
 
 	namespace IPC
 	{
-		KernReturn<IO::StrongRef<Port>> LookupPort(ipc_port_t name);
-
-		KernReturn<void> ValidateMessage(Message *message, Task *sender);
+		IO::StrongRef<Port> LookupPort(ipc_port_t name, bool lockSystem);
 
 		KernReturn<void> Read(Message *message);
 		KernReturn<void> Write(Message *message);
+
+		
 	}
 
 	KernReturn<void> IPCInit();

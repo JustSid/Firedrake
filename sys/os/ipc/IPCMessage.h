@@ -25,15 +25,19 @@
 #include <objects/IOObject.h>
 #include <libc/ipc/ipc_message.h>
 
-#define IPCCreateName(pid, system, port) \
-	((static_cast<ipc_port_t>((pid)) << 32) | ((system) << 16) | (port))
+#define IPCCreatePortName(pid, system, port) \
+	((static_cast<ipc_port_t>((pid)) << 32) | ((system) << 16) | (port & 0x7fff))
+#define IPCCreatePortRight(pid, system, port) \
+	((static_cast<ipc_port_t>((pid)) << 32) | ((system) << 16) | (1 << 15) | (port & 0x7fff))
 
 #define IPCGetPID(name) \
-	((name) >> 32)
+	(pid_t)((name) >> 32)
 #define IPCGetSystem(name) \
 	(((name) >> 16) & 0xffff)
-#define IPCGetPort(name) \
-	((name) & 0xffff)
+#define IPCGetName(name) \
+	((name) & 0x7fff)
+#define IPCIsPortRight(name) \
+	(bool)((name) & (1 << 15))
 
 namespace OS
 {

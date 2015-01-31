@@ -60,7 +60,7 @@ namespace OS
 		_taskSystem = AllocateIPCSystem(0);
 		_threadSystem = AllocateIPCSystem(1);
 
-		_taskPort = _taskSystem->AllocatePort(0, IPC::Port::Rights::Any);
+		_taskPort = _taskSystem->AddPort(0, IPC::Port::Rights::Any);
 
 		return this;
 	}

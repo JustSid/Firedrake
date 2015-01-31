@@ -1,5 +1,5 @@
 //
-//  IPCSystem.h
+//  IPCPortRight.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,55 +16,37 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IPCSYSTEM_H_
-#define _IPCSYSTEM_H_
-
-#include <prefix.h>
-#include <libc/sys/spinlock.h>
-#include <objects/IOObject.h>
-#include <objects/IOString.h>
-#include <objects/IODictionary.h>
-#include "IPCPort.h"
 #include "IPCPortRight.h"
+#include "IPCPort.h"
 
 namespace OS
 {
-	class Task;
-
 	namespace IPC
 	{
-		class System : public IO::Object
+		IODefineMeta(PortRight, Port)
+
+		PortRight *PortRight::Init(uint16_t name, Port *port, Task *holder, bool oneTime)
 		{
-		public:
-			System *Init(Task *task, uint16_t name);
-			void Dealloc() override;
+			if(!Port::InitAsPortRight(port, name))
+				return nullptr;
 
-			void Lock();
-			void Unlock();
+			_name = name;
+			_oneTime = oneTime;
+			_port = IO::SafeRetain(port);
+			_holder = holder;
 
-			uint16_t GetName() const { return _name; }
-			Task *GetTask() const { return _task; }
+			return this;
+		}
 
-			Port *AddPort(uint16_t name, Port::Rights rights);
-			PortRight *AddPortRight(Port *port, Task *holder, bool oneTime);
+		void PortRight::Dealloc()
+		{
+			IO::SafeRelease(_port);
+			Port::Dealloc();
+		}
 
-			IO::StrongRef<Port> GetPort(uint16_t name);
-			IO::StrongRef<PortRight> GetPortRight(uint16_t name);
-
-			void RelinquishPortRight(PortRight *right);
-
-		private:
-			Task *_task;
-			uint16_t _name;
-			IO::Dictionary *_portRights;
-			IO::Dictionary *_ports;
-			spinlock_t _lock;
-
-			uint16_t _portRightName;
-
-			IODeclareMeta(System)
-		};
+		bool Port::IsPortRight() const
+		{
+			return IPCIsPortRight(_portName);
+		}
 	}
 }
-
-#endif /* _IPCSYSTEM_H_ */

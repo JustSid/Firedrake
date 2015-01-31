@@ -35,10 +35,25 @@ namespace OS
 			_rights = rights;
 			_name = name;
 			_system = system;
-			_queue = IO::Array::Alloc()->Init();
-			_portRights = IO::Set::Alloc()->Init();
-			_taskRights = IO::Set::Alloc()->Init();
-			_lock = SPINLOCK_INIT;
+			_queue = (rights & Rights::Receive) ? IO::Array::Alloc()->Init() : nullptr;
+
+			Task *task = _system->GetTask();
+			_portName = IPCCreatePortName(task->GetPid(), _system->GetName(), _name);
+
+			return this;
+		}
+		Port *Port::InitAsPortRight(Port *port, uint16_t name)
+		{
+			if(!IO::Object::Init())
+				return nullptr;
+
+			_name = name;
+			_rights = port->_rights;
+			_system = port->_system;
+			_queue = nullptr;
+
+			Task *task = _system->GetTask();
+			_portName = IPCCreatePortRight(task->GetPid(), _system->GetName(), _name);
 
 			return this;
 		}
@@ -46,83 +61,19 @@ namespace OS
 		void Port::Dealloc()
 		{
 			IO::SafeRelease(_queue);
-
-			IO::SafeRelease(_portRights);
-			IO::SafeRelease(_taskRights);
-
 			IO::Object::Dealloc();
 		}
-
-
-		void Port::Lock()
-		{
-			spinlock_lock(&_lock);
-		}
-		void Port::Unlock()
-		{
-			spinlock_unlock(&_lock);
-		}
-
-
-		void Port::AddPortRight(Port *other)
-		{
-			IO::Number *number = IO::Number::Alloc()->InitWithUint64(other->GetPortName());
-			_portRights->AddObject(number);
-			number->Release();
-		}
-		void Port::AddTaskRight(Task *task)
-		{
-			IO::Number *number = IO::Number::Alloc()->InitWithUint32(task->GetPid());
-			_taskRights->AddObject(number);
-			number->Release();
-		}
-
-
-		void Port::RemovePortRight(Port *other)
-		{
-			IO::Number *number = IO::Number::Alloc()->InitWithUint64(other->GetPortName());
-			_portRights->RemoveObject(number);
-			number->Release();
-		}
-		void Port::RemoveTaskRight(Task *task)
-		{
-			IO::Number *number = IO::Number::Alloc()->InitWithUint32(task->GetPid());
-			_taskRights->RemoveObject(number);
-			number->Release();
-		}
-
-
-		bool Port::HasPortRight(Port *other)
-		{
-			IO::Number *number = IO::Number::Alloc()->InitWithUint64(other->GetPortName());
-			bool result = _portRights->ContainsObject(number);
-			number->Release();
-
-			return result;
-		}
-		bool Port::HasTaskRight(Task *task)
-		{
-			IO::Number *number = IO::Number::Alloc()->InitWithUint32(task->GetPid());
-			bool result = _taskRights->ContainsObject(number);
-			number->Release();
-
-			return result;
-		}
-
-
-		ipc_port_t Port::GetPortName() const
-		{
-			Task *task = _system->GetTask();
-			return IPCCreateName(task->GetPid(), _system->GetName(), _name);
-		}
-
+		
 
 		void Port::PushMessage(Message *msg)
 		{
+			IOAssert(_rights & Rights::Receive, "Port must be a receive port");
 			_queue->AddObject(msg);
 		}
 		Message *Port::PeekMessage()
 		{
+			IOAssert(_rights & Rights::Receive, "Port must be a receive port");
+
 			if(_queue->GetCount() == 0)
 				return nullptr;
 
@@ -130,6 +81,7 @@ namespace OS
 		}
 		void Port::PopMessage()
 		{
+			IOAssert(_rights & Rights::Receive, "Port must be a receive port");
 			_queue->RemoveObjectAtIndex(0);
 		}
 	}

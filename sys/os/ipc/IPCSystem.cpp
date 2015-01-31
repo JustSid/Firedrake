@@ -33,8 +33,10 @@ namespace OS
 
 			_name = name;
 			_ports = IO::Dictionary::Alloc()->Init();
+			_portRights = IO::Dictionary::Alloc()->Init();
 			_lock = SPINLOCK_INIT;
 			_task = task;
+			_portRightName = 0;
 
 			return this;
 		}
@@ -42,6 +44,8 @@ namespace OS
 		void System::Dealloc()
 		{
 			IO::SafeRelease(_ports);
+			IO::SafeRelease(_portRights);
+
 			IO::Object::Dealloc();
 		}
 
@@ -55,38 +59,64 @@ namespace OS
 		}
 
 
-		Port *System::AllocatePort(uint16_t name, Port::Rights rights)
+		Port *System::AddPort(uint16_t name, Port::Rights rights)
 		{
 			Port *port = Port::Alloc()->Init(this, name, rights);
 			IO::Number *lookup = IO::Number::Alloc()->InitWithUint16(name);
-
-			Lock();
 
 			if(_ports->GetObjectForKey(lookup))
 			{
 				port->Release();
 				lookup->Release();
 
-				Unlock();
 				return nullptr;
 			}
 
 			_ports->SetObjectForKey(port, lookup);
-			Unlock();
-
 			lookup->Release();
+
+			port->Release();
 			return port;
 		}
+		PortRight *System::AddPortRight(Port *port, Task *holder, bool oneTime)
+		{
+			uint16_t name = (_portRightName ++);
+
+			PortRight *right = PortRight::Alloc()->Init(name, port, holder, oneTime);
+
+			IO::Number *lookup = IO::Number::Alloc()->InitWithUint16(name);
+			_portRights->SetObjectForKey(right, lookup);
+			lookup->Release();
+			
+			right->Release();
+			return right;
+		}
+
 		IO::StrongRef<Port> System::GetPort(uint16_t name)
 		{
 			IO::Number *lookup = IO::Number::Alloc()->InitWithUint16(name);
-
-			Lock();
 			IO::StrongRef<Port> port = _ports->GetObjectForKey<Port>(lookup);
-			Unlock();
+			lookup->Release();
 
-			lookup->Release();			
 			return port;
+		}
+
+		IO::StrongRef<PortRight> System::GetPortRight(uint16_t name)
+		{
+			IO::Number *lookup = IO::Number::Alloc()->InitWithUint16(name);
+			IO::StrongRef<PortRight> right = _portRights->GetObjectForKey<PortRight>(lookup);
+			lookup->Release();	
+
+			return right;
+		}
+
+		void System::RelinquishPortRight(PortRight *right)
+		{
+			uint16_t name = right->GetName();
+
+			IO::Number *lookup = IO::Number::Alloc()->InitWithUint16(name);
+			_portRights->RemoveObjectForKey(lookup);
+			lookup->Release();	
 		}
 	}
 }

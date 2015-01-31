@@ -39,7 +39,13 @@ namespace OS
 
 		// Set up some simple IPC ports
 		Task *self = Scheduler::GetActiveTask();
-		IPC::Port *echoPort = self->GetTaskSystem()->AllocatePort(1, IPC::Port::Rights::Any | IPC::Port::Rights::Receive);
+		IPC::System *system = self->GetTaskSystem();
+		system->Lock();
+
+		IPC::Port *echoPort = system->AddPort(1, IPC::Port::Rights::Any | IPC::Port::Rights::Receive);
+		echoPort->Retain();
+
+		system->Unlock();
 
 		kprintf("Echo port: %llu\n", echoPort->GetPortName());
 

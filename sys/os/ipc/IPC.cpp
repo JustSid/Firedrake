@@ -26,24 +26,47 @@ namespace OS
 {
 	namespace IPC
 	{
-		KernReturn<IO::StrongRef<Port>> LookupPort(ipc_port_t name)
+		System *LookupSystem(ipc_port_t name)
 		{
 			Task *task = Scheduler::GetTaskWithPID(IPCGetPID(name));
 			if(!task)
-				return Error(KERN_INVALID_ARGUMENT);
+				return nullptr;
 
 			System *system = task->GetIPCSystem(IPCGetSystem(name));
 			if(!system)
-				return Error(KERN_INVALID_ARGUMENT);
+				return nullptr;
 
-			IO::StrongRef<Port> port = system->GetPort(IPCGetPort(name));
+			return system;
+		}
+
+		
+		IO::StrongRef<Port> LookupPort(ipc_port_t name, bool lockSystem)
+		{
+			if(IPCIsPortRight(name))
+				return nullptr;
+
+			System *system = LookupSystem(name);
+			if(!system)
+				return nullptr;
+
+			system->Lock();
+
+			uint16_t portName = IPCGetName(name);
+
+			IO::StrongRef<Port> port = (IPCIsPortRight(name)) ? system->GetPortRight(portName) : system->GetPort(portName);
 			if(!port)
-				return Error(KERN_INVALID_ARGUMENT);
+			{
+				system->Unlock();
+				return nullptr;
+			}
+
+			if(!lockSystem)
+				system->Unlock();
 
 			return port;
 		}
 
-		KernReturn<void> ValidateMessage(Message *message, Task *sender)
+		KernReturn<void> ValidateMessage(Port *port, Message *message, Task *sender)
 		{
 			ipc_port_t sendPortName = message->GetSender();
 			IO::StrongRef<Port> sendPort = nullptr;
@@ -56,7 +79,7 @@ namespace OS
 					return Error(KERN_ACCESS_VIOLATION);
 
 				// Check if this is a send port
-				sendPort = LookupPort(sendPortName);
+				sendPort = LookupPort(sendPortName, false);
 				if(!sendPort)
 					return Error(KERN_INVALID_ARGUMENT);
 
@@ -74,10 +97,6 @@ namespace OS
 
 
 			// Make sure the receiver grants us rights to send to it
-			IO::StrongRef<Port> port = LookupPort(message->GetReceiver());
-			if(!port)
-				return Error(KERN_INVALID_ARGUMENT);
-
 			Port::Rights rights = port->GetRights();
 			pid_t pid = IPCGetPID(message->GetReceiver());
 
@@ -96,49 +115,48 @@ namespace OS
 					return ErrorNone;
 			}
 
-			// Check if the task or port is granted special send rights
-			port->Lock();
-
-			if(port->HasTaskRight(sender))
+			// Port right validation
+			if(sendPort->IsPortRight())
 			{
-				port->Unlock();
-				return ErrorNone;
-			}
+				PortRight *right = static_cast<PortRight *>(sendPort.Load());
 
-			if(port->HasPortRight(sendPort))
-			{
-				port->Unlock();
-				return ErrorNone;
+				if(right->GetHolder() == sender && right->GetPort() == port)
+					return ErrorNone;
 			}
-
-			port->Unlock();
 
 			return Error(KERN_ACCESS_VIOLATION);
 		}
 
 
-
-
 		KernReturn<void> Write(Message *message)
 		{
-			KernReturn<void> result = ValidateMessage(message, Scheduler::GetActiveTask());
-			if(!result.IsValid())
-			{
-				kprintf("Validation failed!");
-				return result;
-			}
+			ipc_port_t receiverPortName = message->GetReceiver();
+			System *system = LookupSystem(receiverPortName);
 
-			IO::StrongRef<Port> port = LookupPort(message->GetReceiver());
+			IO::StrongRef<Port> port = LookupPort(receiverPortName, true);
 			if(!port)
 				return Error(KERN_INVALID_ARGUMENT);
 
+			KernReturn<void> result = ValidateMessage(port, message, Scheduler::GetActiveTask());
+			if(!result.IsValid())
+			{
+				system->Unlock();
+				return result;
+			}
+
 			Message *copy = Message::Alloc()->InitAsCopy(message);
-
-			port->Lock();
 			port->PushMessage(copy);
-			port->Unlock();
-
 			copy->Release();
+
+			if(port->IsPortRight())
+			{
+				PortRight *right = static_cast<PortRight *>(port.Load());
+
+				if(right->IsOneTime())
+					system->RelinquishPortRight(right);
+			}
+
+			system->Unlock();
 			Wakeup(port);
 
 			return ErrorNone;
@@ -146,7 +164,10 @@ namespace OS
 
 		KernReturn<void> Read(Message *message)
 		{
-			IO::StrongRef<Port> port = LookupPort(message->GetReceiver());
+			if(IPCIsPortRight(message->GetReceiver()))
+				return Error(KERN_IPC_NO_RECEIVER);
+
+			IO::StrongRef<Port> port = LookupPort(message->GetReceiver(), true);
 			if(!port)
 				return Error(KERN_INVALID_ARGUMENT);
 
@@ -159,23 +180,27 @@ namespace OS
 				return Error(KERN_IPC_NO_RECEIVER);
 
 			ipc_header_t *header = message->GetHeader();
+			System *system = port->GetSystem();
 
-		loadMessage:
-			port->Lock();
+			goto readMessage;
 
+		readMessageRetry:
+			system->Lock();
+
+		readMessage:
 			Message *queuedMessage = port->PeekMessage();
 			if(!queuedMessage)
 			{
 				if(header->flags & IPC_HEADER_FLAG_BLOCK)
 				{
-					WaitWithCallback(port.Load(), [port] {
-						port->Unlock();
+					WaitWithCallback(port.Load(), [system] {
+						system->Unlock();
 					});
 
-					goto loadMessage;
+					goto readMessageRetry;
 				}
 
-				port->Unlock();
+				system->Unlock();
 				return Error(KERN_RESOURCE_EXHAUSTED);
 			}
 			
@@ -184,7 +209,7 @@ namespace OS
 			header->realSize = queuedHeader->realSize;
 			if(queuedHeader->size > header->size)
 			{
-				port->Unlock();
+				system->Unlock();
 				return Error(KERN_NO_MEMORY);
 			}
 
@@ -192,7 +217,7 @@ namespace OS
 			queuedMessage->Retain();
 
 			port->PopMessage();
-			port->Unlock();
+			system->Unlock();
 
 			// Copy the message content
 			header->sender = queuedHeader->sender;

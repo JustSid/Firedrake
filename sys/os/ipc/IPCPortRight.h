@@ -1,5 +1,5 @@
 //
-//  IPCSystem.h
+//  IPCPortRight.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,55 +16,35 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IPCSYSTEM_H_
-#define _IPCSYSTEM_H_
-
 #include <prefix.h>
-#include <libc/sys/spinlock.h>
 #include <objects/IOObject.h>
-#include <objects/IOString.h>
-#include <objects/IODictionary.h>
 #include "IPCPort.h"
-#include "IPCPortRight.h"
 
 namespace OS
 {
-	class Task;
-
 	namespace IPC
 	{
-		class System : public IO::Object
+		class System;
+		class PortRight : public Port
 		{
 		public:
-			System *Init(Task *task, uint16_t name);
+			friend class System;
+
+			bool IsOneTime() const { return _oneTime; }
+			Port *GetPort() const { return _port; }
+			Task *GetHolder() const { return _holder; }
+
+		protected:
+			PortRight *Init(uint16_t name, Port *port, Task *holder, bool oneTime);
 			void Dealloc() override;
 
-			void Lock();
-			void Unlock();
-
-			uint16_t GetName() const { return _name; }
-			Task *GetTask() const { return _task; }
-
-			Port *AddPort(uint16_t name, Port::Rights rights);
-			PortRight *AddPortRight(Port *port, Task *holder, bool oneTime);
-
-			IO::StrongRef<Port> GetPort(uint16_t name);
-			IO::StrongRef<PortRight> GetPortRight(uint16_t name);
-
-			void RelinquishPortRight(PortRight *right);
-
 		private:
-			Task *_task;
 			uint16_t _name;
-			IO::Dictionary *_portRights;
-			IO::Dictionary *_ports;
-			spinlock_t _lock;
+			bool _oneTime;
+			Port *_port;
+			Task *_holder;
 
-			uint16_t _portRightName;
-
-			IODeclareMeta(System)
+			IODeclareMeta(PortRight)
 		};
 	}
 }
-
-#endif /* _IPCSYSTEM_H_ */

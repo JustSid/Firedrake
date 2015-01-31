@@ -21,6 +21,8 @@
 
 #include <prefix.h>
 #include <kern/kern_return.h>
+#include <libc/stdint.h>
+#include <libc/stdbool.h>
 #include <libc/sys/spinlock.h>
 #include <libc/ipc/ipc_port.h>
 #include <libcpp/bitfield.h>
@@ -37,11 +39,14 @@ namespace OS
 	namespace IPC
 	{
 		class System;
+		class PortRight;
 
 		class Port : public IO::Object
 		{
 		public:
 			friend class System;
+			friend class PortRight;
+
 			struct Rights : cpp::bitfield<uint32_t>
 			{
 				Rights() = default;
@@ -58,21 +63,10 @@ namespace OS
 			};
 
 			void Dealloc() override;
-
-			void Lock();
-			void Unlock();
-
-			void AddPortRight(Port *other);
-			void AddTaskRight(Task *task);
-
-			void RemovePortRight(Port *other);
-			void RemoveTaskRight(Task *task);
-
-			bool HasPortRight(Port *port);
-			bool HasTaskRight(Task *task);
+			bool IsPortRight() const;
 
 			uint16_t GetName() const { return _name; }
-			ipc_port_t GetPortName() const;
+			ipc_port_t GetPortName() const { return _portName; }
 			System *GetSystem() const { return _system; }
 			Rights GetRights() const { return _rights; }
 
@@ -83,18 +77,16 @@ namespace OS
 
 		protected:
 			Port *Init(System *system, uint16_t name, Rights rights);
+			Port *InitAsPortRight(Port *port, uint16_t name);
 
 		private:
 			Rights _rights;
+
 			uint16_t _name;
-
-			IO::Set *_portRights;
-			IO::Set *_taskRights;
-
+			ipc_port_t _portName;
+			
 			IO::Array *_queue;
-
 			System *_system;
-			spinlock_t _lock;
 			
 			IODeclareMeta(Port)
 		};
