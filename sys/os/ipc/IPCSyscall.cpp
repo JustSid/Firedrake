@@ -19,28 +19,14 @@
 #include <os/syscall/syscall.h>
 #include <os/scheduler/scheduler.h>
 #include <kern/kprintf.h>
-#include "IPC.h"
+#include "IPCSyscall.h"
 
 namespace OS
 {
 	namespace IPC
 	{
-		struct IPCPortCallArgs
+		KernReturn<uint32_t> Syscall_IPCTaskPort(__unused uint32_t &esp, IPCPortCallArgs *arguments)
 		{
-			ipc_port_t *port;
-		} __attribute__((packed));
-
-		struct IPCReadWriteArgs
-		{
-			ipc_header_t *header;
-			ipc_size_t size;
-			int mode;
-		} __attribute__((packed));
-
-
-		KernReturn<uint32_t> Syscall_IPCTaskPort(__unused uint32_t &esp, void *args)
-		{
-			IPCPortCallArgs *arguments = (IPCPortCallArgs *)args;
 			OS::SyscallScopedMapping portMapping(arguments->port, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
@@ -49,9 +35,8 @@ namespace OS
 			return KERN_SUCCESS;
 		}
 
-		KernReturn<uint32_t> Syscall_IPCThreadPort(__unused uint32_t &esp, void *args)
+		KernReturn<uint32_t> Syscall_IPCThreadPort(__unused uint32_t &esp, IPCPortCallArgs *arguments)
 		{
-			IPCPortCallArgs *arguments = (IPCPortCallArgs *)args;
 			OS::SyscallScopedMapping portMapping(arguments->port, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
@@ -60,10 +45,8 @@ namespace OS
 			return KERN_SUCCESS;
 		}
 
-		KernReturn<uint32_t> Syscall_IPCMessage(__unused uint32_t &esp, void *args)
+		KernReturn<uint32_t> Syscall_IPCMessage(__unused uint32_t &esp, IPCReadWriteArgs *arguments)
 		{
-			IPCReadWriteArgs *arguments = (IPCReadWriteArgs *)args;
-
 			if(arguments->size == 0 || (arguments->mode != IPC_WRITE && arguments->mode != IPC_READ))
 				return KERN_INVALID_ARGUMENT;
 
@@ -98,15 +81,27 @@ namespace OS
 
 			return KERN_SUCCESS;
 		}
-	}
 
-	KernReturn<void> Syscall_IPCInit()
-	{
-		SetSyscallHandler(SYS_IPC_TaskPort, &IPC::Syscall_IPCTaskPort, sizeof(IPC::IPCPortCallArgs), false);
-		SetSyscallHandler(SYS_IPC_ThreadPort, &IPC::Syscall_IPCThreadPort, sizeof(IPC::IPCPortCallArgs), false);
+		KernReturn<uint32_t> Syscall_IPCAllocatePort(__unused uint32_t &esp, IPCAllocatePortArgs *arguments)
+		{
+			OS::SyscallScopedMapping portMapping(arguments->result, sizeof(ipc_port_t));
 
-		SetSyscallHandler(SYS_IPC_Message, &IPC::Syscall_IPCMessage, sizeof(IPC::IPCReadWriteArgs), false);
+			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
+			Task *task = Scheduler::GetActiveTask();
+			System *system = task->GetTaskSystem();
 
-		return ErrorNone;
+			system->Lock();
+			Port *result = system->AddPort(arguments->name, static_cast<Port::Rights>(arguments->options));
+			system->Unlock();
+
+			if(result)
+			{
+				*port = result->GetPortName();
+				return KERN_SUCCESS;
+			}
+
+			*port = IPC_PORT_NULL;
+			return KERN_RESOURCE_EXISTS;
+		}
 	}
 }

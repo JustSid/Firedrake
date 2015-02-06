@@ -24,29 +24,29 @@
 
 int open(const char *path, int flags)
 {
-	return (int)syscall(SYS_Open, path, flags);
+	return (int)SYSCALL2(SYS_Open, path, flags);
 }
 void close(int fd)
 {
-	syscall(SYS_Close, fd);
+	SYSCALL1(SYS_Close, fd);
 }
 
 
 size_t read(int fd, void *buffer, size_t count)
 {
-	return (size_t)syscall(SYS_Read, fd, buffer, count, 0);
+	return (size_t)SYSCALL4(SYS_Read, fd, buffer, count, 0);
 }
 size_t write(int fd, const void *buffer, size_t count)
 {
-	return (size_t)syscall(SYS_Write, fd, buffer, count);
+	return (size_t)SYSCALL3(SYS_Write, fd, buffer, count);
 }
 off_t lseek(int fd, off_t offset, int whence)
 {
-	return (off_t)syscall(SYS_Seek, fd, offset, whence);
+	return (off_t)SYSCALL3(SYS_Seek, fd, offset, whence);
 }
 off_t readdir(int fd, struct dirent *entp, size_t count)
 {
-	return (off_t)syscall(SYS_Read, fd, entp, count, 1);
+	return (off_t)SYSCALL4(SYS_Read, fd, entp, count, 1);
 }
 
 
@@ -65,21 +65,21 @@ int move(__unused const char *source, __unused const char *target)
 
 int stat(const char *path, struct stat *buf)
 {
-	return (int)syscall(SYS_Stat, path, buf, 0);
+	return (int)SYSCALL3(SYS_Stat, path, buf, 0);
 }
 int lstat(const char *path, struct stat *buf)
 {
-	return (int)syscall(SYS_Stat, path, buf, 1);
+	return (int)SYSCALL3(SYS_Stat, path, buf, 1);
 }
 
 
 pid_t getpid()
 {
-	return (pid_t)syscall(SYS_Pid, 0);
+	return (pid_t)SYSCALL1(SYS_Pid, 0);
 }
 pid_t getppid()
 {
-	return (pid_t)syscall(SYS_Pid, 1);
+	return (pid_t)SYSCALL1(SYS_Pid, 1);
 }
 
 #endif /* __KERNEL */

@@ -232,11 +232,9 @@ namespace OS
 			return ErrorNone;
 		}
 	}
-
-	KernReturn<void> Syscall_IPCInit();
-
+	
 	KernReturn<void> IPCInit()
 	{
-		return Syscall_IPCInit();
+		return ErrorNone;
 	}
 }

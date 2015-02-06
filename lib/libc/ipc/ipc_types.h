@@ -28,6 +28,7 @@ typedef unsigned long long ipc_sequence_t;
 typedef unsigned long ipc_size_t;
 typedef unsigned long ipc_bits_t;
 typedef unsigned long ipc_return_t;
+typedef unsigned short ipc_name_t;
 
 __END_DECLS
 

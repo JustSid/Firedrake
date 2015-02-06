@@ -23,19 +23,19 @@
 
 void *mmap(void *address, size_t length, int prot, int flags, int fd, off_t offset)
 {
-	unsigned int result = syscall(SYS_Mmap, address, length, prot, flags, fd, offset);
+	unsigned int result = SYSCALL6(SYS_Mmap, address, length, prot, flags, fd, offset);
 	return (void *)result;
 }
 
 int munmap(void *address, size_t length)
 {
-	unsigned int result = syscall(SYS_Munmap, address, length);
+	unsigned int result = SYSCALL2(SYS_Munmap, address, length);
 	return (int)result;
 }
 
 int mprotect(void *address, size_t length, int prot)
 {
-	unsigned int result = syscall(SYS_Mprotect, address, length, prot);
+	unsigned int result = SYSCALL3(SYS_Mprotect, address, length, prot);
 	return (int)result;
 }
 

@@ -25,8 +25,15 @@ __BEGIN_DECLS
 
 #define IPC_PORT_NULL ((ipc_port_t)0)
 
+#define IPC_PORT_RIGHT_ANY (1 << 0)
+#define IPC_PORT_RIGHT_INHERITED (1 << 1)
+#define IPC_PORT_RIGHT_RECEIVE (1 << 2)
+
 ipc_port_t ipc_task_port();
 ipc_port_t ipc_thread_port();
+
+ipc_port_t ipc_allocate_port(ipc_name_t name, ipc_bits_t options);
+ipc_port_t ipc_allocate_port_right(ipc_port_t port, ipc_size_t useCount);
 
 __END_DECLS
 

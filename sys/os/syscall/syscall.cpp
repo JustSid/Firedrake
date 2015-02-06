@@ -26,16 +26,8 @@
 
 namespace OS
 {
-	struct SyscallEntry
-	{
-		SyscallHandler handler;
-		size_t argSize;
-		bool unixSyscall; // Expects errno
-	};
-
-	SyscallEntry _entries[__SYS_MaxSyscalls];
-	spinlock_t _entryLock;
-
+	extern SyscallTrap _syscallTrapTable[];
+	extern SyscallTrap _kernTrapTable[];
 
 	SyscallScopedMapping::SyscallScopedMapping(const void *pointer, size_t size) :
 		_address(0x0),
@@ -69,119 +61,112 @@ namespace OS
 			Sys::VM::Directory::GetKernelDirectory()->Free(_address, _pages);
 	}
 
-
-	KernReturn<void> SetSyscallHandler(uint32_t number, SyscallHandler handler, size_t argSize, bool isUnixStyle)
-	{
-		if(number >= __SYS_MaxSyscalls)
-			return Error(KERN_INVALID_ARGUMENT);
-
-		spinlock_lock(&_entryLock);
-
-		_entries[number].handler     = handler;
-		_entries[number].argSize     = argSize;
-		_entries[number].unixSyscall = isUnixStyle;
-
-		spinlock_unlock(&_entryLock);
-
-		return ErrorNone;
-	}
-
 	uint32_t HandleSyscall(uint32_t esp, Sys::CPU *cpu)
 	{
-		spinlock_lock(&_entryLock);
-
 		Sys::CPUState *state = cpu->GetLastState();
-		SyscallEntry entry = _entries[state->eax];
 
-		spinlock_unlock(&_entryLock);
+		if(state->eax >= 128)
+			return esp;
 
-		if(!entry.handler)
-		{
-			kprintf("No known handler for syscall %i\n", state->eax);
-			return esp; // TODO: Should probably kill the process
-		}
-
-		// TODO: Check the entry point
-		// syscall comes in through interrupt 0x80,
-		// whereas kern_trap comes in through interrupt 0x81,
-		// difference being that unix style syscalls are handled by syscall
-		// and non-unix style syscalls are handled by kern_trap
-
+		bool kernelTrap = (state->interrupt == 0x81);
+		const SyscallTrap *entry = kernelTrap ? (_kernTrapTable + state->eax) : (_syscallTrapTable + state->eax);
 
 		Thread *thread = Scheduler::GetActiveThread();
 		thread->SetESP(esp);
 
-		void *arguments = nullptr;
-		
-		// Copy the arguments. Ideally we would transfer most arguments in registers and not the stack to avoid
-		// this mapping madness, but oh well, who cares?!	
-		if(entry.argSize > 0)
+		uint32_t *arguments = nullptr;
+
+		if(entry->argCount)
 		{
-			uint32_t offset = ((uint8_t *)state->esp) - thread->GetUserStackVirtual();
-			uintptr_t stack = ((uintptr_t)thread->GetUserStack()) + offset + 8; // Jump over the return address and syscall number
-
-			uintptr_t aligned = VM_PAGE_ALIGN_DOWN(stack);
-			size_t pages = VM_PAGE_COUNT((stack - aligned) + entry.argSize);
-
-			Sys::VM::Directory *directory = Sys::VM::Directory::GetKernelDirectory();
-			KernReturn<vm_address_t> address = directory->Alloc(aligned, pages, kVMFlagsKernel);
-
-			if(address.IsValid() == false)
-			{
-				state->eax = -1;
-				state->ecx = (entry.unixSyscall) ? ENOMEM : KERN_NO_MEMORY;
-
-				return esp;
-			}
-
-			arguments = kalloc(entry.argSize);
+			arguments = new uint32_t[entry->argCount];
 			if(!arguments)
+				goto badMemory;
+
+			switch(entry->argCount)
 			{
-				directory->Free(address, pages);
-
-				state->eax = -1;
-				state->ecx = (entry.unixSyscall) ? ENOMEM : KERN_NO_MEMORY;
-
-				return esp;
+				default:
+					arguments[4] = state->ebx;
+				case 4:
+					arguments[3] = state->edx;
+				case 3:
+					arguments[2] = state->esi;
+				case 2:
+					arguments[1] = state->edi;
+				case 1:
+					arguments[0] = state->ecx;
+				case 0:
+					break;
 			}
 
-			memcpy(arguments, (uint8_t *)(address + (stack - aligned)), entry.argSize);
-			directory->Free(address, pages);
+			if(entry->argCount > 5)
+			{
+				// Get all the other arguments from the stack
+				size_t count = entry->argCount - 5;
+
+				uint32_t offset = ((uint8_t *)state->esp) - thread->GetUserStackVirtual();
+				uintptr_t stack = ((uintptr_t)thread->GetUserStack()) + offset + 44; // Jump to the arguments on the stack
+
+				uintptr_t aligned = VM_PAGE_ALIGN_DOWN(stack);
+				size_t pages = VM_PAGE_COUNT((stack - aligned) + count * sizeof(uint32_t));
+
+				Sys::VM::Directory *directory = Sys::VM::Directory::GetKernelDirectory();
+				KernReturn<vm_address_t> address = directory->Alloc(aligned, pages, kVMFlagsKernel);
+
+				if(address.IsValid() == false)
+				{
+					delete[] arguments;
+					goto badMemory;
+				}
+
+				memcpy(arguments + 5, (uint8_t *)(address + (stack - aligned)), count * sizeof(uint32_t));
+				directory->Free(address, pages);
+			}
 		}
 
-		// Call the actual handler of the system call
-		KernReturn<uint32_t> result = entry.handler(esp, arguments);
+		goto handler;
 
-		if(entry.unixSyscall)
+	badMemory:
+		if(kernelTrap)
+		{
+			state->ecx = ENOMEM;
+			state->eax = -1;
+		}
+		else
+		{
+			state->eax = KERN_NO_MEMORY;
+		}
+
+
+	handler:
+
+		// Call the actual handler of the system call
+		KernReturn<uint32_t> result = entry->handler(esp, arguments);
+
+		if(kernelTrap)
+		{
+			state->eax = (result.IsValid() == false) ? result.GetError().GetCode() : KERN_SUCCESS;
+		}
+		else
 		{
 			if(result.IsValid() == false)
 			{
 				Error error = result.GetError();
-				state->ecx = error.GetErrno();
 				state->eax = -1;
+				state->ecx = error.GetErrno();
 			}
 			else
 			{
-				// The syscall sets ecx to 0, so it's all good.
 				state->eax = result;
+				state->ecx = 0;
 			}
 		}
-		else
-		{
-			state->eax = (result.IsValid() == false) ? result.GetError().GetCode() : KERN_SUCCESS;
-		}
-		
 
-		if(arguments)
-			kfree(arguments);
-
+		delete[] arguments;
 		return esp;
 	}
 
 	KernReturn<void> SyscallInit()
 	{
-		memset(_entries, 0, __SYS_MaxSyscalls * sizeof(SyscallEntry));
-
 		Sys::SetInterruptHandler(0x80, HandleSyscall);
 		Sys::SetInterruptHandler(0x81, HandleSyscall);
 

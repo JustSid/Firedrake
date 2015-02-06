@@ -16,7 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "../sys/syscall.h"
+#include "../sys/kern_trap.h"
 #include "ipc_port.h"
 
 #ifndef __KERNEL /* Don't move up to avoid ending up with an empty translation unit */
@@ -24,14 +24,29 @@
 ipc_port_t ipc_task_port()
 {
 	ipc_port_t result;
-	kern_trap(SYS_IPC_TaskPort, &result);
+	KERN_TRAP1(KERN_IPC_TaskPort, &result);
 
 	return result;
 }
 ipc_port_t ipc_thread_port()
 {
 	ipc_port_t result;
-	kern_trap(SYS_IPC_ThreadPort, &result);
+	KERN_TRAP1(KERN_IPC_ThreadPort, &result);
+
+	return result;
+}
+
+ipc_port_t ipc_allocate_port(ipc_name_t name, ipc_bits_t options)
+{
+	ipc_port_t result;
+	KERN_TRAP3(KERN_IPC_AllocatePort, &result, name, options);
+
+	return result;
+}
+ipc_port_t ipc_allocate_port_right(ipc_port_t port, ipc_size_t useCount)
+{
+	ipc_port_t result;
+	KERN_TRAP3(KERN_IPC_AllocatePortRight, &result, port, useCount);
 
 	return result;
 }

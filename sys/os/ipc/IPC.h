@@ -36,7 +36,8 @@ namespace OS
 		KernReturn<void> Read(Message *message);
 		KernReturn<void> Write(Message *message);
 
-		
+		KernReturn<ipc_port_t> AllocatePort(ipc_name_t name, ipc_bits_t options);
+		KernReturn<ipc_port_t> AllocatePortRight(ipc_port_t port, ipc_size_t useCount);
 	}
 
 	KernReturn<void> IPCInit();

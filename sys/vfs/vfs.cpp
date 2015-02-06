@@ -369,9 +369,7 @@ namespace VFS
 		kprintf("done");
 		return ErrorNone;
 	}
-
-	extern KernReturn<void> Syscall_VFSInit();
-
+	
 	KernReturn<void> Init()
 	{
 		_descriptors = IO::Array::Alloc()->Init();
@@ -440,6 +438,6 @@ namespace VFS
 		if(!didLoadInitrd)
 			kprintf("Couldn't find initrd");
 
-		return Syscall_VFSInit();
+		return ErrorNone;
 	}
 }

@@ -26,7 +26,11 @@
 
 namespace OS
 {
-	typedef KernReturn<uint32_t> (*SyscallHandler)(uint32_t &esp, void *arguments);
+	struct SyscallTrap
+	{
+		KernReturn<uint32_t> (*handler)(uint32_t &, void *);
+		size_t argCount;
+	};
 
 	class SyscallScopedMapping
 	{
@@ -58,7 +62,6 @@ namespace OS
 		size_t _pages;
 	};
 
-	KernReturn<void> SetSyscallHandler(uint32_t number, SyscallHandler handler, size_t argSize, bool isUnixStyle);
 	KernReturn<void> SyscallInit();
 }
 

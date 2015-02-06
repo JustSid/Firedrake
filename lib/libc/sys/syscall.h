@@ -23,7 +23,6 @@
 
 __BEGIN_DECLS
 
-/* Syscall */
 #define SYS_Exit  0
 #define SYS_Open  1
 #define SYS_Close 2
@@ -37,19 +36,40 @@ __BEGIN_DECLS
 #define SYS_Munmap   41
 #define SYS_Mprotect 42
 
-/* Message Trap */
-#define SYS_IPC_TaskPort   128
-#define SYS_IPC_ThreadPort 129
-#define SYS_IPC_Message    130
-
-#define __SYS_MaxSyscalls 256
-
 #ifndef __KERNEL
-unsigned int syscall(int type, ...);
-unsigned int kern_trap(int type, ...);
+typedef unsigned int __sarg;
+unsigned int __syscall(int type, __sarg arg0, __sarg arg1, __sarg arg2, __sarg arg3, __sarg arg4, __sarg arg5, __sarg arg6, __sarg arg7);
+
+
+#define SYSCALL8(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) \
+	__syscall(type, (__sarg)(arg0), (__sarg)(arg1), (__sarg)(arg2), (__sarg)(arg3), (__sarg)(arg4), (__sarg)(arg5), (__sarg)(arg6), (__sarg)(arg7))
+
+#define SYSCALL7(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6) \
+	SYSCALL8(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6, 0)
+
+#define SYSCALL6(type, arg0, arg1, arg2, arg3, arg4, arg5) \
+	SYSCALL8(type, arg0, arg1, arg2, arg3, arg4, arg5, 0, 0)
+
+#define SYSCALL5(type, arg0, arg1, arg2, arg3, arg4) \
+	SYSCALL8(type, arg0, arg1, arg2, arg3, arg4, 0, 0, 0)
+
+#define SYSCALL4(type, arg0, arg1, arg2, arg3) \
+	SYSCALL8(type, arg0, arg1, arg2, arg3, 0, 0, 0, 0)
+
+#define SYSCALL3(type, arg0, arg1, arg2) \
+	SYSCALL8(type, arg0, arg1, arg2, 0, 0, 0, 0, 0)
+
+#define SYSCALL2(type, arg0, arg1) \
+	SYSCALL8(type, arg0, arg1, 0, 0, 0, 0, 0, 0)
+
+#define SYSCALL1(type, arg0) \
+	SYSCALL8(type, arg0, 0, 0, 0, 0, 0, 0, 0)
+
+#define SYSCALL0(type) \
+	SYSCALL8(type, 0, 0, 0, 0, 0, 0, 0, 0)
+
 #endif /* __KERNEL */
 
 __END_DECLS
-
 
 #endif /* _SYS_SYSCALL_H_ */

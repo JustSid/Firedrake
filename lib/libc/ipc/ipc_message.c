@@ -16,18 +16,18 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "../sys/syscall.h"
+#include "../sys/kern_trap.h"
 #include "ipc_message.h"
 
 #ifndef __KERNEL /* Don't move up to avoid ending up with an empty translation unit */
 
 ipc_return_t ipc_write(ipc_header_t *header)
 {
-	return syscall(SYS_IPC_Message, header, header->size, (int)IPC_WRITE);
+	return KERN_TRAP3(KERN_IPC_Message, header, header->size, (int)IPC_WRITE);
 }
 ipc_return_t ipc_read(ipc_header_t *header)
 {
-	return syscall(SYS_IPC_Message, header, header->size, (int)IPC_READ);
+	return KERN_TRAP3(KERN_IPC_Message, header, header->size, (int)IPC_READ);
 }
 
 #endif /* __KERNEL */
