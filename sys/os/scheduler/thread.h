@@ -24,7 +24,7 @@
 #include <libc/stdint.h>
 #include <libc/sys/types.h>
 #include <libcpp/atomic.h>
-#include <libcpp/queue.h>
+#include <libcpp/intrusive_list.h>
 #include <machine/cpu.h>
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
@@ -70,7 +70,7 @@ namespace OS
 		size_t GetUserStackPages() const { return _userStackPages; }
 		size_t GetKernelStackPages() const { return _kernelStackPages; }
 
-		cpp::queue<Thread>::entry &GetSchedulerEntry() { return _schedulerEntry; }
+		std::intrusive_list<Thread>::member &GetSchedulerEntry() { return _schedulerEntry; }
 		IPC::Port *GetThreadPort() const { return _threadPort; }
 
 	private:
@@ -89,7 +89,7 @@ namespace OS
 		Sys::CPU *_pinnedCPU;
 		Sys::CPU *_runningCPU;
 
-		cpp::queue<Thread>::entry _schedulerEntry;
+		std::intrusive_list<Thread>::member _schedulerEntry;
 
 		int8_t _quantum;
 		std::atomic<uint32_t> _blocks;

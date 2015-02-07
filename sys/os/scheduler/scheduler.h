@@ -22,7 +22,7 @@
 #include <prefix.h>
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
-#include <libcpp/queue.h>
+#include <libcpp/intrusive_list.h>
 #include <machine/cpu.h>
 
 #include "task.h"

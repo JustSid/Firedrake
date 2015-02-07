@@ -65,7 +65,7 @@ namespace OS
 		static Task *_kernelTask = nullptr;
 		static Task *_idleTask   = nullptr;
 
-		cpp::queue<Thread> _activeThreads;
+		std::intrusive_list<Thread> _activeThreads;
 
 		// --------------------
 		// MARK: -
@@ -113,7 +113,7 @@ namespace OS
 		{
 			spinlock_lock(&_threadLock);
 
-			cpp::queue<Thread>::entry *entry = _activeThreads.get_head();
+			std::intrusive_list<Thread>::member *entry = _activeThreads.head();
 			while(entry)
 			{
 				Thread *thread = entry->get();
@@ -125,7 +125,7 @@ namespace OS
 					return task;
 				}
 
-				entry = entry->get_next();
+				entry = entry->next();
 			}
 
 			spinlock_unlock(&_threadLock);
@@ -140,7 +140,7 @@ namespace OS
 		void AddThread(Thread *thread)
 		{
 			spinlock_lock(&_threadLock);
-			_activeThreads.insert_back(thread->GetSchedulerEntry());
+			_activeThreads.push_back(thread->GetSchedulerEntry());
 			spinlock_unlock(&_threadLock);
 		}
 
@@ -181,7 +181,7 @@ namespace OS
 			if(thread->ReduceQuantum() <= 0 || !thread->IsSchedulable(cpu))
 			{
 				Thread *original = thread;
-				cpp::queue<Thread>::entry *entry = &thread->GetSchedulerEntry();
+				std::intrusive_list<Thread>::member *entry = &thread->GetSchedulerEntry();
 				bool found = false;
 
 				thread->Unlock();
@@ -189,9 +189,9 @@ namespace OS
 
 					spinlock_lock(&_threadLock);
 
-					entry = entry->get_next();
+					entry = entry->next();
 					if(!entry)
-						entry = _activeThreads.get_head();
+						entry = _activeThreads.head();
 
 					spinlock_unlock(&_threadLock);
 

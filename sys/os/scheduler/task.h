@@ -25,7 +25,7 @@
 #include <libc/sys/types.h>
 #include <libc/sys/spinlock.h>
 #include <libcpp/atomic.h>
-#include <libcpp/queue.h>
+#include <libcpp/intrusive_list.h>
 #include <machine/memory/memory.h>
 #include <kern/kern_return.h>
 #include <os/loader/loader.h>
