@@ -239,7 +239,7 @@ namespace OS
 		_ipcSystems->SetObjectForKey(system, lookup);
 
 		Unlock();
-
+		lookup->Release();
 		return system;
 	}
 	IO::StrongRef<IPC::System> Task::GetIPCSystem(uint16_t name)
