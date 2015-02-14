@@ -73,7 +73,7 @@ namespace OS
 		IPC::Port *GetThreadPort() const { return _threadPort; }
 
 	private:
-		KernReturn<Thread *> Init(Task *task, Entry entry, size_t stackPages);
+		KernReturn<Thread *> Init(Task *task, Entry entry, PriorityClass priority, size_t stackPages);
 		void Dealloc() override;
 
 		KernReturn<void> InitializeForRing3();

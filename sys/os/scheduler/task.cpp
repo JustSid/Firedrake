@@ -96,7 +96,7 @@ namespace OS
 
 		Sys::TrampolineMapIntoDirectory(_directory);
 
-		KernReturn<Thread *> thread = AttachThread(static_cast<Thread::Entry>(_executable->GetEntry()), 0);
+		KernReturn<Thread *> thread = AttachThread(static_cast<Thread::Entry>(_executable->GetEntry()), Thread::PriorityClass::PriorityClassNormal, 0);
 		if(!thread.IsValid())
 			return thread.GetError();
 
@@ -127,11 +127,11 @@ namespace OS
 		_name = IO::SafeRetain(name);
 	}
 
-	KernReturn<Thread *> Task::AttachThread(Thread::Entry entry, size_t stack)
+	KernReturn<Thread *> Task::AttachThread(Thread::Entry entry, Thread::PriorityClass priority, size_t stack)
 	{
 		spinlock_lock(&_lock);
 
-		KernReturn<Thread *> thread = Thread::Alloc()->Init(this, entry, stack);
+		KernReturn<Thread *> thread = Thread::Alloc()->Init(this, entry, priority, stack);
 
 		if(!thread.IsValid())
 		{

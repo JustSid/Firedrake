@@ -31,7 +31,7 @@ namespace OS
 
 	IODefineMeta(Thread, IO::Object)
 
-	KernReturn<Thread *> Thread::Init(Task *task, Entry entry, size_t stackPages)
+	KernReturn<Thread *> Thread::Init(Task *task, Entry entry, PriorityClass priority, size_t stackPages)
 	{
 		if(!IO::Object::Init())
 			return Error(KERN_FAILURE);
@@ -39,7 +39,7 @@ namespace OS
 		_task  = task;
 		_entry = entry;
 		_esp   = 0;
-		_priority = PriorityClass::PriorityClassNormal;
+		_priority = priority;
 		_kernelStack = nullptr;
 		_kernelStackVirtual = nullptr;
 		_userStack = nullptr;

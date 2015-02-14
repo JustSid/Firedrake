@@ -240,9 +240,8 @@ namespace OS
 
 			if(needsReschedule && (newThread == nullptr || newThread == thread))
 				newThread = _idleThread;
-
+			
 			_nextThread = newThread;
-			kprintf("Next thread = %p\n", _nextThread);
 			
 			spinlock_unlock(&_internalLock);
 		}
@@ -366,7 +365,7 @@ namespace OS
 
 		KernReturn<Thread *> thread;
 
-		if((thread = task->AttachThread((Thread::Entry)&IdleTask, 0)).IsValid() == false)
+		if((thread = task->AttachThread((Thread::Entry)&IdleTask, Thread::PriorityClass::PriorityClassIdle, 0)).IsValid() == false)
 			panic("Failed to activate CPU %d", cpu->GetID());
 
 		scheduler->_idleThread = thread;
