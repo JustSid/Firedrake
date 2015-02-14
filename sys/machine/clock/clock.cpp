@@ -47,7 +47,7 @@ namespace Sys
 		{
 			return _timeTicks;
 		}
-		uint32_t GetMillisecondsPerTick()
+		uint32_t GetMicrosecondsPerTick()
 		{
 			return _timeMsecPerTick;
 		}
@@ -162,10 +162,10 @@ namespace Sys
 			_timeTicks ++;
 			_timeMsec += _timeMsecPerTick;
 
-			return OS::Scheduler::ScheduleOnCPU(esp, cpu);
+			return OS::Scheduler::GetScheduler()->ScheduleOnCPU(esp, cpu);
 		}
 
-		uint32_t ClockTickSimple(uint32_t esp, Sys::CPU *cpu)
+		uint32_t ClockTickSimple(uint32_t esp, __unused Sys::CPU *cpu)
 		{
 			_timeTicks ++;
 			_timeMsec += _timeMsecPerTick;
@@ -177,12 +177,12 @@ namespace Sys
 
 		uint32_t ActivateCPUClock(uint32_t esp, Sys::CPU *cpu)
 		{
-			OS::Scheduler::ActivateCPU(cpu);
+			OS::Scheduler::GetScheduler()->ActivateCPU(cpu);
 
 			Sys::APIC::SetTimer(_timerDivisor, Sys::APIC::TimerMode::Periodic, _timerApicCount);
 			Sys::APIC::ArmTimer(_timerApicCount);
 
-			return OS::Scheduler::ScheduleOnCPU(esp, cpu);
+			return OS::Scheduler::GetScheduler()->ScheduleOnCPU(esp, cpu);
 		}
 
 		void ActivateClock()

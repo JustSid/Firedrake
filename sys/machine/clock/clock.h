@@ -29,7 +29,7 @@ namespace Sys
 	{
 		uint64_t GetMicroseconds();
 		uint64_t GetTicks();
-		uint32_t GetMillisecondsPerTick();
+		uint32_t GetMicrosecondsPerTick();
 
 		bool ActivatePIT();
 		void DeactivatePIT();

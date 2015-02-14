@@ -28,7 +28,7 @@ namespace OS
 	{
 		System *LookupSystem(ipc_port_t name)
 		{
-			Task *task = Scheduler::GetTaskWithPID(IPCGetPID(name));
+			Task *task = Scheduler::GetScheduler()->GetTaskWithPID(IPCGetPID(name));
 			if(!task)
 				return nullptr;
 
@@ -137,7 +137,7 @@ namespace OS
 			if(!port)
 				return Error(KERN_INVALID_ARGUMENT);
 
-			KernReturn<void> result = ValidateMessage(port, message, Scheduler::GetActiveTask());
+			KernReturn<void> result = ValidateMessage(port, message, Scheduler::GetScheduler()->GetActiveTask());
 			if(!result.IsValid())
 			{
 				system->Unlock();
@@ -172,7 +172,7 @@ namespace OS
 				return Error(KERN_INVALID_ARGUMENT);
 
 			// Validate that we can even read from that port
-			Task *receiver = Scheduler::GetActiveTask();
+			Task *receiver = Scheduler::GetScheduler()->GetActiveTask();
 			if(receiver->GetPid() != (pid_t)IPCGetPID(message->GetReceiver()))
 				return Error(KERN_ACCESS_VIOLATION);
 

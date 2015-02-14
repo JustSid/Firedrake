@@ -38,29 +38,29 @@ namespace OS
 	class Thread : public IO::Object
 	{
 	public:
+		enum PriorityClass
+		{
+			PriorityClassKernel,
+			PriorityClassHigh,
+			PriorityClassNormal,
+			PriorityClassIdle,
+			__PriorityClassMax
+		};
+		
 		friend class Task;
 		typedef uint32_t Entry;
 
-		void Lock();
-		void Unlock();
-		bool TryLock();
-
-		void SetQuantum(int8_t quantum);
 		void SetESP(uint32_t esp);
-		void SetRunningCPU(Sys::CPU *cpu);
-		void SetPinnedCPU(Sys::CPU *cpu);
-
-		bool IsSchedulable(Sys::CPU *cpu) const;
-
-		void Block();
-		void Unblock();
+		void SetSchedulingData(void *data);
 
 		Task *GetTask() const { return _task; }
 		tid_t GetTid() const { return _tid; }
 		uint32_t GetESP() const { return _esp; }
 
-		int8_t ReduceQuantum() { return (_quantum --); }
-		int8_t GetQuantum() const { return _quantum; }
+		template<class T>
+		T *GetSchedulingData() const { return static_cast<T *>(_schedulingData); }
+
+		PriorityClass GetPriorityClass() const { return _priority; }
 
 		uint8_t *GetUserStack() const { return _userStack; }
 		uint8_t *GetUserStackVirtual() const { return _userStackVirtual; }
@@ -70,12 +70,9 @@ namespace OS
 		size_t GetUserStackPages() const { return _userStackPages; }
 		size_t GetKernelStackPages() const { return _kernelStackPages; }
 
-		std::intrusive_list<Thread>::member &GetSchedulerEntry() { return _schedulerEntry; }
 		IPC::Port *GetThreadPort() const { return _threadPort; }
 
 	private:
-		Thread();
-
 		KernReturn<Thread *> Init(Task *task, Entry entry, size_t stackPages);
 		void Dealloc() override;
 
@@ -84,15 +81,9 @@ namespace OS
 
 		Task *_task;
 		tid_t _tid;
-		spinlock_t _lock;
+		PriorityClass _priority;
 
-		Sys::CPU *_pinnedCPU;
-		Sys::CPU *_runningCPU;
-
-		std::intrusive_list<Thread>::member _schedulerEntry;
-
-		int8_t _quantum;
-		std::atomic<uint32_t> _blocks;
+		void *_schedulingData;
 
 		size_t _userStackPages;
 		uint8_t *_userStack;

@@ -169,7 +169,7 @@ namespace VFS
 		static Context *_kernelContext = nullptr;
 		if(__expect_false(!_kernelContext))
 		{
-			OS::Task *task = OS::Scheduler::GetKernelTask();
+			OS::Task *task = OS::Scheduler::GetScheduler()->GetKernelTask();
 
 			_kernelContext = new Context(task, Sys::VM::Directory::GetKernelDirectory(), VFS::GetRootNode());
 			task->_context = _kernelContext;
@@ -180,7 +180,7 @@ namespace VFS
 
 	Context *Context::GetActiveContext()
 	{
-		OS::Task *task = OS::Scheduler::GetActiveTask();
+		OS::Task *task = OS::Scheduler::GetScheduler()->GetActiveTask();
 		return task->_context;
 	}
 }

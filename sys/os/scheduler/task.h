@@ -75,6 +75,7 @@ namespace OS
 
 		pid_t GetPid() const { return _pid; }
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
+		int GetNice() const { return _nice.load(); }
 
 		IO::String *GetName() const { return _name; }
 
@@ -95,7 +96,11 @@ namespace OS
 		KernReturn<IPC::System *> AllocateIPCSystem(uint16_t name);
 		IO::StrongRef<IPC::System> GetIPCSystem(uint16_t name);
 
+		// Scheduler
+		std::intrusive_list<Task>::member schedulerEntry;
+
 	protected:
+		Task();
 		void Dealloc() override;
 
 	private:
@@ -114,6 +119,7 @@ namespace OS
 		spinlock_t _lock;
 		pid_t _pid;
 		State _state;
+		std::atomic<int> _nice;
 
 		bool _ring3;
 

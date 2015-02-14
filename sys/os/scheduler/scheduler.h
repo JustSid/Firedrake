@@ -30,24 +30,44 @@
 
 namespace OS
 {
-	namespace Scheduler
+	class Scheduler
 	{
-		Task *GetActiveTask();
-		Task *GetActiveTask(Sys::CPU *cpu);
-		Task *GetTaskWithPID(pid_t pid);
+	public:
+		static Scheduler *GetScheduler();
 
-		Thread *GetActiveThread();
-		Thread *GetActiveThread(Sys::CPU *cpu);
+		virtual Task *GetActiveTask() const = 0;
+		virtual Thread *GetActiveThread() const = 0;
 
-		Task *GetKernelTask();
+		Task *GetKernelTask() const { return _kernelTask; }
+		Task *GetTaskWithPID(pid_t pid) const;
 
-		void ActivateCPU(Sys::CPU *cpu);
+		virtual uint32_t ScheduleOnCPU(uint32_t esp, Sys::CPU *cpu) = 0;
+		virtual uint32_t PokeCPU(uint32_t esp, Sys::CPU *cpu) = 0;
+		virtual void RescheduleCPU(Sys::CPU *cpu) = 0;
 
-		uint32_t RescheduleOnCPU(uint32_t esp, Sys::CPU *cpu);
-		uint32_t ScheduleOnCPU(uint32_t esp, Sys::CPU *cpu);
-		void ForceReschedule();
-	}
+		virtual void BlockThread(Thread *thread) = 0;
+		virtual void UnblockThread(Thread *thread) = 0;
 
+		virtual void AddThread(Thread *thread) = 0;
+		virtual void RemoveThread(Thread *thread) = 0;
+
+		virtual void ActivateCPU(Sys::CPU *cpu) = 0;
+
+		void AddTask(Task *task);
+		void RemoveTask(Task *task);
+
+		KernReturn<void> InitializeTasks();
+
+	protected:
+		Scheduler();
+
+	private:
+		Task *_kernelTask;
+		std::intrusive_list<Task> _tasks;
+		mutable spinlock_t _taskLock;
+	};
+
+	void IdleTask();
 	KernReturn<void> SchedulerInit();
 }
 

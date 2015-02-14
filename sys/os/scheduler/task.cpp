@@ -31,10 +31,9 @@ namespace OS
 	static std::atomic<pid_t> _taskPidCounter;
 	IODefineMeta(Task, IO::Object)
 
-	namespace Scheduler
-	{
-		void AddThread(Thread *thread);
-	}
+	Task::Task() :
+		schedulerEntry(this)
+	{}
 
 	KernReturn<Task *> Task::Init(Task *parent)
 	{
@@ -62,6 +61,7 @@ namespace OS
 
 		_taskPort = _taskSystem->AddPort(0, IPC::Port::Rights::Any);
 
+		Scheduler::GetScheduler()->AddTask(this);
 		return this;
 	}
 
@@ -145,12 +145,14 @@ namespace OS
 		_threads->AddObject(thread);
 		spinlock_unlock(&_lock);
 		
-		Scheduler::AddThread(thread);
+		Scheduler::GetScheduler()->AddThread(thread);
 		return thread;
 	}
 
 	void Task::RemoveThread(Thread *thread)
 	{
+		Scheduler::GetScheduler()->RemoveThread(thread);
+
 		spinlock_lock(&_lock);
 		_threads->RemoveObject(thread);
 		spinlock_unlock(&_lock);

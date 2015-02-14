@@ -30,7 +30,7 @@ namespace OS
 			OS::SyscallScopedMapping portMapping(arguments->port, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
-			*port = Scheduler::GetActiveTask()->GetTaskPort()->GetPortName();
+			*port = Scheduler::GetScheduler()->GetActiveTask()->GetTaskPort()->GetPortName();
 
 			return KERN_SUCCESS;
 		}
@@ -40,7 +40,7 @@ namespace OS
 			OS::SyscallScopedMapping portMapping(arguments->port, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
-			*port = Scheduler::GetActiveThread()->GetThreadPort()->GetPortName();
+			*port = Scheduler::GetScheduler()->GetActiveThread()->GetThreadPort()->GetPortName();
 
 			return KERN_SUCCESS;
 		}
@@ -87,7 +87,7 @@ namespace OS
 			OS::SyscallScopedMapping portMapping(arguments->result, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
-			Task *task = Scheduler::GetActiveTask();
+			Task *task = Scheduler::GetScheduler()->GetActiveTask();
 			System *system = task->GetTaskSystem();
 
 			system->Lock();

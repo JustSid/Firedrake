@@ -34,7 +34,7 @@ namespace OS
 		_pointer(0x0),
 		_pages(0)
 	{
-		Task *task = Scheduler::GetActiveTask();
+		Task *task = Scheduler::GetScheduler()->GetActiveTask();
 
 		vm_address_t ptr = reinterpret_cast<vm_address_t>(const_cast<void *>(pointer));
 
@@ -71,7 +71,7 @@ namespace OS
 		bool kernelTrap = (state->interrupt == 0x81);
 		const SyscallTrap *entry = kernelTrap ? (_kernTrapTable + state->eax) : (_syscallTrapTable + state->eax);
 
-		Thread *thread = Scheduler::GetActiveThread();
+		Thread *thread = Scheduler::GetScheduler()->GetActiveThread();
 		thread->SetESP(esp);
 
 		uint32_t *arguments = nullptr;
@@ -162,7 +162,10 @@ namespace OS
 		}
 
 		delete[] arguments;
-		return esp;
+		
+		// Give the scheduler a chance to reschedule as a side effect to
+		// the system call that just exectued
+		return Scheduler::GetScheduler()->PokeCPU(esp, cpu);
 	}
 
 	KernReturn<void> SyscallInit()

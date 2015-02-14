@@ -133,9 +133,9 @@ namespace OS
 			_waitqueue->SetObjectForKey(entry, lookup);
 		}
 
-		Thread *thread = Scheduler::GetActiveThread();
+		Thread *thread = Scheduler::GetScheduler()->GetActiveThread();
 
-		thread->Block();
+		Scheduler::GetScheduler()->BlockThread(thread);
 		entry->AddThread(thread);
 
 		spinlock_unlock(&_waitLock);
@@ -143,7 +143,7 @@ namespace OS
 		lookup->Release();
 
 		callback();
-		Scheduler::ForceReschedule(); // Make sure we don't return until Wakeup() is called
+		Scheduler::GetScheduler()->RescheduleCPU(Sys::CPU::GetCurrentCPU()); // Make sure we don't return until Wakeup() is called
 
 		return ErrorNone;
 	}
@@ -171,7 +171,7 @@ namespace OS
 		while(iterator != entry->GetEnd())
 		{
 			Thread *thread = *iterator;
-			thread->Unblock();
+			Scheduler::GetScheduler()->UnblockThread(thread);
 
 			iterator ++;
 		}
@@ -200,7 +200,7 @@ namespace OS
 
 		spinlock_unlock(&_waitLock);
 
-		thread->Unblock();
+		Scheduler::GetScheduler()->UnblockThread(thread);
 	}
 
 	KernReturn<void> WaitqueueInit()

@@ -31,10 +31,6 @@ namespace OS
 
 	IODefineMeta(Thread, IO::Object)
 
-	Thread::Thread() :
-		_schedulerEntry(this)
-	{}
-
 	KernReturn<Thread *> Thread::Init(Task *task, Entry entry, size_t stackPages)
 	{
 		if(!IO::Object::Init())
@@ -43,10 +39,7 @@ namespace OS
 		_task  = task;
 		_entry = entry;
 		_esp   = 0;
-		_lock  = SPINLOCK_INIT;
-		_quantum = 0;
-		_blocks = 0;
-		_pinnedCPU = _runningCPU = nullptr;
+		_priority = PriorityClass::PriorityClassNormal;
 		_kernelStack = nullptr;
 		_kernelStackVirtual = nullptr;
 		_userStack = nullptr;
@@ -208,50 +201,13 @@ namespace OS
 		return ErrorNone;
 	}
 
-	void Thread::SetQuantum(int8_t quantum)
-	{
-		_quantum = quantum;
-	}
 	void Thread::SetESP(uint32_t esp)
 	{
 		_esp = esp;
 	}
-	void Thread::SetRunningCPU(Sys::CPU *cpu)
-	{
-		_runningCPU = cpu;
-	}
-	void Thread::SetPinnedCPU(Sys::CPU *cpu)
-	{
-		_pinnedCPU = cpu;
-	}
 
-	bool Thread::IsSchedulable(Sys::CPU *cpu) const
+	void Thread::SetSchedulingData(void *data)
 	{
-		if((_runningCPU && _runningCPU != cpu) || (_pinnedCPU && _pinnedCPU != cpu))
-			return false;
-
-		return (_blocks.load() == 0);
-	}
-
-	void Thread::Block()
-	{
-		_blocks ++;
-	}
-	void Thread::Unblock()
-	{
-		_blocks --;
-	}
-
-	void Thread::Lock()
-	{
-		spinlock_lock(&_lock);
-	}
-	void Thread::Unlock()
-	{
-		spinlock_unlock(&_lock);
-	}
-	bool Thread::TryLock()
-	{
-		return spinlock_try_lock(&_lock);
+		_schedulingData = data;
 	}
 }

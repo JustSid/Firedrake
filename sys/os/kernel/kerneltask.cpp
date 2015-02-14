@@ -38,7 +38,7 @@ namespace OS
 		Sys::Personality::GetPersonality()->FinishBootstrapping();
 
 		// Set up some simple IPC ports
-		Task *self = Scheduler::GetActiveTask();
+		Task *self = Scheduler::GetScheduler()->GetActiveTask();
 		IPC::System *system = self->GetTaskSystem();
 		system->Lock();
 
@@ -50,7 +50,7 @@ namespace OS
 		kprintf("Echo port: %llu\n", echoPort->GetPortName());
 
 		// Start the test program
-		__unused Task *task = Task::Alloc()->InitWithFile(Scheduler::GetKernelTask(), "/bin/test.bin");
+		__unused Task *task = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test.bin");
 
 		// Listen for incoming IPC messages
 		size_t bufferSize = 1024;
