@@ -22,15 +22,13 @@
 #include <libc/stdio.h>
 #include <libc/backtrace.h>
 #include "panic.h"
-#include "kalloc.h"
 #include "kprintf.h"
 
-#define PANIC_STACK_SIZE 512
-#define PANIC_HEAP_SIZE  2048
+static char _panicScribbleArea[4096];
 
 static bool _panic_initialized = false;
 
-void panic_die_fancy(const char *buffer)
+void panic_die(const char *buffer)
 {
 	Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
 	Sys::CPUState *state = cpu->GetLastState();
@@ -54,52 +52,20 @@ void panic_die_fancy(const char *buffer)
 	int num = state ? backtrace_np((void *)state->ebp, frames, 10) : backtrace(frames, 10);
 
 	for(int i = 0; i < num; i ++)
-	{
 		kprintf("(%2i) %08x\n", (num - 1) - i, reinterpret_cast<uint32_t>(frames[i]));
+
+	if(state)
+	{
+		kprintf("Kernel backtrace:\n");
+
+		int num = backtrace(frames, 10);
+
+		for(int i = 0; i < num; i ++)
+			kprintf("(%2i) %08x\n", (num - 1) - i, reinterpret_cast<uint32_t>(frames[i]));
 	}
 
 	kprintf("CPU halt");
 }
-
-void panic_die_barebone(const char *buffer)
-{
-	kprintf("\n\16\24Kernel Panic!\16\27\n");
-	kprintf("Reason: \"");
-	kprintf(buffer);
-	kprintf("\"\n\nCPU halt");
-}
-
-void panic_die(const char *buffer)
-{
-	if(!_panic_initialized)
-	{
-		panic_die_barebone(buffer);
-		return;
-	}
-
-	panic_die_fancy(buffer);
-}
-
-void panic_stack(const char *reason, va_list args)
-{
-	char buffer[PANIC_STACK_SIZE];
-	vsnprintf(buffer, PANIC_STACK_SIZE, reason, args);
-	panic_die(buffer);
-}
-
-void panic_heap(const char *reason, va_list args)
-{
-	char *buffer = reinterpret_cast<char *>(kalloc(PANIC_HEAP_SIZE));
-	if(!buffer)
-	{
-		panic_stack(reason, args);
-		return;
-	}
-
-	vsnprintf(buffer, PANIC_HEAP_SIZE, reason, args);
-	panic_die(buffer);
-}
-
 void panic(const char *reason, ...)
 {
 	if(_panic_initialized)
@@ -112,7 +78,8 @@ void panic(const char *reason, ...)
 	va_list args;
 	va_start(args, reason);
 	
-	/*_panic_initialized ? panic_heap(reason, args) :*/ panic_stack(reason, args);
+	vsnprintf(_panicScribbleArea, 4096, reason, args);
+	panic_die(_panicScribbleArea);
 
 	va_end(args);
 
