@@ -50,7 +50,28 @@ namespace std
 	template<class T>
 	struct remove_pointer<T* const volatile> { typedef T type; };
 
-	
+	template <class T, T v>
+	struct integral_constant
+	{
+		static constexpr const T value = v;
+		typedef T value_type;
+		typedef integral_constant type;
+
+
+		constexpr operator value_type() const { return value; }
+		constexpr value_type operator ()() const { return value; }
+	};
+
+	template <class T, T v>
+	constexpr const T integral_constant<T, v>::value;
+
+	typedef integral_constant<bool, true>  true_type;
+	typedef integral_constant<bool, false> false_type;
+
+	template<class T, class U>
+	struct is_same : public false_type {};
+	template<class T>
+	struct is_same<T, T> : public true_type {};	
 
 	template<class T>
 	inline T&& forward(typename std::remove_reference<T>::type &t) noexcept

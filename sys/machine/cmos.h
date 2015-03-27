@@ -41,25 +41,16 @@ namespace Sys
 			StateB = 0xb
 		};
 
-		struct Flags : public cpp::bitfield<uint8_t>
-		{	
-			Flags() = default;
-			Flags(int value) :
-				bitfield(value)
-			{}
-
-			enum
-			{
-				DST       = (1 << 0),
-				Hours24   = (1 << 1),
-				Binary    = (1 << 2),
-				Frequency = (1 << 3),
-				Interrupt = (1 << 4),
-				Alarm     = (1 << 5),
-				Periodic  = (1 << 6),
-				NoUpdate  = (1 << 7),
-			};
-		};
+		CPP_BITFIELD(Flags, uint8_t,
+			DST       = (1 << 0),
+			Hours24   = (1 << 1),
+			Binary    = (1 << 2),
+			Frequency = (1 << 3),
+			Interrupt = (1 << 4),
+			Alarm     = (1 << 5),
+			Periodic  = (1 << 6),
+			NoUpdate  = (1 << 7),
+		);
 
 		static inline void Write(Register reg, uint8_t data)
 		{

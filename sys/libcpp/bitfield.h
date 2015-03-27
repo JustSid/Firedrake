@@ -23,19 +23,14 @@
 
 namespace cpp
 {
-	template<class T, bool overloadT = false>
-	struct bitfield;
-
+	template<class T, bool>
+	struct __btifield;
 
 	template<class T>
-	struct bitfield<T, false>
+	struct __btifield<T, true>
 	{
-		bitfield() = default;
-		bitfield(T value) :
-			_value(value)
-		{}
+		__btifield() = default;
 
-		
 		T operator =(T value)
 		{
 			_value = value;
@@ -46,54 +41,13 @@ namespace cpp
 			return _value;
 		}
 
-		T operator ~() const
-		{
-			return ~_value;
-		}
-		T operator &(int value) const
-		{
-			return _value & value;
-		}
-		T operator |(int value) const
-		{
-			return _value | value;
-		}
-		
-		T &operator &=(int value)
-		{
-			return _value &= value;
-		}
-		T &operator |=(int value)
-		{
-			return _value |= value;
-		}
-
-		T _value;
-	};
-
-	template<class T>
-	struct bitfield<T, true>
-	{
-		bitfield() = default;
-		bitfield(T value) :
-			_value(value)
-		{}
-
-		
-		T operator =(T value)
-		{
-			_value = value;
-			return value;
-		}
-		operator T() const
-		{
-			return _value;
-		}
 
 		T operator ~() const
 		{
 			return ~_value;
 		}
+
+
 		T operator &(T value) const
 		{
 			return _value & value;
@@ -102,7 +56,6 @@ namespace cpp
 		{
 			return _value | value;
 		}
-		
 		T &operator &=(T value)
 		{
 			return _value &= value;
@@ -112,8 +65,84 @@ namespace cpp
 			return _value |= value;
 		}
 
+	protected:
 		T _value;
 	};
+
+	template<class T>
+	struct __btifield<T, false>
+	{
+		__btifield() = default;
+
+		T operator =(T value)
+		{
+			_value = value;
+			return value;
+		}
+		operator T() const
+		{
+			return _value;
+		}
+
+
+		T operator ~() const
+		{
+			return ~_value;
+		}
+
+
+		T operator &(T value) const
+		{
+			return _value & value;
+		}
+		T operator |(T value) const
+		{
+			return _value | value;
+		}
+		T &operator &=(T value)
+		{
+			return _value &= value;
+		}
+		T &operator |=(T value)
+		{
+			return _value |= value;
+		}
+
+
+		T operator &(int value) const
+		{
+			return _value & value;
+		}
+		T operator |(int value) const
+		{
+			return _value | value;
+		}
+
+		T &operator &=(int value)
+		{
+			return _value &= value;
+		}
+		T &operator |=(int value)
+		{
+			return _value |= value;
+		}
+
+	protected:
+		T _value;
+	};
+
+	template<class T>
+	using bitfield = __btifield<T, std::is_same<T, int>::value>;
+
+#define CPP_BITFIELD(name, type, ...) \
+	struct name : public cpp::bitfield<type> \
+	{ \
+		name() = default; \
+		name(int value) { _value = value; } \
+		enum { \
+			__VA_ARGS__ \
+		}; \
+	}
 }
 
 #endif /* _BITFIELD_H_ */

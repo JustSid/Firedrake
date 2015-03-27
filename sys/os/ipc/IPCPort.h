@@ -47,20 +47,11 @@ namespace OS
 			friend class System;
 			friend class PortRight;
 
-			struct Rights : cpp::bitfield<uint32_t>
-			{
-				Rights() = default;
-				Rights(int value) :
-					bitfield(value)
-				{}
-
-				enum
-				{
-					Any = (1 << 0), // No special rights required to send to that port
-					Inherited = (1 << 1), // Only child tasks and especially granted ports can send
-					Receive = (1 << 2) // Port is a receiving port, otherwise it's a sending port
-				};
-			};
+			CPP_BITFIELD(Rights, uint32_t,
+				Any = (1 << 0), // No special rights required to send to that port
+				Inherited = (1 << 1), // Only child tasks and especially granted ports can send
+				Receive = (1 << 2) // Port is a receiving port, otherwise it's a sending port
+			);
 
 			void Dealloc() override;
 			bool IsPortRight() const;

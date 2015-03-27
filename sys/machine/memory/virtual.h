@@ -53,24 +53,15 @@ namespace Sys
 		class Directory
 		{
 		public:
-			struct Flags : cpp::bitfield<uint32_t>
-			{
-				Flags() = default;
-				Flags(int value) : 
-					bitfield(value)
-				{}
-
-				enum
-				{
-					Present      = (1 << 0),
-					Writeable    = (1 << 1),
-					Userspace    = (1 << 2),
-					Writethrough = (1 << 3),
-					NoCache      = (1 << 4),
-					Accessed     = (1 << 5),
-					Dirty        = (1 << 6)
-				};
-			};
+			CPP_BITFIELD(Flags, uint32_t,
+				Present      = (1 << 0),
+				Writeable    = (1 << 1),
+				Userspace    = (1 << 2),
+				Writethrough = (1 << 3),
+				NoCache      = (1 << 4),
+				Accessed     = (1 << 5),
+				Dirty        = (1 << 6)
+			);
 
 			Directory(uint32_t *directory); // Shouldn't be called directly! Use Create() instead!
 			~Directory();

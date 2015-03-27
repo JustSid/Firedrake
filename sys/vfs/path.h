@@ -29,18 +29,9 @@ namespace VFS
 	class Path
 	{
 	public:
-		struct Flags : cpp::bitfield<uint32_t>
-		{
-			Flags() = default;
-			Flags(int value) :
-				bitfield(value)
-			{}
-
-			enum
-			{
-				FollowSymlinks = (1 << 0)
-			};
-		};
+		CPP_BITFIELD(Flags, uint32_t,
+			FollowSymlinks = (1 << 0)
+		);
 
 		Path(const char *path, Context *context);
 		~Path();

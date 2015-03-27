@@ -65,21 +65,17 @@ namespace Sys
 
 	struct MultibootHeader
 	{
-		struct Flags : public cpp::bitfield<uint32_t>
-		{
-			enum
-			{
-				Memory      = (1 << 0),
-				BootDevice  = (1 << 1),
-				CommandLine = (1 << 2),
-				Modules     = (1 << 3),
-				Mmap        = (1 << 6),
-				Drives      = (1 << 7),
-				ConfigTable = (1 << 8),
-				BootLoader  = (1 << 9),
-				APM         = (1 << 10)
-			};
-		};
+		CPP_BITFIELD(Flags, uint32_t,
+			Memory      = (1 << 0),
+			BootDevice  = (1 << 1),
+			CommandLine = (1 << 2),
+			Modules     = (1 << 3),
+			Mmap        = (1 << 6),
+			Drives      = (1 << 7),
+			ConfigTable = (1 << 8),
+			BootLoader  = (1 << 9),
+			APM         = (1 << 10)
+		);
 
 		Flags flags;
 

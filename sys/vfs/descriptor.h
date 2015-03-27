@@ -37,18 +37,9 @@ namespace VFS
 	class Descriptor : public IO::Object
 	{
 	public:
-		struct Flags : cpp::bitfield<uint32_t>
-		{
-			Flags() = default;
-			Flags(int value) :
-				bitfield(value)
-			{}
-
-			enum
-			{
-				Persistent = (1 << 0)
-			};
-		};
+		CPP_BITFIELD(Flags, uint32_t,
+			Persistent = (1 << 0)
+		);
 
 		const char *GetName() const { return _name->GetCString(); }
 		Flags GetFlags() const { return _flags; }
