@@ -307,9 +307,10 @@ namespace Sys
 	// Heap
 	// -----------------
 
-	Heap::Heap() :
-		_lock(SPINLOCK_INIT)
+	Heap::Heap()
 	{
+		spinlock_init(&_lock);
+
 		_arenas[0] = nullptr;
 		_arenas[1] = nullptr;
 		_arenas[2] = nullptr;

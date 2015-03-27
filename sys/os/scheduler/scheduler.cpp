@@ -39,9 +39,10 @@ namespace OS
 
 	static Scheduler *_sharedScheduler;
 
-	Scheduler::Scheduler() :
-		_taskLock(SPINLOCK_INIT)
-	{}
+	Scheduler::Scheduler()
+	{
+		spinlock_init(&_taskLock);
+	}
 
 	Scheduler *Scheduler::GetScheduler()
 	{

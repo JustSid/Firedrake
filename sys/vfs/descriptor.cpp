@@ -32,9 +32,10 @@ namespace VFS
 		if(!Object::Init())
 			return nullptr;
 
+		spinlock_init(&_lock);
+
 		_name  = IO::String::Alloc()->InitWithCString(name);
 		_flags = flags;
-		_lock  = SPINLOCK_INIT;
 		_registered = false;
 		_instances  = IO::Array::Alloc()->Init();
 

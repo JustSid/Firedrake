@@ -112,7 +112,7 @@ namespace OS
 	IODefineMeta(WaitqueueEntry, IO::Object)
 
 	static IO::Dictionary *_waitqueue;
-	static spinlock_t _waitLock;
+	static spinlock_t _waitLock = SPINLOCK_INIT;
 
 
 	KernReturn<void> Wait(void *channel)
@@ -206,8 +206,6 @@ namespace OS
 	KernReturn<void> WaitqueueInit()
 	{
 		_waitqueue = IO::Dictionary::Alloc()->Init();
-		_waitLock = SPINLOCK_INIT;
-
 		return ErrorNone;
 	}
 }

@@ -44,10 +44,11 @@ namespace OS
 			_activeThread(nullptr),
 			_nextThread(nullptr),
 			_idleThread(nullptr),
-			_commandLock(SPINLOCK_INIT),
-			_internalLock(SPINLOCK_INIT),
 			_needsReschedule(false)
-		{}
+		{
+			spinlock_init(&_internalLock);
+			spinlock_init(&_commandLock);
+		}
 		
 
 		uint32_t Schedule(uint32_t esp)
@@ -334,9 +335,10 @@ namespace OS
 	static SMPScheduler *_sharedScheduler = nullptr;
 
 	SMPScheduler::SMPScheduler() :
-		_schedulerCount(Sys::CPU::GetCPUCount()),
-		_moveLock(SPINLOCK_INIT)
+		_schedulerCount(Sys::CPU::GetCPUCount())
 	{
+		spinlock_init(&_moveLock);
+
 		void *data = kalloc(_schedulerCount * sizeof(CPUScheduler));
 
 		CPUScheduler *proxies = reinterpret_cast<CPUScheduler *>(data);

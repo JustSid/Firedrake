@@ -3,7 +3,7 @@
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated 
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation 
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
@@ -23,10 +23,15 @@
 
 __BEGIN_DECLS
 
-typedef int spinlock_t;
+typedef struct
+{
+	int _lock;
+} spinlock_t;
 
-#define SPINLOCK_INIT 0
-#define SPINLOCK_INIT_LOCKED 1
+#define SPINLOCK_INIT {0}
+#define SPINLOCK_INIT_LOCKED {1}
+
+void spinlock_init(spinlock_t *lock);
 
 void spinlock_lock(spinlock_t *lock);
 int  spinlock_try_lock(spinlock_t *lock);

@@ -40,8 +40,9 @@ namespace OS
 		if(!IO::Object::Init())
 			return Error(KERN_FAILURE);
 
+		spinlock_init(&_lock);
+
 		_parent = parent;
-		_lock = SPINLOCK_INIT;
 		_state = State::Waiting;
 		_pid = _taskPidCounter.fetch_add(1) + 1;
 		_ring3 = false;

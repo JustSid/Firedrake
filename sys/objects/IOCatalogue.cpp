@@ -106,9 +106,10 @@ namespace IO
 
 	static Catalogue *_sharedCatalogue = nullptr;
 
-	Catalogue::Catalogue() :
-		_lock(SPINLOCK_INIT)
-	{}
+	Catalogue::Catalogue()
+	{
+		spinlock_init(&_lock);
+	}
 
 	Catalogue *Catalogue::GetSharedInstance()
 	{

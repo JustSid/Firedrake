@@ -34,9 +34,10 @@ namespace OS
 			_name = name;
 			_ports = IO::Dictionary::Alloc()->Init();
 			_portRights = IO::Dictionary::Alloc()->Init();
-			_lock = SPINLOCK_INIT;
 			_task = task;
 			_portRightName = 0;
+
+			spinlock_init(&_lock);
 
 			return this;
 		}

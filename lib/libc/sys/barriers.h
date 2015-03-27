@@ -1,5 +1,5 @@
 //
-//  instance.cpp
+//  barriers.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,53 +16,22 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "instance.h"
-#include "node.h"
+#ifndef _BARRIERS_H_
+#define _BARRIERS_H_
 
-namespace VFS
-{
-	IODefineMeta(Instance, IO::Object)
+#if __i386__
+	#include "x86/barriers.h"
+#endif
+#if __arm__
+	#include "arm/barriers.h"
+#endif
 
-	Instance *Instance::Init(Node *rootNode)
-	{
-		spinlock_init(&_lock);
-		
-		_lastID = 0;
-		_rootNode = rootNode->Retain();
-		_mountpoint = nullptr;
+// The header provides 5 barriers/fences that can be used to perform synchronization
+// 
+// __instruction_fence(), flushes the instruction cache
+// __memory_fence(), is really a compiler fence to stop the compiler from re-ordering reads/writes before and after the barrier
+// __load_fence(), a load fence that forces the CPU to complete queued stores
+// __store_fence(), a store fence that forces the CPU to complete queued loads
+// __full_fence(), a full fence that serializes all memory stores and loads
 
-		return this;
-	}
-
-	void Instance::Dealloc()
-	{
-		IO::SafeRelease(_mountpoint);
-		IO::SafeRelease(_rootNode);
-
-		IO::Object::Dealloc();
-	}
-
-
-	void Instance::Lock()
-	{
-		spinlock_lock(&_lock);
-	}
-	void Instance::Unlock()
-	{
-		spinlock_unlock(&_lock);
-	}
-
-	void Instance::CleanNode(__unused Node *node)
-	{}
-
-	uint64_t Instance::GetFreeID()
-	{
-		return (_lastID ++);
-	}
-
-	void Instance::SetMountpoint(Mountpoint *node)
-	{
-		IO::SafeRelease(_mountpoint);
-		_mountpoint	= IO::SafeRetain(node);
-	}
-}
+#endif /* _BARRIERS_H_ */

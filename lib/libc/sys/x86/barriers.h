@@ -1,5 +1,5 @@
 //
-//  instance.cpp
+//  barriers.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,53 +16,26 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "instance.h"
-#include "node.h"
+#ifndef _X86_BARRIERS_H_
+#define _X86_BARRIERS_H_
 
-namespace VFS
+static inline void __instruction_fence()
+{}
+static inline void __memory_fence()
 {
-	IODefineMeta(Instance, IO::Object)
-
-	Instance *Instance::Init(Node *rootNode)
-	{
-		spinlock_init(&_lock);
-		
-		_lastID = 0;
-		_rootNode = rootNode->Retain();
-		_mountpoint = nullptr;
-
-		return this;
-	}
-
-	void Instance::Dealloc()
-	{
-		IO::SafeRelease(_mountpoint);
-		IO::SafeRelease(_rootNode);
-
-		IO::Object::Dealloc();
-	}
-
-
-	void Instance::Lock()
-	{
-		spinlock_lock(&_lock);
-	}
-	void Instance::Unlock()
-	{
-		spinlock_unlock(&_lock);
-	}
-
-	void Instance::CleanNode(__unused Node *node)
-	{}
-
-	uint64_t Instance::GetFreeID()
-	{
-		return (_lastID ++);
-	}
-
-	void Instance::SetMountpoint(Mountpoint *node)
-	{
-		IO::SafeRelease(_mountpoint);
-		_mountpoint	= IO::SafeRetain(node);
-	}
+	__asm__ volatile("" ::: "memory");
 }
+static inline void __load_fence()
+{
+	__asm__ volatile("" ::: "memory");
+}
+static inline void __store_fence()
+{
+	__asm__ volatile("" ::: "memory");
+}
+static inline void __full_fence()
+{
+	__asm__ volatile("mfence" ::: "memory");
+}
+
+#endif /* _X86_BARRIERS_H_ */

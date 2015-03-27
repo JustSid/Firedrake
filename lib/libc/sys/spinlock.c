@@ -1,9 +1,9 @@
 //
-//  instance.cpp
+//  spinlock.c
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated 
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation 
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
@@ -16,53 +16,11 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "instance.h"
-#include "node.h"
+#include "spinlock.h"
+#include "barriers.h"
 
-namespace VFS
+void spinlock_init(spinlock_t *lock)
 {
-	IODefineMeta(Instance, IO::Object)
-
-	Instance *Instance::Init(Node *rootNode)
-	{
-		spinlock_init(&_lock);
-		
-		_lastID = 0;
-		_rootNode = rootNode->Retain();
-		_mountpoint = nullptr;
-
-		return this;
-	}
-
-	void Instance::Dealloc()
-	{
-		IO::SafeRelease(_mountpoint);
-		IO::SafeRelease(_rootNode);
-
-		IO::Object::Dealloc();
-	}
-
-
-	void Instance::Lock()
-	{
-		spinlock_lock(&_lock);
-	}
-	void Instance::Unlock()
-	{
-		spinlock_unlock(&_lock);
-	}
-
-	void Instance::CleanNode(__unused Node *node)
-	{}
-
-	uint64_t Instance::GetFreeID()
-	{
-		return (_lastID ++);
-	}
-
-	void Instance::SetMountpoint(Mountpoint *node)
-	{
-		IO::SafeRelease(_mountpoint);
-		_mountpoint	= IO::SafeRetain(node);
-	}
+	lock->_lock = 0;
+	__store_fence();
 }

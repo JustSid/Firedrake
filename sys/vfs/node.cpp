@@ -34,12 +34,13 @@ namespace VFS
 		if(!Object::Init())
 			return nullptr;
 
+		spinlock_init(&_lock);
+
 		_name = IO::String::Alloc()->InitWithCString(name);
 		_instance = instance;
 		_id = id;
 		_type = type;
 		_size = 0;
-		_lock = SPINLOCK_INIT;
 		_parent = nullptr;
 
 		return this;

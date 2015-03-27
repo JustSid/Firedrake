@@ -129,9 +129,9 @@ namespace Sys
 		// --------------------
 
 		Directory::Directory(uint32_t *directory) :
-			_directory(directory),
-			_lock(SPINLOCK_INIT)
+			_directory(directory)
 		{
+			spinlock_init(&_lock);
 			assert(_directory);
 		}
 
