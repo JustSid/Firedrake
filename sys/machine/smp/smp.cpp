@@ -67,7 +67,7 @@ namespace Sys
 			// Just an idle point for the CPU. We missed the sync point, but it's already running
 			// so it's just going to idle from now on
 
-			sti();
+			__asm__ volatile("sti");
 			spinlock_unlock(&_rendezvousLock);
 
 			while(1)

@@ -21,6 +21,7 @@
 #include <machine/debug.h>
 #include <kern/kprintf.h>
 #include <kern/panic.h>
+#include "x86/interrupts.h"
 #include "interrupts.h"
 #include "trampoline.h"
 #include "apic.h"
@@ -202,6 +203,23 @@ namespace Sys
 		_interrupt_handler[vector] = handler;
 	}
 
+	void EnableInterrupts()
+	{
+		CPU *cpu = CPU::GetCurrentCPU();
+		cpu->AddFlags(CPU::Flags::InterruptsEnabled);
+
+		sti();
+	}
+	bool DisableInterrupts()
+	{
+		cli();
+
+		CPU *cpu = CPU::GetCurrentCPU();
+		bool enabled = cpu->GetFlagsSet(CPU::Flags::InterruptsEnabled);
+		cpu->RemoveFlags(CPU::Flags::InterruptsEnabled);
+
+		return enabled;
+	}
 
 	extern uint32_t HandleWatchpoint(uint32_t esp, Sys::CPU *cpu);
 
@@ -222,7 +240,7 @@ namespace Sys
 		SetInterruptHandler(1, HandleWatchpoint);
 
 		panic_init();
-		sti();
+		EnableInterrupts();
 
 		return ErrorNone;
 	}
@@ -239,7 +257,7 @@ namespace Sys
 		if((result = TrampolineInitCPU()).IsValid() == false)
 			return result;
 
-		sti();
+		EnableInterrupts();
 		return ErrorNone;
 	}
 }

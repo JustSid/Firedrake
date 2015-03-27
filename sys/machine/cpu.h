@@ -214,6 +214,8 @@ namespace Sys
 				Timedout  = (1 << 2)
 			};
 		};
+			// General purpose runtime flags
+			InterruptsEnabled = (1 << 5)
 
 		// Must be called from the actual CPU!
 		void Bootstrap();
@@ -229,6 +231,10 @@ namespace Sys
 		void SetState(CPUState *state);
 		void SetTrampoline(Trampoline *trampoline);
 		void SetFlags(Flags flags);
+
+		void AddFlags(Flags flags);
+		void RemoveFlags(Flags flags);
+		bool GetFlagsSet(Flags flags);
 
 		static CPU *RegisterCPU(uint8_t apicID, Flags flags);
 

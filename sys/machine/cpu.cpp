@@ -91,6 +91,18 @@ namespace Sys
 		_flags = flags;
 	}
 
+	void CPU::AddFlags(Flags flags)
+	{
+		_flags |= flags;
+	}
+	void CPU::RemoveFlags(Flags flags)
+	{
+		_flags &= ~flags;
+	}
+	bool CPU::GetFlagsSet(Flags flags)
+	{
+		return (_flags & flags);
+	}
 
 	CPU *CPU::GetCPUWithID(uint32_t id)
 	{

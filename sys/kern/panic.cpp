@@ -105,7 +105,7 @@ void panic(const char *reason, ...)
 	if(_panic_initialized)
 	{
 		// Tear down the system properly to avoid other code to be executed
-		cli();
+		Sys::DisableInterrupts();
 		Sys::APIC::BroadcastIPI(0x39, false);
 	}
 
@@ -118,7 +118,7 @@ void panic(const char *reason, ...)
 
 	while(1)
 	{
-		cli();
+		Sys::DisableInterrupts();
 		Sys::CPUHalt();
 	}
 }

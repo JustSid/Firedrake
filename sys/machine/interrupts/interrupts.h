@@ -27,22 +27,15 @@
 #include "trampoline.h"
 #include "apic.h"
 
-static inline void cli()
-{
-	__asm__ volatile("cli");
-}
-
-static inline void sti()
-{
-	__asm__ volatile("sti");
-}
-
 namespace Sys
 {
 	typedef uint32_t (*InterruptHandler)(uint32_t, Sys::CPU *);
 
 	void SetInterruptHandler(uint8_t vector, InterruptHandler handler);
 	void IDTInit(uint64_t *idt, uint32_t offset);
+
+	void EnableInterrupts();
+	bool DisableInterrupts();
 
 	KernReturn<void> InterruptsInit();
 	KernReturn<void> InterruptsInitAP();
