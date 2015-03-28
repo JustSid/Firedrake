@@ -33,6 +33,9 @@ namespace Sys
 				return 1;
 			case WatchpointCondition::OnReadWrite:
 				return 3;
+			default:
+				kprintf("Unsupported condition %i, defaulting to on execution!\n", condition);
+				return 0;
 		}
 	}
 	char TranslateBytes(int bytes)

@@ -21,10 +21,13 @@
 #include <machine/debug.h>
 #include <kern/kprintf.h>
 #include <kern/panic.h>
-#include "x86/interrupts.h"
 #include "interrupts.h"
 #include "trampoline.h"
 #include "apic.h"
+
+#if __i386__
+#include "x86/interrupts.h"
+#endif
 
 extern "C" uint32_t ir_handle_interrupt(uint32_t esp);
 static Sys::InterruptHandler _interrupt_handler[IDT_ENTRIES];
