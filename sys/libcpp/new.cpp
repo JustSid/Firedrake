@@ -38,13 +38,13 @@ void *operator new[](size_t  size)
 	return ptr;
 }
 
-void operator delete(void *obj)
+void operator delete(void *obj) throw()
 {
 	if(obj)
 		kfree(obj);
 }
 
-void operator delete[](void *obj)
+void operator delete[](void *obj) throw()
 {
 	if(obj)
 		kfree(obj);
