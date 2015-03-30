@@ -49,14 +49,16 @@ namespace IO
 
 	Object *Object::Retain()
 	{
-		_references ++;
+		_references.fetch_add(1, std::memory_order_relaxed);
 		return this;
 	}
 
 	Object *Object::Release()
 	{
-		if((-- _references) == 0)
+		if((_references.fetch_sub(1, std::memory_order_release)) == 1)
 		{
+			__thread_fence_acquire(); // Make sure to finish all pending writes before entering the destructor
+
 			Dealloc();
 			delete this;
 
