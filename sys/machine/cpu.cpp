@@ -60,14 +60,8 @@ namespace Sys
 			return nullptr;
 		}
 
-		if((flags & Flags::Bootstrap) && _bootstrapCPU)
-			panic("Tried to register more than one bootstrap CPU!");
-
 		uint8_t id = _cpuCount ++;
 		CPU *cpu = new(&_cpuMemory[id * sizeof(CPU)]) CPU(id, apicID, flags);
-
-		if(flags & Flags::Bootstrap)
-			_bootstrapCPU = cpu;
 
 		return cpu;
 	}
@@ -75,6 +69,7 @@ namespace Sys
 	void CPU::Bootstrap()
 	{
 		_info = CPUInfo();
+		_flags |= CPU::Flags::Running;
 	}
 
 
@@ -241,13 +236,36 @@ namespace Sys
 		if((result = ACPI::Init()).IsValid() == false)
 			return result;
 
+		kprintf("%i %s", CPU::GetCPUCount(), (CPU::GetCPUCount() == 1) ? "CPU" : "CPUs");
+		return ErrorNone;
+	}
+
+	KernReturn<void> CPUInitSecondStage()
+	{
+		// Find the bootstrap CPU
+		uint32_t apic  = ((APIC::Read(APIC::Register::ID) >> 24) & 0xff);
+		CPU *cpu = _cpu;
+
+		for(size_t i = 0; i < _cpuCount; i ++)
+		{
+			if(cpu->GetApicID() == apic)
+			{
+				cpu->AddFlags(CPU::Flags::Bootstrap | CPU::Flags::Running);
+				_bootstrapCPU = cpu;
+
+				break;
+			}
+
+			cpu ++;
+		}
+
 		if(!_bootstrapCPU)
 		{
 			kprintf("no bootstrap CPU");
 			return Error(KERN_FAILURE);
 		}
 
-		kprintf("%i %s", CPU::GetCPUCount(), (CPU::GetCPUCount() == 1) ? "CPU" : "CPUs");
+		_bootstrapCPU->Bootstrap();
 		return ErrorNone;
 	}
 }

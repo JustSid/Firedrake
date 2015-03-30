@@ -287,6 +287,7 @@ namespace Sys
 	}
 
 	KernReturn<void> CPUInit();
+	KernReturn<void> CPUInitSecondStage();
 }
 
 #endif

@@ -105,6 +105,7 @@ namespace Sys
 		Init("heap", Sys::HeapInit);
 		Init("objects", IO::CatalogueInit);
 		Init("interrupts", Sys::InterruptsInit);
+		Init("interrupts", Sys::CPUInitSecondStage);
 		Init("clock", Sys::ClockInit);
 		Init("smp", Sys::SMPInit);
 		Init("scheduler", OS::SchedulerInit);

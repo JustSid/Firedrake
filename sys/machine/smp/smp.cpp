@@ -96,7 +96,7 @@ namespace Sys
 				RendezvousFail();
 			}
 
-			cpu->SetFlags(cpu->GetFlags() | CPU::Flags::Running);
+			cpu->Bootstrap();
 			spinlock_unlock(&_rendezvousLock);
 
 			// Wait for work. The CPU will receive an IPI once the kernel is ready to start scheduling

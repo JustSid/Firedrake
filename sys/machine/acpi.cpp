@@ -59,7 +59,6 @@ namespace ACPI
 	KernReturn<void> RSDT::ParseMADT() const
 	{
 		MADT *madt = FindEntry<MADT>("APIC");
-		bool hasBootstrapCPU = false;
 
 		if(madt)
 		{
@@ -76,17 +75,7 @@ namespace ACPI
 						uint8_t enabled = (apic->flags & 0x1);
 
 						if(enabled)
-						{
-							Sys::CPU::Flags flags = 0;
-
-							if(!hasBootstrapCPU)
-							{
-								flags = Sys::CPU::Flags::Bootstrap | Sys::CPU::Flags::Running;
-								hasBootstrapCPU = true;
-							}
-
-							Sys::CPU::RegisterCPU(apic->apicID, flags);
-						}
+							Sys::CPU::RegisterCPU(apic->apicID, 0);
 
 						break;
 					}
