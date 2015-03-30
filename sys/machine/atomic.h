@@ -23,193 +23,59 @@
 #include <libc/stdint.h>
 #include <libc/stdbool.h>
 
-// -------------
-// MARK: -
-// MARK: 32 Bit
-// -------------
+// More or less a copy and paste from the LLVM stdatomic header
+// http://llvm.org/viewvc/llvm-project/cfe/trunk/lib/Headers/stdatomic.h?view=markup&pathrev=218957
+// See also: http://en.cppreference.com/w/c/atomic
+//
+// Thread fences can be found in libc/sys/barriers.h
 
 __BEGIN_DECLS
 
-bool atomic_compare_swap_i32(int32_t oldValue, int32_t newValue, int32_t *address);
-bool atomic_compare_swap_u32(uint32_t oldValue, uint32_t newValue, uint32_t *address);
-int32_t atomic_add_i32(int32_t amount, int32_t *address);
-uint32_t atomic_add_u32(uint32_t amount, uint32_t *address);
+typedef enum
+{
+	memory_order_relaxed = __ATOMIC_RELAXED,
+	memory_order_consume = __ATOMIC_CONSUME,
+	memory_order_acquire = __ATOMIC_ACQUIRE,
+	memory_order_release = __ATOMIC_RELEASE,
+	memory_order_acq_rel = __ATOMIC_ACQ_REL,
+	memory_order_seq_cst = __ATOMIC_SEQ_CST
+} memory_order;
+
+#define kill_dependency(y) (y)
+
+#define ATOMIC_VAR_INIT(value) (value)
+#define atomic_init __c11_atomic_int
+
+#define atomic_store(object, desired) __c11_atomic_store(object, desired, __ATOMIC_SEQ_CST)
+#define atomic_store_explicit __c11_atomic_store
+
+#define atomic_load(object) __c11_atomic_load(object, __ATOMIC_SEQ_CST)
+#define atomic_load_explicit __c11_atomic_load
+
+#define atomic_exchange(object, desired) __c11_atomic_exchange(object, desired, __ATOMIC_SEQ_CST)
+#define atomic_exchange_explicit __c11_atomic_exchange
+
+#define atomic_compare_exchange_strong(object, expected, desired) __c11_atomic_compare_exchange_strong(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
+#define atomic_compare_exchange_strong_explicit __c11_atomic_compare_exchange_strong
+
+#define atomic_compare_exchange_weak(object, expected, desired) __c11_atomic_compare_exchange_weak(object, expected, desired, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST)
+#define atomic_compare_exchange_weak_explicit __c11_atomic_compare_exchange_weak
+
+#define atomic_fetch_add(object, operand) __c11_atomic_fetch_add(object, operand, __ATOMIC_SEQ_CST)
+#define atomic_fetch_add_explicit __c11_atomic_fetch_add
+
+#define atomic_fetch_sub(object, operand) __c11_atomic_fetch_sub(object, operand, __ATOMIC_SEQ_CST)
+#define atomic_fetch_sub_explicit __c11_atomic_fetch_sub
+
+#define atomic_fetch_or(object, operand) __c11_atomic_fetch_or(object, operand, __ATOMIC_SEQ_CST)
+#define atomic_fetch_or_explicit __c11_atomic_fetch_or
+
+#define atomic_fetch_xor(object, operand) __c11_atomic_fetch_xor(object, operand, __ATOMIC_SEQ_CST)
+#define atomic_fetch_xor_explicit __c11_atomic_fetch_xor
+
+#define atomic_fetch_and(object, operand) __c11_atomic_fetch_and(object, operand, __ATOMIC_SEQ_CST)
+#define atomic_fetch_and_explicit __c11_atomic_fetch_and
 
 __END_DECLS
-
-// int32_t
-static inline int32_t atomic_increment_i32(int32_t *address)
-{
-	return atomic_add_i32(1, address);
-}
-static inline int32_t atomic_decrement_i32(int32_t *address)
-{
-	return atomic_add_i32(-1, address);
-}
-
-
-static inline int32_t atomic_bitwise_i32(int32_t andMask, int32_t orMask, int32_t xorMask, int32_t *address)
-{
-	int32_t oldValue;
-	int32_t newValue;
-
-	do {
-		oldValue = *address;
-		newValue = ((oldValue & andMask) | orMask) ^ xorMask;
-	} while(!atomic_compare_swap_i32(oldValue, newValue, address));
-
-	return oldValue;
-}
-static inline int32_t atomic_and_i32(int32_t mask, int32_t *address)
-{
-	return atomic_bitwise_i32(mask, 0, 0, address);
-}
-static inline int32_t atomic_or_i32(int32_t mask, int32_t *address)
-{
-	return atomic_bitwise_i32(-1, mask, 0, address);
-}
-static inline int32_t atomic_xor_i32(int32_t mask, int32_t *address)
-{
-	return atomic_bitwise_i32(-1, 0, mask, address);
-}
-
-// uint32_t
-static inline uint32_t atomic_increment_i32(uint32_t *address)
-{
-	return atomic_add_u32(1, address);
-}
-static inline uint32_t atomic_decrement_i32(uint32_t *address)
-{
-	return atomic_add_u32(-1, address);
-}
-
-
-static inline uint32_t atomic_bitwise_u32(uint32_t andMask, uint32_t orMask, uint32_t xorMask, uint32_t *address)
-{
-	uint32_t oldValue;
-	uint32_t newValue;
-
-	do {
-		oldValue = *address;
-		newValue = ((oldValue & andMask) | orMask) ^ xorMask;
-	} while(!atomic_compare_swap_u32(oldValue, newValue, address));
-
-	return oldValue;
-}
-static inline uint32_t atomic_and_u32(uint32_t mask, uint32_t *address)
-{
-	return atomic_bitwise_u32(mask, 0, 0, address);
-}
-static inline uint32_t atomic_or_u32(uint32_t mask, uint32_t *address)
-{
-	return atomic_bitwise_u32(-1, mask, 0, address);
-}
-static inline uint32_t atomic_xor_u32(uint32_t mask, uint32_t *address)
-{
-	return atomic_bitwise_u32(-1, 0, mask, address);
-}
-
-// -------------
-// MARK: -
-// MARK: 64 Bit
-// -------------
-
-__BEGIN_DECLS
-
-bool atomic_compare_swap_i64(int64_t oldValue, int64_t newValue, int64_t *address);
-bool atomic_compare_swap_u64(uint64_t oldValue, uint64_t newValue, uint64_t *address);
-int64_t atomic_add_i64(int64_t amount, int64_t *address);
-uint64_t atomic_add_u64(uint64_t amount, uint64_t *address);
-
-__END_DECLS
-
-// int64_t
-static inline int64_t atomic_increment_i64(int64_t *address)
-{
-	return atomic_add_i64(1, address);
-}
-static inline int64_t atomic_decrement_i64(int64_t *address)
-{
-	return atomic_add_i64(-1, address);
-}
-
-
-static inline int64_t atomic_bitwise_i64(int64_t andMask, int64_t orMask, int64_t xorMask, int64_t *address)
-{
-	int64_t oldValue;
-	int64_t newValue;
-
-	do {
-		oldValue = *address;
-		newValue = ((oldValue & andMask) | orMask) ^ xorMask;
-	} while(!atomic_compare_swap_i64(oldValue, newValue, address));
-
-	return oldValue;
-}
-static inline int64_t atomic_and_i64(int64_t mask, int64_t *address)
-{
-	return atomic_bitwise_i64(mask, 0, 0, address);
-}
-static inline int64_t atomic_or_i64(int64_t mask, int64_t *address)
-{
-	return atomic_bitwise_i64(-1, mask, 0, address);
-}
-static inline int64_t atomic_xor_i64(int64_t mask, int64_t *address)
-{
-	return atomic_bitwise_i64(-1, 0, mask, address);
-}
-
-// uint64_t
-static inline uint64_t atomic_increment_i64(uint64_t *address)
-{
-	return atomic_add_u64(1, address);
-}
-static inline uint64_t atomic_decrement_i64(uint64_t *address)
-{
-	return atomic_add_u64(-1, address);
-}
-
-
-static inline uint64_t atomic_bitwise_u64(uint64_t andMask, uint64_t orMask, uint64_t xorMask, uint64_t *address)
-{
-	uint64_t oldValue;
-	uint64_t newValue;
-
-	do {
-		oldValue = *address;
-		newValue = ((oldValue & andMask) | orMask) ^ xorMask;
-	} while(!atomic_compare_swap_u64(oldValue, newValue, address));
-
-	return oldValue;
-}
-static inline uint64_t atomic_and_u64(uint64_t mask, uint64_t *address)
-{
-	return atomic_bitwise_u64(mask, 0, 0, address);
-}
-static inline uint64_t atomic_or_u64(uint64_t mask, uint64_t *address)
-{
-	return atomic_bitwise_u64(-1, mask, 0, address);
-}
-static inline uint64_t atomic_xor_u64(uint64_t mask, uint64_t *address)
-{
-	return atomic_bitwise_u64(-1, 0, mask, address);
-}
-
-// -------------
-// MARK: -
-// MARK: Misc
-// -------------
-
-static inline void memory_fence()
-{
-	__asm__ volatile("" ::: "memory");
-}
-
-static inline void memory_barrier()
-{
-	// See: http://stackoverflow.com/questions/2599238
-	// Basically: The lock prefix is faster and acts as a memory barrier just as well as mfence
-	__asm__ volatile("lock orl $0, (%%esp)" ::: "memory");
-}
 
 #endif /* _ATOMIC_H_ */

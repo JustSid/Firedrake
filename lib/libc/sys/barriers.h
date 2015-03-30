@@ -26,12 +26,12 @@
 	#include "arm/barriers.h"
 #endif
 
-// The header provides 5 barriers/fences that can be used to perform synchronization
+// The header provides fences similiar to the C(++)11 fences
 // 
 // __instruction_fence(), flushes the instruction cache
-// __memory_fence(), is really a compiler fence to stop the compiler from re-ordering reads/writes before and after the barrier
-// __load_fence(), a load fence that forces the CPU to complete queued stores
-// __store_fence(), a store fence that forces the CPU to complete queued loads
-// __full_fence(), a full fence that serializes all memory stores and loads
+//
+// __thread_fence_acquire(), a load fence that forces the CPU to complete queued stores
+// __thread_fence_release(), a store fence that forces the CPU to complete queued loads
+// __thread_fence_seq_cst(), a full fence that serializes all memory stores and loads
 
 #endif /* _BARRIERS_H_ */

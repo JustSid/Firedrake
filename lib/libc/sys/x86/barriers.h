@@ -21,21 +21,17 @@
 
 static inline void __instruction_fence()
 {}
-static inline void __memory_fence()
+static inline void __thread_fence_acquire()
 {
 	__asm__ volatile("" ::: "memory");
 }
-static inline void __load_fence()
+static inline void __thread_fence_release()
 {
 	__asm__ volatile("" ::: "memory");
 }
-static inline void __store_fence()
+static inline void __thread_fence_seq_cst()
 {
-	__asm__ volatile("" ::: "memory");
-}
-static inline void __full_fence()
-{
-	__asm__ volatile("mfence" ::: "memory");
+	__asm__ volatile("lock; orl $0, (%%esp)" ::: "memory");
 }
 
 #endif /* _X86_BARRIERS_H_ */

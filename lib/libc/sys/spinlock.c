@@ -22,5 +22,5 @@
 void spinlock_init(spinlock_t *lock)
 {
 	lock->_lock = 0;
-	__store_fence();
+	__thread_fence_release();
 }
