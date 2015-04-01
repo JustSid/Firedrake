@@ -24,6 +24,7 @@
 #include <libc/stddef.h>
 #include <libcpp/bitfield.h>
 #include <kern/kern_return.h>
+#include <os/workqueue.h>
 
 namespace Sys
 {
@@ -210,9 +211,11 @@ namespace Sys
 		CPUState *GetLastState() const { return const_cast<CPUState *>(_lastState); }
 		CPUInfo *GetInfo() const { return const_cast<CPUInfo *>(&_info); } // Not valid until bootstrapped
 		Trampoline *GetTrampoline() const { return const_cast<Trampoline *>(_trampoline); }
+		OS::WorkQueue *GetWorkQueue() const { return const_cast<OS::WorkQueue *>(_workQueue); }
 
 		void SetState(CPUState *state);
 		void SetTrampoline(Trampoline *trampoline);
+		void SetWorkQueue(OS::WorkQueue *workQueue);
 		void SetFlags(Flags flags);
 
 		void AddFlags(Flags flags);
@@ -238,6 +241,7 @@ namespace Sys
 		CPUState *_lastState;
 		CPUInfo _info;
 		Trampoline *_trampoline;
+		OS::WorkQueue *_workQueue;
 	};
 
 	class CPUID

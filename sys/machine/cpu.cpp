@@ -81,6 +81,10 @@ namespace Sys
 	{
 		_trampoline = trampoline;
 	}
+	void CPU::SetWorkQueue(OS::WorkQueue *workQueue)
+	{
+		_workQueue = workQueue;
+	}
 	void CPU::SetFlags(Flags flags)
 	{
 		_flags = flags;
@@ -252,10 +256,16 @@ namespace Sys
 			{
 				cpu->AddFlags(CPU::Flags::Bootstrap | CPU::Flags::Running);
 				_bootstrapCPU = cpu;
-
-				break;
 			}
 
+			OS::WorkQueue *workQueue = new OS::WorkQueue();
+			if(!workQueue)
+			{
+				kprintf("Failed to allocate work queue for CPU %i", (int)i);
+				return Error(KERN_NO_MEMORY);
+			}
+
+			cpu->SetWorkQueue(workQueue);
 			cpu ++;
 		}
 
