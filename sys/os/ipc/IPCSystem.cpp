@@ -37,8 +37,6 @@ namespace OS
 			_task = task;
 			_portRightName = 0;
 
-			spinlock_init(&_lock);
-
 			return this;
 		}
 
@@ -52,11 +50,11 @@ namespace OS
 
 		void System::Lock()
 		{
-			spinlock_lock(&_lock);
+			_lock.Lock();
 		}
 		void System::Unlock()
 		{
-			spinlock_unlock(&_lock);
+			_lock.Unlock();
 		}
 
 

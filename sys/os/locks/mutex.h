@@ -1,5 +1,5 @@
 //
-//  IPCSystem.h
+//  mutext.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,56 +16,77 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IPCSYSTEM_H_
-#define _IPCSYSTEM_H_
+#ifndef _OS_MUTEX_H_
+#define _OS_MUTEX_H_
 
 #include <prefix.h>
-#include <libc/sys/spinlock.h>
-#include <objects/IOObject.h>
-#include <objects/IOString.h>
-#include <objects/IODictionary.h>
-#include <os/locks/mutex.h>
-#include "IPCPort.h"
-#include "IPCPortRight.h"
+#include <libc/stdint.h>
+#include <libcpp/atomic.h>
+#include <kern/kprintf.h>
+#include <machine/cpu.h>
+#include <kern/panic.h>
+#include <os/waitqueue.h>
 
 namespace OS
 {
-	class Task;
-
-	namespace IPC
+	class Mutex
 	{
-		class System : public IO::Object
+	public:
+		Mutex() :
+			_owned(false),
+			_owner(nullptr)
+		{}
+
+		~Mutex()
 		{
-		public:
-			System *Init(Task *task, uint16_t name);
-			void Dealloc() override;
+			if(_owned.load())
+				panic("Mutex destructor called while mutex is locked");
+		}
 
-			void Lock();
-			void Unlock();
+		void Unlock()
+		{
+			_owned.store(false, std::memory_order_release);
+			WakeupOne(this);
+		}
 
-			uint16_t GetName() const { return _name; }
-			Task *GetTask() const { return _task; }
+		void Lock()
+		{
+			if(TryLock())
+				return;
 
-			Port *AddPort(uint16_t name, Port::Rights rights);
-			PortRight *AddPortRight(Port *port, Task *holder, bool oneTime);
+			while(1)
+			{
+				for(size_t i = 0; i < 10000; i ++)
+				{
+					if(TryLock())
+						return;
 
-			IO::StrongRef<Port> GetPort(uint16_t name);
-			IO::StrongRef<PortRight> GetPortRight(uint16_t name);
+					if(__expect_false(_owner == Sys::CPU::GetCurrentCPU()))
+						panic("Double locking of mutex");
 
-			void RelinquishPortRight(PortRight *right);
+					Sys::CPUPause();
+				}
+				
+				Wait(this).Suppress();
+			}
+		}
 
-		private:
-			Task *_task;
-			uint16_t _name;
-			IO::Dictionary *_portRights;
-			IO::Dictionary *_ports;
-			Mutex _lock;
+		bool TryLock()
+		{
+			bool expected = false;
+			if(_owned.compare_exchange(expected, true, std::memory_order_release))
+			{
+				_owner = Sys::CPU::GetCurrentCPU(); // This is a bit racey to be honest
+				return true;
+			}
+			
+			return false;
+		}
 
-			uint16_t _portRightName;
-
-			IODeclareMeta(System)
-		};
-	}
+	private:
+		std::atomic<bool> _owned;
+		Sys::CPU *_owner;
+	};
 }
 
-#endif /* _IPCSYSTEM_H_ */
+#endif /* _OS_MUTEX_H_ */
