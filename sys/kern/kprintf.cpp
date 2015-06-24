@@ -75,3 +75,17 @@ void kprintf(const char *format, ...)
 
 	va_end(args);
 }
+
+void kputs(const char *string)
+{
+	if(__expect_false(Sys::__outHandlerCount == 0))
+		return;
+
+	size_t length = strlen(string);
+
+	for(size_t i = 0; i < Sys::__outHandlerCount; i ++)
+	{
+		if(Sys::__outHandler[i])
+			Sys::__outHandler[i](string, length);
+	}
+}

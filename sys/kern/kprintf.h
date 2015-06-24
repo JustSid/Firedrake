@@ -28,5 +28,6 @@ namespace Sys
 }
 
 void kprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
+void kputs(const char *string);
 
 #endif /* _KPRINTF_H_ */
