@@ -16,6 +16,9 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#ifndef _WORKQUEUE_H_
+#define _WORKQUEUE_H_
+
 #include <prefix.h>
 #include <libc/sys/spinlock.h>
 #include <libc/stdint.h>
@@ -65,3 +68,5 @@ namespace OS
 		Entry *_workListHead;
 	};
 }
+
+#endif /* _WORKQUEUE_H_ */

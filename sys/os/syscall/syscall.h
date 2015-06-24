@@ -26,16 +26,18 @@
 
 namespace OS
 {
+	class Thread;
+	class Task;
 	struct SyscallTrap
 	{
-		KernReturn<uint32_t> (*handler)(uint32_t &, void *);
+		KernReturn<uint32_t> (*handler)(Thread *thread, void *);
 		size_t argCount;
 	};
 
 	class SyscallScopedMapping
 	{
 	public:
-		SyscallScopedMapping(const void *pointer, size_t size);
+		SyscallScopedMapping(Task *task, const void *pointer, size_t size);
 		~SyscallScopedMapping();
 
 		template<class T>

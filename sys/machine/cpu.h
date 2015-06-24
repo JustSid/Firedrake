@@ -198,7 +198,8 @@ namespace Sys
 			Timedout  = (1 << 2),
 
 			// General purpose runtime flags
-			InterruptsEnabled = (1 << 5)
+			InterruptsEnabled = (1 << 5),
+			WaitQueueEnabled = (1 << 6)
 		);
 
 		// Must be called from the actual CPU!

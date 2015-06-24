@@ -46,6 +46,9 @@ namespace OS
 		void AddThread(Thread *thread) final;
 		void RemoveThread(Thread *thread) final;
 
+		void DisableCPU(Sys::CPU *cpu) final;
+		void EnableCPU(Sys::CPU *cpu) final;
+
 	private:
 		static uint32_t DoWorkqueue(uint32_t esp, Sys::CPU *cpu);
 		static uint32_t DoReschedule(uint32_t esp, Sys::CPU *cpu);

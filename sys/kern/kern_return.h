@@ -35,6 +35,7 @@
 #define KERN_ACCESS_VIOLATION   10
 #define KERN_IPC_NO_RECEIVER    11
 #define KERN_IPC_NO_SENDER      12
+#define KERN_TASK_RESTART       1024 // Only used internally
 
 #if __KERNEL
 

@@ -20,6 +20,7 @@
 #include <libc/string.h>
 #include <machine/interrupts/interrupts.h>
 #include <os/scheduler/scheduler.h>
+#include <os/workqueue.h>
 #include <kern/kprintf.h>
 #include <kern/kalloc.h>
 #include "syscall.h"
@@ -29,13 +30,11 @@ namespace OS
 	extern SyscallTrap _syscallTrapTable[];
 	extern SyscallTrap _kernTrapTable[];
 
-	SyscallScopedMapping::SyscallScopedMapping(const void *pointer, size_t size) :
+	SyscallScopedMapping::SyscallScopedMapping(Task *task, const void *pointer, size_t size) :
 		_address(0x0),
 		_pointer(0x0),
 		_pages(0)
 	{
-		Task *task = Scheduler::GetScheduler()->GetActiveTask();
-
 		vm_address_t ptr = reinterpret_cast<vm_address_t>(const_cast<void *>(pointer));
 
 		vm_address_t base = VM_PAGE_ALIGN_DOWN(ptr);
@@ -61,21 +60,18 @@ namespace OS
 			Sys::VM::Directory::GetKernelDirectory()->Free(_address, _pages);
 	}
 
-	uint32_t HandleSyscall(uint32_t esp, Sys::CPU *cpu)
+	void CompleteSyscall(void *context)
 	{
-		Sys::CPUState *state = cpu->GetLastState();
+		Thread *thread = reinterpret_cast<Thread *>(context);
+		Sys::CPUState *state = reinterpret_cast<Sys::CPUState *>(thread->GetESP());
+		Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
 
-		if(state->eax >= 128)
-			return esp;
+		Scheduler *scheduler = Scheduler::GetScheduler();
 
 		bool kernelTrap = (state->interrupt == 0x81);
 		const SyscallTrap *entry = kernelTrap ? (_kernTrapTable + state->eax) : (_syscallTrapTable + state->eax);
 
-		Thread *thread = Scheduler::GetScheduler()->GetActiveThread();
-		thread->SetESP(esp);
-
 		uint32_t *arguments = nullptr;
-
 		if(entry->argCount)
 		{
 			arguments = new uint32_t[entry->argCount];
@@ -136,11 +132,25 @@ namespace OS
 			state->eax = KERN_NO_MEMORY;
 		}
 
+		scheduler->UnblockThread(thread);
+		return;
 
 	handler:
+		bool hadFlag = cpu->GetFlagsSet(Sys::CPU::Flags::WaitQueueEnabled);
+		cpu->RemoveFlags(Sys::CPU::Flags::WaitQueueEnabled);
 
-		// Call the actual handler of the system call
-		KernReturn<uint32_t> result = entry->handler(esp, arguments);
+		KernReturn<uint32_t> result = entry->handler(thread, arguments);
+
+		if(hadFlag)
+			cpu->AddFlags(Sys::CPU::Flags::WaitQueueEnabled);
+
+		if(!result.IsValid() && result.GetError().GetCode() == KERN_TASK_RESTART)
+		{
+			delete[] arguments;
+			cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread));
+
+			return;
+		}
 
 		if(kernelTrap)
 		{
@@ -162,9 +172,24 @@ namespace OS
 		}
 
 		delete[] arguments;
-		
-		// Give the scheduler a chance to reschedule as a side effect to
-		// the system call that just exectued
+		scheduler->UnblockThread(thread);
+	}
+
+	uint32_t HandleSyscall(uint32_t esp, Sys::CPU *cpu)
+	{
+		Sys::CPUState *state = cpu->GetLastState();
+
+		if(state->eax >= 128)
+			return esp;
+
+		Scheduler *scheduler = Scheduler::GetScheduler();
+
+		Thread *thread = scheduler->GetActiveThread();
+		thread->SetESP(esp);
+
+		scheduler->BlockThread(thread);
+		cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread));
+
 		return Scheduler::GetScheduler()->PokeCPU(esp, cpu);
 	}
 

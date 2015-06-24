@@ -25,32 +25,32 @@ namespace OS
 {
 	namespace IPC
 	{
-		KernReturn<uint32_t> Syscall_IPCTaskPort(__unused uint32_t &esp, IPCPortCallArgs *arguments)
+		KernReturn<uint32_t> Syscall_IPCTaskPort(Thread *thread, IPCPortCallArgs *arguments)
 		{
-			OS::SyscallScopedMapping portMapping(arguments->port, sizeof(ipc_port_t));
+			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->port, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
-			*port = Scheduler::GetScheduler()->GetActiveTask()->GetTaskPort()->GetPortName();
+			*port = thread->GetTask()->GetTaskPort()->GetPortName();
 
 			return KERN_SUCCESS;
 		}
 
-		KernReturn<uint32_t> Syscall_IPCThreadPort(__unused uint32_t &esp, IPCPortCallArgs *arguments)
+		KernReturn<uint32_t> Syscall_IPCThreadPort(Thread *thread, IPCPortCallArgs *arguments)
 		{
-			OS::SyscallScopedMapping portMapping(arguments->port, sizeof(ipc_port_t));
+			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->port, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
-			*port = Scheduler::GetScheduler()->GetActiveThread()->GetThreadPort()->GetPortName();
+			*port = thread->GetThreadPort()->GetPortName();
 
 			return KERN_SUCCESS;
 		}
 
-		KernReturn<uint32_t> Syscall_IPCMessage(__unused uint32_t &esp, IPCReadWriteArgs *arguments)
+		KernReturn<uint32_t> Syscall_IPCMessage(Thread *thread, IPCReadWriteArgs *arguments)
 		{
 			if(arguments->size == 0 || (arguments->mode != IPC_WRITE && arguments->mode != IPC_READ))
 				return KERN_INVALID_ARGUMENT;
 
-			OS::SyscallScopedMapping headerMapping(arguments->header, arguments->size + sizeof(ipc_header_t));
+			OS::SyscallScopedMapping headerMapping(thread->GetTask(), arguments->header, arguments->size + sizeof(ipc_header_t));
 			ipc_header_t *header = headerMapping.GetMemory<ipc_header_t>();
 			
 			KernReturn<void> result;
@@ -60,7 +60,7 @@ namespace OS
 				case IPC_READ:
 				{
 					Message *message = Message::Alloc()->Init(header);
-					result = Read(message);
+					result = Read(thread->GetTask(), message);
 					message->Release();
 					
 					break;
@@ -69,7 +69,7 @@ namespace OS
 				case IPC_WRITE:
 				{
 					Message *message = Message::Alloc()->Init(header);
-					result = Write(message);
+					result = Write(thread->GetTask(), message);
 					message->Release();
 
 					break;
@@ -82,12 +82,12 @@ namespace OS
 			return KERN_SUCCESS;
 		}
 
-		KernReturn<uint32_t> Syscall_IPCAllocatePort(__unused uint32_t &esp, IPCAllocatePortArgs *arguments)
+		KernReturn<uint32_t> Syscall_IPCAllocatePort(Thread *thread, IPCAllocatePortArgs *arguments)
 		{
-			OS::SyscallScopedMapping portMapping(arguments->result, sizeof(ipc_port_t));
+			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->result, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
-			Task *task = Scheduler::GetScheduler()->GetActiveTask();
+			Task *task = thread->GetTask();
 			System *system = task->GetTaskSystem();
 
 			system->Lock();

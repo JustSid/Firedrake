@@ -128,7 +128,7 @@ namespace OS
 		}
 
 
-		KernReturn<void> Write(Message *message)
+		KernReturn<void> Write(Task *task, Message *message)
 		{
 			ipc_port_t receiverPortName = message->GetReceiver();
 			System *system = LookupSystem(receiverPortName);
@@ -137,7 +137,7 @@ namespace OS
 			if(!port)
 				return Error(KERN_INVALID_ARGUMENT);
 
-			KernReturn<void> result = ValidateMessage(port, message, Scheduler::GetScheduler()->GetActiveTask());
+			KernReturn<void> result = ValidateMessage(port, message, task);
 			if(!result.IsValid())
 			{
 				system->Unlock();
@@ -162,7 +162,7 @@ namespace OS
 			return ErrorNone;
 		}
 
-		KernReturn<void> Read(Message *message)
+		KernReturn<void> Read(Task *receiver, Message *message)
 		{
 			if(IPCIsPortRight(message->GetReceiver()))
 				return Error(KERN_IPC_NO_RECEIVER);
@@ -172,7 +172,6 @@ namespace OS
 				return Error(KERN_INVALID_ARGUMENT);
 
 			// Validate that we can even read from that port
-			Task *receiver = Scheduler::GetScheduler()->GetActiveTask();
 			if(receiver->GetPid() != (pid_t)IPCGetPID(message->GetReceiver()))
 				return Error(KERN_ACCESS_VIOLATION);
 
@@ -193,9 +192,15 @@ namespace OS
 			{
 				if(header->flags & IPC_HEADER_FLAG_BLOCK)
 				{
-					WaitWithCallback(port.Load(), [system] {
+					KernReturn<void> result = WaitWithCallback(port.Load(), [system] {
 						system->Unlock();
 					});
+
+					if(!result.IsValid())
+					{
+						system->Unlock();
+						return Error(KERN_TASK_RESTART);
+					}
 
 					goto readMessageRetry;
 				}

@@ -18,6 +18,7 @@
 
 #include <prefix.h>
 #include <personality/personality.h>
+#include <machine/interrupts/interrupts.h>
 #include <os/scheduler/scheduler.h>
 #include <os/waitqueue.h>
 #include <os/ipc/IPC.h>
@@ -31,14 +32,94 @@ namespace OS
 {
 	ipc_port_t port;
 
-	void Test();
+	void KernelWorkThread()
+	{
+		struct WorkProxy
+		{
+			WorkQueue::Entry *entries;
+			WorkQueue *queue;
+		};
+
+		size_t count = Sys::CPU::GetCPUCount();
+		WorkProxy *proxies = new WorkProxy[count];
+
+		for(size_t i = 0; i < count; i ++)
+		{
+			Sys::CPU *cpu = Sys::CPU::GetCPUWithID(i);
+			WorkProxy *proxy = proxies + i;
+
+			proxy->queue = cpu->GetWorkQueue();	
+		}
+
+		while(1)
+		{
+			bool enabled = Sys::DisableInterrupts();
+			Sys::CPU *current = Sys::CPU::GetCurrentCPU();
+
+			for(size_t i = 0; i < count; i ++)
+			{
+				Sys::CPU *cpu = Sys::CPU::GetCPUWithID(i);
+				WorkProxy *proxy = proxies + i;
+
+				proxy->entries = (cpu == current) ? proxy->queue->PopAll() : proxy->queue->PopAllRemote();
+			}
+
+			if(enabled)
+				Sys::EnableInterrupts();
+
+			// Perform the work
+			for(size_t i = 0; i < count; i ++)
+			{
+				WorkProxy *proxy = proxies + i;
+
+				WorkQueue::Entry *entry = proxy->entries;
+				while(entry)
+				{
+					entry->callback(entry->context);
+					entry = entry->next;
+				}
+			}
+
+			// Refurbish the work lists
+			enabled = Sys::DisableInterrupts();
+			current = Sys::CPU::GetCurrentCPU();
+
+			for(size_t i = 0; i < count; i ++)
+			{
+				Sys::CPU *cpu = Sys::CPU::GetCPUWithID(i);
+				WorkProxy *proxy = proxies + i;
+
+				if(!proxy->entries)
+					continue;
+
+				if(cpu == current)
+				{
+					proxy->queue->RefurbishList(proxy->entries);
+					proxy->entries = nullptr;
+				}
+				else
+				{
+					proxy->queue->RefurbishListRemote(proxy->entries);
+					proxy->entries = nullptr;
+				}
+			}
+
+			if(enabled)
+				Sys::EnableInterrupts();
+
+			Sys::CPUHalt();
+		}
+	}
 
 	void KernelTaskMain()
 	{
 		Sys::Personality::GetPersonality()->FinishBootstrapping();
 
-		// Set up some simple IPC ports
 		Task *self = Scheduler::GetScheduler()->GetActiveTask();
+
+		__unused Thread *workThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&KernelWorkThread), Thread::PriorityClassKernel, 16);
+
+		// Set up some simple IPC ports
 		IPC::System *system = self->GetTaskSystem();
 		system->Lock();
 
@@ -66,7 +147,7 @@ namespace OS
 
 		while(1)
 		{
-			KernReturn<void> result = Read(message);
+			KernReturn<void> result = Read(self, message);
 
 			if(result.IsValid())
 			{

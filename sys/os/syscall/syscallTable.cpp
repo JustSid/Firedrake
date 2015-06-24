@@ -24,11 +24,11 @@
 namespace OS
 {
 	#define SYSCALL_TRAP(name, handler, argCount) \
-		{ (KernReturn<uint32_t> (*)(uint32_t &, void *))handler, (size_t)argCount }
+		{ (KernReturn<uint32_t> (*)(Thread *, void *))handler, (size_t)argCount }
 		
 	#define SYSCALL_TRAP_INVALID() SYSCALL_TRAP("invalid", &SyscallInvalid, 0)
 
-	KernReturn<uint32_t> SyscallInvalid(__unused uint32_t &esp, __unused void *args)
+	KernReturn<uint32_t> SyscallInvalid(__unused Thread *thread, __unused void *args)
 	{
 		kprintf("Invalid syscall trap\n");
 		return 0;

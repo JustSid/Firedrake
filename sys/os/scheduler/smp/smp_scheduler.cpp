@@ -19,6 +19,7 @@
 #include <libcpp/vector.h>
 #include <libc/sys/spinlock.h>
 #include <libcpp/new.h>
+#include <libcpp/atomic.h>
 #include <kern/panic.h>
 #include <kern/kprintf.h>
 #include <machine/clock/clock.h>
@@ -44,7 +45,8 @@ namespace OS
 			_activeThread(nullptr),
 			_nextThread(nullptr),
 			_idleThread(nullptr),
-			_needsReschedule(false)
+			_needsReschedule(false),
+			_enabled(true)
 		{
 			spinlock_init(&_internalLock);
 			spinlock_init(&_commandLock);
@@ -57,6 +59,9 @@ namespace OS
 
 			if(__expect_true(!_firstRun))
 				thread->SetESP(esp);
+
+			if(__expect_false(_enabled.load(std::memory_order_acquire) == false))
+				return esp;
 
 			SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
 			data->usage ++;
@@ -148,6 +153,15 @@ namespace OS
 			spinlock_unlock(&_commandLock);
 
 			return needsReschedule;
+		}
+
+		void Disable()
+		{
+			_enabled.store(false, std::memory_order_release);
+		}
+		void Enable()
+		{
+			_enabled.store(true, std::memory_order_release);
 		}
 
 	private:
@@ -321,6 +335,7 @@ namespace OS
 		bool _firstRun;
 		bool _hasForcedDown;
 		bool _needsReschedule;
+		std::atomic<bool> _enabled;
 
 		spinlock_t _internalLock;
 		spinlock_t _commandLock;
@@ -354,7 +369,7 @@ namespace OS
 				_schedulerMap[i] = new(proxies + i) CPUScheduler(cpu);
 		}
 
-		Sys::SetInterruptHandler(0x40, &SMPScheduler::DoReschedule);
+		Sys::SetInterruptHandler(0x23, &SMPScheduler::DoReschedule);
 		Sys::SetInterruptHandler(0x41, &SMPScheduler::DoWorkqueue);
 
 		_sharedScheduler = this;
@@ -420,7 +435,18 @@ namespace OS
 
 	void SMPScheduler::RescheduleCPU(Sys::CPU *cpu)
 	{
-		Sys::APIC::SendIPI(0x40, cpu);
+		Sys::APIC::SendIPI(0x23, cpu);
+	}
+
+	void SMPScheduler::DisableCPU(Sys::CPU *cpu)
+	{
+		CPUScheduler *scheduler = _schedulerMap[cpu->GetID()];
+		scheduler->Disable();
+	}
+	void SMPScheduler::EnableCPU(Sys::CPU *cpu)
+	{
+		CPUScheduler *scheduler = _schedulerMap[cpu->GetID()];
+		scheduler->Enable();
 	}
 
 

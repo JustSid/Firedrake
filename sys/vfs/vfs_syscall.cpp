@@ -22,13 +22,13 @@
 
 namespace VFS
 {
-	KernReturn<uint32_t> Syscall_VFSOpen(__unused uint32_t &esp, VFSOpenArgs *arguments)
+	KernReturn<uint32_t> Syscall_VFSOpen(OS::Thread *thread, VFSOpenArgs *arguments)
 	{
-		OS::SyscallScopedMapping pathMapping(arguments->path, MAXNAME);
+		OS::SyscallScopedMapping pathMapping(thread->GetTask(), arguments->path, MAXNAME);
 
 		const char *path = pathMapping.GetMemory<const char>();
 
-		KernReturn<int> fd = Open(Context::GetActiveContext(), path, arguments->flags);
+		KernReturn<int> fd = Open(thread->GetTask()->GetVFSContext(), path, arguments->flags);
 
 		if(!fd.IsValid())
 			return fd.GetError();
@@ -36,9 +36,9 @@ namespace VFS
 		return fd.Get();
 	}
 
-	KernReturn<uint32_t> Syscall_VFSClose(__unused uint32_t &esp, VFSCloseArgs *arguments)
+	KernReturn<uint32_t> Syscall_VFSClose(OS::Thread *thread, VFSCloseArgs *arguments)
 	{
-		KernReturn<void> result = Close(Context::GetActiveContext(), arguments->fd);
+		KernReturn<void> result = Close(thread->GetTask()->GetVFSContext(), arguments->fd);
 
 		if(!result.IsValid())
 			return result.GetError();
@@ -46,9 +46,9 @@ namespace VFS
 		return 0;
 	}
 
-	KernReturn<uint32_t> Syscall_VFSWrite(__unused uint32_t &esp, VFSWriteArgs *arguments)
+	KernReturn<uint32_t> Syscall_VFSWrite(OS::Thread *thread, VFSWriteArgs *arguments)
 	{
-		KernReturn<size_t> result = Write(Context::GetActiveContext(), arguments->fd, arguments->data, arguments->size);
+		KernReturn<size_t> result = Write(thread->GetTask()->GetVFSContext(), arguments->fd, arguments->data, arguments->size);
 
 		if(!result.IsValid())
 			return result.GetError();
@@ -56,9 +56,9 @@ namespace VFS
 		return result.Get();
 	}
 
-	KernReturn<uint32_t> Syscall_VFSRead(__unused uint32_t &esp, VFSReadArgs *arguments)
+	KernReturn<uint32_t> Syscall_VFSRead(OS::Thread *thread, VFSReadArgs *arguments)
 	{
-		KernReturn<size_t> result = Read(Context::GetActiveContext(), arguments->fd, arguments->data, arguments->size);
+		KernReturn<size_t> result = Read(thread->GetTask()->GetVFSContext(), arguments->fd, arguments->data, arguments->size);
 
 		if(!result.IsValid())
 			return result.GetError();
@@ -66,9 +66,9 @@ namespace VFS
 		return result.Get();
 	}
 
-	KernReturn<uint32_t> Syscall_VFSSeek(__unused uint32_t &esp, VFSSeekArgs *arguments)
+	KernReturn<uint32_t> Syscall_VFSSeek(OS::Thread *thread, VFSSeekArgs *arguments)
 	{
-		KernReturn<off_t> result = Seek(Context::GetActiveContext(), arguments->fd, arguments->offset, arguments->whence);
+		KernReturn<off_t> result = Seek(thread->GetTask()->GetVFSContext(), arguments->fd, arguments->offset, arguments->whence);
 
 		if(!result.IsValid())
 			return result.GetError();

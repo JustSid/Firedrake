@@ -46,7 +46,7 @@ namespace Sys
 	CPU::CPU(uint8_t id, uint8_t apicID, Flags flags) :
 		_id(id),
 		_apicID(apicID),
-		_flags(flags),
+		_flags(flags | Flags::WaitQueueEnabled),
 		_lastState(nullptr),
 		_trampoline(nullptr)
 	{}

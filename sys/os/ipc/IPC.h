@@ -33,8 +33,8 @@ namespace OS
 	{
 		IO::StrongRef<Port> LookupPort(ipc_port_t name, bool lockSystem);
 
-		KernReturn<void> Read(Message *message);
-		KernReturn<void> Write(Message *message);
+		KernReturn<void> Read(Task *task, Message *message);
+		KernReturn<void> Write(Task *task, Message *message);
 
 		KernReturn<ipc_port_t> AllocatePort(ipc_name_t name, ipc_bits_t options);
 		KernReturn<ipc_port_t> AllocatePortRight(ipc_port_t port, ipc_size_t useCount);

@@ -43,9 +43,9 @@ namespace OS
 		} __attribute__((packed));
 
 
-		KernReturn<uint32_t> Syscall_IPCTaskPort(uint32_t &esp, IPCPortCallArgs *args);
-		KernReturn<uint32_t> Syscall_IPCThreadPort(uint32_t &esp, IPCPortCallArgs *args);
-		KernReturn<uint32_t> Syscall_IPCMessage(uint32_t &esp, IPCReadWriteArgs *args);
-		KernReturn<uint32_t> Syscall_IPCAllocatePort(uint32_t &esp, IPCAllocatePortArgs *args);
+		KernReturn<uint32_t> Syscall_IPCTaskPort(Thread *thread, IPCPortCallArgs *args);
+		KernReturn<uint32_t> Syscall_IPCThreadPort(Thread *thread, IPCPortCallArgs *args);
+		KernReturn<uint32_t> Syscall_IPCMessage(Thread *thread, IPCReadWriteArgs *args);
+		KernReturn<uint32_t> Syscall_IPCAllocatePort(Thread *thread, IPCAllocatePortArgs *args);
 	}
 }

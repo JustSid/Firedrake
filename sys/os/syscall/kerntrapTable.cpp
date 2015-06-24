@@ -24,11 +24,11 @@
 namespace OS
 {
 	#define KERN_TRAP(name, handler, argCount) \
-		{ (KernReturn<uint32_t> (*)(uint32_t &, void *))handler, (size_t)argCount }
+		{ (KernReturn<uint32_t> (*)(Thread *, void *))handler, (size_t)argCount }
 
 	#define KERN_TRAP_INVALID() KERN_TRAP("invalid", &KerntrapInvalid, 0)
 
-	KernReturn<uint32_t> KerntrapInvalid(__unused uint32_t &esp, __unused void *args)
+	KernReturn<uint32_t> KerntrapInvalid(__unused Thread *thread, __unused void *args)
 	{
 		kprintf("Invalid kernel trap\n");
 		return 0;

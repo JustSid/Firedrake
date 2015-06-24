@@ -53,9 +53,9 @@ namespace VFS
 		int whence;
 	} __attribute__((packed));
 
-	KernReturn<uint32_t> Syscall_VFSOpen(uint32_t &esp, VFSOpenArgs *arguments);
-	KernReturn<uint32_t> Syscall_VFSClose(uint32_t &esp, VFSCloseArgs *arguments);
-	KernReturn<uint32_t> Syscall_VFSWrite(uint32_t &esp, VFSWriteArgs *arguments);
-	KernReturn<uint32_t> Syscall_VFSRead(uint32_t &esp, VFSReadArgs *arguments);
-	KernReturn<uint32_t> Syscall_VFSSeek(uint32_t &esp, VFSSeekArgs *arguments);
+	KernReturn<uint32_t> Syscall_VFSOpen(OS::Thread *thread, VFSOpenArgs *arguments);
+	KernReturn<uint32_t> Syscall_VFSClose(OS::Thread *thread, VFSCloseArgs *arguments);
+	KernReturn<uint32_t> Syscall_VFSWrite(OS::Thread *thread, VFSWriteArgs *arguments);
+	KernReturn<uint32_t> Syscall_VFSRead(OS::Thread *thread, VFSReadArgs *arguments);
+	KernReturn<uint32_t> Syscall_VFSSeek(OS::Thread *thread, VFSSeekArgs *arguments);
 }

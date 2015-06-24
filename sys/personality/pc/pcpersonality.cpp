@@ -108,8 +108,8 @@ namespace Sys
 		Init("interrupts", Sys::CPUInitSecondStage);
 		Init("clock", Sys::ClockInit);
 		Init("smp", Sys::SMPInit);
-		Init("scheduler", OS::SchedulerInit);
 		Init("waitqueue", OS::WaitqueueInit);
+		Init("scheduler", OS::SchedulerInit);
 
 		Sys::Clock::ActivateClock();
 	}

@@ -122,6 +122,9 @@ namespace OS
 
 	KernReturn<void> WaitWithCallback(void *channel, IO::Function<void ()> &&callback)
 	{
+		if(!Sys::CPU::GetCurrentCPU()->GetFlagsSet(Sys::CPU::Flags::WaitQueueEnabled))
+			return Error(KERN_RESOURCES_MISSING);
+
 		WaitqueueLookup *lookup = WaitqueueLookup::Alloc()->Init(channel);
 
 		spinlock_lock(&_waitLock);
