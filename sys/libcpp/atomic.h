@@ -57,9 +57,9 @@ namespace std
 		{
 			return atomic_exchange_explicit(&_value, desired, order);
 		}
-		T compare_exchange(T &expected, T desired, std::memory_order order = std::memory_order_seq_cst)
+		bool compare_exchange(T &expected, T desired, std::memory_order order = std::memory_order_seq_cst)
 		{
-			return atomic_compare_exchange_explicit(&_value, expected, desired, order);
+			return atomic_compare_exchange_strong_explicit(&_value, &expected, desired, order, order);
 		}
 
 
