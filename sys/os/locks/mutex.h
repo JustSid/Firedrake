@@ -33,8 +33,7 @@ namespace OS
 	{
 	public:
 		Mutex() :
-			_owned(false),
-			_owner(nullptr)
+			_owned(false)
 		{}
 
 		~Mutex()
@@ -61,9 +60,6 @@ namespace OS
 					if(TryLock())
 						return;
 
-					if(__expect_false(_owner == Sys::CPU::GetCurrentCPU()))
-						panic("Double locking of mutex");
-
 					Sys::CPUPause();
 				}
 				
@@ -74,18 +70,11 @@ namespace OS
 		bool TryLock()
 		{
 			bool expected = false;
-			if(_owned.compare_exchange(expected, true, std::memory_order_release))
-			{
-				_owner = Sys::CPU::GetCurrentCPU(); // This is a bit racey to be honest
-				return true;
-			}
-			
-			return false;
+			return _owned.compare_exchange(expected, true, std::memory_order_release);
 		}
 
 	private:
 		std::atomic<bool> _owned;
-		Sys::CPU *_owner;
 	};
 }
 
