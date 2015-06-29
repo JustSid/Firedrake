@@ -23,10 +23,43 @@
 
 namespace OS
 {
-	#define SYSCALL_TRAP(name, handler, argCount) \
-		{ (KernReturn<uint32_t> (*)(Thread *, void *))handler, (size_t)argCount }
+	#define SYSCALL_TRAP(name, handler, argCount, argSize) \
+		{ (KernReturn<uint32_t> (*)(Thread *, void *))handler, (uint32_t)argCount, argSize }
+
+	#define SYSCALL_ARGENTRY(struct, entry) \
+		{ offsetof(struct, entry), sizeof(struct::entry) }
+
+	#define SYSCALL_ARGENTRIES(...) \
+		{ __VA_ARGS__ }
+
+	#define SYSCALL_TRAP0(name, handler) \
+		SYSCALL_TRAP(name, handler, 0, SYSCALL_ARGENTRIES())
+
+	#define SYSCALL_TRAP1(name, handler, st, arg0) \
+		SYSCALL_TRAP(name, handler, 1, SYSCALL_ARGENTRIES(SYSCALL_ARGENTRY(st, arg0)))
+
+	#define SYSCALL_TRAP2(name, handler, st, arg0, arg1) \
+		SYSCALL_TRAP(name, handler, 2, SYSCALL_ARGENTRIES(SYSCALL_ARGENTRY(st, arg0), SYSCALL_ARGENTRY(st, arg1)))
+
+	#define SYSCALL_TRAP3(name, handler, st, arg0, arg1, arg2) \
+		SYSCALL_TRAP(name, handler, 3, SYSCALL_ARGENTRIES(SYSCALL_ARGENTRY(st, arg0), SYSCALL_ARGENTRY(st, arg1), SYSCALL_ARGENTRY(st, arg2)))
+
+	#define SYSCALL_TRAP4(name, handler, st, arg0, arg1, arg2, arg3) \
+		SYSCALL_TRAP(name, handler, 4, SYSCALL_ARGENTRIES(SYSCALL_ARGENTRY(st, arg0), SYSCALL_ARGENTRY(st, arg1), SYSCALL_ARGENTRY(st, arg2), SYSCALL_ARGENTRY(st, arg3)))
+
+	#define SYSCALL_TRAP5(name, handler, st, arg0, arg1, arg2, arg3, arg4) \
+		SYSCALL_TRAP(name, handler, 5, SYSCALL_ARGENTRIES(SYSCALL_ARGENTRY(st, arg0), SYSCALL_ARGENTRY(st, arg1), SYSCALL_ARGENTRY(st, arg2), SYSCALL_ARGENTRY(st, arg3), SYSCALL_ARGENTRY(st, arg4)))
+
+	#define SYSCALL_TRAP6(name, handler, st, arg0, arg1, arg2, arg3, arg4, arg5) \
+		SYSCALL_TRAP(name, handler, 6, SYSCALL_ARGENTRIES(SYSCALL_ARGENTRY(st, arg0), SYSCALL_ARGENTRY(st, arg1), SYSCALL_ARGENTRY(st, arg2), SYSCALL_ARGENTRY(st, arg3), SYSCALL_ARGENTRY(st, arg4), SYSCALL_ARGENTRY(st, arg5)))
+
+	#define SYSCALL_TRAP7(name, handler, st, arg0, arg1, arg2, arg3, arg4, arg5, arg6) \
+		SYSCALL_TRAP(name, handler, 7, SYSCALL_ARGENTRIES(SYSCALL_ARGENTRY(st, arg0), SYSCALL_ARGENTRY(st, arg1), SYSCALL_ARGENTRY(st, arg2), SYSCALL_ARGENTRY(st, arg3), SYSCALL_ARGENTRY(st, arg4), SYSCALL_ARGENTRY(st, arg5), SYSCALL_ARGENTRY(st, arg6)))
+
+	#define SYSCALL_TRAP8(name, handler, st, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) \
+		SYSCALL_TRAP(name, handler, 8, SYSCALL_ARGENTRIES(SYSCALL_ARGENTRY(st, arg0), SYSCALL_ARGENTRY(st, arg1), SYSCALL_ARGENTRY(st, arg2), SYSCALL_ARGENTRY(st, arg3), SYSCALL_ARGENTRY(st, arg4), SYSCALL_ARGENTRY(st, arg5), SYSCALL_ARGENTRY(st, arg6), SYSCALL_ARGENTRY(st, arg7)))
 		
-	#define SYSCALL_TRAP_INVALID() SYSCALL_TRAP("invalid", &SyscallInvalid, 0)
+	#define SYSCALL_TRAP_INVALID() SYSCALL_TRAP("invalid", &SyscallInvalid, 0, SYSCALL_ARGENTRIES())
 
 	KernReturn<uint32_t> SyscallInvalid(__unused Thread *thread, __unused void *args)
 	{
@@ -36,11 +69,11 @@ namespace OS
 
 	SyscallTrap _syscallTrapTable[128] = {
 		/* 0 */ SYSCALL_TRAP_INVALID(),
-		/* 1 */ SYSCALL_TRAP("open", &VFS::Syscall_VFSOpen, 2),
-		/* 2 */ SYSCALL_TRAP("close", &VFS::Syscall_VFSClose, 1),
-		/* 3 */ SYSCALL_TRAP("read", &VFS::Syscall_VFSRead, 4),
-		/* 4 */ SYSCALL_TRAP("write", &VFS::Syscall_VFSWrite, 3),
-		/* 5 */ SYSCALL_TRAP("seek", &VFS::Syscall_VFSSeek, 3),
+		/* 1 */ SYSCALL_TRAP2("open", &VFS::Syscall_VFSOpen, VFS::VFSOpenArgs, path, flags),
+		/* 2 */ SYSCALL_TRAP1("close", &VFS::Syscall_VFSClose, VFS::VFSCloseArgs, fd),
+		/* 3 */ SYSCALL_TRAP3("read", &VFS::Syscall_VFSRead, VFS::VFSReadArgs, fd, data, size),
+		/* 4 */ SYSCALL_TRAP3("write", &VFS::Syscall_VFSWrite, VFS::VFSWriteArgs, fd, data, size),
+		/* 5 */ SYSCALL_TRAP3("seek", &VFS::Syscall_VFSSeek, VFS::VFSSeekArgs, fd, offset, whence),
 		/* 6 */ SYSCALL_TRAP_INVALID(),
 		/* 7 */ SYSCALL_TRAP_INVALID(),
 		/* 8 */ SYSCALL_TRAP_INVALID(),

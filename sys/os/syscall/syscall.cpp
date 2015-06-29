@@ -71,39 +71,47 @@ namespace OS
 		bool kernelTrap = (state->interrupt == 0x81);
 		const SyscallTrap *entry = kernelTrap ? (_kernTrapTable + state->eax) : (_syscallTrapTable + state->eax);
 
-		uint32_t *arguments = nullptr;
+		uint8_t *arguments = nullptr;
 		if(entry->argCount)
 		{
-			arguments = new uint32_t[entry->argCount];
+			size_t size = entry->args[entry->argCount - 1].offset + entry->args[entry->argCount - 1].size;
+
+			arguments = new uint8_t[size];
 			if(!arguments)
 				goto badMemory;
 
-			switch(entry->argCount)
-			{
-				default:
-					arguments[4] = state->ebx;
-				case 4:
-					arguments[3] = state->edx;
-				case 3:
-					arguments[2] = state->esi;
-				case 2:
-					arguments[1] = state->edi;
-				case 1:
-					arguments[0] = state->ecx;
-				case 0:
-					break;
-			}
+			uint32_t *buffer = reinterpret_cast<uint32_t *>(arguments);
 
-			if(entry->argCount > 5)
+			buffer[4] = state->ebx;
+			buffer[3] = state->edx;
+			buffer[2] = state->esi;
+			buffer[1] = state->edi;
+			buffer[0] = state->ecx;
+
+			if(size > 5 * sizeof(uint32_t))
 			{
 				// Get all the other arguments from the stack
-				size_t count = entry->argCount - 5;
+				size_t left;
+				size_t offset = 0;
+
+				for(size_t i = 0; i < entry->argCount; i ++)
+				{
+					SyscallArg *arg = entry->args + i;
+
+					if(arg->offset + arg->size >= 5 * sizeof(uint32_t))
+					{
+						left = size - arg->offset;
+						offset = arg->offset;
+
+						break;
+					}
+				}
 
 				uint32_t offset = ((uint8_t *)state->esp) - thread->GetUserStackVirtual();
 				uintptr_t stack = ((uintptr_t)thread->GetUserStack()) + offset + 44; // Jump to the arguments on the stack
 
 				uintptr_t aligned = VM_PAGE_ALIGN_DOWN(stack);
-				size_t pages = VM_PAGE_COUNT((stack - aligned) + count * sizeof(uint32_t));
+				size_t pages = VM_PAGE_COUNT((stack - aligned) + left);
 
 				Sys::VM::Directory *directory = Sys::VM::Directory::GetKernelDirectory();
 				KernReturn<vm_address_t> address = directory->Alloc(aligned, pages, kVMFlagsKernel);
@@ -114,7 +122,7 @@ namespace OS
 					goto badMemory;
 				}
 
-				memcpy(arguments + 5, (uint8_t *)(address + (stack - aligned)), count * sizeof(uint32_t));
+				memcpy(arguments + offset, (uint8_t *)(address + (stack - aligned)), left);
 				directory->Free(address, pages);
 			}
 		}
@@ -148,7 +156,6 @@ namespace OS
 		{
 			delete[] arguments;
 			cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread));
-
 			return;
 		}
 

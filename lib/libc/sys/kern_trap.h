@@ -30,11 +30,10 @@ __BEGIN_DECLS
 #define KERN_IPC_AllocatePortRight 4
 
 #ifndef __KERNEL
-typedef unsigned int __karg;
-unsigned int __kern_trap(int type, __karg arg0, __karg arg1, __karg arg2, __karg arg3, __karg arg4, __karg arg5, __karg arg6, __karg arg7);
+unsigned int __kern_trap(int type, ...);
 
 #define KERN_TRAP8(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) \
-	__kern_trap(type, (__karg)(arg0), (__karg)(arg1), (__karg)(arg2), (__karg)(arg3), (__karg)(arg4), (__karg)(arg5), (__karg)(arg6), (__karg)(arg7))
+	__kern_trap(type, (arg0), (arg1), (arg2), (arg3), (arg4), (arg5), (arg6), (arg7))
 
 #define KERN_TRAP7(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6) \
 	KERN_TRAP8(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6, 0)

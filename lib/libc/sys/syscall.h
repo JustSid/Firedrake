@@ -37,12 +37,10 @@ __BEGIN_DECLS
 #define SYS_Mprotect 42
 
 #ifndef __KERNEL
-typedef unsigned int __sarg;
-unsigned int __syscall(int type, __sarg arg0, __sarg arg1, __sarg arg2, __sarg arg3, __sarg arg4, __sarg arg5, __sarg arg6, __sarg arg7);
-
+unsigned int __syscall(int type, ...);
 
 #define SYSCALL8(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) \
-	__syscall(type, (__sarg)(arg0), (__sarg)(arg1), (__sarg)(arg2), (__sarg)(arg3), (__sarg)(arg4), (__sarg)(arg5), (__sarg)(arg6), (__sarg)(arg7))
+	__syscall(type, (arg0), (arg1), (arg2), (arg3), (arg4), (arg5), (arg6), (arg7))
 
 #define SYSCALL7(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6) \
 	SYSCALL8(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6, 0)

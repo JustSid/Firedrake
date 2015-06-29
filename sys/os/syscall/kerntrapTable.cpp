@@ -23,10 +23,44 @@
 
 namespace OS
 {
-	#define KERN_TRAP(name, handler, argCount) \
-		{ (KernReturn<uint32_t> (*)(Thread *, void *))handler, (size_t)argCount }
+	#define KERN_TRAP(name, handler, argCount, argSize) \
+		{ (KernReturn<uint32_t> (*)(Thread *, void *))handler, (uint32_t)argCount, argSize }
 
-	#define KERN_TRAP_INVALID() KERN_TRAP("invalid", &KerntrapInvalid, 0)
+	#define KERN_TRAP_ARGENTRY(str, entry) \
+		{ offsetof(str, entry), sizeof(str::entry) }
+
+	#define KERN_TRAP_ARGENTRIES(...) \
+		{ __VA_ARGS__ }
+
+	#define KERN_TRAP0(name, handler) \
+		KERN_TRAP(name, handler, 0, KERN_TRAP_ARGENTRIES())
+
+	#define KERN_TRAP1(name, handler, st, arg0) \
+		KERN_TRAP(name, handler, 1, KERN_TRAP_ARGENTRIES(KERN_TRAP_ARGENTRY(st, arg0)))
+
+	#define KERN_TRAP2(name, handler, st, arg0, arg1) \
+		KERN_TRAP(name, handler, 2, KERN_TRAP_ARGENTRIES(KERN_TRAP_ARGENTRY(st, arg0), KERN_TRAP_ARGENTRY(st, arg1)))
+
+	#define KERN_TRAP3(name, handler, st, arg0, arg1, arg2) \
+		KERN_TRAP(name, handler, 3, KERN_TRAP_ARGENTRIES(KERN_TRAP_ARGENTRY(st, arg0), KERN_TRAP_ARGENTRY(st, arg1), KERN_TRAP_ARGENTRY(st, arg2)))
+
+	#define KERN_TRAP4(name, handler, st, arg0, arg1, arg2, arg3) \
+		KERN_TRAP(name, handler, 4, KERN_TRAP_ARGENTRIES(KERN_TRAP_ARGENTRY(st, arg0), KERN_TRAP_ARGENTRY(st, arg1), KERN_TRAP_ARGENTRY(st, arg2), KERN_TRAP_ARGENTRY(st, arg3)))
+
+	#define KERN_TRAP5(name, handler, st, arg0, arg1, arg2, arg3, arg4) \
+		KERN_TRAP(name, handler, 5, KERN_TRAP_ARGENTRIES(KERN_TRAP_ARGENTRY(st, arg0), KERN_TRAP_ARGENTRY(st, arg1), KERN_TRAP_ARGENTRY(st, arg2), KERN_TRAP_ARGENTRY(st, arg3), KERN_TRAP_ARGENTRY(st, arg4)))
+
+	#define KERN_TRAP6(name, handler, st, arg0, arg1, arg2, arg3, arg4, arg5) \
+		KERN_TRAP(name, handler, 6, KERN_TRAP_ARGENTRIES(KERN_TRAP_ARGENTRY(st, arg0), KERN_TRAP_ARGENTRY(st, arg1), KERN_TRAP_ARGENTRY(st, arg2), KERN_TRAP_ARGENTRY(st, arg3), KERN_TRAP_ARGENTRY(st, arg4), KERN_TRAP_ARGENTRY(st, arg5)))
+
+	#define KERN_TRAP7(name, handler, st, arg0, arg1, arg2, arg3, arg4, arg5, arg6) \
+		KERN_TRAP(name, handler, 7, KERN_TRAP_ARGENTRIES(KERN_TRAP_ARGENTRY(st, arg0), KERN_TRAP_ARGENTRY(st, arg1), KERN_TRAP_ARGENTRY(st, arg2), KERN_TRAP_ARGENTRY(st, arg3), KERN_TRAP_ARGENTRY(st, arg4), KERN_TRAP_ARGENTRY(st, arg5), KERN_TRAP_ARGENTRY(st, arg6)))
+
+	#define KERN_TRAP8(name, handler, st, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) \
+		KERN_TRAP(name, handler, 8, KERN_TRAP_ARGENTRIES(KERN_TRAP_ARGENTRY(st, arg0), KERN_TRAP_ARGENTRY(st, arg1), KERN_TRAP_ARGENTRY(st, arg2), KERN_TRAP_ARGENTRY(st, arg3), KERN_TRAP_ARGENTRY(st, arg4), KERN_TRAP_ARGENTRY(st, arg5), KERN_TRAP_ARGENTRY(st, arg6), KERN_TRAP_ARGENTRY(st, arg7)))
+		
+	#define KERN_TRAP_INVALID() KERN_TRAP("invalid", &KerntrapInvalid, 0, KERN_TRAP_ARGENTRIES())
+
 
 	KernReturn<uint32_t> KerntrapInvalid(__unused Thread *thread, __unused void *args)
 	{
@@ -35,10 +69,10 @@ namespace OS
 	}
 
 	SyscallTrap _kernTrapTable[128] = {
-		/* 0 */ KERN_TRAP("ipc_task_port", &OS::IPC::Syscall_IPCTaskPort, 1),
-		/* 1 */ KERN_TRAP("ipc_thread_port", &OS::IPC::Syscall_IPCThreadPort, 1),
-		/* 2 */ KERN_TRAP("ipc_message", &OS::IPC::Syscall_IPCMessage, 3),
-		/* 3 */ KERN_TRAP("ipc_allocate_port", &OS::IPC::Syscall_IPCAllocatePort, 3),
+		/* 0 */ KERN_TRAP1("ipc_task_port", &OS::IPC::Syscall_IPCTaskPort, IPC::IPCPortCallArgs, port),
+		/* 1 */ KERN_TRAP1("ipc_thread_port", &OS::IPC::Syscall_IPCThreadPort, IPC::IPCPortCallArgs, port),
+		/* 2 */ KERN_TRAP3("ipc_message", &OS::IPC::Syscall_IPCMessage, IPC::IPCReadWriteArgs, header, size, mode),
+		/* 3 */ KERN_TRAP3("ipc_allocate_port", &OS::IPC::Syscall_IPCAllocatePort, IPC::IPCAllocatePortArgs, result, name, options),
 		/* 4 */ KERN_TRAP_INVALID(),
 		/* 5 */ KERN_TRAP_INVALID(),
 		/* 6 */ KERN_TRAP_INVALID(),

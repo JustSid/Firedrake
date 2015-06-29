@@ -28,10 +28,18 @@ namespace OS
 {
 	class Thread;
 	class Task;
+
+	struct SyscallArg
+	{
+		uint32_t offset;
+		uint32_t size;
+	};
+
 	struct SyscallTrap
 	{
 		KernReturn<uint32_t> (*handler)(Thread *thread, void *);
-		size_t argCount;
+		uint32_t argCount;
+		SyscallArg args[8];
 	};
 
 	class SyscallScopedMapping
