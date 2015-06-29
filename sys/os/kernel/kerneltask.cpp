@@ -152,7 +152,7 @@ namespace OS
 			if(result.IsValid())
 			{
 				char *data = reinterpret_cast<char *>(IPC_GET_DATA(header));
-				kprintf("Echo: '%s'\n", data);
+				kputs(data);
 			}
 			else
 			{

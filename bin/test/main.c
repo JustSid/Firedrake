@@ -44,11 +44,25 @@ int main(int argc, char *argv[])
 	int fd = open("/etc/license.txt", O_RDONLY);
 
 	char temp[129];
-	read(fd, temp, 128);
-	temp[128] = '\0';
 
+	off_t left = lseek(fd, 0, SEEK_END);
+	lseek(fd, 0, SEEK_SET);
+
+	while(left > 0)
+	{
+		int toRead = left;
+		if(toRead > 128)
+			toRead = 128;
+
+		int length = read(fd, temp, toRead);
+		temp[length] = '\0';
+		puts(temp);
+
+		left -= length;
+	}
+
+	puts("\n");
 	close(fd);
 
-	puts(temp);
 	return 0;
 }
