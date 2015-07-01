@@ -64,7 +64,7 @@ namespace OS
 		KernReturn<Task *> Init(Task *parent);
 		KernReturn<Task *> InitWithFile(Task *parent, const char *path);
 
-		KernReturn<Thread *> AttachThread(Thread::Entry entry, Thread::PriorityClass priority, size_t stack);
+		KernReturn<Thread *> AttachThread(Thread::Entry entry, Thread::PriorityClass priority, size_t stack, IO::Array *parameters);
 
 		void SetName(IO::String *name);
 

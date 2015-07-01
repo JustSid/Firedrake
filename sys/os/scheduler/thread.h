@@ -29,6 +29,7 @@
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
 #include <objects/IOObject.h>
+#include <objects/IOArray.h>
 #include <os/ipc/IPCPort.h>
 
 namespace OS
@@ -73,11 +74,13 @@ namespace OS
 		IPC::Port *GetThreadPort() const { return _threadPort; }
 
 	private:
-		KernReturn<Thread *> Init(Task *task, Entry entry, PriorityClass priority, size_t stackPages);
+		KernReturn<Thread *> Init(Task *task, Entry entry, PriorityClass priority, size_t stackPages, IO::Array *parameters);
 		void Dealloc() override;
 
-		KernReturn<void> InitializeForRing3();
-		KernReturn<void> InitializeForRing0();
+		KernReturn<void> InitializeForRing3(IO::Array *parameters);
+		KernReturn<void> InitializeForRing0(IO::Array *parameters);
+
+		uint8_t *ParseParameters(IO::Array *parameters, uint8_t *stack);
 
 		Task *_task;
 		tid_t _tid;

@@ -1,5 +1,5 @@
 //
-//  main.c
+//  thread.c
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,71 +16,27 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <sys/unistd.h>
-#include <sys/fcntl.h>
-#include <sys/thread.h>
-#include <ipc/ipc_message.h>
-#include <ipc/ipc_port.h>
-#include <string.h>
-#include <stdio.h>
+#include "thread.h"
+#include "syscall.h"
 
-void puts(const char *string)
+#ifndef __KERNEL
+
+void __thread_entry(void (*entry)(void *), void *argument)
 {
-	char buffer[255];
+	entry(argument);
 
-	ipc_header_t *header = (ipc_header_t *)buffer;
-	header->sender = ipc_task_port();
-	header->receiver = 4294967297; // Echo port, hard coded
-	header->flags = 0;
-	header->size = strlen(string) + 1;
+	__asm__ volatile("movl $0, %%eax\r\n"
+		             "pushl $0\r\n"
+		             "pushl %0\r\n"
+		             "int $0x80\r\n"
+		             "addl $8, %%esp" : : "a" (0));
 
-	char *data = (char *)IPC_GET_DATA(header);
-	strcpy(data, string);
-
-	ipc_write(header);
+	while(1) {}
 }
 
-void printf(const char *format, ...)
+tid_t thread_create(void (*entry)(void *), void *argument)
 {
-	va_list args;
-	va_start(args, format);
-
-	char buffer[512];
-	vsnprintf(buffer, 512, format, args);
-
-	puts(buffer);
-	va_end(args);
+	return (tid_t)SYSCALL4(SYS_ThreadCreate, &__thread_entry, (void *)entry, argument, 0);
 }
 
-
-void test(void *arg)
-{
-	int fd = open((char *)arg, O_RDONLY);
-	char temp[129];
-
-	off_t left = lseek(fd, 0, SEEK_END);
-	lseek(fd, 0, SEEK_SET);
-
-	while(left > 0)
-	{
-		int toRead = left;
-		if(toRead > 128)
-			toRead = 128;
-
-		int length = read(fd, temp, toRead);
-		temp[length] = '\0';
-		puts(temp);
-
-		left -= length;
-	}
-
-	puts("\n");
-	close(fd);
-}
-
-int main(int argc, char *argv[])
-{
-	thread_create(&test, "/etc/about");
-
-	return 0;
-}
+#endif /* __KERNEL */

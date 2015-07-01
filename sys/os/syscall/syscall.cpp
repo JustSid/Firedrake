@@ -92,23 +92,23 @@ namespace OS
 			{
 				// Get all the other arguments from the stack
 				size_t left;
-				size_t offset = 0;
+				size_t argOffset = 0;
 
 				for(size_t i = 0; i < entry->argCount; i ++)
 				{
-					SyscallArg *arg = entry->args + i;
+					const SyscallArg *arg = entry->args + i;
 
 					if(arg->offset + arg->size >= 5 * sizeof(uint32_t))
 					{
 						left = size - arg->offset;
-						offset = arg->offset;
+						argOffset = arg->offset;
 
 						break;
 					}
 				}
 
 				uint32_t offset = ((uint8_t *)state->esp) - thread->GetUserStackVirtual();
-				uintptr_t stack = ((uintptr_t)thread->GetUserStack()) + offset + 44; // Jump to the arguments on the stack
+				uintptr_t stack = ((uintptr_t)thread->GetUserStack()) + offset + argOffset; // Jump to the arguments on the stack
 
 				uintptr_t aligned = VM_PAGE_ALIGN_DOWN(stack);
 				size_t pages = VM_PAGE_COUNT((stack - aligned) + left);
@@ -122,7 +122,7 @@ namespace OS
 					goto badMemory;
 				}
 
-				memcpy(arguments + offset, (uint8_t *)(address + (stack - aligned)), left);
+				memcpy(arguments + argOffset, (uint8_t *)(address + (stack - aligned)), left);
 				directory->Free(address, pages);
 			}
 		}

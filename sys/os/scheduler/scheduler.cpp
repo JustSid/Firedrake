@@ -89,7 +89,7 @@ namespace OS
 	{
 		_kernelTask = Task::Alloc()->Init(nullptr);
 		_kernelTask->SetName(IO::String::Alloc()->InitWithCString("kernel_task"));
-		_kernelTask->AttachThread((Thread::Entry)&KernelTaskMain, Thread::PriorityClass::PriorityClassNormal, 0);
+		_kernelTask->AttachThread((Thread::Entry)&KernelTaskMain, Thread::PriorityClass::PriorityClassNormal, 0, nullptr);
 
 		return ErrorNone;
 	}

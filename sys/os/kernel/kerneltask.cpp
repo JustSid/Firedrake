@@ -117,7 +117,7 @@ namespace OS
 
 		Task *self = Scheduler::GetScheduler()->GetActiveTask();
 
-		__unused Thread *workThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&KernelWorkThread), Thread::PriorityClassKernel, 16);
+		__unused Thread *workThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&KernelWorkThread), Thread::PriorityClassKernel, 16, nullptr);
 
 		// Set up some simple IPC ports
 		IPC::System *system = self->GetTaskSystem();

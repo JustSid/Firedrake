@@ -20,6 +20,7 @@
 #include "syscall.h"
 
 #include <vfs/vfs_syscall.h>
+#include <os/scheduler/scheduler_syscall.h>
 
 namespace OS
 {
@@ -78,7 +79,7 @@ namespace OS
 		/* 7 */ SYSCALL_TRAP_INVALID(),
 		/* 8 */ SYSCALL_TRAP_INVALID(),
 		/* 9 */ SYSCALL_TRAP_INVALID(),
-		/* 10 */ SYSCALL_TRAP_INVALID(),
+		/* 10 */ SYSCALL_TRAP4("thread_create", &OS::Syscall_SchedThreadCreate, OS::SchedThreadCreateArgs, entry, argument1, argument2, stack),
 		/* 11 */ SYSCALL_TRAP_INVALID(),
 		/* 12 */ SYSCALL_TRAP_INVALID(),
 		/* 13 */ SYSCALL_TRAP_INVALID(),

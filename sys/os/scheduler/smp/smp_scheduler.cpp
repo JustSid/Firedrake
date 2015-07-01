@@ -382,7 +382,7 @@ namespace OS
 
 		KernReturn<Thread *> thread;
 
-		if((thread = task->AttachThread((Thread::Entry)&IdleTask, Thread::PriorityClass::PriorityClassIdle, 0)).IsValid() == false)
+		if((thread = task->AttachThread((Thread::Entry)&IdleTask, Thread::PriorityClass::PriorityClassIdle, 0, nullptr)).IsValid() == false)
 			panic("Failed to activate CPU %d", cpu->GetID());
 
 		scheduler->_idleThread = thread;
