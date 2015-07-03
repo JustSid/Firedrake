@@ -24,10 +24,7 @@ void _start()
 	int result = main(0, 0x0);
 
 	__asm__ volatile("movl $0, %%eax\r\n"
-		             "pushl $0\r\n"
-		             "pushl %0\r\n"
-		             "int $0x80\r\n"
-		             "addl $8, %%esp" : : "a" (result));
+		             "int $0x80\r\n" : : "c" (result));
 
 	while(1) {}
 }

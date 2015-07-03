@@ -30,5 +30,11 @@ namespace OS
 		size_t stack;
 	};
 
+	struct SchedThreadExitArgs
+	{
+		int32_t exitCode;
+	};
+
 	KernReturn<uint32_t> Syscall_SchedThreadCreate(Thread *thread, SchedThreadCreateArgs *arguments);
+	KernReturn<uint32_t> Syscall_SchedThreadExit(Thread *thread, SchedThreadExitArgs *arguments);
 }

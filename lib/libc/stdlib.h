@@ -23,6 +23,15 @@
 
 __BEGIN_DECLS
 
+#ifndef __KERNEL
+
+#define EXIT_SUCCESS 0
+#define EXIT_FAILURE 1
+
+void exit(int status) __attribute__((noreturn));
+
+#endif /* __KERNEL */
+
 int atoi(const char *string);
 
 __END_DECLS

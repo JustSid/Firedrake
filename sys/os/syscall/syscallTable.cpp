@@ -69,7 +69,7 @@ namespace OS
 	}
 
 	SyscallTrap _syscallTrapTable[128] = {
-		/* 0 */ SYSCALL_TRAP_INVALID(),
+		/* 0 */ SYSCALL_TRAP1("exit", &OS::Syscall_SchedThreadExit, SchedThreadExitArgs, exitCode),
 		/* 1 */ SYSCALL_TRAP2("open", &VFS::Syscall_VFSOpen, VFS::VFSOpenArgs, path, flags),
 		/* 2 */ SYSCALL_TRAP1("close", &VFS::Syscall_VFSClose, VFS::VFSCloseArgs, fd),
 		/* 3 */ SYSCALL_TRAP3("read", &VFS::Syscall_VFSRead, VFS::VFSReadArgs, fd, data, size),

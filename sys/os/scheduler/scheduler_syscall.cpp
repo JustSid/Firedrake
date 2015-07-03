@@ -47,4 +47,24 @@ namespace OS
 
 		return result->GetTid();
 	}
+
+	KernReturn<uint32_t> Syscall_SchedThreadExit(Thread *thread, SchedThreadExitArgs *arguments)
+	{
+		Task *task = thread->GetTask();
+
+		if(task->GetMainThread() == thread)
+		{
+			task->PronounceDead(arguments->exitCode);
+			kprintf("Main thread exited, exit code %d\n", arguments->exitCode);
+		}
+
+		Scheduler *scheduler = Scheduler::GetScheduler();
+
+		scheduler->BlockThread(thread);
+		scheduler->RemoveThread(thread);
+
+		task->MarkThreadExit(thread);
+
+		return ErrorNone;
+	}
 }

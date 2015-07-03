@@ -53,11 +53,9 @@ namespace OS
 		friend class Thread;
 		friend class VFS::Context;
 
-		enum class State
+		enum class State : uint8_t
 		{
-			Waiting,
 			Running,
-			Blocked,
 			Died
 		};
 
@@ -65,7 +63,10 @@ namespace OS
 		KernReturn<Task *> InitWithFile(Task *parent, const char *path);
 
 		KernReturn<Thread *> AttachThread(Thread::Entry entry, Thread::PriorityClass priority, size_t stack, IO::Array *parameters);
+		void RemoveThread(Thread *thread);
+		void MarkThreadExit(Thread *thread);
 
+		void PronounceDead(int32_t exitCode);
 		void SetName(IO::String *name);
 
 		void Lock();
@@ -76,6 +77,8 @@ namespace OS
 		pid_t GetPid() const { return _pid; }
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
 		int GetNice() const { return _nice.load(); }
+		Thread *GetMainThread() const { return _mainThread; }
+		State GetState() const { return _state.load(); }
 
 		IO::String *GetName() const { return _name; }
 
@@ -104,8 +107,6 @@ namespace OS
 		void Dealloc() override;
 
 	private:
-		void RemoveThread(Thread *thread);
-
 		Task *_parent;
 		Sys::VM::Directory *_directory;
 		Executable *_executable;
@@ -115,10 +116,12 @@ namespace OS
 		Thread *_mainThread;
 
 		IO::String *_name;
+		int32_t _exitCode;
+		std::atomic<uint32_t> _exitedThreads;
 
 		spinlock_t _lock;
 		pid_t _pid;
-		State _state;
+		std::atomic<State> _state;
 		std::atomic<int> _nice;
 
 		bool _ring3;

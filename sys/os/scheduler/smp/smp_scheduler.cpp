@@ -165,9 +165,9 @@ namespace OS
 		}
 
 	private:
-		inline bool CanScheduleThread(SchedulingData *data)
+		inline bool CanScheduleThread(Task *task, SchedulingData *data)
 		{
-			return (data->blocks == 0 && !data->forcedDown);
+			return (data->blocks == 0 && !data->forcedDown && task->GetState() == Task::State::Running);
 		}
 
 		void MakeSchedulingDecision()
@@ -178,38 +178,52 @@ namespace OS
 			Thread *thread = _activeThread;
 			Task *task = thread->GetTask();
 
-			SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
+			bool needsReschedule;
 
-			if(data->usage >= 50) // Todo: This should probably be priority dependent
+			if(task->GetState() == Task::State::Died)
 			{
-				data->forcedDown = true;
-				_hasForcedDown = true;
+				RemoveThread(thread);
+				task->MarkThreadExit(thread);
+
+				thread = nullptr;
+				task = nullptr;
+				needsReschedule = true;
 			}
-
-			bool needsReschedule = !CanScheduleThread(data);
-			if(!needsReschedule)
+			else
 			{
-				// Recalculate the threads priority every 5 ticks
-				if((data->usage % 5) == 0)
-					data->priority = (data->usage / 4) + task->GetNice();
-			}
+				SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
 
-			// If we are in the idle priority class, unblock all force blocked threads
-			if(data->priorityClass == Thread::PriorityClassIdle && _hasForcedDown)
-			{
-				for(int i = 0; i < Thread::__PriorityClassMax; i ++)
+				if(data->usage >= 50) // Todo: This should probably be priority dependent
 				{
-					std::intrusive_list<Thread>::member *entry = _threads[i].head();
-					while(entry)
-					{
-						SchedulingData *temp = entry->get()->GetSchedulingData<SchedulingData>();
-						temp->forcedDown = false;
-
-						entry = entry->next();
-					}
+					data->forcedDown = true;
+					_hasForcedDown = true;
 				}
 
-				_hasForcedDown = false;
+				needsReschedule = !CanScheduleThread(thread->GetTask(), data);
+				if(!needsReschedule)
+				{
+					// Recalculate the threads priority every 5 ticks
+					if((data->usage % 5) == 0)
+						data->priority = (data->usage / 4) + task->GetNice();
+				}
+
+				// If we are in the idle priority class, unblock all force blocked threads
+				if(data->priorityClass == Thread::PriorityClassIdle && _hasForcedDown)
+				{
+					for(int i = 0; i < Thread::__PriorityClassMax; i ++)
+					{
+						std::intrusive_list<Thread>::member *entry = _threads[i].head();
+						while(entry)
+						{
+							SchedulingData *temp = entry->get()->GetSchedulingData<SchedulingData>();
+							temp->forcedDown = false;
+
+							entry = entry->next();
+						}
+					}
+
+					_hasForcedDown = false;
+				}
 			}
 
 			// See if there is a thread with a higher priority that we can schedule
@@ -226,7 +240,7 @@ namespace OS
 					Thread *temp = entry->get();
 					SchedulingData *tempData = temp->GetSchedulingData<SchedulingData>();
 
-					if(CanScheduleThread(tempData))
+					if(CanScheduleThread(temp->GetTask(), tempData))
 					{
 						if(tempData->needsWakeup)
 						{
@@ -241,6 +255,15 @@ namespace OS
 							lowestData = tempData;
 							lowest = temp;
 						}
+					}
+					else if(temp->GetTask()->GetState() == Task::State::Died)
+					{
+						entry = entry->next();
+
+						RemoveThread(temp);
+						temp->GetTask()->MarkThreadExit(temp);
+
+						continue;
 					}
 
 					entry = entry->next();
@@ -276,9 +299,17 @@ namespace OS
 			thread->SetSchedulingData(data);
 			_threads[data->priorityClass].push_back(data->schedulerEntry);
 		}
-		void RemoveThread(__unused Thread *thread)
+		void RemoveThread(Thread *thread)
 		{
-			panic("RemoveThread() not implemented");
+			SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
+
+			_threads[data->priorityClass].erase(data->schedulerEntry);
+			thread->SetSchedulingData(nullptr);
+
+			if(_activeThread == thread)
+				_needsReschedule = true;
+
+			delete data;
 		}
 
 		void BlockThread(Thread *thread)
@@ -453,6 +484,9 @@ namespace OS
 	void SMPScheduler::BlockThread(Thread *thread)
 	{
 		SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
+		if(!data)
+			return;
+		
 		Sys::CPU *cpu = data->runningCPU;
 
 		SchedulerCommand command(SchedulerCommand::Command::BlockThread, thread);
@@ -461,6 +495,9 @@ namespace OS
 	void SMPScheduler::UnblockThread(Thread *thread)
 	{
 		SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
+		if(!data)
+			return;
+
 		Sys::CPU *cpu = data->runningCPU;
 
 		SchedulerCommand command(SchedulerCommand::Command::UnblockThread, thread);
@@ -476,5 +513,11 @@ namespace OS
 		scheduler->PushCommand(SchedulerCommand(SchedulerCommand::Command::InsertThread, thread));
 	}
 	void SMPScheduler::RemoveThread(Thread *thread)
-	{}
+	{
+		SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
+		Sys::CPU *cpu = data->runningCPU;
+
+		SchedulerCommand command(SchedulerCommand::Command::RemoveThread, thread);
+		_schedulerMap[cpu->GetID()]->PushCommand(std::move(command));
+	}
 }

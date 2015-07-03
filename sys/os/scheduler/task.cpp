@@ -43,7 +43,7 @@ namespace OS
 		spinlock_init(&_lock);
 
 		_parent = parent;
-		_state = State::Waiting;
+		_state = State::Running;
 		_pid = _taskPidCounter.fetch_add(1) + 1;
 		_ring3 = false;
 		_tidCounter = 1;
@@ -55,6 +55,7 @@ namespace OS
 		_executable = nullptr;
 		_threads = IO::Array::Alloc()->Init();
 		_name = nullptr;
+		_exitedThreads = 0;
 
 		_ipcSystems = IO::Dictionary::Alloc()->Init();
 		_taskSystem = AllocateIPCSystem(0);
@@ -128,6 +129,12 @@ namespace OS
 		_name = IO::SafeRetain(name);
 	}
 
+	void Task::PronounceDead(int32_t exitCode)
+	{
+		_exitCode = exitCode;
+		_state = State::Died;
+	}
+
 	KernReturn<Thread *> Task::AttachThread(Thread::Entry entry, Thread::PriorityClass priority, size_t stack, IO::Array *parameters)
 	{
 		spinlock_lock(&_lock);
@@ -150,9 +157,14 @@ namespace OS
 		return thread;
 	}
 
+	void Task::MarkThreadExit(Thread *thread)
+	{
+		_exitedThreads ++;
+	}
+
 	void Task::RemoveThread(Thread *thread)
 	{
-		Scheduler::GetScheduler()->RemoveThread(thread);
+		thread->_task = nullptr;
 
 		spinlock_lock(&_lock);
 		_threads->RemoveObject(thread);

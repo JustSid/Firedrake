@@ -16,10 +16,21 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include "sys/syscall.h"
 #include "stdlib.h"
 #include "string.h"
 #include "stdbool.h"
 #include "stdint.h"
+
+#ifndef __KERNEL
+
+void exit(int status)
+{
+	SYSCALL1(SYS_Exit, status);
+	while(1) {}
+}
+
+#endif /* __KERNEL */
 
 int atoi(const char *string)
 {

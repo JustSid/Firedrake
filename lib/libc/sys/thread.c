@@ -26,10 +26,7 @@ void __thread_entry(void (*entry)(void *), void *argument)
 	entry(argument);
 
 	__asm__ volatile("movl $0, %%eax\r\n"
-		             "pushl $0\r\n"
-		             "pushl %0\r\n"
-		             "int $0x80\r\n"
-		             "addl $8, %%esp" : : "a" (0));
+		             "int $0x80\r\n" : : "c" (0));
 
 	while(1) {}
 }

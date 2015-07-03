@@ -23,6 +23,7 @@
 #include <ipc/ipc_port.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 void puts(const char *string)
 {
@@ -82,5 +83,5 @@ int main(int argc, char *argv[])
 {
 	thread_create(&test, "/etc/about");
 
-	return 0;
+	return EXIT_SUCCESS;
 }
