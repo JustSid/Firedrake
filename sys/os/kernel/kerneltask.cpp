@@ -22,6 +22,7 @@
 #include <os/scheduler/scheduler.h>
 #include <os/waitqueue.h>
 #include <os/ipc/IPC.h>
+#include <os/locks/mutex.h>
 
 namespace Sys
 {
@@ -51,9 +52,11 @@ namespace OS
 			proxy->queue = cpu->GetWorkQueue();	
 		}
 
+		Mutex lock;
+
 		while(1)
 		{
-			bool enabled = Sys::DisableInterrupts();
+			lock.Lock(Mutex::Mode::NoInterrupts);
 			Sys::CPU *current = Sys::CPU::GetCurrentCPU();
 
 			for(size_t i = 0; i < count; i ++)
@@ -64,8 +67,7 @@ namespace OS
 				proxy->entries = (cpu == current) ? proxy->queue->PopAll() : proxy->queue->PopAllRemote();
 			}
 
-			if(enabled)
-				Sys::EnableInterrupts();
+			lock.Unlock();
 
 			// Perform the work
 			for(size_t i = 0; i < count; i ++)
@@ -81,7 +83,7 @@ namespace OS
 			}
 
 			// Refurbish the work lists
-			enabled = Sys::DisableInterrupts();
+			lock.Lock(Mutex::Mode::NoInterrupts);
 			current = Sys::CPU::GetCurrentCPU();
 
 			for(size_t i = 0; i < count; i ++)
@@ -104,9 +106,7 @@ namespace OS
 				}
 			}
 
-			if(enabled)
-				Sys::EnableInterrupts();
-
+			lock.Unlock();
 			Sys::CPUHalt();
 		}
 	}

@@ -155,9 +155,10 @@ namespace OS
 			return needsReschedule;
 		}
 
-		void Disable()
+		bool Disable()
 		{
-			_enabled.store(false, std::memory_order_release);
+			bool expected = true;
+			return _enabled.compare_exchange(expected, false, std::memory_order_release);
 		}
 		void Enable()
 		{
@@ -469,10 +470,24 @@ namespace OS
 		Sys::APIC::SendIPI(0x23, cpu);
 	}
 
-	void SMPScheduler::DisableCPU(Sys::CPU *cpu)
+	bool SMPScheduler::DisableCPU(Sys::CPU *cpu)
 	{
+		if(!cpu)
+		{
+			bool enabled = Sys::DisableInterrupts(); // Make sure we don't accidentally move off the current CPU
+
+			CPUScheduler *scheduler = _schedulerMap[Sys::CPU::GetCurrentCPU()->GetID()];
+			bool result = scheduler->Disable();
+
+			if(enabled)
+				Sys::EnableInterrupts();
+
+			return result;
+		}
+
+
 		CPUScheduler *scheduler = _schedulerMap[cpu->GetID()];
-		scheduler->Disable();
+		return scheduler->Disable();
 	}
 	void SMPScheduler::EnableCPU(Sys::CPU *cpu)
 	{

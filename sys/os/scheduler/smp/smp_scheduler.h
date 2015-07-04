@@ -46,7 +46,7 @@ namespace OS
 		void AddThread(Thread *thread) final;
 		void RemoveThread(Thread *thread) final;
 
-		void DisableCPU(Sys::CPU *cpu) final;
+		bool DisableCPU(Sys::CPU *cpu) final;
 		void EnableCPU(Sys::CPU *cpu) final;
 
 	private:

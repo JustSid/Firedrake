@@ -1,5 +1,5 @@
 //
-//  mutex.h
+//  mutex.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,47 +16,75 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _OS_MUTEX_H_
-#define _OS_MUTEX_H_
+#include <os/waitqueue.h>
+#include <os/scheduler/scheduler.h>
+#include <machine/interrupts/interrupts.h>
 
-#include <prefix.h>
-#include <libc/stdint.h>
-#include <libcpp/atomic.h>
-#include <kern/kprintf.h>
-#include <machine/cpu.h>
-#include <kern/panic.h>
+#include "mutex.h"
 
 namespace OS
 {
-	class Mutex
+	void Mutex::Unlock()
 	{
-	public:
-		enum class Mode
-		{
-			Simple, // Only locks the mutex
-			NoScheduler, // Locks the mutex and disables the scheduler
-			NoInterrupts // Locks the mutex and disables interrupts
-		};
+		_owned.store(false, std::memory_order_release);
 
-		Mutex() :
-			_owned(false)
-		{}
-
-		~Mutex()
+		switch(_lockMode)
 		{
-			if(_owned.load())
-				panic("Mutex destructor called while mutex is locked");
+			case Mode::Simple:
+				break;
+			case Mode::NoScheduler:
+				if(_wasEnabled)
+					Scheduler::GetScheduler()->EnableCPU(nullptr);
+				break;
+			case Mode::NoInterrupts:
+				if(_wasEnabled)
+					Sys::EnableInterrupts();
+				break;
 		}
 
-		void Unlock();
-		void Lock(Mode mode = Mode::Simple);
-		bool TryLock(Mode mode);
+		WakeupOne(this);
+	}
 
-	private:
-		std::atomic<bool> _owned;
-		Mode _lockMode;
-		bool _wasEnabled;
-	};
+	void Mutex::Lock(Mode mode)
+	{
+		if(TryLock(mode))
+			return;
+
+		while(1)
+		{
+			for(size_t i = 0; i < 10000; i ++)
+			{
+				if(TryLock(mode))
+					return;
+
+				Sys::CPUPause();
+			}
+			
+			Wait(this).Suppress();
+		}
+	}
+
+	bool Mutex::TryLock(Mode mode)
+	{
+		bool expected = false;
+		if(_owned.compare_exchange(expected, true, std::memory_order_release))
+		{
+			_lockMode = mode;
+
+			switch(_lockMode)
+			{
+				case Mode::Simple:
+					break;
+				case Mode::NoScheduler:
+					_wasEnabled = Scheduler::GetScheduler()->DisableCPU(nullptr);
+				case Mode::NoInterrupts:
+					_wasEnabled = Sys::DisableInterrupts();
+					break;
+			}
+
+			return true;
+		}
+
+		return false;
+	}
 }
-
-#endif /* _OS_MUTEX_H_ */

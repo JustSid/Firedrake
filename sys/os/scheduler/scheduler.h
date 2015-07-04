@@ -53,7 +53,7 @@ namespace OS
 
 		virtual void ActivateCPU(Sys::CPU *cpu) = 0;
 
-		virtual void DisableCPU(Sys::CPU *cpu) = 0;
+		virtual bool DisableCPU(Sys::CPU *cpu) = 0;
 		virtual void EnableCPU(Sys::CPU *cpu) = 0;
 
 		void AddTask(Task *task);
