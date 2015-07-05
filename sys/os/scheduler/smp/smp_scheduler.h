@@ -42,6 +42,7 @@ namespace OS
 
 		void BlockThread(Thread *thread) final;
 		void UnblockThread(Thread *thread) final;
+		void YieldThread(Thread *thread) final;
 
 		void AddThread(Thread *thread) final;
 		void RemoveThread(Thread *thread) final;
@@ -77,7 +78,8 @@ namespace OS
 				InsertThread,
 				RemoveThread,
 				BlockThread,
-				UnblockThread
+				UnblockThread,
+				YieldThread
 			};
 
 			SchedulerCommand(Command tcommand, Thread *tthread) :

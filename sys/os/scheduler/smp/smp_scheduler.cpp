@@ -333,6 +333,14 @@ namespace OS
 			}
 		}
 
+		void YieldThread(Thread *thread)
+		{
+			SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
+			
+			data->forcedDown = true;
+			_needsReschedule = true;
+		}
+
 
 		void RunCommand(const SchedulerCommand &command)
 		{
@@ -349,6 +357,9 @@ namespace OS
 					break;
 				case SchedulerCommand::Command::UnblockThread:
 					UnblockThread(command.thread);
+					break;
+				case SchedulerCommand::Command::YieldThread:
+					YieldThread(command.thread);
 					break;
 			}
 		}
@@ -534,5 +545,12 @@ namespace OS
 
 		SchedulerCommand command(SchedulerCommand::Command::RemoveThread, thread);
 		_schedulerMap[cpu->GetID()]->PushCommand(std::move(command));
+	}
+	void SMPScheduler::YieldThread(Thread *thread)
+	{
+		Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
+		CPUScheduler *scheduler = _schedulerMap[cpu->GetID()];
+
+		scheduler->PushCommand(SchedulerCommand(SchedulerCommand::Command::YieldThread, thread));
 	}
 }

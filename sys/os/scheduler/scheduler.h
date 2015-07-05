@@ -47,6 +47,7 @@ namespace OS
 
 		virtual void BlockThread(Thread *thread) = 0;
 		virtual void UnblockThread(Thread *thread) = 0;
+		virtual void YieldThread(Thread *thread) = 0;
 
 		virtual void AddThread(Thread *thread) = 0;
 		virtual void RemoveThread(Thread *thread) = 0;

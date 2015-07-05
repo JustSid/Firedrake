@@ -53,6 +53,7 @@ namespace OS
 		}
 
 		Mutex lock;
+		Thread *self = Scheduler::GetScheduler()->GetActiveThread();
 
 		while(1)
 		{
@@ -107,7 +108,7 @@ namespace OS
 			}
 
 			lock.Unlock();
-			Sys::CPUHalt();
+			Scheduler::GetScheduler()->YieldThread(self);
 		}
 	}
 
