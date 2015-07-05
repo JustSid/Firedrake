@@ -73,6 +73,8 @@ namespace OS
 
 		IPC::Port *GetThreadPort() const { return _threadPort; }
 
+		void *GetJoinToken() const { return const_cast<void *>(reinterpret_cast<const void *>(&_joinToken)); }
+
 	private:
 		KernReturn<Thread *> Init(Task *task, Entry entry, PriorityClass priority, size_t stackPages, IO::Array *parameters);
 		void Dealloc() override;
@@ -100,6 +102,8 @@ namespace OS
 		uint32_t _entry;
 
 		IPC::Port *_threadPort;
+
+		char _joinToken;
 
 		IODeclareMeta(Thread)
 	};

@@ -81,7 +81,8 @@ void test(void *arg)
 
 int main(int argc, char *argv[])
 {
-	thread_create(&test, "/etc/about");
+	tid_t thread = thread_create(&test, "/etc/about");
+	thread_join(thread);
 
 	return EXIT_SUCCESS;
 }

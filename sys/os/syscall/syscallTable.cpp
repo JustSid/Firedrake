@@ -80,7 +80,7 @@ namespace OS
 		/* 8 */ SYSCALL_TRAP_INVALID(),
 		/* 9 */ SYSCALL_TRAP_INVALID(),
 		/* 10 */ SYSCALL_TRAP4("thread_create", &OS::Syscall_SchedThreadCreate, OS::SchedThreadCreateArgs, entry, argument1, argument2, stack),
-		/* 11 */ SYSCALL_TRAP_INVALID(),
+		/* 11 */ SYSCALL_TRAP1("thread_join", &OS::Syscall_SchedThreadJoin, OS::SchedThreadJoinArgs, tid),
 		/* 12 */ SYSCALL_TRAP_INVALID(),
 		/* 13 */ SYSCALL_TRAP_INVALID(),
 		/* 14 */ SYSCALL_TRAP_INVALID(),

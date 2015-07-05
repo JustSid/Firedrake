@@ -78,6 +78,7 @@ namespace OS
 		Sys::VM::Directory *GetDirectory() const { return _directory; }
 		int GetNice() const { return _nice.load(); }
 		Thread *GetMainThread() const { return _mainThread; }
+		Thread *GetThreadWithID(tid_t id);
 		State GetState() const { return _state.load(); }
 
 		IO::String *GetName() const { return _name; }

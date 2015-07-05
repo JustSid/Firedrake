@@ -19,6 +19,7 @@
 #include <os/syscall/syscall.h>
 #include <kern/kprintf.h>
 #include <objects/IONumber.h>
+#include <os/waitqueue.h>
 #include "scheduler_syscall.h"
 
 namespace OS
@@ -65,6 +66,18 @@ namespace OS
 
 		task->MarkThreadExit(thread);
 
-		return ErrorNone;
+		return 0;
+	}
+
+	KernReturn<uint32_t> Syscall_SchedThreadJoin(Thread *thread, SchedThreadJoinArgs *arguments)
+	{
+		Task *task = thread->GetTask();
+		Thread *target = task->GetThreadWithID(arguments->tid);
+
+		if(!target)
+			return Error(KERN_INVALID_ARGUMENT);
+
+		WaitThread(thread, target->GetJoinToken());
+		return 0;
 	}
 }

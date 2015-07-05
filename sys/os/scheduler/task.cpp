@@ -23,6 +23,7 @@
 #include <vfs/vfs.h>
 #include <machine/interrupts/trampoline.h>
 #include <machine/debug.h>
+#include <os/waitqueue.h>
 #include "scheduler.h"
 #include "task.h"
 
@@ -160,6 +161,7 @@ namespace OS
 	void Task::MarkThreadExit(Thread *thread)
 	{
 		_exitedThreads ++;
+		Wakeup(thread->GetJoinToken());
 	}
 
 	void Task::RemoveThread(Thread *thread)
@@ -181,6 +183,27 @@ namespace OS
 		spinlock_unlock(&_lock);
 	}
 
+
+	Thread *Task::GetThreadWithID(tid_t id)
+	{
+		Lock();
+
+		Thread *result = nullptr;
+
+		_threads->Enumerate<Thread>([&](Thread *thread, size_t index, bool &stop) {
+
+			if(thread->GetTid() == id)
+			{
+				result = thread;
+				stop = true;
+			}
+
+		});
+
+		Unlock();
+
+		return result;
+	}
 
 	VFS::File *Task::GetFileForDescriptor(int fd)
 	{

@@ -36,4 +36,9 @@ tid_t thread_create(void (*entry)(void *), void *argument)
 	return (tid_t)SYSCALL4(SYS_ThreadCreate, &__thread_entry, (void *)entry, argument, 0);
 }
 
+void thread_join(tid_t thread)
+{
+	SYSCALL1(SYS_ThreadJoin, thread);
+}
+
 #endif /* __KERNEL */

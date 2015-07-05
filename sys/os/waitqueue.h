@@ -26,8 +26,11 @@
 
 namespace OS
 {
+	class Thread;
+	
 	KernReturn<void> Wait(void *channel);
 	KernReturn<void> WaitWithCallback(void *channel, IO::Function<void ()> &&callback);
+	KernReturn<void> WaitThread(Thread *thread, void *channel);
 
 	void Wakeup(void *channel);
 	void WakeupOne(void *channel);

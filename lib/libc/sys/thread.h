@@ -27,6 +27,7 @@ __BEGIN_DECLS
 #ifndef __KERNEL
 
 tid_t thread_create(void (*entry)(void *), void *argument);
+void thread_join(tid_t thread);
 
 #endif /* __KERNEL */
 

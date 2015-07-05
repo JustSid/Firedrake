@@ -150,6 +150,29 @@ namespace OS
 
 		return ErrorNone;
 	}
+
+	KernReturn<void> WaitThread(Thread *thread, void *channel)
+	{
+		WaitqueueLookup *lookup = WaitqueueLookup::Alloc()->Init(channel);
+
+		spinlock_lock(&_waitLock);
+
+		WaitqueueEntry *entry = _waitqueue->GetObjectForKey<WaitqueueEntry>(lookup);
+		if(!entry)
+		{
+			entry = WaitqueueEntry::Alloc()->Init();
+			_waitqueue->SetObjectForKey(entry, lookup);
+		}
+		
+		Scheduler::GetScheduler()->BlockThread(thread);
+		entry->AddThread(thread);
+
+		spinlock_unlock(&_waitLock);
+
+		lookup->Release();
+
+		return ErrorNone;
+	}
 	
 	void Wakeup(void *channel)
 	{
