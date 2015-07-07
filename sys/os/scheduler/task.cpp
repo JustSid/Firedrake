@@ -32,6 +32,8 @@ namespace OS
 	static std::atomic<pid_t> _taskPidCounter;
 	IODefineMeta(Task, IO::Object)
 
+	extern IPC::Port *echoPort;
+
 	Task::Task() :
 		schedulerEntry(this)
 	{}
@@ -58,11 +60,15 @@ namespace OS
 		_name = nullptr;
 		_exitedThreads = 0;
 
-		_ipcSystems = IO::Dictionary::Alloc()->Init();
-		_taskSystem = AllocateIPCSystem(0);
-		_threadSystem = AllocateIPCSystem(1);
+		_space = IPC::Space::Alloc()->Init();
+		_taskPort = _space->AllocateReceivePort();
 
-		_taskPort = _taskSystem->AddPort(0, IPC::Port::Rights::Any);
+		if(echoPort)
+		{
+			_specialPorts[IPC_SPECIAL_PORT_KERNEL] = nullptr;
+			_specialPorts[IPC_SPECIAL_PORT_ANNOUNCE] = nullptr;
+			_specialPorts[IPC_SPECIAL_PORT_PUT] = _space->AllocateSendPort(echoPort, IPC::Port::Right::Send, IPC_PORT_NULL);
+		}
 
 		Scheduler::GetScheduler()->AddTask(this);
 		return this;
@@ -116,7 +122,6 @@ namespace OS
 
 		_files->Release();
 		_threads->Release();
-		_ipcSystems->Release();
 
 		IO::SafeRelease(_name);
 
@@ -256,39 +261,5 @@ namespace OS
 		lookup->Release();
 
 		Unlock();
-	}
-
-
-	KernReturn<IPC::System *> Task::AllocateIPCSystem(uint16_t name)
-	{
-		IO::Number *lookup = IO::Number::Alloc()->InitWithUint16(name);
-
-		Lock();
-
-		if(_ipcSystems->GetObjectForKey(lookup))
-		{
-			Unlock();
-
-			lookup->Release();
-			return Error(KERN_RESOURCE_EXISTS);
-		}
-
-		IPC::System *system = IPC::System::Alloc()->Init(this, name);
-		_ipcSystems->SetObjectForKey(system, lookup);
-
-		Unlock();
-
-		return system;
-	}
-	IO::StrongRef<IPC::System> Task::GetIPCSystem(uint16_t name)
-	{
-		IO::Number *lookup = IO::Number::Alloc()->InitWithUint16(name);
-
-		Lock();
-		IO::StrongRef<IPC::System> system = _ipcSystems->GetObjectForKey<IPC::System>(lookup);
-		Unlock();
-
-		lookup->Release();
-		return system;
 	}
 }

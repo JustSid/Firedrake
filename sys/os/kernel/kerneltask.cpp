@@ -31,8 +31,6 @@ namespace Sys
 
 namespace OS
 {
-	ipc_port_t port;
-
 	void KernelWorkThread()
 	{
 		struct WorkProxy
@@ -112,6 +110,8 @@ namespace OS
 		}
 	}
 
+	IPC::Port *echoPort = nullptr;
+
 	void KernelTaskMain()
 	{
 		Sys::Personality::GetPersonality()->FinishBootstrapping();
@@ -121,15 +121,13 @@ namespace OS
 		__unused Thread *workThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&KernelWorkThread), Thread::PriorityClassKernel, 16, nullptr);
 
 		// Set up some simple IPC ports
-		IPC::System *system = self->GetTaskSystem();
-		system->Lock();
+		IPC::Space *space = self->GetIPCSpace();
+		space->Lock();
 
-		IPC::Port *echoPort = system->AddPort(1, IPC::Port::Rights::Any | IPC::Port::Rights::Receive);
+		echoPort = space->AllocateReceivePort();
 		echoPort->Retain();
 
-		system->Unlock();
-
-		kprintf("Echo port: %llu\n", echoPort->GetPortName());
+		space->Unlock();
 
 		// Start the test program
 		__unused Task *task = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test.bin");
@@ -140,15 +138,17 @@ namespace OS
 		void *buffer = kalloc(bufferSize);
 		ipc_header_t *header = reinterpret_cast<ipc_header_t *>(buffer);
 
-		header->receiver = echoPort->GetPortName();
-		header->flags = IPC_HEADER_FLAG_BLOCK;
-		header->size = bufferSize - sizeof(ipc_header_t);
-
 		IPC::Message *message = IPC::Message::Alloc()->Init(header);
 
 		while(1)
 		{
-			KernReturn<void> result = Read(self, message);
+			header->port = echoPort->GetName();
+			header->flags = IPC_HEADER_FLAG_BLOCK;
+			header->size = bufferSize - sizeof(ipc_header_t);
+
+			space->Lock();
+			KernReturn<void> result = space->Read(message);
+			space->Unlock();
 
 			if(result.IsValid())
 			{
@@ -167,11 +167,7 @@ namespace OS
 
 						buffer = kalloc(bufferSize);
 
-						ipc_header_t *header = reinterpret_cast<ipc_header_t *>(buffer);
-
-						header->receiver = echoPort->GetPortName();
-						header->flags = IPC_HEADER_FLAG_BLOCK;
-						header->size = bufferSize - sizeof(ipc_header_t);
+						header = reinterpret_cast<ipc_header_t *>(buffer);
 
 						message->Release();
 						message = IPC::Message::Alloc()->Init(header);

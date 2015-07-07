@@ -1,5 +1,5 @@
 //
-//  IPCSystem.h
+//  IPCSpace.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,17 +16,15 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IPCSYSTEM_H_
-#define _IPCSYSTEM_H_
+#ifndef _IPCSPACE_H_
+#define _IPCSPACE_H_
 
 #include <prefix.h>
-#include <libc/sys/spinlock.h>
 #include <objects/IOObject.h>
-#include <objects/IOString.h>
 #include <objects/IODictionary.h>
 #include <os/locks/mutex.h>
+#include <libc/ipc/ipc_types.h>
 #include "IPCPort.h"
-#include "IPCPortRight.h"
 
 namespace OS
 {
@@ -34,38 +32,43 @@ namespace OS
 
 	namespace IPC
 	{
-		class System : public IO::Object
+		class Message;
+
+		class Space : public IO::Object
 		{
 		public:
-			System *Init(Task *task, uint16_t name);
+			Space *Init();
 			void Dealloc() override;
+
+			static IO::StrongRef<Space> GetSpaceWithName(ipc_space_t name);
+
+			KernReturn<Port *> AllocateReceivePort(); // Creates a new port with receive rights
+			KernReturn<Port *> AllocateSendPort(Port *target, Port::Right right, ipc_port_t name); // Right must be either Send or SendOnce
+
+			Port *GetPortWithName(ipc_port_t name) const;
+
+			/** Must *both* be called with lock being held **/
+			KernReturn<void> Write(Message *message);
+			KernReturn<void> Read(Message *message);
+
+			ipc_space_t GetName() const { return _name; }
+			Task *GetTask() const { return _task; }
 
 			void Lock();
 			void Unlock();
 
-			uint16_t GetName() const { return _name; }
-			Task *GetTask() const { return _task; }
-
-			Port *AddPort(uint16_t name, Port::Rights rights);
-			PortRight *AddPortRight(Port *port, Task *holder, bool oneTime);
-
-			IO::StrongRef<Port> GetPort(uint16_t name);
-			IO::StrongRef<PortRight> GetPortRight(uint16_t name);
-
-			void RelinquishPortRight(PortRight *right);
-
 		private:
-			Task *_task;
-			uint16_t _name;
-			IO::Dictionary *_portRights;
+			ipc_space_t _name;
 			IO::Dictionary *_ports;
+			Task *_task;
 			Mutex _lock;
+			ipc_port_t _portNames;
 
-			uint16_t _portRightName;
-
-			IODeclareMeta(System)
+			IODeclareMeta(Space)
 		};
 	}
+
+	KernReturn<void> IPCInit();
 }
 
-#endif /* _IPCSYSTEM_H_ */
+#endif /* _IPCSPACE_H_ */

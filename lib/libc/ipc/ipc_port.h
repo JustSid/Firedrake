@@ -25,15 +25,23 @@ __BEGIN_DECLS
 
 #define IPC_PORT_NULL ((ipc_port_t)0)
 
-#define IPC_PORT_RIGHT_ANY (1 << 0)
-#define IPC_PORT_RIGHT_INHERITED (1 << 1)
-#define IPC_PORT_RIGHT_RECEIVE (1 << 2)
+#define IPC_PORT_RIGHT_RECEIVE   0
+#define IPC_PORT_RIGHT_SEND      1
+#define IPC_PORT_RIGHT_SEND_ONCE 2
 
+#define IPC_SPECIAL_PORT_KERNEL   0
+#define IPC_SPECIAL_PORT_ANNOUNCE 1
+#define IPC_SPECIAL_PORT_PUT      2
+
+#define __IPC_SPECIAL_PORT_MAX 3
+
+//ipc_space_t ipc_task_space(pid_t pid);
 ipc_port_t ipc_task_port();
 ipc_port_t ipc_thread_port();
+ipc_port_t ipc_get_special_port(int port);
 
-ipc_port_t ipc_allocate_port(ipc_name_t name, ipc_bits_t options);
-ipc_port_t ipc_allocate_port_right(ipc_port_t port, ipc_size_t useCount);
+ipc_return_t ipc_allocate_port(ipc_port_t *port);
+//ipc_return_t ipc_insert_port(ipc_space_t space, ipc_port_t target, ipc_port_t port, int right);
 
 __END_DECLS
 

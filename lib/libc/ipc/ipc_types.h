@@ -23,12 +23,13 @@
 
 __BEGIN_DECLS
 
-typedef unsigned long long ipc_port_t;
-typedef unsigned long long ipc_sequence_t;
+typedef unsigned long ipc_port_t;
+typedef unsigned long ipc_space_t;
+
+typedef unsigned long ipc_id_t;
 typedef unsigned long ipc_size_t;
 typedef unsigned long ipc_bits_t;
 typedef unsigned long ipc_return_t;
-typedef unsigned short ipc_name_t;
 
 __END_DECLS
 

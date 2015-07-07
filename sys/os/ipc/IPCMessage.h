@@ -25,26 +25,10 @@
 #include <objects/IOObject.h>
 #include <libc/ipc/ipc_message.h>
 
-#define IPCCreatePortName(pid, system, port) \
-	((static_cast<ipc_port_t>((pid)) << 32) | ((system) << 16) | (port & 0x7fff))
-#define IPCCreatePortRight(pid, system, port) \
-	((static_cast<ipc_port_t>((pid)) << 32) | ((system) << 16) | (1 << 15) | (port & 0x7fff))
-
-#define IPCGetPID(name) \
-	(pid_t)((name) >> 32)
-#define IPCGetSystem(name) \
-	(((name) >> 16) & 0xffff)
-#define IPCGetName(name) \
-	((name) & 0x7fff)
-#define IPCIsPortRight(name) \
-	(bool)((name) & (1 << 15))
-
 namespace OS
 {
 	namespace IPC
 	{
-		class System;
-
 		class Message : public IO::Object
 		{
 		public:
@@ -54,9 +38,7 @@ namespace OS
 			void Dealloc() override;
 
 			ipc_header_t *GetHeader() const { return _header; }
-
-			ipc_port_t GetSender() const { return _header->sender; }
-			ipc_port_t GetReceiver() const { return _header->receiver; }
+			ipc_port_t GetPort() const { return _header->port; }
 
 		private:
 			ipc_header_t *_header;

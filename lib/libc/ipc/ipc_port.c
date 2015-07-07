@@ -35,20 +35,17 @@ ipc_port_t ipc_thread_port()
 
 	return result;
 }
-
-ipc_port_t ipc_allocate_port(ipc_name_t name, ipc_bits_t options)
+ipc_port_t ipc_get_special_port(int port)
 {
-	ipc_port_t result;
-	KERN_TRAP3(KERN_IPC_AllocatePort, &result, name, options);
+	ipc_port_t result = IPC_PORT_NULL;
+	KERN_TRAP2(KERN_IPC_GetSpecialPort, &result, port);
 
 	return result;
 }
-ipc_port_t ipc_allocate_port_right(ipc_port_t port, ipc_size_t useCount)
-{
-	ipc_port_t result;
-	KERN_TRAP3(KERN_IPC_AllocatePortRight, &result, port, useCount);
 
-	return result;
+ipc_return_t ipc_allocate_port(ipc_port_t *port)
+{
+	return (ipc_return_t)KERN_TRAP1(KERN_IPC_AllocatePort, port);
 }
 
 #endif /* __KERNEL */

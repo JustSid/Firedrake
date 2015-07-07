@@ -38,28 +38,26 @@ namespace OS
 
 	namespace IPC
 	{
-		class System;
-		class PortRight;
+		class Space;
 
 		class Port : public IO::Object
 		{
 		public:
-			friend class System;
-			friend class PortRight;
-
-			CPP_BITFIELD(Rights, uint32_t,
-				Any = (1 << 0), // No special rights required to send to that port
-				Inherited = (1 << 1), // Only child tasks and especially granted ports can send
-				Receive = (1 << 2) // Port is a receiving port, otherwise it's a sending port
-			);
+			friend class Space;
+			
+			enum class Right
+			{
+				Receive,
+				Send,
+				SendOnce
+			};
 
 			void Dealloc() override;
-			bool IsPortRight() const;
 
-			uint16_t GetName() const { return _name; }
-			ipc_port_t GetPortName() const { return _portName; }
-			System *GetSystem() const { return _system; }
-			Rights GetRights() const { return _rights; }
+			ipc_port_t GetName() const { return _name; }
+			Space *GetSpace() const { return _space; }
+			Right GetRight() const { return _right; }
+			Port *GetTarget() const { return _targetPort; }
 
 			void PushMessage(Message *message);
 
@@ -67,17 +65,15 @@ namespace OS
 			void PopMessage();
 
 		protected:
-			Port *Init(System *system, uint16_t name, Rights rights);
-			Port *InitAsPortRight(Port *port, uint16_t name);
+			Port *Init(Space *space, ipc_port_t name, Right right, Port *targetPort);
 
 		private:
-			Rights _rights;
-
-			uint16_t _name;
-			ipc_port_t _portName;
+			Right _right;
+			ipc_port_t _name;
 			
 			IO::Array *_queue;
-			System *_system;
+			Space *_space;
+			Port *_targetPort;
 			
 			IODeclareMeta(Port)
 		};

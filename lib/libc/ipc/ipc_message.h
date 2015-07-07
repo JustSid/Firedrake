@@ -32,10 +32,9 @@ __BEGIN_DECLS
 
 typedef struct
 {
-	ipc_port_t sender;
-	ipc_port_t receiver;
+	ipc_port_t port;
 	ipc_port_t reply; // If IPC_HEADER_FLAG_RESPONSE is set, a port to which to send the response
-	ipc_sequence_t sequence;
+	ipc_id_t id;
 	ipc_bits_t flags;
 	ipc_size_t size;
 	ipc_size_t realSize; // Only used when reading, to signal the actual size of the packet

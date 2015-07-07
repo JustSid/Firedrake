@@ -93,12 +93,9 @@ namespace OS
 		void FreeFileDescriptor(int fd);
 
 		// IPC
-		IPC::System *GetTaskSystem() const { return _taskSystem; }
-		IPC::System *GetThreadSystem() const { return _threadSystem; }
+		IPC::Space *GetIPCSpace() const { return _space; }
 		IPC::Port *GetTaskPort() const { return _taskPort; }
-
-		KernReturn<IPC::System *> AllocateIPCSystem(uint16_t name);
-		IO::StrongRef<IPC::System> GetIPCSystem(uint16_t name);
+		IPC::Port *GetSpecialPort(int port) const { return _specialPorts[port]; }
 
 		// Scheduler
 		std::intrusive_list<Task>::member schedulerEntry;
@@ -131,10 +128,9 @@ namespace OS
 		IO::Dictionary *_files;
 		std::atomic<int32_t> _fileCounter;
 
-		IO::Dictionary *_ipcSystems;
-		IPC::System *_taskSystem;
-		IPC::System *_threadSystem;
+		IPC::Space *_space;
 		IPC::Port *_taskPort;
+		IPC::Port *_specialPorts[__IPC_SPECIAL_PORT_MAX];
 
 		IODeclareMeta(Task)
 	};

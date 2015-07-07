@@ -30,8 +30,7 @@ void puts(const char *string)
 	char buffer[255];
 
 	ipc_header_t *header = (ipc_header_t *)buffer;
-	header->sender = ipc_task_port();
-	header->receiver = 4294967297; // Echo port, hard coded
+	header->port = ipc_get_special_port(IPC_SPECIAL_PORT_PUT);
 	header->flags = 0;
 	header->size = strlen(string) + 1;
 

@@ -22,24 +22,11 @@
 #include <prefix.h>
 #include <kern/kern_return.h>
 #include "IPCPort.h"
-#include "IPCSystem.h"
+#include "IPCSpace.h"
 #include "IPCMessage.h"
 
 namespace OS
 {
-	class Task;
-
-	namespace IPC
-	{
-		IO::StrongRef<Port> LookupPort(ipc_port_t name, bool lockSystem);
-
-		KernReturn<void> Read(Task *task, Message *message);
-		KernReturn<void> Write(Task *task, Message *message);
-
-		KernReturn<ipc_port_t> AllocatePort(ipc_name_t name, ipc_bits_t options);
-		KernReturn<ipc_port_t> AllocatePortRight(ipc_port_t port, ipc_size_t useCount);
-	}
-
 	KernReturn<void> IPCInit();
 }
 

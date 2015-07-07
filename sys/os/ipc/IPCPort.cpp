@@ -27,33 +27,16 @@ namespace OS
 	{
 		IODefineMeta(Port, IO::Object)
 
-		Port *Port::Init(System *system, uint16_t name, Rights rights)
+		Port *Port::Init(Space *space, ipc_port_t name, Right right, Port *targetPort)
 		{
 			if(!IO::Object::Init())
 				return nullptr;
 
-			_rights = rights;
+			_right = right;
 			_name = name;
-			_system = system;
-			_queue = (rights & Rights::Receive) ? IO::Array::Alloc()->Init() : nullptr;
-
-			Task *task = _system->GetTask();
-			_portName = IPCCreatePortName(task->GetPid(), _system->GetName(), _name);
-
-			return this;
-		}
-		Port *Port::InitAsPortRight(Port *port, uint16_t name)
-		{
-			if(!IO::Object::Init())
-				return nullptr;
-
-			_name = name;
-			_rights = port->_rights;
-			_system = port->_system;
-			_queue = nullptr;
-
-			Task *task = _system->GetTask();
-			_portName = IPCCreatePortRight(task->GetPid(), _system->GetName(), _name);
+			_space = space;
+			_queue = (right == Right::Receive) ? IO::Array::Alloc()->Init() : nullptr;
+			_targetPort = IO::SafeRetain(targetPort);
 
 			return this;
 		}
@@ -61,18 +44,20 @@ namespace OS
 		void Port::Dealloc()
 		{
 			IO::SafeRelease(_queue);
+			IO::SafeRelease(_targetPort);
+
 			IO::Object::Dealloc();
 		}
 		
 
 		void Port::PushMessage(Message *msg)
 		{
-			IOAssert(_rights & Rights::Receive, "Port must be a receive port");
+			IOAssert(_right == Right::Receive, "Port must be a receive port");
 			_queue->AddObject(msg);
 		}
 		Message *Port::PeekMessage()
 		{
-			IOAssert(_rights & Rights::Receive, "Port must be a receive port");
+			IOAssert(_right == Right::Receive, "Port must be a receive port");
 
 			if(_queue->GetCount() == 0)
 				return nullptr;
@@ -81,7 +66,7 @@ namespace OS
 		}
 		void Port::PopMessage()
 		{
-			IOAssert(_rights & Rights::Receive, "Port must be a receive port");
+			IOAssert(_right == Right::Receive, "Port must be a receive port");
 			_queue->RemoveObjectAtIndex(0);
 		}
 	}

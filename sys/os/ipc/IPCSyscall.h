@@ -35,17 +35,16 @@ namespace OS
 			int mode;
 		} __attribute__((packed));
 
-		struct IPCAllocatePortArgs
+		struct IPCSpecialPortArgs
 		{
 			ipc_port_t *result;
-			ipc_name_t name;
-			ipc_bits_t options;
+			int port;
 		} __attribute__((packed));
-
 
 		KernReturn<uint32_t> Syscall_IPCTaskPort(Thread *thread, IPCPortCallArgs *args);
 		KernReturn<uint32_t> Syscall_IPCThreadPort(Thread *thread, IPCPortCallArgs *args);
 		KernReturn<uint32_t> Syscall_IPCMessage(Thread *thread, IPCReadWriteArgs *args);
-		KernReturn<uint32_t> Syscall_IPCAllocatePort(Thread *thread, IPCAllocatePortArgs *args);
+		KernReturn<uint32_t> Syscall_IPCAllocatePort(Thread *thread, IPCPortCallArgs *args);
+		KernReturn<uint32_t> Syscall_IPCGetSpecialPort(Thread *thread, IPCSpecialPortArgs *args);
 	}
 }

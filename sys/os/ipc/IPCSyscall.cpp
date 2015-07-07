@@ -30,7 +30,7 @@ namespace OS
 			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->port, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
-			*port = thread->GetTask()->GetTaskPort()->GetPortName();
+			*port = thread->GetTask()->GetTaskPort()->GetName();
 
 			return KERN_SUCCESS;
 		}
@@ -40,7 +40,7 @@ namespace OS
 			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->port, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
-			*port = thread->GetThreadPort()->GetPortName();
+			*port = thread->GetThreadPort()->GetName();
 
 			return KERN_SUCCESS;
 		}
@@ -50,17 +50,21 @@ namespace OS
 			if(arguments->size == 0 || (arguments->mode != IPC_WRITE && arguments->mode != IPC_READ))
 				return KERN_INVALID_ARGUMENT;
 
+			Space *space = thread->GetTask()->GetIPCSpace();
+
 			OS::SyscallScopedMapping headerMapping(thread->GetTask(), arguments->header, arguments->size + sizeof(ipc_header_t));
 			ipc_header_t *header = headerMapping.GetMemory<ipc_header_t>();
 			
 			KernReturn<void> result;
+
+			space->Lock();
 
 			switch(arguments->mode)
 			{
 				case IPC_READ:
 				{
 					Message *message = Message::Alloc()->Init(header);
-					result = Read(thread->GetTask(), message);
+					result = space->Read(message);
 					message->Release();
 					
 					break;
@@ -69,12 +73,14 @@ namespace OS
 				case IPC_WRITE:
 				{
 					Message *message = Message::Alloc()->Init(header);
-					result = Write(thread->GetTask(), message);
+					result = space->Write(message);
 					message->Release();
 
 					break;
 				}
 			}
+
+			space->Unlock();
 
 			if(!result.IsValid())
 				return result.GetError();
@@ -82,26 +88,44 @@ namespace OS
 			return KERN_SUCCESS;
 		}
 
-		KernReturn<uint32_t> Syscall_IPCAllocatePort(Thread *thread, IPCAllocatePortArgs *arguments)
+		KernReturn<uint32_t> Syscall_IPCAllocatePort(Thread *thread, IPCPortCallArgs *arguments)
 		{
-			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->result, sizeof(ipc_port_t));
+			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->port, sizeof(ipc_port_t));
 
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
+
 			Task *task = thread->GetTask();
-			System *system = task->GetTaskSystem();
+			Space *space = task->GetIPCSpace();
 
-			system->Lock();
-			Port *result = system->AddPort(arguments->name, static_cast<Port::Rights>(arguments->options));
-			system->Unlock();
+			space->Lock();
 
-			if(result)
+			KernReturn<Port *> result = space->AllocateReceivePort();
+			if(!result.IsValid())
 			{
-				*port = result->GetPortName();
-				return KERN_SUCCESS;
+				space->Unlock();
+
+				return result.GetError();
 			}
 
-			*port = IPC_PORT_NULL;
-			return KERN_RESOURCE_EXISTS;
+			*port = result->GetName();
+			space->Unlock();
+
+			return KERN_SUCCESS;
+		}
+
+		KernReturn<uint32_t> Syscall_IPCGetSpecialPort(Thread *thread, IPCSpecialPortArgs *arguments)
+		{
+			if(arguments->port < 0 || arguments->port >= __IPC_SPECIAL_PORT_MAX)
+				return Error(KERN_INVALID_ARGUMENT);
+
+			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->result, sizeof(ipc_port_t));
+
+			ipc_port_t *result = portMapping.GetMemory<ipc_port_t>();
+			Port *port = thread->GetTask()->GetSpecialPort(arguments->port);
+
+			*result = port->GetName();
+
+			return ErrorNone;
 		}
 	}
 }

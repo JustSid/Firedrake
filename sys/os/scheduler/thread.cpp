@@ -48,13 +48,10 @@ namespace OS
 
 		_tid = _task->_tidCounter.fetch_add(1);
 
-		IPC::System *system = _task->GetThreadSystem();
-		system->Lock();
-
-		_threadPort = system->AddPort(static_cast<uint16_t>(_tid), IPC::Port::Rights::Any);
-		_threadPort->Retain();
-
-		system->Unlock();
+		IPC::Space *space = _task->GetIPCSpace();
+		space->Lock();
+		_threadPort = space->AllocateReceivePort();
+		space->Unlock();
 
 		if(_task->_ring3)
 		{
