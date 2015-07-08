@@ -110,6 +110,9 @@ namespace OS
 		}
 	}
 
+	extern void BootstrapServerThread();
+
+	IPC::Port *bootstrapPort = nullptr;
 	IPC::Port *echoPort = nullptr;
 
 	void KernelTaskMain()
@@ -118,16 +121,20 @@ namespace OS
 
 		Task *self = Scheduler::GetScheduler()->GetActiveTask();
 
-		__unused Thread *workThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&KernelWorkThread), Thread::PriorityClassKernel, 16, nullptr);
-
-		// Set up some simple IPC ports
+		// Set up the main IPC ports
 		IPC::Space *space = self->GetIPCSpace();
 		space->Lock();
 
 		echoPort = space->AllocateReceivePort();
 		echoPort->Retain();
 
+		bootstrapPort = space->AllocateReceivePort();
+		bootstrapPort->Retain();
+
 		space->Unlock();
+
+		__unused Thread *workThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&KernelWorkThread), Thread::PriorityClassKernel, 16, nullptr);
+		__unused Thread *bootstrapThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&BootstrapServerThread), Thread::PriorityClassKernel, 16, nullptr);
 
 		// Start the test program
 		__unused Task *task = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test.bin");

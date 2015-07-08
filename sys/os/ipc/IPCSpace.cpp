@@ -139,6 +139,14 @@ namespace OS
 			}
 		}
 
+		void Space::DeallocatePort(Port *port)
+		{
+			port->MarkDead();
+
+			IO::StrongRef<IO::Number> lookup(IOTransferRef(IO::Number::Alloc()->InitWithUint32(port->GetName())));
+			_ports->RemoveObjectForKey(lookup);
+		}
+
 		Port *Space::GetPortWithName(ipc_port_t name) const
 		{
 			IO::StrongRef<IO::Number> lookup(IOTransferRef(IO::Number::Alloc()->InitWithUint32(name)));
@@ -153,17 +161,72 @@ namespace OS
 				return Error(KERN_INVALID_ARGUMENT);
 
 			Port *target = sender->GetTarget();
+			if(!target || target->IsDead())
+				return Error(KERN_IPC_NO_RECEIVER);
+
 			Space *targetSpace = target->GetSpace();
 
 			if(targetSpace != this)
 				targetSpace->Lock();
 
 			Message *copy = Message::Alloc()->InitAsCopy(message);
+
+			if(target->IsDead())
+				return Error(KERN_IPC_NO_RECEIVER);
+
+			ipc_header_t *header = copy->GetHeader();
+			header->port = target->GetName();
+
+			if(header->flags & IPC_HEADER_FLAG_RESPONSE)
+			{
+				Port *replyPort = GetPortWithName(header->reply);
+				header->reply = IPC_PORT_DEAD;
+
+				if(replyPort)
+				{
+					if(replyPort->GetRight() != Port::Right::Receive)
+					{
+						if(targetSpace != this)
+							targetSpace->Unlock();
+
+						copy->Release();
+
+						return Error(KERN_IPC_NO_RECEIVER);
+					}
+
+					Port::Right right = Port::Right::Send;
+					int responseRight = IPC_HEADER_FLAG_GET_RESPONSE_BITS(header->flags);
+
+					if(responseRight == IPC_MESSAGE_RIGHT_MOVE_SEND_ONCE || responseRight == IPC_MESSAGE_RIGHT_COPY_SEND_ONCE)
+						right = Port::Right::SendOnce;
+
+					KernReturn<Port *> mapped = targetSpace->AllocateSendPort(replyPort, right, IPC_PORT_NULL);
+					if(mapped.IsValid())
+					{
+						header->reply = mapped->GetName();
+
+						if(responseRight == IPC_MESSAGE_RIGHT_MOVE_SEND || responseRight == IPC_MESSAGE_RIGHT_MOVE_SEND_ONCE)
+							DeallocatePort(replyPort);
+					}
+					else
+					{
+						if(targetSpace != this)
+							targetSpace->Unlock();
+
+						copy->Release();
+						return mapped.GetError();
+					}
+				}
+			}
+
 			target->PushMessage(copy);
 			copy->Release();
 
 			if(targetSpace != this)
 				targetSpace->Unlock();
+
+			if(sender->GetRight() == Port::Right::SendOnce)
+				DeallocatePort(sender);
 
 			Wakeup(target);
 

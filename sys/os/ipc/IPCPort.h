@@ -53,6 +53,9 @@ namespace OS
 			};
 
 			void Dealloc() override;
+			void MarkDead();
+
+			bool IsDead() const { return _isDead; }
 
 			ipc_port_t GetName() const { return _name; }
 			Space *GetSpace() const { return _space; }
@@ -68,6 +71,7 @@ namespace OS
 			Port *Init(Space *space, ipc_port_t name, Right right, Port *targetPort);
 
 		private:
+			bool _isDead;
 			Right _right;
 			ipc_port_t _name;
 			

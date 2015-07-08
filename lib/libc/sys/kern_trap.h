@@ -28,6 +28,7 @@ __BEGIN_DECLS
 #define KERN_IPC_Message    2
 #define KERN_IPC_AllocatePort 3
 #define KERN_IPC_GetSpecialPort 4
+#define KERN_IPC_DeallocatePort 5
 
 #ifndef __KERNEL
 unsigned int __kern_trap(int type, ...);

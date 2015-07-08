@@ -41,10 +41,16 @@ namespace OS
 			int port;
 		} __attribute__((packed));
 
+		struct IPCDeallcoatePortArgs
+		{
+			ipc_port_t port;
+		} __attribute__((packed));
+
 		KernReturn<uint32_t> Syscall_IPCTaskPort(Thread *thread, IPCPortCallArgs *args);
 		KernReturn<uint32_t> Syscall_IPCThreadPort(Thread *thread, IPCPortCallArgs *args);
 		KernReturn<uint32_t> Syscall_IPCMessage(Thread *thread, IPCReadWriteArgs *args);
 		KernReturn<uint32_t> Syscall_IPCAllocatePort(Thread *thread, IPCPortCallArgs *args);
 		KernReturn<uint32_t> Syscall_IPCGetSpecialPort(Thread *thread, IPCSpecialPortArgs *args);
+		KernReturn<uint32_t> Syscall_IPCDeallocatePort(Thread *thread, IPCDeallcoatePortArgs *args);
 	}
 }

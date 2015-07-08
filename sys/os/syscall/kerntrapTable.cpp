@@ -74,7 +74,7 @@ namespace OS
 		/* 2 */ KERN_TRAP3("ipc_message", &OS::IPC::Syscall_IPCMessage, IPC::IPCReadWriteArgs, header, size, mode),
 		/* 3 */ KERN_TRAP1("ipc_allocate_port", &OS::IPC::Syscall_IPCAllocatePort, IPC::IPCPortCallArgs, port),
 		/* 4 */ KERN_TRAP2("ipc_get_special_port", &OS::IPC::Syscall_IPCGetSpecialPort, IPC::IPCSpecialPortArgs, result, port),
-		/* 5 */ KERN_TRAP_INVALID(),
+		/* 5 */ KERN_TRAP1("ipc_deallocate_port", &OS::IPC::Syscall_IPCDeallocatePort, IPC::IPCDeallcoatePortArgs, port),
 		/* 6 */ KERN_TRAP_INVALID(),
 		/* 7 */ KERN_TRAP_INVALID(),
 		/* 8 */ KERN_TRAP_INVALID(),

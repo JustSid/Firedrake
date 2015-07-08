@@ -21,21 +21,7 @@
 
 #include <libc/stdint.h>
 #include <libc/sys/errno.h>
-
-#define KERN_SUCCESS 0
-#define KERN_INVALID_ADDRESS    1
-#define KERN_INVALID_ARGUMENT   2
-#define KERN_NO_MEMORY          3
-#define KERN_FAILURE            4
-#define KERN_RESOURCES_MISSING  5
-#define KERN_RESOURCE_IN_USE    6
-#define KERN_RESOURCE_EXISTS    7
-#define KERN_RESOURCE_EXHAUSTED 8
-#define KERN_TIMEOUT            9
-#define KERN_ACCESS_VIOLATION   10
-#define KERN_IPC_NO_RECEIVER    11
-#define KERN_IPC_NO_SENDER      12
-#define KERN_TASK_RESTART       1024 // Only used internally
+#include <libc/sys/kern_return.h>
 
 #if __KERNEL
 

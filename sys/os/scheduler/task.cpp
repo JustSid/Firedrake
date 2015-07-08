@@ -33,6 +33,7 @@ namespace OS
 	IODefineMeta(Task, IO::Object)
 
 	extern IPC::Port *echoPort;
+	extern IPC::Port *bootstrapPort;
 
 	Task::Task() :
 		schedulerEntry(this)
@@ -66,7 +67,7 @@ namespace OS
 		if(echoPort)
 		{
 			_specialPorts[IPC_SPECIAL_PORT_KERNEL] = nullptr;
-			_specialPorts[IPC_SPECIAL_PORT_ANNOUNCE] = nullptr;
+			_specialPorts[IPC_SPECIAL_PORT_BOOTSTRAP] = _space->AllocateSendPort(bootstrapPort, IPC::Port::Right::Send, IPC_PORT_NULL);
 			_specialPorts[IPC_SPECIAL_PORT_PUT] = _space->AllocateSendPort(echoPort, IPC::Port::Right::Send, IPC_PORT_NULL);
 		}
 

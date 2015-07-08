@@ -45,6 +45,8 @@ namespace OS
 			KernReturn<Port *> AllocateReceivePort(); // Creates a new port with receive rights
 			KernReturn<Port *> AllocateSendPort(Port *target, Port::Right right, ipc_port_t name); // Right must be either Send or SendOnce
 
+			void DeallocatePort(Port *port);
+
 			Port *GetPortWithName(ipc_port_t name) const;
 
 			/** Must *both* be called with lock being held **/

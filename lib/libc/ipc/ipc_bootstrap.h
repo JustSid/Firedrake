@@ -1,5 +1,5 @@
 //
-//  ipc_port.h
+//  ipc_bootstrap.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,36 +16,18 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IPC_IPC_PORT_H_
-#define _IPC_IPC_PORT_H_
+#ifndef _IPC_IPC_BOOTSTRAP_H_
+#define _IPC_IPC_BOOTSTRAP_H_
 
+#include "../sys/cdefs.h"
 #include "ipc_types.h"
 
 __BEGIN_DECLS
 
-#define IPC_PORT_NULL ((ipc_port_t)0)
-#define IPC_PORT_DEAD (~(ipc_port_t)0)
-
-#define IPC_PORT_RIGHT_RECEIVE   0
-#define IPC_PORT_RIGHT_SEND      1
-#define IPC_PORT_RIGHT_SEND_ONCE 2
-
-#define IPC_SPECIAL_PORT_KERNEL    0
-#define IPC_SPECIAL_PORT_BOOTSTRAP 1
-#define IPC_SPECIAL_PORT_PUT       2
-
-#define __IPC_SPECIAL_PORT_MAX 3
-
-//ipc_space_t ipc_task_space(pid_t pid);
-ipc_port_t ipc_task_port();
-ipc_port_t ipc_thread_port();
-ipc_port_t ipc_get_special_port(int port);
-
-ipc_return_t ipc_allocate_port(ipc_port_t *port);
-//ipc_return_t ipc_insert_port(ipc_space_t space, ipc_port_t target, ipc_port_t port, int right);
-
-ipc_return_t ipc_deallocate_port(ipc_port_t port);
+ipc_return_t ipc_bootstrap_register(ipc_port_t port, const char *name);
+ipc_return_t ipc_bootstrap_lookup(ipc_port_t *port, const char *name);
+ipc_return_t ipc_bootstrap_unregister(const char *name);
 
 __END_DECLS
 
-#endif /* _IPC_IPC_PORT_H_ */
+#endif /* _IPC_IPC_MESSAGE_H_ */

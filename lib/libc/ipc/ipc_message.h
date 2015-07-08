@@ -30,6 +30,14 @@ __BEGIN_DECLS
 #define IPC_HEADER_FLAG_BLOCK (1 << 0)
 #define IPC_HEADER_FLAG_RESPONSE (1 << 1)
 
+#define IPC_HEADER_FLAG_GET_RESPONSE_BITS(flags) ((flags & 0x30000) >> 16)
+#define IPC_HEADER_FLAG_RESPONSE_BITS(response) (response << 16)
+
+#define IPC_MESSAGE_RIGHT_MOVE_SEND      0
+#define IPC_MESSAGE_RIGHT_MOVE_SEND_ONCE 1
+#define IPC_MESSAGE_RIGHT_COPY_SEND      2
+#define IPC_MESSAGE_RIGHT_COPY_SEND_ONCE 3
+
 typedef struct
 {
 	ipc_port_t port;

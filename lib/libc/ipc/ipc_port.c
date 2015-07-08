@@ -48,4 +48,9 @@ ipc_return_t ipc_allocate_port(ipc_port_t *port)
 	return (ipc_return_t)KERN_TRAP1(KERN_IPC_AllocatePort, port);
 }
 
+ipc_return_t ipc_deallocate_port(ipc_port_t port)
+{
+	return (ipc_return_t)KERN_TRAP1(KERN_IPC_DeallocatePort, port);
+}
+
 #endif /* __KERNEL */

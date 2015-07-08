@@ -127,5 +127,25 @@ namespace OS
 
 			return ErrorNone;
 		}
+
+		KernReturn<uint32_t> Syscall_IPCDeallocatePort(Thread *thread, IPCDeallcoatePortArgs *arguments)
+		{
+			Task *task = thread->GetTask();
+			Space *space = task->GetIPCSpace();
+
+			space->Lock();
+
+			Port *port = space->GetPortWithName(arguments->port);
+			if(!port)
+			{
+				space->Unlock();
+				return Error(KERN_INVALID_ARGUMENT);
+			}
+
+			space->DeallocatePort(port);
+			space->Unlock();
+
+			return KERN_SUCCESS;
+		}
 	}
 }

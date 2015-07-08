@@ -37,6 +37,7 @@ namespace OS
 			_space = space;
 			_queue = (right == Right::Receive) ? IO::Array::Alloc()->Init() : nullptr;
 			_targetPort = IO::SafeRetain(targetPort);
+			_isDead = false;
 
 			return this;
 		}
@@ -49,6 +50,15 @@ namespace OS
 			IO::Object::Dealloc();
 		}
 		
+
+		void Port::MarkDead()
+		{
+			_isDead = true;
+			_right = static_cast<Right>(0xdeadbeef);
+
+			IO::SafeRelease(_queue);
+			IO::SafeRelease(_targetPort);
+		}
 
 		void Port::PushMessage(Message *msg)
 		{
