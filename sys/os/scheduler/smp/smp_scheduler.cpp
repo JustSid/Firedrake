@@ -194,7 +194,7 @@ namespace OS
 			{
 				SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
 
-				if(data->usage >= 50) // Todo: This should probably be priority dependent
+				if(data->usage >= 5) // Todo: This should probably be priority dependent
 				{
 					data->forcedDown = true;
 					_hasForcedDown = true;
@@ -203,8 +203,8 @@ namespace OS
 				needsReschedule = !CanScheduleThread(thread->GetTask(), data);
 				if(!needsReschedule)
 				{
-					// Recalculate the threads priority every 5 ticks
-					if((data->usage % 5) == 0)
+					// Recalculate the threads priority every 4 ticks
+					if((data->usage % 4) == 0)
 						data->priority = (data->usage / 4) + task->GetNice();
 				}
 
@@ -328,6 +328,12 @@ namespace OS
 			{
 				data->forcedDown = false;
 				data->needsWakeup = true;
+
+				Task *task = thread->GetTask();
+
+				// Give the thread a boost in priority to make it more likely to be scheduled
+				data->usage = (data->usage + task->GetNice()) / 3;
+				data->priority = (data->usage / 4) + task->GetNice();
 
 				_needsReschedule = true;
 			}
