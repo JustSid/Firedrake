@@ -20,6 +20,7 @@
 #define _IPC_IPC_TYPES_H_
 
 #include "../sys/cdefs.h"
+#include "../sys/kern_return.h"
 
 __BEGIN_DECLS
 

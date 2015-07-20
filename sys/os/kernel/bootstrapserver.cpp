@@ -38,10 +38,8 @@ namespace OS
 		if(length == 0)
 			return;
 
-		kprintf("Registering '%s'\n", buffer);
-
 		IO::String *string = IO::String::Alloc()->InitWithCString(buffer);
-		IO::Number *portNumber = IO::Number::Alloc()->InitWithUint32(header->reply);
+		IO::Number *portNumber = IO::Number::Alloc()->InitWithUint32(header->port);
 
 		_bootstrapPorts->SetObjectForKey(portNumber, string);
 
@@ -57,8 +55,6 @@ namespace OS
 		if(length == 0)
 			return;
 
-		kprintf("Unegistering '%s'\n", buffer);
-
 		IO::String *string = IO::String::Alloc()->InitWithCString(buffer);
 		_bootstrapPorts->RemoveObjectForKey(string);
 		string->Release();
@@ -72,8 +68,6 @@ namespace OS
 		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(inHeader)), 255);
 		if(length == 0)
 			return;
-
-		kprintf("Looking up '%s'\n", buffer);
 
 		IO::String *string = IO::String::Alloc()->InitWithCString(buffer);
 		IO::Number *portNumber = _bootstrapPorts->GetObjectForKey<IO::Number>(string);
@@ -105,7 +99,11 @@ namespace OS
 		IPC::Message *message = IPC::Message::Alloc()->Init(header);
 
 		space->Lock();
-		space->Write(message);
+		KernReturn<void> result = space->Write(message);
+		if(!result.IsValid())
+		{
+			kprintf("Result: %d\n", result.GetError().GetCode());
+		}
 		space->Unlock();
 
 		message->Release();

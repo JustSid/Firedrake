@@ -186,12 +186,17 @@ namespace OS
 				{
 					if(replyPort->GetRight() != Port::Right::Receive)
 					{
-						if(targetSpace != this)
-							targetSpace->Unlock();
+						replyPort = replyPort->GetTarget();
 
-						copy->Release();
+						if(!replyPort)
+						{
+							if(targetSpace != this)
+								targetSpace->Unlock();
 
-						return Error(KERN_IPC_NO_RECEIVER);
+							copy->Release();
+
+							return Error(KERN_IPC_NO_RECEIVER);
+						}
 					}
 
 					Port::Right right = Port::Right::Send;
