@@ -1,5 +1,5 @@
 //
-//  stdio.h
+//  main.c
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,29 +16,67 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _STDIO_H_
-#define _STDIO_H_
+#include <sys/unistd.h>
+#include <sys/fcntl.h>
+#include <sys/thread.h>
+#include <ipc/ipc_message.h>
+#include <ipc/ipc_port.h>
+#include <ipc/ipc_bootstrap.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "sys/cdefs.h"
-#include "sys/types.h"
-#include "stddef.h"
-#include "stdarg.h"
+void print_file(const char *arg)
+{
+	int fd = open(arg, O_RDONLY);
+	char temp[129];
 
-__BEGIN_DECLS
+	off_t left = lseek(fd, 0, SEEK_END);
+	lseek(fd, 0, SEEK_SET);
 
-int vsnprintf(char *buffer, size_t size, const char *format, va_list arg);
-int vsprintf(char *buffer, const char *format, va_list arg);
+	while(left > 0)
+	{
+		int toRead = left;
+		if(toRead > 128)
+			toRead = 128;
 
-int snprintf(char *dst, size_t size, const char *format, ...);
-int sprintf(char *dst, const char *format, ...);
+		int length = read(fd, temp, toRead);
+		temp[length] = '\0';
+		puts(temp);
 
-#ifndef __KERNEL
+		left -= length;
+	}
 
-void puts(const char *string);
-void printf(const char *format, ...);
+	puts("\n");
+	close(fd);
+}
 
-#endif
+int main(int argc, char *argv[])
+{
+	ipc_port_t port;
 
-__END_DECLS
+	ipc_allocate_port(&port);
+	ipc_bootstrap_register(port, "com.test.server");
 
-#endif /* _STDIO_H_ */
+	while(1)
+	{
+		char buffer[255 + sizeof(ipc_header_t)];
+		ipc_header_t *header = (ipc_header_t *)buffer;
+
+		header->port = port;
+		header->flags = IPC_HEADER_FLAG_BLOCK;
+		header->size = 255;
+
+		ipc_return_t result = ipc_read(header);
+		if(result == KERN_SUCCESS)
+		{
+			char file[255];
+			strlcpy(file, (char *)IPC_GET_DATA(header), 255);
+
+			printf("Printing file: %s\n", file);
+			print_file(file);
+		}
+	}
+
+	return EXIT_SUCCESS;
+}

@@ -1,4 +1,4 @@
-ALLDIRS = test
+ALLDIRS = test test_server
 
 all:
 	for i in $(ALLDIRS); do make -C $$i; done

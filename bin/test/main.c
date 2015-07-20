@@ -21,67 +21,42 @@
 #include <sys/thread.h>
 #include <ipc/ipc_message.h>
 #include <ipc/ipc_port.h>
+#include <ipc/ipc_bootstrap.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-void puts(const char *string)
+void send_file_name(const char *name, ipc_port_t port)
 {
-	char buffer[255];
-
+	char buffer[255 + sizeof(ipc_header_t)];
 	ipc_header_t *header = (ipc_header_t *)buffer;
-	header->port = ipc_get_special_port(IPC_SPECIAL_PORT_PUT);
+	header->port = port;
 	header->flags = 0;
-	header->size = strlen(string) + 1;
+	header->id = 215;
+	header->size = strlen(name) + 1;
 
-	char *data = (char *)IPC_GET_DATA(header);
-	strcpy(data, string);
-
+	memcpy(IPC_GET_DATA(header), name, header->size + 1);
 	ipc_write(header);
-}
-
-void printf(const char *format, ...)
-{
-	va_list args;
-	va_start(args, format);
-
-	char buffer[512];
-	vsnprintf(buffer, 512, format, args);
-
-	puts(buffer);
-	va_end(args);
-}
-
-
-void test(void *arg)
-{
-	int fd = open((char *)arg, O_RDONLY);
-	char temp[129];
-
-	off_t left = lseek(fd, 0, SEEK_END);
-	lseek(fd, 0, SEEK_SET);
-
-	while(left > 0)
-	{
-		int toRead = left;
-		if(toRead > 128)
-			toRead = 128;
-
-		int length = read(fd, temp, toRead);
-		temp[length] = '\0';
-		puts(temp);
-
-		left -= length;
-	}
-
-	puts("\n");
-	close(fd);
 }
 
 int main(int argc, char *argv[])
 {
-	tid_t thread = thread_create(&test, "/etc/about");
-	thread_join(thread);
+	puts("Waiting for IPC port\n");
+
+	while(1)
+	{
+		ipc_port_t port;
+		ipc_return_t result = ipc_bootstrap_lookup(&port, "com.test.server");
+
+		if(result != KERN_SUCCESS)
+			continue;
+
+		puts("Got IPC port\n");
+
+		send_file_name("/etc/about", port);
+		send_file_name("/etc/license.txt", port);
+		break;
+	}
 
 	return EXIT_SUCCESS;
 }

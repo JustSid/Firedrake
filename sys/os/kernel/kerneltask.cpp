@@ -137,7 +137,8 @@ namespace OS
 		__unused Thread *bootstrapThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&BootstrapServerThread), Thread::PriorityClassKernel, 16, nullptr);
 
 		// Start the test program
-		__unused Task *task = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test.bin");
+		__unused Task *task1 = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test.bin");
+		__unused Task *task2 = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test_server.bin");
 
 		// Listen for incoming IPC messages
 		size_t bufferSize = 1024;
