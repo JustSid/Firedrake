@@ -18,6 +18,7 @@
 
 #include <libc/stdbool.h>
 #include <libc/stddef.h>
+#include <libc/assert.h>
 #include <kern/kalloc.h>
 #include "iterator.h"
 #include "algorithm.h"
@@ -194,8 +195,10 @@ namespace std
 
 		void erase(size_type index)
 		{
+			assert(index < _size);
+
+			(_data + index)->~T();
 			std::copy(_data + index + 1, _data + _size, _data + index);
-			(_data + (_size - 1))->~T();
 
 			if((-- _size) < _capacity / 2)
 			{

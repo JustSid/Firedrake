@@ -92,8 +92,10 @@ namespace OS
 
 		Thread *PopAny()
 		{
-			Thread *thread = *_waiters.end();
-			_waiters.erase(_waiters.end());
+			std::vector<Thread *>::iterator last = _waiters.end() - 1;
+
+			Thread *thread = *last;
+			_waiters.erase(last);
 
 			return thread;
 		}
