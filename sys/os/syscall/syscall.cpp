@@ -91,7 +91,7 @@ namespace OS
 			if(size > 5 * sizeof(uint32_t))
 			{
 				// Get all the other arguments from the stack
-				size_t left;
+				size_t left = 0;
 				size_t argOffset = 0;
 
 				for(size_t i = 0; i < entry->argCount; i ++)

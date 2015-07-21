@@ -33,10 +33,10 @@ void panic_die(const char *buffer)
 	Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
 	Sys::CPUState *state = cpu->GetLastState();
 
-	kprintf("\n\16\24Kernel Panic!\16\27\n");
-	kprintf("Reason: \"");
-	kprintf(buffer);
-	kprintf("\"\n");
+	kputs("\n\16\24Kernel Panic!\16\27\n");
+	kputs("Reason: \"");
+	kputs(buffer);
+	kputs("\"\n");
 
 	kprintf("Crashing CPU: \16\031%i\16\27\n", cpu->GetID());
 
@@ -56,7 +56,7 @@ void panic_die(const char *buffer)
 
 	if(state)
 	{
-		kprintf("Kernel backtrace:\n");
+		kputs("Kernel backtrace:\n");
 
 		int num = backtrace(frames, 10);
 
@@ -64,7 +64,7 @@ void panic_die(const char *buffer)
 			kprintf("(%2i) %08x\n", (num - 1) - i, reinterpret_cast<uint32_t>(frames[i]));
 	}
 
-	kprintf("CPU halt");
+	kputs("CPU halt");
 }
 void panic(const char *reason, ...)
 {

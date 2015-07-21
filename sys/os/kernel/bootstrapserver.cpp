@@ -150,7 +150,7 @@ namespace OS
 							break;
 
 						default:
-							kprintf("Invalid bootstrap request %u\n", header->id);
+							kprintf("Invalid bootstrap request %lu\n", header->id);
 							break;
 					}
 				}

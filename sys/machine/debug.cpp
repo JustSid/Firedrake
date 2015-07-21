@@ -119,7 +119,7 @@ namespace Sys
 		uintptr_t address;
 
 #define CheckWatchpoint(index) \
-		do { \ 
+		do { \
 			if(dr6 & (1 << index)) \
 			{ \
 				__asm__ volatile("mov %%dr" #index ", %0" : "=r" (address)); \
@@ -132,7 +132,7 @@ namespace Sys
 		CheckWatchpoint(3);
 
 
-		kprintf("Watchpoint #%i triggered. Address: %p, backtrace:\n", watchpoint, address);
+		kprintf("Watchpoint #%i triggered. Address: %lu, backtrace:\n", watchpoint, address);
 
 		void *buffer[10];
 		int count = backtrace_np(reinterpret_cast<void *>(state->ebp), buffer, 10);

@@ -26,8 +26,7 @@ namespace Sys
 {
 	constexpr size_t kHeapSafeZone = 4;
 
-	Heap::Arena::Arena(Heap *heap, Type type, size_t sizeHint) :
-		_heap(heap),
+	Heap::Arena::Arena(Type type, size_t sizeHint) :
 		_allocations(0),
 		_cacheAllocation(nullptr),
 		_changes(0),
@@ -357,7 +356,7 @@ namespace Sys
 
 		if(!result)
 		{
-			Arena *arena = new Arena(this, type, size);
+			Arena *arena = new Arena(type, size);
 			if(!arena)
 			{
 				spinlock_unlock(&_lock);

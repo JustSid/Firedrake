@@ -71,7 +71,7 @@ namespace Sys
 
 			static Type GetTypeForSize(size_t size);
 
-			Arena(Heap *heap, Type type, size_t sizeHint);
+			Arena(Type type, size_t sizeHint);
 			~Arena();
 
 			void *operator new(size_t size);
@@ -94,7 +94,6 @@ namespace Sys
 			__Allocation *FindFreeAllocation(size_t size, size_t alignment);
 			__Allocation *GetAllocationForPointer(void *pointer);
 
-			Heap *_heap;
 			size_t _changes;
 
 			uint8_t *_begin;
