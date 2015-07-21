@@ -32,6 +32,11 @@ namespace OS
 
 	IODefineMeta(Thread, IO::Object)
 
+	void __ThreadIPCCallback(IPC::Port *port, IPC::Message *message)
+	{
+		kputs("Task IPC Callback\n");
+	}
+
 	KernReturn<Thread *> Thread::Init(Task *task, Entry entry, PriorityClass priority, size_t stackPages, IO::Array *parameters)
 	{
 		if(!IO::Object::Init())
@@ -50,7 +55,8 @@ namespace OS
 
 		IPC::Space *space = _task->GetIPCSpace();
 		space->Lock();
-		_threadPort = space->AllocateReceivePort();
+		_threadPort = space->AllocateCallbackPort(&__ThreadIPCCallback);
+		_threadSendPort = space->AllocateSendPort(_threadPort, IPC::Port::Right::Send, IPC_PORT_NULL);
 		space->Unlock();
 
 		if(_task->_ring3)

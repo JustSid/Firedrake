@@ -35,6 +35,11 @@ namespace OS
 	extern IPC::Port *echoPort;
 	extern IPC::Port *bootstrapPort;
 
+	void __TaskIPCCallback(IPC::Port *port, IPC::Message *message)
+	{
+		kputs("Task IPC Callback\n");
+	}
+
 	Task::Task() :
 		schedulerEntry(this)
 	{}
@@ -62,7 +67,8 @@ namespace OS
 		_exitedThreads = 0;
 
 		_space = IPC::Space::Alloc()->Init();
-		_taskPort = _space->AllocateReceivePort();
+		_taskPort = _space->AllocateCallbackPort(&__TaskIPCCallback);
+		_taskSendPort = _space->AllocateSendPort(_taskPort, IPC::Port::Right::Send, IPC_PORT_NULL);
 
 		if(echoPort)
 		{

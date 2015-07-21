@@ -71,7 +71,7 @@ namespace OS
 		size_t GetUserStackPages() const { return _userStackPages; }
 		size_t GetKernelStackPages() const { return _kernelStackPages; }
 
-		IPC::Port *GetThreadPort() const { return _threadPort; }
+		IPC::Port *GetThreadPort() const { return _threadSendPort; }
 
 		void *GetJoinToken() const { return const_cast<void *>(reinterpret_cast<const void *>(&_joinToken)); }
 
@@ -102,6 +102,7 @@ namespace OS
 		uint32_t _entry;
 
 		IPC::Port *_threadPort;
+		IPC::Port *_threadSendPort;
 
 		char _joinToken;
 

@@ -94,7 +94,7 @@ namespace OS
 
 		// IPC
 		IPC::Space *GetIPCSpace() const { return _space; }
-		IPC::Port *GetTaskPort() const { return _taskPort; }
+		IPC::Port *GetTaskPort() const { return _taskSendPort; }
 		IPC::Port *GetSpecialPort(int port) const { return _specialPorts[port]; }
 
 		// Scheduler
@@ -130,6 +130,7 @@ namespace OS
 
 		IPC::Space *_space;
 		IPC::Port *_taskPort;
+		IPC::Port *_taskSendPort;
 		IPC::Port *_specialPorts[__IPC_SPECIAL_PORT_MAX];
 
 		IODeclareMeta(Task)
