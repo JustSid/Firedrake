@@ -42,7 +42,6 @@ namespace OS
 
 		private:
 			ipc_header_t *_header;
-			void *_buffer;
 			bool _ownsData;
 
 			IODeclareMeta(Message)

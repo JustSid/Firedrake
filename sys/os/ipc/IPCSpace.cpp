@@ -88,7 +88,7 @@ namespace OS
 
 				if(!_spaceMap->GetObjectForKey<Port>(lookup))
 				{
-					Port *port = Port::Alloc()->Init(this, name, Port::Right::Receive, nullptr);
+					Port *port = Port::Alloc()->InitWithReceiveRight(this, name);
 					if(!port)
 						return Error(KERN_NO_MEMORY);
 
@@ -113,7 +113,7 @@ namespace OS
 
 					if(!_spaceMap->GetObjectForKey<Port>(lookup))
 					{
-						Port *port = Port::Alloc()->Init(this, name, right, target);
+						Port *port = Port::Alloc()->InitWithSendRight(this, name, right, target);
 						if(!port)
 							return Error(KERN_NO_MEMORY);
 
@@ -129,13 +129,32 @@ namespace OS
 				if(_spaceMap->GetObjectForKey<Port>(lookup))
 					return Error(KERN_RESOURCE_EXISTS);
 
-				Port *port = Port::Alloc()->Init(this, name, right, target);
+				Port *port = Port::Alloc()->InitWithSendRight(this, name, right, target);
 				if(!port)
 					return Error(KERN_NO_MEMORY);
 
 				_ports->SetObjectForKey(port, lookup);
 
 				return port;
+			}
+		}
+
+		KernReturn<Port *> Space::AllocateCallbackPort(Port::Callback callback)
+		{
+			while(1)
+			{
+				ipc_port_t name = _portNames ++;
+				IO::StrongRef<IO::Number> lookup(IOTransferRef(IO::Number::Alloc()->InitWithUint32(name)));
+
+				if(!_spaceMap->GetObjectForKey<Port>(lookup))
+				{
+					Port *port = Port::Alloc()->InithWithCallback(this, name, callback);
+					if(!port)
+						return Error(KERN_NO_MEMORY);
+
+					_ports->SetObjectForKey(port, lookup);
+					return port;
+				}
 			}
 		}
 
@@ -188,7 +207,7 @@ namespace OS
 					{
 						replyPort = replyPort->GetTarget();
 
-						if(!replyPort)
+						if(!replyPort || replyPort->IsDead())
 						{
 							if(targetSpace != this)
 								targetSpace->Unlock();

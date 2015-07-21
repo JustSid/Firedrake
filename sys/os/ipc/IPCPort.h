@@ -45,11 +45,19 @@ namespace OS
 		public:
 			friend class Space;
 			
+			typedef void (*Callback)(Port *port, Message *message); 
+
 			enum class Right
 			{
 				Receive,
 				Send,
 				SendOnce
+			};
+
+			enum class Type
+			{
+				Regular,
+				Callback // A port that isn't actually attached to anything but rather invokes a kernel callback
 			};
 
 			void Dealloc() override;
@@ -60,6 +68,7 @@ namespace OS
 			ipc_port_t GetName() const { return _name; }
 			Space *GetSpace() const { return _space; }
 			Right GetRight() const { return _right; }
+			Type GetType() const { return _type; }
 			Port *GetTarget() const { return _targetPort; }
 
 			void PushMessage(Message *message);
@@ -68,16 +77,26 @@ namespace OS
 			void PopMessage();
 
 		protected:
-			Port *Init(Space *space, ipc_port_t name, Right right, Port *targetPort);
+			Port *InitWithReceiveRight(Space *space, ipc_port_t name);
+			Port *InitWithSendRight(Space *space, ipc_port_t name, Right right, Port *target);
+			Port *InithWithCallback(Space *space, ipc_port_t name, Callback callback);
 
 		private:
+			Port *Init(Space *space, ipc_port_t port, Type type);
+
 			bool _isDead;
 			Right _right;
+			Type _type;
+
 			ipc_port_t _name;
-			
-			IO::Array *_queue;
 			Space *_space;
-			Port *_targetPort;
+
+			union
+			{
+				IO::Array *_queue;
+				Port *_targetPort;
+				Callback _callback;
+			};
 			
 			IODeclareMeta(Port)
 		};
