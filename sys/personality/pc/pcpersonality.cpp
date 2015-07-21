@@ -97,14 +97,14 @@ namespace Sys
 		PrintHeader();
 
 		// Run the low level initialization process
-		// Because stack is really limited, a lot of the work should be done in FinishBootstrapping() instead
+		// Because stack is really limited, a lot of the heavy work should be done in FinishBootstrapping() instead
 		Init("cpu", Sys::CPUInit);
 		Init("physical memory", Sys::PMInit);
 		Init("virtual memory", Sys::VMInit);
 		Init("heap", Sys::HeapInit);
 		Init("objects", IO::CatalogueInit);
 		Init("interrupts", Sys::InterruptsInit);
-		Init("interrupts", Sys::CPUInitSecondStage);
+		Init("cpu second stage", Sys::CPUInitSecondStage);
 		Init("clock", Sys::ClockInit);
 		Init("smp", Sys::SMPInit);
 		Init("waitqueue", OS::WaitqueueInit);
