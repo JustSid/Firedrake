@@ -19,6 +19,11 @@
 #include "../sys/kern_trap.h"
 #include "ipc_port.h"
 
+ipc_return_t ipc_task_space(ipc_space_t *space, pid_t pid)
+{
+	return (ipc_return_t)KERN_TRAP2(KERN_IPC_TaskSpace, space, pid);
+}
+
 ipc_port_t ipc_task_port()
 {
 	ipc_port_t result;
@@ -44,6 +49,10 @@ ipc_port_t ipc_get_special_port(int port)
 ipc_return_t ipc_allocate_port(ipc_port_t *port)
 {
 	return (ipc_return_t)KERN_TRAP1(KERN_IPC_AllocatePort, port);
+}
+ipc_return_t ipc_insert_port(ipc_space_t space, ipc_port_t target, ipc_port_t port, int right)
+{
+	return (ipc_return_t)KERN_TRAP4(KERN_IPC_InsertPort, space, target, port, right);
 }
 
 ipc_return_t ipc_deallocate_port(ipc_port_t port)

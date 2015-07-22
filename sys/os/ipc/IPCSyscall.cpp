@@ -91,7 +91,6 @@ namespace OS
 		KernReturn<uint32_t> Syscall_IPCAllocatePort(Thread *thread, IPCPortCallArgs *arguments)
 		{
 			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->port, sizeof(ipc_port_t));
-
 			ipc_port_t *port = portMapping.GetMemory<ipc_port_t>();
 
 			Task *task = thread->GetTask();
@@ -144,6 +143,76 @@ namespace OS
 
 			space->DeallocatePort(port);
 			space->Unlock();
+
+			return KERN_SUCCESS;
+		}
+
+		KernReturn<uint32_t> Syscall_IPCTaskSpace(Thread *thread, IPCTaskSpaceCallArgs *arguments)
+		{
+			OS::SyscallScopedMapping portMapping(thread->GetTask(), arguments->space, sizeof(ipc_space_t));
+			ipc_space_t *space = portMapping.GetMemory<ipc_space_t>();
+
+			Task *task = Scheduler::GetScheduler()->GetTaskWithPID(arguments->pid);
+			if(!task)
+				return Error(KERN_INVALID_ARGUMENT);
+
+			*space = task->GetIPCSpace()->GetName();
+
+			return KERN_SUCCESS;
+		}
+
+		KernReturn<uint32_t> Syscall_IPCInsertPort(Thread *thread, IPCInsertPortArgs *arguments)
+		{
+			if(arguments->right <= IPC_PORT_RIGHT_RECEIVE || arguments->right > IPC_PORT_RIGHT_SEND_ONCE)
+				return Error(KERN_INVALID_ARGUMENT);
+
+			IO::StrongRef<Space> space = Space::GetSpaceWithName(arguments->space);
+			if(!space)
+				return Error(KERN_INVALID_ARGUMENT);
+
+			Space *source = thread->GetTask()->GetIPCSpace();
+			bool differentLocks = (source != space);
+
+			Space *space1 = (source < space.Load()) ? source : space.Load();
+			Space *space2 = (source < space.Load()) ? space.Load() : source;
+
+			space1->Lock();
+
+			if(differentLocks)
+				space2->Lock();
+
+			Port *port = source->GetPortWithName(arguments->port);
+			if(!port || port->GetRight() != Port::Right::Receive)
+			{
+				space2->Unlock();
+
+				if(differentLocks)
+					space1->Unlock();
+
+				return Error(KERN_INVALID_ARGUMENT);
+			}
+
+			Port::Right right;
+
+			switch(arguments->right)
+			{
+				case IPC_PORT_RIGHT_SEND:
+					right = Port::Right::Send;
+					break;
+				case IPC_PORT_RIGHT_SEND_ONCE:
+					right = Port::Right::SendOnce;
+					break;
+			}
+
+			KernReturn<Port *> target = space->AllocateSendPort(port, right, arguments->target);
+
+			space2->Unlock();
+
+			if(differentLocks)
+				space1->Unlock();
+
+			if(!target.IsValid())
+				return target.GetError();
 
 			return KERN_SUCCESS;
 		}

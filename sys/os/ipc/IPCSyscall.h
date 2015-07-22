@@ -28,6 +28,12 @@ namespace OS
 			ipc_port_t *port;
 		} __attribute__((packed));
 
+		struct IPCTaskSpaceCallArgs
+		{
+			ipc_space_t *space;
+			pid_t pid;
+		} __attribute__((packed));
+
 		struct IPCReadWriteArgs
 		{
 			ipc_header_t *header;
@@ -46,11 +52,21 @@ namespace OS
 			ipc_port_t port;
 		} __attribute__((packed));
 
+		struct IPCInsertPortArgs
+		{
+			ipc_space_t space;
+			ipc_port_t target;
+			ipc_port_t port;
+			int right;
+		} __attribute__((packed));
+
 		KernReturn<uint32_t> Syscall_IPCTaskPort(Thread *thread, IPCPortCallArgs *args);
 		KernReturn<uint32_t> Syscall_IPCThreadPort(Thread *thread, IPCPortCallArgs *args);
 		KernReturn<uint32_t> Syscall_IPCMessage(Thread *thread, IPCReadWriteArgs *args);
 		KernReturn<uint32_t> Syscall_IPCAllocatePort(Thread *thread, IPCPortCallArgs *args);
 		KernReturn<uint32_t> Syscall_IPCGetSpecialPort(Thread *thread, IPCSpecialPortArgs *args);
 		KernReturn<uint32_t> Syscall_IPCDeallocatePort(Thread *thread, IPCDeallcoatePortArgs *args);
+		KernReturn<uint32_t> Syscall_IPCTaskSpace(Thread *thread, IPCTaskSpaceCallArgs *args);
+		KernReturn<uint32_t> Syscall_IPCInsertPort(Thread *thread, IPCInsertPortArgs *args);
 	}
 }

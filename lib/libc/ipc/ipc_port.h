@@ -20,6 +20,7 @@
 #define _IPC_IPC_PORT_H_
 
 #include "ipc_types.h"
+#include "../sys/types.h"
 
 __BEGIN_DECLS
 
@@ -36,13 +37,13 @@ __BEGIN_DECLS
 
 #define __IPC_SPECIAL_PORT_MAX 3
 
-//ipc_space_t ipc_task_space(pid_t pid);
+ipc_return_t ipc_task_space(ipc_space_t *space, pid_t pid);
 ipc_port_t ipc_task_port();
 ipc_port_t ipc_thread_port();
 ipc_port_t ipc_get_special_port(int port);
 
 ipc_return_t ipc_allocate_port(ipc_port_t *port);
-//ipc_return_t ipc_insert_port(ipc_space_t space, ipc_port_t target, ipc_port_t port, int right);
+ipc_return_t ipc_insert_port(ipc_space_t space, ipc_port_t target, ipc_port_t port, int right);
 
 ipc_return_t ipc_deallocate_port(ipc_port_t port);
 
