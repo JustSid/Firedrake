@@ -71,6 +71,10 @@ namespace OS
 			Type GetType() const { return _type; }
 			Port *GetTarget() const { return _targetPort; }
 
+			template<class T>
+			T *GetContext() const { return reinterpret_cast<T *>(_context); }
+
+			void SetContext(void *context);
 			void PushMessage(Message *message);
 
 			Message *PeekMessage();
@@ -97,6 +101,8 @@ namespace OS
 				Port *_targetPort;
 				Callback _callback;
 			};
+
+			void *_context;
 			
 			IODeclareMeta(Port)
 		};

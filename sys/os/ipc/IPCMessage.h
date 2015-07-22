@@ -40,6 +40,9 @@ namespace OS
 			ipc_header_t *GetHeader() const { return _header; }
 			ipc_port_t GetPort() const { return _header->port; }
 
+			template<class T>
+			const T *GetData() const { return reinterpret_cast<const T *>(IPC_GET_DATA(_header)); }
+
 		private:
 			ipc_header_t *_header;
 			bool _ownsData;

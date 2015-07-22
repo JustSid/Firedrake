@@ -19,6 +19,7 @@
 #include <sys/unistd.h>
 #include <sys/fcntl.h>
 #include <sys/thread.h>
+#include <sys/task.h>
 #include <ipc/ipc_message.h>
 #include <ipc/ipc_port.h>
 #include <ipc/ipc_bootstrap.h>
@@ -47,7 +48,7 @@ void print_file(const char *arg)
 		left -= length;
 	}
 
-	puts("\n");
+	puts("\n\n");
 	close(fd);
 }
 
@@ -57,6 +58,8 @@ int main(int argc, char *argv[])
 
 	ipc_allocate_port(&port);
 	ipc_bootstrap_register(port, "com.test.server");
+
+	task_name("Test Server");
 
 	while(1)
 	{
@@ -77,6 +80,17 @@ int main(int argc, char *argv[])
 			print_file(file);
 		}
 	}
+
+
+	/*char buffer[255 + sizeof(ipc_header_t)];
+	ipc_header_t *header = (ipc_header_t *)buffer;
+
+	header->port = ipc_thread_port();
+	header->flags = 0;
+	header->size = 255;
+	header->id = 0;
+
+	ipc_write(header);*/
 
 	return EXIT_SUCCESS;
 }

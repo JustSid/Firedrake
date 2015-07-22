@@ -13,6 +13,7 @@ set(SOURCES
 	sys/x86/spinlock.S
 	sys/x86/syscall.S
 	sys/mman.c
+	sys/task.c
 	sys/thread.c
 	sys/tls.c
 	sys/unistd.c

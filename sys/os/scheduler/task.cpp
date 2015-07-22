@@ -24,6 +24,7 @@
 #include <machine/interrupts/trampoline.h>
 #include <machine/debug.h>
 #include <os/waitqueue.h>
+#include <libc/ipc/ipc_message.h>
 #include "scheduler.h"
 #include "task.h"
 
@@ -37,7 +38,41 @@ namespace OS
 
 	void __TaskIPCCallback(IPC::Port *port, IPC::Message *message)
 	{
-		kputs("Task IPC Callback\n");
+		ipc_header_t *header = message->GetHeader();
+
+		switch(header->id)
+		{
+			case 0:
+			{
+				ipc_size_t size = header->size;
+				Task *task = port->GetContext<Task>();
+
+				task->Lock();
+
+				if(size == 0)
+				{
+					task->SetName(nullptr);
+				}
+				else
+				{
+					char buffer[255];
+					strlcpy(buffer, message->GetData<char>(), std::min(static_cast<ipc_size_t>(255), size));
+
+					IO::String *string = IO::String::Alloc()->InitWithCString(buffer);
+					task->SetName(string);
+					string->Release();
+
+					kprintf("Task name: %s\n", buffer);
+				}
+
+				task->Unlock();
+
+				break;
+			}
+
+			default:
+				break;
+		}
 	}
 
 	Task::Task() :
@@ -69,6 +104,8 @@ namespace OS
 		_space = IPC::Space::Alloc()->Init();
 		_taskPort = _space->AllocateCallbackPort(&__TaskIPCCallback);
 		_taskSendPort = _space->AllocateSendPort(_taskPort, IPC::Port::Right::Send, IPC_PORT_NULL);
+
+		_taskPort->SetContext(this);
 
 		if(echoPort)
 		{

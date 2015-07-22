@@ -37,6 +37,7 @@ namespace OS
 			_space = space;
 			_type = type;
 			_isDead = false;
+			_context = nullptr;
 
 			return this;
 		}
@@ -103,6 +104,11 @@ namespace OS
 
 			IO::SafeRelease(_queue);
 			IO::SafeRelease(_targetPort);
+		}
+
+		void Port::SetContext(void *context)
+		{
+			_context = context;
 		}
 
 		void Port::PushMessage(Message *msg)

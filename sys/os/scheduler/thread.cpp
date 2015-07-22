@@ -34,7 +34,6 @@ namespace OS
 
 	void __ThreadIPCCallback(IPC::Port *port, IPC::Message *message)
 	{
-		kputs("Task IPC Callback\n");
 	}
 
 	KernReturn<Thread *> Thread::Init(Task *task, Entry entry, PriorityClass priority, size_t stackPages, IO::Array *parameters)
