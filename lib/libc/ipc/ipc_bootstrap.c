@@ -63,7 +63,11 @@ ipc_return_t ipc_bootstrap_unregister(const char *name)
 
 ipc_return_t ipc_bootstrap_lookup(ipc_port_t *port, const char *name)
 {
-	ipc_port_t replyPort = ipc_thread_port();
+	ipc_port_t replyPort;
+
+	ipc_return_t result = ipc_allocate_port(&replyPort);
+	if(result != KERN_SUCCESS)
+		return result;
 
 	char buffer[255 + sizeof(ipc_header_t)];
 
@@ -81,10 +85,13 @@ ipc_return_t ipc_bootstrap_lookup(ipc_port_t *port, const char *name)
 	char *data = (char *)IPC_GET_DATA(header);
 	memcpy(data, name, length);
 
-	ipc_return_t result = ipc_write(header);
+	result = ipc_write(header);
 
 	if(result != KERN_SUCCESS)
+	{
+		ipc_deallocate_port(replyPort);
 		return result;
+	}
 
 	// Retrieve the response
 	header->port = replyPort;
@@ -92,13 +99,14 @@ ipc_return_t ipc_bootstrap_lookup(ipc_port_t *port, const char *name)
 	header->size = sizeof(ipc_port_t);
 
 	result = ipc_read(header);
+	ipc_deallocate_port(replyPort);
 
 	if(result != KERN_SUCCESS)
 		return result;
 
 	ipc_return_t response = *(ipc_return_t *)IPC_GET_DATA(header);
 	if(response != KERN_SUCCESS)
-		return response;
+		return result;
 
 	*port = header->port;
 
