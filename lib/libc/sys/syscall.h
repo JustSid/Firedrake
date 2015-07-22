@@ -39,7 +39,6 @@ __BEGIN_DECLS
 #define SYS_Munmap   41
 #define SYS_Mprotect 42
 
-#ifndef __KERNEL
 unsigned int __syscall(int type, ...);
 
 #define SYSCALL8(type, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) \
@@ -68,8 +67,6 @@ unsigned int __syscall(int type, ...);
 
 #define SYSCALL0(type) \
 	SYSCALL8(type, 0, 0, 0, 0, 0, 0, 0, 0)
-
-#endif /* __KERNEL */
 
 __END_DECLS
 

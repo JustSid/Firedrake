@@ -18,8 +18,6 @@
 
 #include "../asm.h"
 
-#ifndef __KERNEL
-
 TEXT()
 ENTRY(__syscall)
 	pushl %ebp
@@ -78,5 +76,3 @@ ENTRY(__kern_trap)
 
 	popl %ebp
 	ret
-
-#endif

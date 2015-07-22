@@ -1,7 +1,7 @@
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/dictionaries
+
 /boot/Firedrake.iso
 /boot/initrd
-/sys/firedrake
-*.o
-*.bin
-*.so
-*.a
+/build

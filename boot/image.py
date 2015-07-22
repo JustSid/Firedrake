@@ -28,7 +28,7 @@ createDir('image/boot/grub/grup-i386-pc')
 createDir('image/modules')
 
 copyFile('grub.cfg', 'image/boot/grub/grub.cfg')
-copyFile('../sys/firedrake', 'image/boot/firedrake')
+copyFile('../build/sys/firedrake', 'image/boot/firedrake')
 copyFile('initrd', 'image/modules/initrd')
 
 os.chdir(base)

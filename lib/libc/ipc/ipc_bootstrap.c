@@ -21,8 +21,6 @@
 #include "ipc_message.h"
 #include "ipc_port.h"
 
-#ifndef __KERNEL /* Don't move up to avoid ending up with an empty translation unit */
-
 ipc_return_t ipc_bootstrap_register(ipc_port_t port, const char *name)
 {
 	char buffer[255 + sizeof(ipc_header_t)];
@@ -106,5 +104,3 @@ ipc_return_t ipc_bootstrap_lookup(ipc_port_t *port, const char *name)
 
 	return KERN_SUCCESS;
 }
-
-#endif /* __KERNEL */

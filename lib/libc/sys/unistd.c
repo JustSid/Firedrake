@@ -20,8 +20,6 @@
 #include "dirent.h"
 #include "syscall.h"
 
-#ifndef __KERNEL
-
 int open(const char *path, int flags)
 {
 	return (int)SYSCALL2(SYS_Open, path, flags);
@@ -81,5 +79,3 @@ pid_t getppid()
 {
 	return (pid_t)SYSCALL1(SYS_Pid, 1);
 }
-
-#endif /* __KERNEL */

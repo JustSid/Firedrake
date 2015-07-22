@@ -35,13 +35,11 @@
 #define MAP_FIXED       0x0008
 
 __BEGIN_DECLS
-#ifndef __KERNEL
 
 void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 int munmap(void *address, size_t length);
 int mprotect(void *address, size_t length, int prot);
 
-#endif /* __KERNEL */
 __END_DECLS
 
 #endif /* _MMAN_H_ */

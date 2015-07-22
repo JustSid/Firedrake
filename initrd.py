@@ -29,10 +29,10 @@ def scanFolder(out, path):
 
 		filepath = os.path.join(path, filename)
 
-		if filename.rfind('.bin') >= 0:
+		if filename.endswith('.bin'):
 			appendFile(out, filepath, '/bin')
 			objdump(filepath)
-		elif filename.rfind('.so') >= 0:
+		elif filename.endswith('.so'):
 			appendFile(out, filepath, '/lib')
 			objdump(filepath)
 		elif filename == 'firedrake':

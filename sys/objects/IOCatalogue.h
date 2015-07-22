@@ -22,10 +22,7 @@
 #include <libcpp/vector.h>
 #include <libc/sys/spinlock.h>
 #include <libc/string.h>
-
-#if __KERNEL
 #include <kern/kern_return.h>
-#endif
 
 namespace IO
 {

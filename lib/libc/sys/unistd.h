@@ -39,7 +39,6 @@ struct stat
 	size_t size;
 };
 
-
 #ifndef __KERNEL
 
 int open(const char *path, int flags);
@@ -59,8 +58,7 @@ int lstat(const char *path, struct stat *buf);
 pid_t getpid();
 pid_t getppid();
 
-#endif /* __KERNEL */
-
+#endif
 
 __END_DECLS
 

@@ -19,8 +19,6 @@
 #include "tls.h"
 #include "spinlock.h"
 
-#ifndef __KERNEL
-
 #define kTLSMaxKeys 64
 
 static unsigned long long _tls_bitmap = 0;
@@ -120,5 +118,3 @@ void __tls_setErrno(int value)
 {
 	*__tls_errno() = value;
 }
-
-#endif

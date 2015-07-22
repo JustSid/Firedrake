@@ -19,8 +19,6 @@
 #include "mman.h"
 #include "syscall.h"
 
-#ifndef __KERNEL
-
 void *mmap(void *address, size_t length, int prot, int flags, int fd, off_t offset)
 {
 	unsigned int result = SYSCALL6(SYS_Mmap, address, length, prot, flags, fd, offset);
@@ -38,5 +36,3 @@ int mprotect(void *address, size_t length, int prot)
 	unsigned int result = SYSCALL3(SYS_Mprotect, address, length, prot);
 	return (int)result;
 }
-
-#endif /* __KERNEL */

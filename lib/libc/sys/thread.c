@@ -19,8 +19,6 @@
 #include "thread.h"
 #include "syscall.h"
 
-#ifndef __KERNEL
-
 void __thread_entry(void (*entry)(void *), void *argument)
 {
 	entry(argument);
@@ -40,5 +38,3 @@ void thread_join(tid_t thread)
 {
 	SYSCALL1(SYS_ThreadJoin, thread);
 }
-
-#endif /* __KERNEL */

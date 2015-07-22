@@ -19,8 +19,6 @@
 #include "../sys/kern_trap.h"
 #include "ipc_port.h"
 
-#ifndef __KERNEL /* Don't move up to avoid ending up with an empty translation unit */
-
 ipc_port_t ipc_task_port()
 {
 	ipc_port_t result;
@@ -52,5 +50,3 @@ ipc_return_t ipc_deallocate_port(ipc_port_t port)
 {
 	return (ipc_return_t)KERN_TRAP1(KERN_IPC_DeallocatePort, port);
 }
-
-#endif /* __KERNEL */
