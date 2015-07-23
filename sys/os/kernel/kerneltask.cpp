@@ -23,6 +23,7 @@
 #include <os/waitqueue.h>
 #include <os/ipc/IPC.h>
 #include <os/locks/mutex.h>
+#include <libc/ipc/ipc_message.h>
 
 namespace Sys
 {
@@ -113,20 +114,35 @@ namespace OS
 	extern void BootstrapServerThread();
 
 	IPC::Port *bootstrapPort = nullptr;
-	IPC::Port *echoPort = nullptr;
+	IPC::Port *hostPort = nullptr;
+
+	void __KernelPortCallback(__unused IPC::Port *port, IPC::Message *message)
+	{
+		ipc_header_t *header = message->GetHeader();
+		switch(header->id)
+		{
+			case 0:
+				knputs(message->GetData<char>(), header->size);
+				break;
+
+			default:
+				break;
+		}
+	}
 
 	void KernelTaskMain()
 	{
 		Sys::Personality::GetPersonality()->FinishBootstrapping();
 
 		Task *self = Scheduler::GetScheduler()->GetActiveTask();
+		Thread *thread = self->GetMainThread();
 
 		// Set up the main IPC ports
 		IPC::Space *space = self->GetIPCSpace();
 		space->Lock();
 
-		echoPort = space->AllocateReceivePort();
-		echoPort->Retain();
+		hostPort = space->AllocateCallbackPort(&__KernelPortCallback);
+		hostPort->Retain();
 
 		bootstrapPort = space->AllocateReceivePort();
 		bootstrapPort->Retain();
@@ -137,56 +153,12 @@ namespace OS
 		__unused Thread *bootstrapThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&BootstrapServerThread), Thread::PriorityClassKernel, 16, nullptr);
 
 		// Start the test program
-		//__unused Task *task1 = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test.bin");
+		__unused Task *task1 = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test.bin");
 		__unused Task *task2 = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test_server.bin");
-
-		// Listen for incoming IPC messages
-		size_t bufferSize = 1024;
-
-		void *buffer = kalloc(bufferSize);
-		ipc_header_t *header = reinterpret_cast<ipc_header_t *>(buffer);
-
-		IPC::Message *message = IPC::Message::Alloc()->Init(header);
 
 		while(1)
 		{
-			header->port = echoPort->GetName();
-			header->flags = IPC_HEADER_FLAG_BLOCK;
-			header->size = bufferSize - sizeof(ipc_header_t);
-
-			space->Lock();
-			KernReturn<void> result = space->Read(message);
-			space->Unlock();
-
-			if(result.IsValid())
-			{
-				char *data = reinterpret_cast<char *>(IPC_GET_DATA(header));
-				kputs(data);
-			}
-			else
-			{
-				switch(result.GetError().GetCode())
-				{
-					case KERN_NO_MEMORY:
-					{
-						// Expand the buffer to allow reading the whole message
-						bufferSize = message->GetHeader()->realSize + sizeof(ipc_header_t);
-						kfree(buffer);
-
-						buffer = kalloc(bufferSize);
-
-						header = reinterpret_cast<ipc_header_t *>(buffer);
-
-						message->Release();
-						message = IPC::Message::Alloc()->Init(header);
-
-						break;
-					}
-
-					default:
-						break;
-				}
-			}
+			Scheduler::GetScheduler()->YieldThread(thread);
 		}
 	}
 }

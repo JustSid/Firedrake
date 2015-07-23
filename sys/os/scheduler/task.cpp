@@ -33,7 +33,7 @@ namespace OS
 	static std::atomic<pid_t> _taskPidCounter;
 	IODefineMeta(Task, IO::Object)
 
-	extern IPC::Port *echoPort;
+	extern IPC::Port *hostPort;
 	extern IPC::Port *bootstrapPort;
 
 	void __TaskIPCCallback(IPC::Port *port, IPC::Message *message)
@@ -107,11 +107,10 @@ namespace OS
 
 		_taskPort->SetContext(this);
 
-		if(echoPort)
+		if(_pid > 1) // The kernel task doesn't receive special ports
 		{
-			_specialPorts[IPC_SPECIAL_PORT_KERNEL] = nullptr;
+			_specialPorts[IPC_SPECIAL_PORT_HOST] = _space->AllocateSendPort(hostPort, IPC::Port::Right::Send, IPC_PORT_NULL);
 			_specialPorts[IPC_SPECIAL_PORT_BOOTSTRAP] = _space->AllocateSendPort(bootstrapPort, IPC::Port::Right::Send, IPC_PORT_NULL);
-			_specialPorts[IPC_SPECIAL_PORT_PUT] = _space->AllocateSendPort(echoPort, IPC::Port::Right::Send, IPC_PORT_NULL);
 		}
 
 		Scheduler::GetScheduler()->AddTask(this);

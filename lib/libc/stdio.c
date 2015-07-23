@@ -354,7 +354,8 @@ void puts(const char *string)
 	char buffer[255];
 
 	ipc_header_t *header = (ipc_header_t *)buffer;
-	header->port = ipc_get_special_port(IPC_SPECIAL_PORT_PUT);
+	header->port = ipc_get_special_port(IPC_SPECIAL_PORT_HOST);
+	header->id = 0;
 	header->flags = 0;
 	header->size = strlen(string) + 1;
 

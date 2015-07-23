@@ -81,16 +81,5 @@ int main(int argc, char *argv[])
 		}
 	}
 
-
-	/*char buffer[255 + sizeof(ipc_header_t)];
-	ipc_header_t *header = (ipc_header_t *)buffer;
-
-	header->port = ipc_thread_port();
-	header->flags = 0;
-	header->size = 255;
-	header->id = 0;
-
-	ipc_write(header);*/
-
 	return EXIT_SUCCESS;
 }

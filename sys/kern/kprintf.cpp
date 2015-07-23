@@ -89,3 +89,15 @@ void kputs(const char *string)
 			Sys::__outHandler[i](string, length);
 	}
 }
+
+void knputs(const char *string, unsigned int length)
+{
+	if(__expect_false(Sys::__outHandlerCount == 0))
+		return;
+
+	for(size_t i = 0; i < Sys::__outHandlerCount; i ++)
+	{
+		if(Sys::__outHandler[i])
+			Sys::__outHandler[i](string, length);
+	}
+}
