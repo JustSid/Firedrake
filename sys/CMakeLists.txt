@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.9)
 project(Kernel)
 
-set(SOURCE
+set(SOURCES
 	bootstrap/boot.cpp
 	kern/kalloc.cpp
 	kern/kern_return.cpp
@@ -75,18 +75,38 @@ set(SOURCE
 	vfs/vfs.cpp
 	vfs/vfs_syscall.cpp)
 
-set(TARGET_SOURCE
+set(HEADERS
+	bootstrap/multiboot.h
+	libc/assert.h
+	libc/math.h
+	libc/stdarg.h
+	libc/stdbool.h
+	libc/stddef.h
+	libc/stdint.h
+	libcpp/algorithm.h
+	libcpp/atomic.h
+	libcpp/bitfield.h
+	libcpp/functional.h
+	libcpp/intrusive_list.h
+	libcpp/iterator.h
+	libcpp/type_traits.h
+	libcpp/vector.h
+	machine/interrupts/idt.h
+	machine/memory/memory.h
+	machine/atomic.h
+	machine/cme.h
+	machine/cmos.h
+	machine/port.h
+	os/ipc/IPC.h
+	os/loader/elf.h)
+
+set(TARGET_SOURCES
 	bootstrap/x86/bootstrap.S)
 
-set(TARGET_ASM_FILES
-	bootstrap/x86/bootstrap.S
-	libc/sys/x86/spinlock.S
-	libc/sys/x86/syscall.S
-	libc/setjmp.S
-	machine/interrupts/idt.S
-	machine/smp/smp_bootstrap.S)
+set(TARGET_HEADERS
+	machine/interrupts/x86/interrupts.h)
 
-set(TARGET_FILES ${SOURCE} ${TARGET_SOURCE})
+set(TARGET_FILES ${SOURCES} ${TARGET_SOURCES} ${HEADERS} ${TARGET_HEADERS})
 
 # Use the C compiler to do the pre-processing of .S files since CMake doesn't support it
 foreach(FILE ${TARGET_FILES})
