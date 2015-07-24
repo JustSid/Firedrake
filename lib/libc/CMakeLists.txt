@@ -13,6 +13,7 @@ set(SOURCES
 	sys/x86/spinlock.S
 	sys/x86/syscall.S
 	sys/mman.c
+	sys/spinlock.c
 	sys/task.c
 	sys/thread.c
 	sys/tls.c
@@ -23,8 +24,31 @@ set(SOURCES
 	stdlib.c
 	string.c)
 
+set(HEADERS
+	ipc/ipc_types.h
+	sys/x86/barriers.h
+	sys/asm.h
+	sys/barriers.h
+	sys/cdefs.h
+	sys/dirent.h
+	sys/errno.h
+	sys/fcntl.h
+	sys/kern_return.h
+	sys/kern_trap.h
+	sys/syscall.h
+	sys/types.h
+	assert.h
+	math.h
+	setjmp.h
+	stdarg.h
+	stdbool.h
+	stddef.h
+	stdint.h)
+
+set(TARGET_FILES ${SOURCES} ${HEADERS})
+
 # Use the C compiler to do the pre-processing of .S files since CMake doesn't support it
-foreach(FILE ${SOURCES})
+foreach(FILE ${TARGET_FILES})
 
 	get_filename_component(EXTENSION ${FILE} EXT)
 
@@ -36,5 +60,5 @@ endforeach()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-add_library(c-static STATIC ${SOURCES})
-add_library(c SHARED ${SOURCES})
+add_library(c-static STATIC ${TARGET_FILES})
+add_library(c SHARED ${TARGET_FILES})
