@@ -21,6 +21,7 @@
 #include <libc/stdarg.h>
 #include <libc/stdint.h>
 #include <libc/string.h>
+#include <libcpp/algorithm.h>
 
 #include "kprintf.h"
 
@@ -94,6 +95,8 @@ void knputs(const char *string, unsigned int length)
 {
 	if(__expect_false(Sys::__outHandlerCount == 0))
 		return;
+
+	length = strnlen_np(string, length);
 
 	for(size_t i = 0; i < Sys::__outHandlerCount; i ++)
 	{

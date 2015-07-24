@@ -102,6 +102,15 @@ size_t strlen(const char *string)
 
 	return s - string;
 }
+size_t strnlen_np(const char *string, size_t maxSize)
+{
+	const char *s = string;
+
+	for(; *s != '\0' && (size_t)(s - string) < maxSize; s++)
+	{}
+
+	return s - string;
+}
 
 int strcmp(const char *str1, const char *str2)
 {

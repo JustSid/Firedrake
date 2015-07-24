@@ -34,6 +34,7 @@ void *memcpy(void *dst, const void *src, size_t size);
 char *strcpy(char *dst, const char *src);
 size_t strlcpy(char *dst, const char *src, size_t size); // Similar to strncpy, but appends the NULL byte always!
 size_t strlen(const char *string);
+size_t strnlen_np(const char *string, size_t maxSize);
 
 int strcmp(const char *str1, const char *str2);
 int strncmp(const char *str1, const char *str2, size_t size);
