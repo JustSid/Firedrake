@@ -19,8 +19,8 @@
 #ifndef _PREFIX_H_
 #define _PREFIX_H_
 
-#include "config.h"
 #include "version.h"
+#include <config.h>
 #include <libc/sys/cdefs.h>
 
 #endif /* _PREFIX_H_ */

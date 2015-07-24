@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 2.8.9)
 project(Kernel)
 
+# Configuration
+
+set(CONFIG_MAX_CPUS "32" CACHE STRING "The maximum number of CPUs supported by the kernel")
+
+set(CONFIG_PERSONALITY_PATH "personality/pc" CACHE PATH "Path to the personality")
+set(CONFIG_PERSONALITY_HEADER "<${CONFIG_PERSONALITY_PATH}/personality.h>")
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/include/config.h)
+
+# Source files
+
 set(SOURCES
 	bootstrap/boot.cpp
 	kern/kalloc.cpp
@@ -61,7 +72,7 @@ set(SOURCES
 	os/syscall/syscallTable.cpp
 	os/waitqueue.cpp
 	os/workqueue.cpp
-	personality/pc/pcpersonality.cpp
+	${CONFIG_PERSONALITY_PATH}/personality.cpp
 	personality/personality.cpp
 	vfs/ffs/ffs_descriptor.cpp
 	vfs/ffs/ffs_instance.cpp
@@ -98,7 +109,9 @@ set(HEADERS
 	machine/cmos.h
 	machine/port.h
 	os/ipc/IPC.h
-	os/loader/elf.h)
+	os/loader/elf.h
+	prefix.h
+	version.h)
 
 set(TARGET_SOURCES
 	bootstrap/x86/bootstrap.S)
@@ -119,11 +132,15 @@ foreach(FILE ${TARGET_FILES})
 
 endforeach()
 
+# Compiler settings
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-unused-parameter -pedantic-errors -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -nostdlib -nostdinc")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-overloaded-virtual -Wno-reorder -Wno-unused-parameter -pedantic-errors -fno-threadsafe-statics -fno-stack-protector -fno-builtin -fno-rtti -fno-exceptions -nostdinc -nostdlib")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T \"${CMAKE_CURRENT_SOURCE_DIR}/Makefile.ld\"")
 
-add_definitions(-DPERSONALITY=1 -DBOOTLOADER=1 -D__KERNEL)
+add_definitions(-D__KERNEL)
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+include_directories (${CMAKE_CURRENT_BINARY_DIR}/include)
 
 add_executable(firedrake ${TARGET_FILES})

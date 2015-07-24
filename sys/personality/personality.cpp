@@ -16,10 +16,11 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <prefix.h>
 #include <libcpp/new.h>
 
 #include "personality.h"
-#include PERSONALITY_HEADER
+#include CONFIG_PERSONALITY_HEADER
 
 const char *kVersionBeast    = "Nidhogg";
 const char *kVersionAppendix = "";

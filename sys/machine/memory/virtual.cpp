@@ -24,9 +24,7 @@
 #include "physical.h"
 #include "memory.h"
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 #include <bootstrap/multiboot.h>
-#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 namespace Sys
 {
@@ -700,7 +698,6 @@ namespace Sys
 			return ErrorNone;
 		}
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 		void MarkMultibootModule(MultibootModule *module)
 		{
 			vm_address_t start = VM_PAGE_ALIGN_DOWN((vm_address_t)module->start);
@@ -739,7 +736,6 @@ namespace Sys
 				}
 			}
 		}
-#endif
 	}
 
 	// --------------------
@@ -768,9 +764,7 @@ namespace Sys
 		VM::_kernelDirectory->MapPageRange(kernelBegin, kernelBegin, VM_PAGE_COUNT(kernelEnd - kernelBegin), kVMFlagsKernel);
 		VM::_kernelDirectory->MapPageRange(0xa0000, 0xa0000, VM_PAGE_COUNT(0xc0000 - 0xa0000), kVMFlagsKernel);
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 		VM::MarkMultiboot(bootInfo);
-#endif
 
 		// Activate the kernel directory and virtual memory
 		uint32_t cr0;

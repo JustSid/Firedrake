@@ -23,9 +23,7 @@
 #include "physical.h"
 #include "virtual.h"
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 #include <bootstrap/multiboot.h>
-#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 extern "C" uintptr_t __kernel_start__;
 extern "C" uintptr_t __kernel_end__;
@@ -168,7 +166,6 @@ namespace Sys
 		}
 
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 		void MarkMultibootModule(MultibootModule *module)
 		{
 			MarkUsed((uintptr_t)module->start);
@@ -197,13 +194,11 @@ namespace Sys
 			}
 		}
 	}
-#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 	KernReturn<void> PMInit()
 	{
 		memset(PM::_heapBitmap, 0, PM::_heapWidth * sizeof(uint32_t));
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 		MultibootHeader *info = bootInfo;
 
 		// Mark all free pages
@@ -233,7 +228,6 @@ namespace Sys
 
 			mmap = mmap->GetNext();
 		}
-#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 		
 		// Mark the kernel as allocated
@@ -244,9 +238,7 @@ namespace Sys
 		// and it's up to grabs by the kernel
 		PM::MarkRange(0x0, 0x100000);
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 		PM::MarkMultiboot(info);
-#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 		return ErrorNone;	
 	}

@@ -19,7 +19,6 @@
 #ifndef _PERSONALITY_H_
 #define _PERSONALITY_H_
 
-#include <prefix.h>
 #include <kern/kprintf.h>
 #include <kern/panic.h>
 #include <kern/kern_return.h>

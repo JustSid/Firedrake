@@ -31,9 +31,7 @@
 #include <objects/IOArray.h>
 #include <vfs/ffs/ffs_descriptor.h>
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 #include <bootstrap/multiboot.h>
-#endif
 
 namespace VFS
 {
@@ -413,7 +411,6 @@ namespace VFS
 
 		bool didLoadInitrd = false;
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 		Sys::MultibootModule *module = Sys::bootInfo->modules;
 
 		for(size_t i = 0; i < Sys::bootInfo->modulesCount; i ++)
@@ -433,7 +430,6 @@ namespace VFS
 
 			module = module->GetNext();
 		}
-#endif
 
 		if(!didLoadInitrd)
 			kprintf("Couldn't find initrd");

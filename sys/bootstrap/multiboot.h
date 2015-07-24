@@ -23,8 +23,6 @@
 #include <libc/stdint.h>
 #include <libcpp/bitfield.h>
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
-
 // http://www.gnu.org/software/grub/manual/multiboot/multiboot.html
 
 namespace Sys
@@ -111,5 +109,5 @@ namespace Sys
 
 	extern MultibootHeader *bootInfo;
 }
-#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
+
 #endif /* _MULTIBOOT_H_ */

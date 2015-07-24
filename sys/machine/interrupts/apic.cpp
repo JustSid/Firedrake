@@ -24,8 +24,13 @@
 #include <libcpp/new.h>
 #include "apic.h"
 
-#define APIC_MAX_IOAPICS 8
-#define APIC_MAX_INTERRUPT_OVERRIDES 32
+#ifndef CONFIG_MAX_IOAPICS
+	#define CONFIG_MAX_IOAPICS 8
+#endif
+
+#ifndef CONFIG_MAX_INTERRUPT_OVERRIDES
+	#define CONFIG_MAX_INTERRUPT_OVERRIDES 32
+#endif
 
 #define APIC_IOAPICID  0x0
 #define APIC_IOAPICVER 0x1

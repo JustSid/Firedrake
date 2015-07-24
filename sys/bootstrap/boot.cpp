@@ -32,8 +32,6 @@ namespace Sys
 	}
 }
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
-
 #include "multiboot.h"
 
 namespace Sys
@@ -48,5 +46,3 @@ void SysBoot_Multiboot(Sys::MultibootHeader *info)
 	Sys::bootInfo = info;
 	Sys::Bootstrap();
 }
-
-#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */

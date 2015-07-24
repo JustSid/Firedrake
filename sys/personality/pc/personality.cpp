@@ -1,5 +1,5 @@
 //
-//  pcpersonality.cpp
+//  pc/personality.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,9 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "pcpersonality.h"
-
-#if PERSONALITY == PERSONALITY_PC
+#include "personality.h"
 
 #include <prefix.h>
 #include <kern/kprintf.h>
@@ -114,5 +112,3 @@ namespace Sys
 		Sys::Clock::ActivateClock();
 	}
 }
-
-#endif /* PERSONALITY == PERSONALITY_PC */

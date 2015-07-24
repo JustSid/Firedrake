@@ -20,12 +20,10 @@
 
 SECTION(".text.boot")
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 ALIGN(4)
 	.int 0x1badb002
 	.int 0x0
 	.int (-0x1badb002)
-#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 // Entry point
 ENTRY(_start)
@@ -35,10 +33,8 @@ ENTRY(_start)
 	pushl $0
 	pushl $0
 
-#if BOOTLOADER == BOOTLOADER_MULTIBOOT
 	pushl %ebx
 	call SysBoot_Multiboot
-#endif /* BOOTLOADER == BOOTLOADER_MULTIBOOT */
 
 	jmp .
 

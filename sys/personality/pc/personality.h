@@ -1,5 +1,5 @@
 //
-//  pcpersonality.h
+//  pc/personality.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -21,8 +21,6 @@
 #ifndef _PCPERSONALITY_H_
 #define _PCPERSONALITY_H_
 
-#if PERSONALITY == PERSONALITY_PC
-
 namespace Sys
 {
 	class PCPersonality : public Sys::Personality
@@ -39,6 +37,6 @@ namespace Sys
 	};
 }
 
-#endif /* PERSONALITY == PERSONALITY_PC */
+#define PERSONALITY_CLASS Sys::PCPersonality
 
 #endif /* _PCPERSONALITY_H_ */

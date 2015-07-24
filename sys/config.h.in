@@ -27,41 +27,9 @@
 	#define CONFIG_STRICT 1
 #endif
 
-#ifndef CONFIG_MAX_CPUS
-	#define CONFIG_MAX_CPUS 32
-#endif
+#define CONFIG_MAX_CPUS ${CONFIG_MAX_CPUS}
 
-/**
- * Symbolic names for personality and bootloaders
- **/
-#define BOOTLOADER_MULTIBOOT 1
-#define BOOTLOADER_DASUBOOT  2
-
-#define PERSONALITY_PC 1
-
-/**
- * Personality dependend settings
- **/
-
-#if PERSONALITY == PERSONALITY_PC
-	
-	/**
-	 * x86 PC with BIOS
-	 **/
-
-	#define PERSONALITY_HEADER <personality/pc/pcpersonality.h>
-	#define PERSONALITY_CLASS Sys::PCPersonality
-
-	#ifndef CONFIG_MAX_IOAPICS
-		#define CONFIG_MAX_IOAPICS 8
-	#endif
-
-	#ifndef CONFIG_MAX_INTERRUPT_OVERRIDES
-		#define CONFIG_MAX_INTERRUPT_OVERRIDES 32
-	#endif
-
-#else
-	#error "No or unknown personality specified!"
-#endif
+#define CONFIG_PERSONALITY_PATH ${CONFIG_PERSONALITY_PATH}
+#define CONFIG_PERSONALITY_HEADER ${CONFIG_PERSONALITY_HEADER}
 
 #endif /* _CONFIG_H_ */
