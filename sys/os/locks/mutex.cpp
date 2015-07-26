@@ -34,7 +34,7 @@ namespace OS
 				break;
 			case Mode::NoScheduler:
 				if(_wasEnabled)
-					Scheduler::GetScheduler()->EnableCPU(nullptr);
+					Scheduler::GetScheduler()->EnableCPU(nullptr); // todo: Maybe keep track of the disabled CPU?!
 				break;
 			case Mode::NoInterrupts:
 				if(_wasEnabled)

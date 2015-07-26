@@ -60,9 +60,6 @@ namespace OS
 			if(__expect_true(!_firstRun))
 				thread->SetESP(esp);
 
-			if(__expect_false(_enabled.load(std::memory_order_acquire) == false))
-				return esp;
-
 			SchedulingData *data = thread->GetSchedulingData<SchedulingData>();
 			data->usage ++;
 
@@ -90,6 +87,10 @@ namespace OS
 					spinlock_unlock(&_internalLock);
 				}
 			}
+
+			// Check if we are enabled
+			if(__expect_false(_enabled.load(std::memory_order_acquire) == false))
+				return esp;
 
 			// Update the scheduling decision
 			MakeSchedulingDecision();
@@ -508,6 +509,19 @@ namespace OS
 	}
 	void SMPScheduler::EnableCPU(Sys::CPU *cpu)
 	{
+		if(!cpu)
+		{
+			bool enabled = Sys::DisableInterrupts(); // Make sure we don't accidentally move off the current CPU
+
+			CPUScheduler *scheduler = _schedulerMap[Sys::CPU::GetCurrentCPU()->GetID()];
+			scheduler->Enable();
+
+			if(enabled)
+				Sys::EnableInterrupts();
+
+			return;
+		}
+
 		CPUScheduler *scheduler = _schedulerMap[cpu->GetID()];
 		scheduler->Enable();
 	}
