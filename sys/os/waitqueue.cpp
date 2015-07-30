@@ -155,7 +155,7 @@ namespace OS
 
 	KernReturn<void> WaitThread(Thread *thread, void *channel)
 	{
-		WaitqueueLookup *lookup = WaitqueueLookup::Alloc()->Init(channel);
+		IO::StrongRef<WaitqueueLookup> lookup(IOTransferRef(WaitqueueLookup::Alloc()->Init(channel)));
 
 		spinlock_lock(&_waitLock);
 
@@ -171,14 +171,12 @@ namespace OS
 
 		spinlock_unlock(&_waitLock);
 
-		lookup->Release();
-
 		return ErrorNone;
 	}
 	
 	void Wakeup(void *channel)
 	{
-		WaitqueueLookup *lookup = WaitqueueLookup::Alloc()->Init(channel);
+		IO::StrongRef<WaitqueueLookup> lookup(IOTransferRef(WaitqueueLookup::Alloc()->Init(channel)));
 
 		spinlock_lock(&_waitLock);
 
@@ -205,12 +203,11 @@ namespace OS
 		}
 
 		entry->Release();
-		lookup->Release();
 	}
 
 	void WakeupOne(void *channel)
 	{
-		WaitqueueLookup *lookup = WaitqueueLookup::Alloc()->Init(channel);
+		IO::StrongRef<WaitqueueLookup> lookup(IOTransferRef(WaitqueueLookup::Alloc()->Init(channel)));
 
 		spinlock_lock(&_waitLock);
 
