@@ -25,14 +25,16 @@ void task_name(const char *name)
 {
 	size_t length = strlen(name);
 
-	char buffer[255 + sizeof(ipc_header_t)];
-	ipc_header_t *header = (ipc_header_t *)buffer;
+	struct
+	{
+		ipc_header_t header;
+		char buffer[255];
+	} message;
+	message.header.port = ipc_task_port();
+	message.header.size = length;
+	message.header.flags = 0;
+	message.header.id = 0;
 
-	header->port = ipc_task_port();
-	header->size = length;
-	header->flags = 0;
-	header->id = 0;
-
-	memcpy((char *)IPC_GET_DATA(header), name, length);
-	ipc_write(header);
+	memcpy(message.buffer, name, length);
+	ipc_write(&message.header);
 }

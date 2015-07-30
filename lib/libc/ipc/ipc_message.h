@@ -48,8 +48,6 @@ typedef struct
 	ipc_size_t realSize; // Only used when reading, to signal the actual size of the packet
 } ipc_header_t;
 
-#define IPC_GET_DATA(header) (((unsigned char *)header) + sizeof(ipc_header_t))
-
 ipc_return_t ipc_write(ipc_header_t *header);
 ipc_return_t ipc_read(ipc_header_t *header);
 

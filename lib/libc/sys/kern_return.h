@@ -32,6 +32,10 @@
 #define KERN_ACCESS_VIOLATION   10
 #define KERN_IPC_NO_RECEIVER    11
 #define KERN_IPC_NO_SENDER      12
+#define KERN_RESOURCE_NOT_FOUND 13
+
+#ifdef __KERNEL
 #define KERN_TASK_RESTART       1024 // Only used internally
+#endif
 
 #endif /* _LIBC_KERNRETURN_H_ */

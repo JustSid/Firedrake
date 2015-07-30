@@ -351,18 +351,20 @@ int sprintf(char *dst, const char *format, ...)
 
 void puts(const char *string)
 {
-	char buffer[255];
+	struct
+	{
+		ipc_header_t header;
+		char buffer[255];
+	} message;
 
-	ipc_header_t *header = (ipc_header_t *)buffer;
-	header->port = ipc_get_special_port(IPC_SPECIAL_PORT_HOST);
-	header->id = 0;
-	header->flags = 0;
-	header->size = strlen(string) + 1;
+	message.header.port = ipc_get_special_port(IPC_SPECIAL_PORT_HOST);
+	message.header.id = 0;
+	message.header.flags = 0;
+	message.header.size = strlen(string) + 1;
 
-	char *data = (char *)IPC_GET_DATA(header);
-	strcpy(data, string);
+	strcpy(message.buffer, string);
 
-	ipc_write(header);
+	ipc_write(&message.header);
 }
 
 void printf(const char *format, ...)

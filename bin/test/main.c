@@ -28,35 +28,34 @@
 
 void send_file_name(const char *name, ipc_port_t port)
 {
-	char buffer[255 + sizeof(ipc_header_t)];
-	ipc_header_t *header = (ipc_header_t *)buffer;
-	header->port = port;
-	header->flags = 0;
-	header->id = 215;
-	header->size = strlen(name) + 1;
+	struct
+	{
+		ipc_header_t header;
+		char buffer[255];
+	} message;
 
-	memcpy(IPC_GET_DATA(header), name, header->size + 1);
-	ipc_write(header);
+	message.header.port = port;
+	message.header.flags = 0;
+	message.header.id = 215;
+	message.header.size = strlen(name) + 1;
+
+	memcpy(message.buffer, name, message.header.size + 1);
+	ipc_write(&message.header);
 }
 
 int main(int argc, char *argv[])
 {
 	puts("Waiting for IPC port\n");
 
-	while(1)
-	{
-		ipc_port_t port;
-		ipc_return_t result = ipc_bootstrap_lookup(&port, "com.test.server");
+	ipc_port_t port;
 
-		if(result != KERN_SUCCESS)
-			continue;
+	while(ipc_bootstrap_lookup(&port, "com.test.server") != KERN_SUCCESS)
+	{}
 
-		puts("Got IPC port\n");
+	printf("Got IPC port (%d)\n", port);
 
-		send_file_name("/etc/about", port);
-		send_file_name("/etc/license.txt", port);
-		break;
-	}
+	send_file_name("/etc/about", port);
+	send_file_name("/etc/license.txt", port);
 
 	return EXIT_SUCCESS;
 }

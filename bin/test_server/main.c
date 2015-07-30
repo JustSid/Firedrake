@@ -63,18 +63,21 @@ int main(int argc, char *argv[])
 
 	while(1)
 	{
-		char buffer[255 + sizeof(ipc_header_t)];
-		ipc_header_t *header = (ipc_header_t *)buffer;
+		struct
+		{
+			ipc_header_t header;
+			char buffer[255];
+		} message;
 
-		header->port = port;
-		header->flags = IPC_HEADER_FLAG_BLOCK;
-		header->size = 255;
+		message.header.port = port;
+		message.header.flags = IPC_HEADER_FLAG_BLOCK;
+		message.header.size = 255;
 
-		ipc_return_t result = ipc_read(header);
+		ipc_return_t result = ipc_read(&message.header);
 		if(result == KERN_SUCCESS)
 		{
 			char file[255];
-			strlcpy(file, (char *)IPC_GET_DATA(header), 255);
+			strlcpy(file, message.buffer, 255);
 
 			printf("Printing file: %s\n", file);
 			print_file(file);

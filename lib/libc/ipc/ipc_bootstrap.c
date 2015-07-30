@@ -23,42 +23,46 @@
 
 ipc_return_t ipc_bootstrap_register(ipc_port_t port, const char *name)
 {
-	char buffer[255 + sizeof(ipc_header_t)];
+	struct
+	{
+		ipc_header_t header;
+		char buffer[255];
+	} message;
 
 	size_t length = strlen(name);
 	if(length > 255)
 		length = 255;
 
-	ipc_header_t *header = (ipc_header_t *)buffer;
-	header->reply = port;
-	header->port = ipc_get_special_port(IPC_SPECIAL_PORT_BOOTSTRAP);
-	header->flags = IPC_HEADER_FLAG_RESPONSE | IPC_HEADER_FLAG_RESPONSE_BITS(IPC_MESSAGE_RIGHT_COPY_SEND);
-	header->size = length;
-	header->id = 0;
+	message.header.reply = port;
+	message.header.port = ipc_get_special_port(IPC_SPECIAL_PORT_BOOTSTRAP);
+	message.header.flags = IPC_HEADER_FLAG_RESPONSE | IPC_HEADER_FLAG_RESPONSE_BITS(IPC_MESSAGE_RIGHT_COPY_SEND);
+	message.header.size = length;
+	message.header.id = 0;
 
-	char *data = (char *)IPC_GET_DATA(header);
-	memcpy(data, name, length);
+	memcpy(message.buffer, name, length);
 
-	return ipc_write(header);
+	return ipc_write(&message.header);
 }
 
 ipc_return_t ipc_bootstrap_unregister(const char *name)
 {
-	char buffer[255 + sizeof(ipc_header_t)];
+	struct
+	{
+		ipc_header_t header;
+		char buffer[255];
+	} message;
 
 	size_t length = strlen(name);
 	if(length > 255)
 		length = 255;
 
-	ipc_header_t *header = (ipc_header_t *)buffer;
-	header->port = ipc_get_special_port(IPC_SPECIAL_PORT_BOOTSTRAP);
-	header->size = length;
-	header->id = 2;
+	message.header.port = ipc_get_special_port(IPC_SPECIAL_PORT_BOOTSTRAP);
+	message.header.size = length;
+	message.header.id = 2;
 
-	char *data = (char *)IPC_GET_DATA(header);
-	memcpy(data, name, length);
+	memcpy(message.buffer, name, length);
 
-	return ipc_write(header);
+	return ipc_write(&message.header);
 }
 
 ipc_return_t ipc_bootstrap_lookup(ipc_port_t *port, const char *name)
@@ -69,23 +73,29 @@ ipc_return_t ipc_bootstrap_lookup(ipc_port_t *port, const char *name)
 	if(result != KERN_SUCCESS)
 		return result;
 
-	char buffer[255 + sizeof(ipc_header_t)];
+	struct
+	{
+		ipc_header_t header;
+		union
+		{
+			char buffer[255];
+			ipc_return_t response;
+		} data;
+	} message;
 
 	size_t length = strlen(name);
 	if(length > 255)
 		length = 255;
 
-	ipc_header_t *header = (ipc_header_t *)buffer;
-	header->reply = replyPort;
-	header->port = ipc_get_special_port(IPC_SPECIAL_PORT_BOOTSTRAP);
-	header->flags = IPC_HEADER_FLAG_RESPONSE | IPC_HEADER_FLAG_RESPONSE_BITS(IPC_MESSAGE_RIGHT_COPY_SEND_ONCE);
-	header->size = length;
-	header->id = 1;
+	message.header.reply = replyPort;
+	message.header.port = ipc_get_special_port(IPC_SPECIAL_PORT_BOOTSTRAP);
+	message.header.flags = IPC_HEADER_FLAG_RESPONSE | IPC_HEADER_FLAG_RESPONSE_BITS(IPC_MESSAGE_RIGHT_COPY_SEND_ONCE);
+	message.header.size = length;
+	message.header.id = 1;
 
-	char *data = (char *)IPC_GET_DATA(header);
-	memcpy(data, name, length);
+	memcpy(message.data.buffer, name, length);
 
-	result = ipc_write(header);
+	result = ipc_write(&message.header);
 
 	if(result != KERN_SUCCESS)
 	{
@@ -94,21 +104,20 @@ ipc_return_t ipc_bootstrap_lookup(ipc_port_t *port, const char *name)
 	}
 
 	// Retrieve the response
-	header->port = replyPort;
-	header->flags = IPC_HEADER_FLAG_BLOCK;
-	header->size = sizeof(ipc_port_t);
+	message.header.port = replyPort;
+	message.header.flags = IPC_HEADER_FLAG_BLOCK;
+	message.header.size = sizeof(ipc_port_t);
 
-	result = ipc_read(header);
+	result = ipc_read(&message.header);
 	ipc_deallocate_port(replyPort);
 
 	if(result != KERN_SUCCESS)
 		return result;
 
-	ipc_return_t response = *(ipc_return_t *)IPC_GET_DATA(header);
-	if(response != KERN_SUCCESS)
-		return result;
+	if(message.data.response != KERN_SUCCESS)
+		return message.data.response;
 
-	*port = header->port;
+	*port = message.header.port;
 
 	return KERN_SUCCESS;
 }

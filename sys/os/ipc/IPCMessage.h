@@ -25,6 +25,8 @@
 #include <libio/IOObject.h>
 #include <libc/ipc/ipc_message.h>
 
+#define IPC_GET_DATA(header) (((unsigned char *)header) + sizeof(ipc_header_t))
+
 namespace OS
 {
 	namespace IPC
