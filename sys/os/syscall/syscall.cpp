@@ -195,7 +195,8 @@ namespace OS
 		thread->SetESP(esp);
 
 		scheduler->BlockThread(thread);
-		cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread));
+		if(!cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread)))
+			panic("Out of workqueue items!\n");
 
 		return Scheduler::GetScheduler()->PokeCPU(esp, cpu);
 	}

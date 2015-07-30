@@ -37,6 +37,7 @@ namespace OS
 
 	struct SyscallTrap
 	{
+		const char *name;
 		KernReturn<uint32_t> (*handler)(Thread *thread, void *);
 		uint32_t argCount;
 		SyscallArg args[8];

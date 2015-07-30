@@ -24,7 +24,7 @@
 namespace OS
 {
 	#define KERN_TRAP(name, handler, argCount, argSize) \
-		{ (KernReturn<uint32_t> (*)(Thread *, void *))handler, (uint32_t)argCount, argSize }
+		{ name, (KernReturn<uint32_t> (*)(Thread *, void *))handler, (uint32_t)argCount, argSize }
 
 	#define KERN_TRAP_ARGENTRY(str, entry) \
 		{ offsetof(str, entry), sizeof(str::entry) }
