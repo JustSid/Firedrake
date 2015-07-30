@@ -92,7 +92,7 @@ namespace OS
 		else
 		{
 			ipc_return_t *data = (ipc_return_t *)IPC_GET_DATA(header);
-			*data = KERN_INVALID_ARGUMENT;
+			*data = KERN_RESOURCE_NOT_FOUND;
 		}
 
 
