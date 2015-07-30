@@ -22,7 +22,7 @@
 #include <prefix.h>
 #include <kern/kern_return.h>
 #include <machine/memory/virtual.h>
-#include <objects/IOObject.h>
+#include <libio/IOObject.h>
 #include <libc/ipc/ipc_message.h>
 
 namespace OS

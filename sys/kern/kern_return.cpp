@@ -16,7 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <objects/IOString.h>
+#include <libio/IOString.h>
 #include "kern_return.h"
 #include "panic.h"
 

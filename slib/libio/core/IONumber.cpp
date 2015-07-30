@@ -16,7 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <kern/panic.h>
+#include "IORuntime.h"
 #include "IONumber.h"
 
 namespace IO

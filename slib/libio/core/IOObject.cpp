@@ -57,7 +57,7 @@ namespace IO
 	{
 		if((_references.fetch_sub(1, std::memory_order_release)) == 1)
 		{
-			__thread_fence_acquire(); // Make sure to finish all pending writes before entering the destructor
+			atomic_thread_fence(memory_order_acquire); // Make sure to finish all pending writes before entering the destructor
 
 			Dealloc();
 			delete this;

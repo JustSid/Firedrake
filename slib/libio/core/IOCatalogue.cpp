@@ -16,7 +16,6 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <kern/kprintf.h>
 #include "IOCatalogue.h"
 #include "IOArray.h"
 #include "IODictionary.h"
@@ -24,6 +23,10 @@
 #include "IOString.h"
 #include "IONumber.h"
 #include "IONull.h"
+
+#ifndef __KERNEL
+extern "C" void *__libio_getIOCatalogue();
+#endif
 
 namespace IO
 {
@@ -104,17 +107,26 @@ namespace IO
 	// MARK: Catalogue
 	// -------------
 
+#if __KERNEL
 	static Catalogue *_sharedCatalogue = nullptr;
+#endif
 
 	Catalogue::Catalogue()
 	{
 		spinlock_init(&_lock);
 	}
 
+#if __KERNEL
 	Catalogue *Catalogue::GetSharedInstance()
 	{
 		return _sharedCatalogue;
 	}
+#else
+	Catalogue *Catalogue::GetSharedInstance()
+	{
+		return reinterpret_cast<Catalogue *>(__libio_getIOCatalogue());
+	}
+#endif
 
 	MetaClass *Catalogue::GetClassWithName(const char *name)
 	{

@@ -22,7 +22,7 @@ def appendFile(out, filepath, path):
 	out.write(struct.pack('<II%is' %(len(path)), len(path), len(b), path.encode('ascii', 'replace')))
 	out.write(b)
 
-def scanFolder(out, path):
+def scanFolder(out, path, target):
 	for filename in os.listdir(path):
 		if filename == '.git':
 			continue
@@ -30,17 +30,17 @@ def scanFolder(out, path):
 		filepath = os.path.join(path, filename)
 
 		if filename.endswith('.bin'):
-			appendFile(out, filepath, '/bin')
+			appendFile(out, filepath, target)
 			objdump(filepath)
 		elif filename.endswith('.so'):
-			appendFile(out, filepath, '/lib')
+			appendFile(out, filepath, target)
 			objdump(filepath)
 		elif filename == 'firedrake':
-			appendFile(out, filepath, '/')
+			appendFile(out, filepath, target)
 			objdump(filepath)
 
 		if os.path.isdir(filepath) == True:
-			scanFolder(out, filepath)
+			scanFolder(out, filepath, target)
 
 def appendFolder(out, path, folder):
 	for filename in os.listdir(path):
@@ -57,7 +57,10 @@ def appendFolder(out, path, folder):
 directory = os.path.dirname(os.path.realpath(__file__))
 out = open(os.path.join(directory, 'boot/initrd'), 'wb')
 
-scanFolder(out, directory)
+scanFolder(out, os.path.join(directory, 'build/bin'), '/bin')
+scanFolder(out, os.path.join(directory, 'build/lib'), '/lib')
+scanFolder(out, os.path.join(directory, 'build/slib'), '/slib')
+scanFolder(out, os.path.join(directory, 'build/sys'), '/')
 appendFolder(out, os.path.join(directory, 'etc'), '/etc')
 
 out.close()

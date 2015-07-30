@@ -1,5 +1,5 @@
 //
-//  barriers.h
+//  algorithm.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,22 +16,54 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _X86_BARRIERS_H_
-#define _X86_BARRIERS_H_
+#ifndef _ALGORITHM_H_
+#define _ALGORITHM_H_
 
-static inline void __instruction_fence()
-{}
-static inline void __thread_fence_acquire()
+namespace std
 {
-	__asm__ volatile("" ::: "memory");
-}
-static inline void __thread_fence_release()
-{
-	__asm__ volatile("" ::: "memory");
-}
-static inline void __thread_fence_seq_cst()
-{
-	__asm__ volatile("lock; orl $0, (%%esp)" ::: "memory");
+	template<class T>
+	const T &min(const T &a, const T &b)
+	{
+		return (a < b) ? a : b;
+	}
+
+	template<class T>
+	const T &max(const T &a, const T &b)
+	{
+		return (a > b) ? a : b;
+	}
+
+	template<class ForwardIt, class T>
+	void fill(ForwardIt first, ForwardIt last, const T &value)
+	{
+		while(first != last)
+		{
+			*first ++ = value;
+		}
+	}
+
+	template<class InputIt, class OutputIt>
+	OutputIt copy(InputIt first, InputIt last, OutputIt dest)
+	{
+		while(first != last)
+			*dest ++ = *first ++;
+
+		return dest;
+	}
+
+	template<class InputIt, class T>
+	InputIt find(InputIt first, InputIt last, const T &value)
+	{
+		while(first != last)
+		{
+			if(*first == value)
+				return first;
+
+			first ++;
+		}
+
+		return last;
+	}
 }
 
-#endif /* _X86_BARRIERS_H_ */
+#endif /* _ALGORITHM_H_ */

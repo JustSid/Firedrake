@@ -18,7 +18,7 @@
 
 #include <os/syscall/syscall.h>
 #include <kern/kprintf.h>
-#include <objects/IONumber.h>
+#include <libio/IONumber.h>
 #include <os/waitqueue.h>
 #include "scheduler_syscall.h"
 

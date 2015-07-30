@@ -28,7 +28,7 @@
 #include "path.h"
 #include "file.h"
 
-#include <objects/IOArray.h>
+#include <libio/IOArray.h>
 #include <vfs/ffs/ffs_descriptor.h>
 
 #include <bootstrap/multiboot.h>
@@ -406,6 +406,8 @@ namespace VFS
 		if((result = MakeDirectory(Context::GetKernelContext(), "/etc")).IsValid() == false)
 			return result;
 		if((result = MakeDirectory(Context::GetKernelContext(), "/lib")).IsValid() == false)
+			return result;
+		if((result = MakeDirectory(Context::GetKernelContext(), "/slib")).IsValid() == false)
 			return result;
 
 

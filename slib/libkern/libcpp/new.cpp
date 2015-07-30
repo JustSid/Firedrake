@@ -1,5 +1,5 @@
 //
-//  barriers.h
+//  new.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,22 +16,40 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _BARRIERS_H_
-#define _BARRIERS_H_
-
-#if __i386__
-	#include "x86/barriers.h"
-#endif
-#if __arm__
-	#include "arm/barriers.h"
+#if __KERNEL
+#include <libc/stddef.h>
+#include <kern/kalloc.h>
+#include <kern/panic.h>
+#else
+#include <libkern.h>
 #endif
 
-// The header provides fences similiar to the C(++)11 fences
-// 
-// __instruction_fence(), flushes the instruction cache
-//
-// __thread_fence_acquire(), a load fence that forces the CPU to complete queued stores
-// __thread_fence_release(), a store fence that forces the CPU to complete queued loads
-// __thread_fence_seq_cst(), a full fence that serializes all memory stores and loads
+void *operator new(size_t size)
+{
+	void *ptr = kalloc(size);
+	if(!ptr)
+		panic("new(%i) failed to allocate memory\n", size);
 
-#endif /* _BARRIERS_H_ */
+	return ptr;
+}
+
+void *operator new[](size_t  size)
+{
+	void *ptr = kalloc(size);
+	if(!ptr)
+		panic("new[](%i) failed to allocate memory\n", size);
+
+	return ptr;
+}
+
+void operator delete(void *obj) throw()
+{
+	if(obj)
+		kfree(obj);
+}
+
+void operator delete[](void *obj) throw()
+{
+	if(obj)
+		kfree(obj);
+}

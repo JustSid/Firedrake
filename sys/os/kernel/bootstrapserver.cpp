@@ -19,9 +19,9 @@
 #include <prefix.h>
 #include <kern/kprintf.h>
 #include <libc/string.h>
-#include <objects/IOString.h>
-#include <objects/IONumber.h>
-#include <objects/IODictionary.h>
+#include <libio/IOString.h>
+#include <libio/IONumber.h>
+#include <libio/IODictionary.h>
 #include <os/scheduler/scheduler.h>
 #include <os/ipc/IPC.h>
 

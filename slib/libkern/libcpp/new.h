@@ -1,5 +1,5 @@
 //
-//  IOCatalogue.h
+//  new.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,56 +16,12 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOCATALOGUE_H_
-#define _IOCATALOGUE_H_
+#ifndef _NEW_H_
+#define _NEW_H_
 
-#include <libcpp/vector.h>
-#include <libc/sys/spinlock.h>
-#include <libc/string.h>
-#include <kern/kern_return.h>
+#include <libc/stddef.h>
 
-namespace IO
-{
-	class MetaClass
-	{
-	public:
-		MetaClass *GetSuperClass() const;
+inline void *operator new  (size_t, void *ptr) { return ptr; }
+inline void *operator new[](size_t, void *ptr) { return ptr; }
 
-		const char *GetName() const;
-		const char *GetFullname() const;
-
-		bool InheritsFromClass(MetaClass *other) const;
-
-	protected:
-		MetaClass(MetaClass *super, const char *signature);
-
-	private:
-		MetaClass *_super;
-
-		char *_name;
-		char *_fullname;
-	};
-
-	class Catalogue
-	{
-	public:
-		static Catalogue *GetSharedInstance();
-
-		MetaClass *GetClassWithName(const char *name);
-
-	protected:
-		Catalogue();
-
-	private:
-		void AddMetaClass(MetaClass *meta);
-
-		std::vector<MetaClass *> _classes;
-		spinlock_t _lock;
-	};
-
-#if __KERNEL
-	KernReturn<void> CatalogueInit();
-#endif
-}
-
-#endif /* _IOCATALOGUE_H_ */
+#endif /* _NEW_H */

@@ -17,7 +17,7 @@
 //
 
 #include <os/scheduler/task.h>
-#include <objects/IONumber.h>
+#include <libio/IONumber.h>
 #include <kern/kprintf.h>
 #include "IPCPort.h"
 #include "IPCMessage.h"

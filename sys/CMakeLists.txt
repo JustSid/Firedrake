@@ -46,20 +46,23 @@ set(SOURCES
 	machine/cpu.cpp
 	machine/debug.cpp
 	machine/gdt.cpp
-	objects/IOArray.cpp
-	objects/IOCatalogue.cpp
-	objects/IODictionary.cpp
-	objects/IONull.cpp
-	objects/IONumber.cpp
-	objects/IOObject.cpp
-	objects/IOSet.cpp
-	objects/IOString.cpp
+	libio/IOArray.cpp
+	libio/IOCatalogue.cpp
+	libio/IODictionary.cpp
+	libio/IONull.cpp
+	libio/IONumber.cpp
+	libio/IOObject.cpp
+	libio/IOSet.cpp
+	libio/IOString.cpp
 	os/IPC/IPCMessage.cpp
 	os/IPC/IPCPort.cpp
 	os/IPC/IPCSpace.cpp
 	os/IPC/IPCSyscall.cpp
 	os/kernel/bootstrapserver.cpp
 	os/kernel/kerneltask.cpp
+	os/linker/LDLibkernModule.cpp
+	os/linker/LDModule.cpp
+	os/linker/LDStore.cpp
 	os/loader/loader.cpp
 	os/locks/mutex.cpp
 	os/scheduler/smp/smp_scheduler.cpp
@@ -90,6 +93,7 @@ set(HEADERS
 	bootstrap/multiboot.h
 	libc/assert.h
 	libc/math.h
+	libc/stdatomic.h
 	libc/stdarg.h
 	libc/stdbool.h
 	libc/stddef.h
@@ -102,9 +106,11 @@ set(HEADERS
 	libcpp/iterator.h
 	libcpp/type_traits.h
 	libcpp/vector.h
+	libio/IOFunction.h
+	libio/IOHashtableInternal.h
+	libio/IORuntime.h
 	machine/interrupts/idt.h
 	machine/memory/memory.h
-	machine/atomic.h
 	machine/cme.h
 	machine/cmos.h
 	machine/port.h

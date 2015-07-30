@@ -31,11 +31,12 @@
 #include <machine/interrupts/interrupts.h>
 #include <machine/clock/clock.h>
 #include <machine/smp/smp.h>
-#include <objects/IOCatalogue.h>
+#include <libio/IOCatalogue.h>
 #include <os/scheduler/scheduler.h>
 #include <os/syscall/syscall.h>
 #include <os/waitqueue.h>
 #include <os/ipc/IPC.h>
+#include <os/linker/LDStore.h>
 #include <vfs/vfs.h>
 
 #define COM_PORT 0x3f8
@@ -83,6 +84,7 @@ namespace Sys
 	{
 		Init("syscalls", OS::SyscallInit);
 		Init("vfs", VFS::Init);
+		Init("linker", OS::LDInit);
 
 		kprintf("\n\n");
 	}

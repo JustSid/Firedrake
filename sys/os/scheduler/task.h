@@ -29,12 +29,12 @@
 #include <machine/memory/memory.h>
 #include <kern/kern_return.h>
 #include <os/loader/loader.h>
-#include <objects/IOObject.h>
-#include <objects/IOArray.h>
-#include <objects/IOString.h>
-#include <objects/IODictionary.h>
-#include <objects/IONumber.h>
-#include <objects/IONull.h>
+#include <libio/IOObject.h>
+#include <libio/IOArray.h>
+#include <libio/IOString.h>
+#include <libio/IODictionary.h>
+#include <libio/IONumber.h>
+#include <libio/IONull.h>
 #include <os/ipc/IPC.h>
 
 #include "thread.h"

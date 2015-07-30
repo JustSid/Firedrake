@@ -1,5 +1,5 @@
 //
-//  barriers.h
+//  IONull.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,24 +16,47 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _ARM_BARRIERS_H_
-#define _ARM_BARRIERS_H_
+#include "IONull.h"
 
-static inline void __instruction_fence()
-{
-	__asm__ volatile("mcr p15, 0, %0, c7, c5, 4" :: "r" (0) : "memory");
-}
-static inline void __thread_fence_acquire()
-{
-	__asm__ volatile("mcr p15, 0, %0, c7, c10, 5" :: "r" (0) : "memory");
-}
-static inline void __thread_fence_release()
-{
-	__asm__ volatile("mcr p15, 0, %0, c7, c10, 5" :: "r" (0) : "memory");
-}
-static inline void __thread_fence_seq_cst()
-{
-	__asm__ volatile("mcr p15, 0, %0, c7, c10, 4" :: "r" (0) : "memory");
-}
+#ifndef __KERNEL
+extern "C" void *__libio_getIONull();
+#endif
 
-#endif /* _ARM_BARRIERS_H_ */
+namespace IO
+{
+	IODefineMeta(Null, Object)
+
+#ifdef __KERNEL
+	static Null *_sharedNull = nullptr;
+
+	Null *Null::Init()
+	{
+		if(!Object::Init())
+			return nullptr;
+
+		return this;
+	}
+
+	Null *Null::GetNull()
+	{
+		if(!_sharedNull)
+			_sharedNull = IO::Null::Alloc()->Init();
+
+		return _sharedNull;
+	}
+#else
+	Null *Null::Init()
+	{
+		if(!Object::Init())
+			return nullptr;
+
+		return this;
+	}
+
+	Null *Null::GetNull()
+	{
+		// Provided so that the kernel and libio have the same shared isntance
+		return reinterpret_cast<Null *>(__libio_getIONull());
+	}
+#endif
+}

@@ -344,7 +344,7 @@ int sprintf(char *dst, const char *format, ...)
 	return written;
 }
 
-#ifndef __KERNEL
+#if (!defined(__KERNEL) && !defined(__LIBKERN))
 
 #include <ipc/ipc_message.h>
 #include <ipc/ipc_port.h>

@@ -1,5 +1,5 @@
 //
-//  IOString.h
+//  iterator.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,43 +16,42 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOSTRING_H_
-#define _IOSTRING_H_
+#ifndef _ITERATOR_H_
+#define _ITERATOR_H_
 
-#include <libc/stdarg.h>
-#include "IOObject.h"
+#include <libc/stddef.h>
 
-namespace IO
+namespace std
 {
-	class String : public Object
+	template<class Category, class T, class Distance = ptrdiff_t, class Pointer = T*, class Reference = T&>
+	struct iterator
 	{
-	public:
-		String *Init();
-		String *InitWithCString(const char *string);
-		String *InitWithFormat(const char *format, ...);
-		String *InitWithFormatAndArguments(const char *format, va_list args);
-
-		size_t GetHash() const override;
-		bool IsEqual(Object *other) const override;
-		bool IsEqual(const char *string) const;
-
-		size_t GetLength() const;
-		char GetCharacterAtIndex(size_t index) const;
-		const char *GetCString() const;
-
-	protected:
-		void Dealloc() override;
-
-	private:
-		void CalculateHash();
-
-		char *_storage;
-		size_t _length;
-		size_t _hash;
-		uint32_t _flags;
-
-		IODeclareMeta(String)
+		typedef T         value_type;
+		typedef Distance  difference_type;
+		typedef Pointer   pointer;
+		typedef Reference reference;
+		typedef Category  iterator_category;
 	};
+
+	struct input_iterator_tag {};
+	struct output_iterator_tag {};
+	struct forward_iterator_tag       : public input_iterator_tag {};
+	struct bidirectional_iterator_tag : public forward_iterator_tag {};
+	struct random_access_iterator_tag : public bidirectional_iterator_tag {};
+
+	template<class T> 
+	auto begin(T& c) -> decltype(c.begin()) { return c.begin(); }
+	template<class T> 
+	auto begin(const T& c) -> decltype(c.begin()) { return c.begin(); }
+	template<class T, size_t N> 
+	T *begin(T(&array)[N]) { return array + 0; }
+
+	template<class T> 
+	auto end(T& c) -> decltype(c.end()) { return c.end(); }
+	template<class T> 
+	auto end(const T& c) -> decltype(c.end()) { return c.end(); }
+	template<class T, size_t N> 
+	T *end(T(&array)[N]) { return array + N; }
 }
 
-#endif /* _IOSTRING_H_ */
+#endif /* _ITERATOR_H_ */

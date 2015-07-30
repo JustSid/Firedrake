@@ -26,7 +26,7 @@
 #include <libc/sys/unistd.h>
 #include <libc/sys/dirent.h>
 #include <libcpp/vector.h>
-#include <objects/IOObject.h>
+#include <libio/IOObject.h>
 
 namespace VFS
 {

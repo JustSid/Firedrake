@@ -26,9 +26,7 @@ set(SOURCES
 
 set(HEADERS
 	ipc/ipc_types.h
-	sys/x86/barriers.h
 	sys/asm.h
-	sys/barriers.h
 	sys/cdefs.h
 	sys/dirent.h
 	sys/errno.h
@@ -41,6 +39,7 @@ set(HEADERS
 	math.h
 	setjmp.h
 	stdarg.h
+	stdatomic.h
 	stdbool.h
 	stddef.h
 	stdint.h)

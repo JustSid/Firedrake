@@ -19,7 +19,11 @@
 #include <libc/string.h>
 #include <libc/stdio.h>
 #include <libcpp/functional.h>
+#ifdef __KERNEL
 #include <kern/kalloc.h>
+#else
+#include <libkern.h>
+#endif
 #include "IORuntime.h"
 #include "IOString.h"
 
@@ -42,16 +46,24 @@ namespace IO
 		return this;
 	}
 
-	String *String::InitWithCString(const char *string)
+	String *String::InitWithCString(const char *string, bool copy)
 	{
 		if(!Object::Init())
 			return nullptr;
 
-		_flags  = kIOStringFlagOwnedStorage;
 		_length = strlen(string);
 
-		_storage = new char[_length + 1];
-		strcpy(_storage, string);
+		if(copy)
+		{
+			_flags = kIOStringFlagOwnedStorage;
+			_storage = new char[_length + 1];
+			strcpy(_storage, string);
+		}
+		else
+		{
+			_flags = 0;
+			_storage = const_cast<char *>(string);
+		}
 
 		CalculateHash();
 		return this;

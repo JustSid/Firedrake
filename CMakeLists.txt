@@ -10,6 +10,7 @@ set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 add_subdirectory("sys")
 add_subdirectory("lib")
 add_subdirectory("bin")
+add_subdirectory("slib")
 
 if(NOT (("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang") OR ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")))
     message(FATAL_ERROR "Firedrake must be compiled with Clang")

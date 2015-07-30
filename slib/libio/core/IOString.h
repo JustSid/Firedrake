@@ -1,5 +1,5 @@
 //
-//  IONull.cpp
+//  IOString.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,27 +16,43 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "IONull.h"
+#ifndef _IOSTRING_H_
+#define _IOSTRING_H_
+
+#include <libc/stdarg.h>
+#include "IOObject.h"
 
 namespace IO
 {
-	IODefineMeta(Null, Object)
-
-	static Null *_sharedNull = nullptr;
-
-	Null *Null::Init()
+	class String : public Object
 	{
-		if(!Object::Init())
-			return nullptr;
+	public:
+		String *Init();
+		String *InitWithCString(const char *string, bool copy = true);
+		String *InitWithFormat(const char *format, ...);
+		String *InitWithFormatAndArguments(const char *format, va_list args);
 
-		return this;
-	}
+		size_t GetHash() const override;
+		bool IsEqual(Object *other) const override;
+		bool IsEqual(const char *string) const;
 
-	Null *Null::GetNull()
-	{
-		if(!_sharedNull)
-			_sharedNull = IO::Null::Alloc()->Init();
+		size_t GetLength() const;
+		char GetCharacterAtIndex(size_t index) const;
+		const char *GetCString() const;
 
-		return _sharedNull;
-	}
+	protected:
+		void Dealloc() override;
+
+	private:
+		void CalculateHash();
+
+		char *_storage;
+		size_t _length;
+		size_t _hash;
+		uint32_t _flags;
+
+		IODeclareMeta(String)
+	};
 }
+
+#endif /* _IOSTRING_H_ */

@@ -27,9 +27,9 @@
 #include <libcpp/bitfield.h>
 #include <libcpp/vector.h>
 
-#include <objects/IOObject.h>
-#include <objects/IOString.h>
-#include <objects/IOArray.h>
+#include <libio/IOObject.h>
+#include <libio/IOString.h>
+#include <libio/IOArray.h>
 
 namespace VFS
 {

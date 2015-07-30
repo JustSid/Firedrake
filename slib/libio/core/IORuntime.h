@@ -21,7 +21,12 @@
 
 #include <libc/stdint.h>
 #include <libcpp/type_traits.h>
+
+#if __KERNEL
 #include <kern/panic.h>
+#else
+#include <libkern.h>
+#endif
 
 namespace IO
 {

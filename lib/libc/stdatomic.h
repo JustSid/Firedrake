@@ -1,5 +1,5 @@
 //
-//  atomic.h
+//  stdatomic.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,12 +16,12 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _ATOMIC_H_
-#define _ATOMIC_H_
+#ifndef _STDATOMIC_H_
+#define _STDATOMIC_H_
 
-#include <prefix.h>
-#include <libc/stdint.h>
-#include <libc/stdbool.h>
+#include "sys/cdefs.h"
+#include "stdint.h"
+#include "stdbool.h"
 
 // More or less a copy and paste from the LLVM stdatomic header
 // http://llvm.org/viewvc/llvm-project/cfe/trunk/lib/Headers/stdatomic.h?view=markup&pathrev=218957
@@ -76,6 +76,8 @@ typedef enum
 #define atomic_fetch_and(object, operand) __c11_atomic_fetch_and(object, operand, __ATOMIC_SEQ_CST)
 #define atomic_fetch_and_explicit __c11_atomic_fetch_and
 
+#define atomic_thread_fence(order) __c11_atomic_thread_fence(order)
+
 __END_DECLS
 
-#endif /* _ATOMIC_H_ */
+#endif /* _STDATOMIC_H_ */

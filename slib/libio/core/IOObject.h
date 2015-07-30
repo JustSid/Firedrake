@@ -112,6 +112,26 @@ namespace IO
 		return reinterpret_cast<cls##MetaType *>(__kIO##cls##__metaClass); \
 	}
 
+#define IODefineScopendMeta(scope, cls, super) \
+	class cls##MetaType : public IO::MetaClass \
+	{ \
+	public: \
+		cls##MetaType() : \
+			MetaClass(super::GetMetaClass(), __PRETTY_FUNCTION__) \
+		{} \
+	}; \
+	void *__kIO##scope##cls##__metaClass = nullptr; \
+	IO::MetaClass *scope::cls::GetClass() const \
+	{ \
+		return cls::GetMetaClass(); \
+	} \
+	IO::MetaClass *scope::cls::GetMetaClass() \
+	{ \
+		if(!__kIO##scope##cls##__metaClass) \
+			__kIO##scope##cls##__metaClass = new cls##MetaType(); \
+		return reinterpret_cast<cls##MetaType *>(__kIO##scope##cls##__metaClass); \
+	}
+
 	// ---------------------
 	// MARK: -
 	// MARK: Helper

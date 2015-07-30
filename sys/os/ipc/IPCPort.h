@@ -26,10 +26,10 @@
 #include <libc/sys/spinlock.h>
 #include <libc/ipc/ipc_port.h>
 #include <libcpp/bitfield.h>
-#include <objects/IOObject.h>
-#include <objects/IOString.h>
-#include <objects/IOArray.h>
-#include <objects/IOSet.h>
+#include <libio/IOObject.h>
+#include <libio/IOString.h>
+#include <libio/IOArray.h>
+#include <libio/IOSet.h>
 #include "IPCMessage.h"
 
 namespace OS

@@ -22,7 +22,7 @@
 #include <machine/memory/memory.h>
 #include <machine/cpu.h>
 #include <kern/kprintf.h>
-#include <objects/IONumber.h>
+#include <libio/IONumber.h>
 #include "task.h"
 #include "thread.h"
 
