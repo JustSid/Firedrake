@@ -19,6 +19,7 @@
 #include <libio/IONumber.h>
 #include <os/waitqueue.h>
 #include <kern/kprintf.h>
+#include <libc/ipc/ipc_message.h>
 #include "IPCSpace.h"
 #include "IPCMessage.h"
 
@@ -291,8 +292,7 @@ namespace OS
 			}
 
 			ipc_header_t *queuedHeader = queuedMessage->GetHeader();
-
-			header->realSize = queuedHeader->realSize;
+			header->realSize = queuedHeader->size;
 
 			if(queuedHeader->size > header->size)
 				return Error(KERN_NO_MEMORY);
@@ -305,7 +305,7 @@ namespace OS
 			header->reply = queuedHeader->port;
 			header->port = queuedHeader->reply;
 
-			memcpy(IPC_GET_DATA(header), IPC_GET_DATA(queuedHeader), header->size);
+			memcpy(IPC_GET_DATA(header), IPC_GET_DATA(queuedHeader), queuedHeader->size);
 			queuedMessage->Release();
 
 			return ErrorNone;

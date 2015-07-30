@@ -17,6 +17,7 @@
 //
 
 #include <prefix.h>
+#include <libcpp/algorithm.h>
 #include <kern/kprintf.h>
 #include <libc/string.h>
 #include <libio/IOString.h>
@@ -34,9 +35,12 @@ namespace OS
 	{
 		char buffer[255];
 
-		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(header)), 255);
+		size_t size = std::min(sizeof(buffer), static_cast<size_t>(header->realSize));
+		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(header)), size);
 		if(length == 0)
 			return;
+
+		kprintf("Registered %s\n", buffer);
 
 		IO::String *string = IO::String::Alloc()->InitWithCString(buffer);
 		IO::Number *portNumber = IO::Number::Alloc()->InitWithUint32(header->port);
@@ -51,7 +55,8 @@ namespace OS
 	{
 		char buffer[255];
 
-		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(header)), 255);
+		size_t size = std::min(sizeof(buffer), static_cast<size_t>(header->realSize));
+		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(header)), size);
 		if(length == 0)
 			return;
 
@@ -65,11 +70,12 @@ namespace OS
 	{
 		char buffer[255];
 
-		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(inHeader)), 255);
+		size_t size = std::min(sizeof(buffer), static_cast<size_t>(inHeader->realSize));
+		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(inHeader)), size);
 		if(length == 0)
 			return;
 
-		IO::String *string = IO::String::Alloc()->InitWithCString(buffer);
+		IO::String *string = IO::String::Alloc()->InitWithCString(buffer, false);
 		IO::Number *portNumber = _bootstrapPorts->GetObjectForKey<IO::Number>(string);
 
 		string->Release();
@@ -93,6 +99,7 @@ namespace OS
 		{
 			ipc_return_t *data = (ipc_return_t *)IPC_GET_DATA(header);
 			*data = KERN_RESOURCE_NOT_FOUND;
+			kprintf("No such port %s...\n", buffer);
 		}
 
 
