@@ -5,3 +5,9 @@
 /boot/Firedrake.iso
 /boot/initrd
 /build
+
+# Symlinks
+
+/sys/libc
+/sys/libio
+/slib/libkern/libc
