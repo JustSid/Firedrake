@@ -40,8 +40,6 @@ namespace OS
 		if(length == 0)
 			return;
 
-		kprintf("Registered %s\n", buffer);
-
 		IO::String *string = IO::String::Alloc()->InitWithCString(buffer);
 		IO::Number *portNumber = IO::Number::Alloc()->InitWithUint32(header->port);
 
@@ -99,7 +97,6 @@ namespace OS
 		{
 			ipc_return_t *data = (ipc_return_t *)IPC_GET_DATA(header);
 			*data = KERN_RESOURCE_NOT_FOUND;
-			kprintf("No such port %s...\n", buffer);
 		}
 
 
