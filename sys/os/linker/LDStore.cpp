@@ -18,6 +18,7 @@
 
 #include <libio/IODictionary.h>
 #include <os/locks/mutex.h>
+#include <os/workqueue.h>
 #include "LDStore.h"
 
 namespace OS
@@ -26,6 +27,14 @@ namespace OS
 	{
 		static Mutex _moduleLock;
 		static IO::Dictionary *_moduleStore;
+
+		void BootstrapModule(void *context)
+		{
+			Module *module = reinterpret_cast<Module *>(context);
+
+			if(!module->Start())
+				kprintf("Failed to start module %s\n", module->GetName()); // TODO: Unload the module maybe?
+		}
 
 		KernReturn<void> __AddModule(Module *module)
 		{
@@ -47,7 +56,8 @@ namespace OS
 			// TODO: Remove this test line
 			if(module->GetType() == Module::Type::Extension)
 			{
-				module->Start();
+				Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
+				cpu->GetWorkQueue()->PushEntry(&BootstrapModule, reinterpret_cast<void *>(module));
 			}
 
 			return ErrorNone;
