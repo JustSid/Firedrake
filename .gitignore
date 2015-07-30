@@ -9,5 +9,7 @@
 # Symlinks
 
 /sys/libc
+/sys/libcpp
 /sys/libio
 /slib/libkern/libc
+/slib/libkern/libcpp

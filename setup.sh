@@ -2,28 +2,25 @@
 
 BASEDIR=$(dirname ${0})
 
-# Symlink all inter dependencies into palce
+# Symlink all inter dependencies into place
 
-if [ -d "${BASEDIR}/sys/libc" ]; then
-	rm "${BASEDIR}/sys/libc"
-fi
-if [ -d "${BASEDIR}/sys/libio" ]; then
-	rm "${BASEDIR}/sys/libio"
-fi
+LINKS=("${BASEDIR}/sys/libc" "${BASEDIR}/sys/libcpp" "${BASEDIR}/sys/libio" "${BASEDIR}/slib/libkern/libc" "${BASEDIR}/slib/libkern/libcpp")
 
-
-if [ -d "${BASEDIR}/slib/libkern/libc" ]; then
-	rm "${BASEDIR}/slib/libkern/libc"
-fi
-
+for i in ${LINKS[@]}; do
+	if [ -d "$i" ]; then
+		rm "$i"
+	fi
+done
 
 ln -s "${BASEDIR}/lib/libc" "${BASEDIR}/sys/libc"
-ln -s "${BASEDIR}/lib/libc" "${BASEDIR}/slib/libkern/libc"
-
+ln -s "${BASEDIR}/lib/libcpp" "${BASEDIR}/sys/libcpp"
 ln -s "${BASEDIR}/slib/libio/core" "${BASEDIR}/sys/libio"
+
+ln -s "${BASEDIR}/lib/libc" "${BASEDIR}/slib/libkern/libc"
+ln -s "${BASEDIR}/lib/libcpp" "${BASEDIR}/slib/libkern/libcpp"
 
 # Create required folders
 
-if [! -d "${BASEDIR}/build" ]; then
+if [ ! -d "${BASEDIR}/build" ]; then
 	mkdir "${BASEDIR}/build"
 fi
