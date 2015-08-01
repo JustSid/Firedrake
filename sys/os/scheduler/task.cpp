@@ -44,7 +44,7 @@ namespace OS
 		{
 			case 0:
 			{
-				ipc_size_t size = header->size;
+				ipc_size_t size = header->realSize;
 				Task *task = port->GetContext<Task>();
 
 				task->Lock();
