@@ -35,7 +35,7 @@ namespace OS
 	{
 		char buffer[255];
 
-		size_t size = std::min(sizeof(buffer), static_cast<size_t>(header->realSize));
+		size_t size = std::min(sizeof(buffer), static_cast<size_t>(header->size));
 		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(header)), size);
 		if(length == 0)
 			return;
@@ -53,7 +53,7 @@ namespace OS
 	{
 		char buffer[255];
 
-		size_t size = std::min(sizeof(buffer), static_cast<size_t>(header->realSize));
+		size_t size = std::min(sizeof(buffer), static_cast<size_t>(header->size));
 		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(header)), size);
 		if(length == 0)
 			return;
@@ -68,7 +68,7 @@ namespace OS
 	{
 		char buffer[255];
 
-		size_t size = std::min(sizeof(buffer), static_cast<size_t>(inHeader->realSize));
+		size_t size = std::min(sizeof(buffer), static_cast<size_t>(inHeader->size));
 		size_t length = strlcpy(buffer, reinterpret_cast<char *>(IPC_GET_DATA(inHeader)), size);
 		if(length == 0)
 			return;
@@ -165,7 +165,7 @@ namespace OS
 						case KERN_NO_MEMORY:
 						{
 							// Expand the buffer to allow reading the whole message
-							bufferSize = message->GetHeader()->realSize + sizeof(ipc_header_t);
+							bufferSize = message->GetHeader()->size + sizeof(ipc_header_t);
 							kfree(buffer);
 
 							buffer = kalloc(bufferSize);

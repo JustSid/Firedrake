@@ -121,13 +121,8 @@ namespace OS
 					_queue->AddObject(msg);
 					break;
 				case Type::Callback:
-				{
-					ipc_header_t *header = msg->GetHeader();
-					header->realSize = header->size; // Set the realSize properly
-
 					_callback(this, msg);
 					break;
-				}
 			}
 
 			

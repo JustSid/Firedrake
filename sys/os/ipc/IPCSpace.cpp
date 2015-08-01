@@ -292,8 +292,6 @@ namespace OS
 			}
 
 			ipc_header_t *queuedHeader = queuedMessage->GetHeader();
-			header->realSize = queuedHeader->size;
-
 			if(queuedHeader->size > header->size)
 				return Error(KERN_NO_MEMORY);
 

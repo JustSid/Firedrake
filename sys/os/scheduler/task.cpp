@@ -44,19 +44,18 @@ namespace OS
 		{
 			case 0:
 			{
-				ipc_size_t size = header->realSize;
 				Task *task = port->GetContext<Task>();
 
 				task->Lock();
 
-				if(size == 0)
+				if(header->size == 0)
 				{
 					task->SetName(nullptr);
 				}
 				else
 				{
 					char buffer[255];
-					strlcpy(buffer, message->GetData<char>(), std::min(static_cast<ipc_size_t>(255), size));
+					strlcpy(buffer, message->GetData<char>(), std::min(static_cast<ipc_size_t>(255), header->size));
 
 					IO::String *string = IO::String::Alloc()->InitWithCString(buffer);
 					task->SetName(string);

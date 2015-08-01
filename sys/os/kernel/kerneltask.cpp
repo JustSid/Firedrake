@@ -122,7 +122,7 @@ namespace OS
 		switch(header->id)
 		{
 			case 0:
-				knputs(message->GetData<char>(), header->realSize);
+				knputs(message->GetData<char>(), header->size);
 				break;
 
 			default:
