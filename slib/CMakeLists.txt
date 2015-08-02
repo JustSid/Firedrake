@@ -6,4 +6,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra -pedantic -std=c++11 -O2 -fpic -
 add_subdirectory("libkern")
 add_subdirectory("libio")
 
-add_subdirectory("libtest")
+add_subdirectory("libhid")

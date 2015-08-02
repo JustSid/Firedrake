@@ -1,6 +1,6 @@
 //
-//  entry.c
-//  libtest
+//  IOThread.cpp
+//  Firedrake
 //
 //  Created by Sidney Just
 //  Copyright (c) 2015 by Sidney Just
@@ -17,14 +17,31 @@
 //
 
 #include <libkern.h>
-#include <libc/stdbool.h>
+#include "IOThread.h"
 
-bool _kern_start(__unused void *entry)
+namespace IO
 {
-	kprintf("_kern_start(%p)\n", entry);
-	return true;
-}
-void _kern_stop(__unused void *entry)
-{
-	kprintf("_kern_stop(%p)\n", entry);
+	IODefineMeta(Thread, Object)
+
+	Thread *Thread::InitWithEntry(Entry entry, void *argument)
+	{
+		if(!Object::Init())
+			return nullptr;
+
+		_entry = entry;
+		_argument = argument;
+
+		return this;
+	}
+
+	void Thread::Start()
+	{
+		thread_create(&Thread::__Entry, this);
+	}
+
+	void Thread::__Entry(void *argument)
+	{
+		Thread *thread = reinterpret_cast<Thread *>(argument);
+		thread->_entry(thread, thread->_argument);
+	}
 }

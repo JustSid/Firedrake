@@ -1,9 +1,9 @@
 //
-//  libkern.h
+//  IOServiceProvider.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,32 +16,33 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERN_H_
-#define _LIBKERN_H_
+#ifndef _IOPROVIDER_H_
+#define _IOPROVIDER_H_
 
-#include "libc/sys/cdefs.h"
-#include "libc/stdint.h"
-#include "kmod.h"
+#include "../core/IOObject.h"
+#include "../core/IOArray.h"
+#include "IOService.h"
 
-__BEGIN_DECLS
+namespace IO
+{
+	class ServiceProvider : public Object
+	{
+	public:
+		virtual void Probe() = 0;
 
-void kprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
-void kputs(const char *string);
-void knputs(const char *string, unsigned int length);
+	protected:
+		ServiceProvider *Init();
+		void Dealloc();
 
-void panic(const char *format, ...) __attribute((noreturn));
+		void AddService(Service *service);
+		void RemoveService(Service *service);
 
-void *kalloc(size_t size);
-void kfree(void *ptr);
+	private:
+		spinlock_t _lock;
+		Array *_services;
 
-void thread_create(void (*entry)(void *), void *argument);
-void thread_yield();
+		IODeclareMetaVirtual(ServiceProvider)
+	};
+}
 
-
-typedef void (*InterruptHandler)(uint8_t vector, void *argument);
-
-void register_interrupt(uint8_t vector, void *argument, InterruptHandler handler);
-
-__END_DECLS
-
-#endif
+#endif /* _IOPROVIDER_H_ */

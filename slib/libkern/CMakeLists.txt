@@ -5,6 +5,7 @@ set(SOURCES
 	libc/stdio.c
 	libc/string.c
 	libc/sys/x86/spinlock.S
+	libc/sys/spinlock.c
 	libcpp/new.cpp
 	stubs.c)
 
@@ -27,7 +28,9 @@ set(HEADERS
 	libcpp/iterator.h
 	libcpp/type_traits.h
 	libcpp/vector.h
-	libkern.h)
+	kmod.h
+	libkern.h
+	port.h)
 
 set(TARGET_FILES ${SOURCES} ${HEADERS})
 

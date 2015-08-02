@@ -28,7 +28,7 @@
 #include "path.h"
 #include "file.h"
 
-#include <libio/IOArray.h>
+#include <libio/core/IOArray.h>
 #include <vfs/ffs/ffs_descriptor.h>
 
 #include <bootstrap/multiboot.h>

@@ -30,7 +30,7 @@
 #include <libc/sys/types.h>
 #include <libcpp/atomic.h>
 
-#include <libio/IOObject.h>
+#include <libio/core/IOObject.h>
 
 #include "node.h"
 

@@ -25,7 +25,7 @@
 #include <libc/sys/spinlock.h>
 #include <os/scheduler/task.h>
 
-#include <libio/IOObject.h>
+#include <libio/core/IOObject.h>
 
 namespace VFS
 {

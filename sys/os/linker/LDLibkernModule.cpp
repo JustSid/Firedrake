@@ -19,8 +19,12 @@
 #include <kern/kprintf.h>
 #include <kern/kalloc.h>
 #include <kern/panic.h>
-#include <libio/IOCatalogue.h>
-#include <libio/IONull.h>
+#include <libio/core/IOCatalogue.h>
+#include <libio/core/IONull.h>
+#include <libio/core/IOArray.h>
+#include <libio/hid/IOHIDKeyboardUtilities.h>
+#include <os/scheduler/scheduler.h>
+#include <machine/interrupts/interrupts.h>
 #include "LDModule.h"
 
 // -------------
@@ -36,14 +40,102 @@ namespace OS
 {
 	namespace LD
 	{
-		void *__libkern_getIOCatalogue()
+		void *__libio_getIOCatalogue()
 		{
 			return IO::Catalogue::GetSharedInstance();
 		}
-		void *__libkern_getIONull()
+		void *__libio_getIONull()
 		{
 			return IO::Catalogue::GetSharedInstance();
 		}
+
+
+		void __libkern_threadEntry(void (*entry)(void *), void *argument)
+		{
+			entry(argument);
+
+			Scheduler *scheduler = Scheduler::GetScheduler();
+			Thread *thread = scheduler->GetActiveThread();
+
+			scheduler->BlockThread(thread);
+			scheduler->RemoveThread(thread);
+
+			scheduler->GetActiveTask()->MarkThreadExit(thread);
+
+			while(1)
+			{}
+		}
+
+
+		void thread_yield()
+		{
+			Scheduler *scheduler = Scheduler::GetScheduler();
+			scheduler->YieldThread(scheduler->GetActiveThread());
+		}
+
+		void thread_create(void (*entry)(void *), void *argument)
+		{
+			Task *task = Scheduler::GetScheduler()->GetActiveTask();
+
+			IO::Number *entryNum = IO::Number::Alloc()->InitWithUint32(reinterpret_cast<uint32_t >(entry));
+			IO::Number *argNum = IO::Number::Alloc()->InitWithUint32(reinterpret_cast<uint32_t>(argument));
+
+			IO::Array *parameters = IO::Array::Alloc()->Init();
+			parameters->AddObject(entryNum);
+			parameters->AddObject(argNum);
+
+			entryNum->Release();
+			argNum->Release();
+
+			task->AttachThread(reinterpret_cast<Thread::Entry >(&__libkern_threadEntry), Thread::PriorityClassKernel, 0, parameters);
+
+			parameters->Release();
+		}
+
+
+		typedef void (*InterruptHandler)(uint8_t vector, void *argument);
+
+		struct InterruptEntry
+		{
+			InterruptHandler handler;
+			void *argument;
+		};
+
+		static Mutex __interruptLock;
+		static InterruptEntry __interruptEntries[255];
+
+		uint32_t __libkern_interruptHandler(uint32_t esp, __unused Sys::CPU *cpu)
+		{
+			Sys::CPUState *state = reinterpret_cast<Sys::CPUState *>(esp);
+			InterruptEntry *entry = __interruptEntries + state->interrupt;
+
+			entry->handler(static_cast<uint8_t>(state->interrupt), entry->argument);
+
+			return esp;
+		}
+
+		void register_interrupt(uint8_t vector, void *argument, InterruptHandler handler)
+		{
+			__interruptLock.Lock(Mutex::Mode::NoInterrupts);
+
+			InterruptEntry *entry = __interruptEntries + vector;
+			entry->argument = argument;
+			entry->handler = handler;
+
+			__interruptLock.Unlock();
+
+			if(vector < 0x30)
+				Sys::APIC::MaskInterrupt(vector, (handler == nullptr));
+
+			Sys::SetInterruptHandler(vector, &__libkern_interruptHandler);
+		}
+
+		void __libkern_dispatchKeyboardEvent(IO::KeyboardEvent *event)
+		{
+			if(event->IsKeyDown())
+				kprintf("%c", event->GetCharacter());
+		}
+
 
 
 #define ELF_SYMBOL_STUB(function) \
@@ -63,8 +155,12 @@ namespace OS
 				ELF_SYMBOL_STUB(knputs),
 				ELF_SYMBOL_STUB(kalloc),
 				ELF_SYMBOL_STUB(kfree),
-				ELF_SYMBOL_STUB(__libkern_getIOCatalogue),
-				ELF_SYMBOL_STUB(__libkern_getIONull)
+				ELF_SYMBOL_STUB(__libio_getIOCatalogue),
+				ELF_SYMBOL_STUB(__libio_getIONull),
+				ELF_SYMBOL_STUB(thread_yield),
+				ELF_SYMBOL_STUB(thread_create),
+				ELF_SYMBOL_STUB(register_interrupt),
+				ELF_SYMBOL_STUB(__libkern_dispatchKeyboardEvent)
 			};
 
 		elf_sym_t *LibkernModule::GetSymbolWithName(const char *name)

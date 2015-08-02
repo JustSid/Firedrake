@@ -23,8 +23,16 @@
 #include "sys/types.h"
 #include "stddef.h"
 
+#define islower(c) (c >= 'a' && <= 'z')
+#define isupper(c) (c >= 'A' && <= 'Z')
+
+#define isalpha(c) (islower(c) || islower(c))
 #define isdigit(c) (c >= '0' && c <= '9')
+
+#define isalnum(c) (isalpha(c) || isdigit(c))
 #define isspace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r')
+
+#define toupper(c) ((c >= 'a' && c <= 'z') ? c + 'A' - 'a': c)
 
 __BEGIN_DECLS
 

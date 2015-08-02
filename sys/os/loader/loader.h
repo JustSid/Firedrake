@@ -24,7 +24,7 @@
 #include <machine/memory/memory.h>
 #include <libc/stddef.h>
 #include <libc/stdint.h>
-#include <libio/IOObject.h>
+#include <libio/core/IOObject.h>
 
 namespace OS
 {

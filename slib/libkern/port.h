@@ -1,9 +1,9 @@
 //
-//  libkern.h
+//  port.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,32 +16,48 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERN_H_
-#define _LIBKERN_H_
+#ifndef _PORT_H_
+#define _PORT_H_
 
-#include "libc/sys/cdefs.h"
 #include "libc/stdint.h"
-#include "kmod.h"
 
-__BEGIN_DECLS
+static inline uint8_t inb(uint16_t port)
+{
+	uint8_t result;
+	__asm__ volatile("inb %1, %0" : "=a" (result) : "Nd" (port));
 
-void kprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
-void kputs(const char *string);
-void knputs(const char *string, unsigned int length);
+	return result;
+}
 
-void panic(const char *format, ...) __attribute((noreturn));
+static inline uint16_t inw(uint16_t port)
+{
+	uint16_t result;
+	__asm__ volatile("inw %1, %0" : "=a" (result) : "Nd" (port));
 
-void *kalloc(size_t size);
-void kfree(void *ptr);
+	return result;
+}
 
-void thread_create(void (*entry)(void *), void *argument);
-void thread_yield();
+static inline uint32_t inl(uint16_t port)
+{
+	uint32_t result;
+	__asm__ volatile("inl %1, %0" : "=a" (result) : "Nd" (port));
 
+	return result;
+}
 
-typedef void (*InterruptHandler)(uint8_t vector, void *argument);
+static inline void outb(uint16_t port, uint8_t data)
+{
+	__asm__ volatile("outb %0, %1" : : "a" (data), "Nd" (port));
+}
 
-void register_interrupt(uint8_t vector, void *argument, InterruptHandler handler);
+static inline void outw(uint16_t port, uint16_t data)
+{
+	__asm__ volatile("outw %0, %1" : : "a" (data), "Nd" (port));
+}
 
-__END_DECLS
+static inline void outl(uint16_t port, uint32_t data)
+{
+	__asm__ volatile("outl %0, %1" : : "a"(data), "Nd" (port));
+}
 
 #endif

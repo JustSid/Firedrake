@@ -155,7 +155,9 @@ namespace OS
 		if(!result.IsValid() && result.GetError().GetCode() == KERN_TASK_RESTART)
 		{
 			delete[] arguments;
-			cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread));
+			if(!cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread)))
+				panic("Out of workqueue items\n");
+
 			return;
 		}
 

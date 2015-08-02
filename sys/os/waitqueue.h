@@ -22,7 +22,7 @@
 #include <prefix.h>
 #include <libc/stdint.h>
 #include <kern/kern_return.h>
-#include <libio/IOFunction.h>
+#include <libio/core/IOFunction.h>
 
 namespace OS
 {

@@ -46,14 +46,14 @@ set(SOURCES
 	machine/cpu.cpp
 	machine/debug.cpp
 	machine/gdt.cpp
-	libio/IOArray.cpp
-	libio/IOCatalogue.cpp
-	libio/IODictionary.cpp
-	libio/IONull.cpp
-	libio/IONumber.cpp
-	libio/IOObject.cpp
-	libio/IOSet.cpp
-	libio/IOString.cpp
+	libio/core/IOArray.cpp
+	libio/core/IOCatalogue.cpp
+	libio/core/IODictionary.cpp
+	libio/core/IONull.cpp
+	libio/core/IONumber.cpp
+	libio/core/IOObject.cpp
+	libio/core/IOSet.cpp
+	libio/core/IOString.cpp
 	os/IPC/IPCMessage.cpp
 	os/IPC/IPCPort.cpp
 	os/IPC/IPCSpace.cpp
@@ -106,9 +106,10 @@ set(HEADERS
 	libcpp/iterator.h
 	libcpp/type_traits.h
 	libcpp/vector.h
-	libio/IOFunction.h
-	libio/IOHashtableInternal.h
-	libio/IORuntime.h
+	libio/core/IOFunction.h
+	libio/core/IOHashtableInternal.h
+	libio/core/IORuntime.h
+	libio/hid/IOHIDKeyboardUtilities.h
 	machine/interrupts/idt.h
 	machine/memory/memory.h
 	machine/cme.h

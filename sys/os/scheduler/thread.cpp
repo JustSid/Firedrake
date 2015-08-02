@@ -22,7 +22,7 @@
 #include <machine/memory/memory.h>
 #include <machine/cpu.h>
 #include <kern/kprintf.h>
-#include <libio/IONumber.h>
+#include <libio/core/IONumber.h>
 #include "task.h"
 #include "thread.h"
 
@@ -200,7 +200,6 @@ namespace OS
 		if(parameters)
 			stack = reinterpret_cast<uint32_t *>(ParseParameters(parameters, reinterpret_cast<uint8_t *>(stack)));
 
-		*(-- stack) = 0x10; // ss
 		*(-- stack) = 0x0;   // esp
 		*(-- stack) = 0x200; // eflags
 		*(-- stack) = 0x8; // cs

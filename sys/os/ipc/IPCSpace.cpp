@@ -16,7 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libio/IONumber.h>
+#include <libio/core/IONumber.h>
 #include <os/waitqueue.h>
 #include <kern/kprintf.h>
 #include <libc/ipc/ipc_message.h>

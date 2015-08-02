@@ -1,9 +1,9 @@
 //
-//  libkern.h
+//  IOModule.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,32 +16,38 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERN_H_
-#define _LIBKERN_H_
+#include "IOModule.h"
 
-#include "libc/sys/cdefs.h"
-#include "libc/stdint.h"
-#include "kmod.h"
+namespace IO
+{
+	IODefineMeta(Module, Object)
 
-__BEGIN_DECLS
+	Module *Module::InitWithKmod(kmod_t *mod)
+	{
+		if(!Object::Init())
+			return nullptr;
 
-void kprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
-void kputs(const char *string);
-void knputs(const char *string, unsigned int length);
+		_module = mod;
+		_providers = Array::Alloc()->Init();
 
-void panic(const char *format, ...) __attribute((noreturn));
+		return this;
+	}
 
-void *kalloc(size_t size);
-void kfree(void *ptr);
+	void Module::Publish()
+	{
+		_providers->Enumerate<ServiceProvider>([&](ServiceProvider *provider, __unused size_t index, __unused bool &stop) {
+			provider->Probe();
+		});
+	}
+	void Module::Unpublish()
+	{}
 
-void thread_create(void (*entry)(void *), void *argument);
-void thread_yield();
-
-
-typedef void (*InterruptHandler)(uint8_t vector, void *argument);
-
-void register_interrupt(uint8_t vector, void *argument, InterruptHandler handler);
-
-__END_DECLS
-
-#endif
+	void Module::AddServiceProvider(ServiceProvider *provider)
+	{
+		_providers->AddObject(provider);
+	}
+	void Module::RemoveServiceProvider(ServiceProvider *provider)
+	{
+		_providers->RemoveObject(provider);
+	}
+}

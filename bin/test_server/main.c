@@ -29,6 +29,8 @@
 
 void print_file(const char *arg)
 {
+	printf("Printing file: %s\n", arg);
+
 	int fd = open(arg, O_RDONLY);
 	char temp[129];
 
@@ -79,7 +81,6 @@ int main(int argc, char *argv[])
 			char file[255];
 			strlcpy(file, message.buffer, 255);
 
-			printf("Printing file: %s\n", file);
 			print_file(file);
 		}
 	}

@@ -16,9 +16,10 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libio/IODictionary.h>
+#include <libio/core/IODictionary.h>
 #include <os/locks/mutex.h>
 #include <os/workqueue.h>
+#include <vfs/vfs.h>
 #include "LDStore.h"
 
 namespace OS
@@ -139,6 +140,63 @@ namespace OS
 		{
 			return GetModuleWithName(name, true);
 		}
+
+		KernReturn<void> AddConfigModule(const char *name)
+		{
+			IO::StrongRef<Module> module = LoadModuleWithName(name);
+			if(!module)
+				return Error(KERN_RESOURCE_NOT_FOUND, "Couldn't load '%s'", name);
+
+			if(module->GetType() != Module::Type::Extension)
+				return Error(KERN_INVALID_ARGUMENT, "Module '%s' must be an extension", name);
+
+			return ErrorNone;
+		}
+
+		KernReturn<void> ReadConfig()
+		{
+			VFS::Context *context = VFS::Context::GetKernelContext();
+			KernReturn<int> fd = VFS::Open(context, "/etc/ioglue.conf", O_RDONLY);
+
+			if(!fd.IsValid())
+				return fd.GetError();
+
+			KernReturn<off_t> size = VFS::Seek(context, fd, 0, SEEK_END);
+			VFS::Seek(context, fd, 0, SEEK_SET).Suppress();
+
+			if(!size.IsValid())
+				return size.GetError();
+
+			size_t read = static_cast<size_t>(size.Get());
+			while(read > 0)
+			{
+				char buffer[255];
+				size_t begin = 0;
+				size_t toRead = std::min(sizeof(buffer), read);
+
+				VFS::Read(context, fd, buffer, toRead).Suppress();
+				buffer[toRead] = '\0';
+
+				for(size_t i = 0; buffer[i] != '\0'; i ++)
+				{
+					if(buffer[i] == '\n')
+					{
+						buffer[i] = '\0';
+						AddConfigModule(buffer + begin);
+
+						begin = (++ i);
+					}
+				}
+
+				if(begin < toRead)
+					AddConfigModule(buffer + begin);
+
+				read -= toRead;
+			}
+
+			VFS::Close(context, fd);
+			return ErrorNone;
+		}
 	}
 
 	KernReturn<void> LDInit()
@@ -157,8 +215,6 @@ namespace OS
 		if(!libio)
 			return Error(KERN_RESOURCES_MISSING);
 
-		LD::LoadModuleWithName("libtest.so");
-
-		return ErrorNone;
+		return LD::ReadConfig();
 	}
 }

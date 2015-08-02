@@ -20,8 +20,8 @@
 #define _IPCSPACE_H_
 
 #include <prefix.h>
-#include <libio/IOObject.h>
-#include <libio/IODictionary.h>
+#include <libio/core/IOObject.h>
+#include <libio/core/IODictionary.h>
 #include <os/locks/mutex.h>
 #include <libc/ipc/ipc_types.h>
 #include "IPCPort.h"

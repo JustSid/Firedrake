@@ -18,6 +18,7 @@
 
 #include "libkern.h"
 #include "libc/stddef.h"
+#include "libc/stdbool.h"
 
 void kprintf(__unused const char *format, ...)
 {}
@@ -48,3 +49,19 @@ void *__libio_getIONull()
 {
 	return NULL;
 }
+
+
+
+void thread_create(__unused void (*entry)(void *), __unused void *argument)
+{}
+
+void thread_yield()
+{}
+
+
+void register_interrupt(__unused uint8_t vector, __unused void *argument, __unused InterruptHandler handler)
+{}
+
+
+void __libkern_dispatchKeyboardEvent(__unused uint32_t keyCode, __unused bool keyDown)
+{}

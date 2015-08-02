@@ -1,9 +1,9 @@
 //
-//  libkern.h
+//  IOServiceProvider.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,32 +16,48 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERN_H_
-#define _LIBKERN_H_
+#include "IOServiceProvider.h"
 
-#include "libc/sys/cdefs.h"
-#include "libc/stdint.h"
-#include "kmod.h"
+namespace IO
+{
+	IODefineMeta(ServiceProvider, Object)
 
-__BEGIN_DECLS
+	ServiceProvider *ServiceProvider::Init()
+	{
+		if(!Object::Init())
+			return nullptr;
 
-void kprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
-void kputs(const char *string);
-void knputs(const char *string, unsigned int length);
+		spinlock_init(&_lock);
+		_services = Array::Alloc()->Init();
 
-void panic(const char *format, ...) __attribute((noreturn));
+		return this;
+	}
 
-void *kalloc(size_t size);
-void kfree(void *ptr);
+	void ServiceProvider::Dealloc()
+	{
+		_services->Release();
 
-void thread_create(void (*entry)(void *), void *argument);
-void thread_yield();
+		Object::Dealloc();
+	}
 
 
-typedef void (*InterruptHandler)(uint8_t vector, void *argument);
 
-void register_interrupt(uint8_t vector, void *argument, InterruptHandler handler);
+	void ServiceProvider::AddService(Service *service)
+	{
+		if(service->Start())
+		{
+			spinlock_lock(&_lock);
+			_services->AddObject(service);
+			spinlock_unlock(&_lock);
+		}
+	}
 
-__END_DECLS
+	void ServiceProvider::RemoveService(Service *service)
+	{
+		service->Stop();
 
-#endif
+		spinlock_lock(&_lock);
+		_services->RemoveObject(service);
+		spinlock_unlock(&_lock);
+	}
+}

@@ -22,7 +22,7 @@
 #include <prefix.h>
 #include <kern/kern_return.h>
 #include <machine/memory/virtual.h>
-#include <libio/IOObject.h>
+#include <libio/core/IOObject.h>
 #include <libc/ipc/ipc_message.h>
 
 #define IPC_GET_DATA(header) (((unsigned char *)header) + sizeof(ipc_header_t))

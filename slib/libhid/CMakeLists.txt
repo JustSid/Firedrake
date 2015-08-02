@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 2.8.9)
-project(libtest)
+project(libhid)
 
 set(SOURCES
-	entry.c)
+	IOHIDModule.cpp
+	IOHIDServiceProvider.cpp
+	IOHIDPS2KeyboardService.cpp)
 
 set(TARGET_FILES ${SOURCES})
 
@@ -19,6 +21,7 @@ endforeach()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${libkern_SOURCE_DIR})
+include_directories(${libio_SOURCE_DIR})
 
-add_library(test SHARED ${TARGET_FILES})
-target_link_libraries(test kern)
+add_library(HID SHARED ${TARGET_FILES})
+target_link_libraries(HID io)

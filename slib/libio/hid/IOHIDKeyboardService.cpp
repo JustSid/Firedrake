@@ -1,9 +1,9 @@
 //
-//  libkern.h
+//  IOHIDKeyboardService.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,32 +16,39 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBKERN_H_
-#define _LIBKERN_H_
+#include "IOHIDKeyboardService.h"
 
-#include "libc/sys/cdefs.h"
-#include "libc/stdint.h"
-#include "kmod.h"
+extern "C" void __libkern_dispatchKeyboardEvent(IO::KeyboardEvent *event);
 
-__BEGIN_DECLS
+namespace IO
+{
+	IODefineMeta(HIDKeyboardService, Service)
 
-void kprintf(const char *format, ...) __attribute__((format(printf, 1, 2)));
-void kputs(const char *string);
-void knputs(const char *string, unsigned int length);
+	HIDKeyboardService *HIDKeyboardService::Init()
+	{
+		if(!Object::Init())
+			return nullptr;
 
-void panic(const char *format, ...) __attribute((noreturn));
+		_modifier = 0;
 
-void *kalloc(size_t size);
-void kfree(void *ptr);
+		return this;
+	}
 
-void thread_create(void (*entry)(void *), void *argument);
-void thread_yield();
+	void HIDKeyboardService::DispatchEvent(uint32_t keyCode, bool keyDown)
+	{
+		if(keyCode >= KeyCodeRightShift && keyCode <= KeyCodeLeftGUI)
+		{
+			uint32_t modifier = static_cast<uint32_t>((1 << keyCode));
 
+			if(keyDown)
+				_modifier |= modifier;
+			else
+				_modifier &= ~modifier;
 
-typedef void (*InterruptHandler)(uint8_t vector, void *argument);
+			return;
+		}
 
-void register_interrupt(uint8_t vector, void *argument, InterruptHandler handler);
-
-__END_DECLS
-
-#endif
+		KeyboardEvent event(keyCode, _modifier, keyDown);
+		__libkern_dispatchKeyboardEvent(&event);
+	}
+}

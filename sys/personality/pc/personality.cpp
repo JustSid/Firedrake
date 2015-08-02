@@ -31,7 +31,7 @@
 #include <machine/interrupts/interrupts.h>
 #include <machine/clock/clock.h>
 #include <machine/smp/smp.h>
-#include <libio/IOCatalogue.h>
+#include <libio/core/IOCatalogue.h>
 #include <os/scheduler/scheduler.h>
 #include <os/syscall/syscall.h>
 #include <os/waitqueue.h>

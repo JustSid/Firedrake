@@ -14,7 +14,7 @@ done
 
 ln -s "${BASEDIR}/lib/libc" "${BASEDIR}/sys/libc"
 ln -s "${BASEDIR}/lib/libcpp" "${BASEDIR}/sys/libcpp"
-ln -s "${BASEDIR}/slib/libio/core" "${BASEDIR}/sys/libio"
+ln -s "${BASEDIR}/slib/libio" "${BASEDIR}/sys/libio"
 
 ln -s "${BASEDIR}/lib/libc" "${BASEDIR}/slib/libkern/libc"
 ln -s "${BASEDIR}/lib/libcpp" "${BASEDIR}/slib/libkern/libcpp"

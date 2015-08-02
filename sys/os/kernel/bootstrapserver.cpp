@@ -20,9 +20,9 @@
 #include <libcpp/algorithm.h>
 #include <kern/kprintf.h>
 #include <libc/string.h>
-#include <libio/IOString.h>
-#include <libio/IONumber.h>
-#include <libio/IODictionary.h>
+#include <libio/core/IOString.h>
+#include <libio/core/IONumber.h>
+#include <libio/core/IODictionary.h>
 #include <os/scheduler/scheduler.h>
 #include <os/ipc/IPC.h>
 

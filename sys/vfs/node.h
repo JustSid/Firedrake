@@ -27,9 +27,9 @@
 #include <libc/sys/unistd.h>
 #include <libc/sys/dirent.h>
 
-#include <libio/IOObject.h>
-#include <libio/IODictionary.h>
-#include <libio/IOString.h>
+#include <libio/core/IOObject.h>
+#include <libio/core/IODictionary.h>
+#include <libio/core/IOString.h>
 
 namespace VFS
 {

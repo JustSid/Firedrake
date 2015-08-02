@@ -28,8 +28,8 @@
 #include <machine/cpu.h>
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
-#include <libio/IOObject.h>
-#include <libio/IOArray.h>
+#include <libio/core/IOObject.h>
+#include <libio/core/IOArray.h>
 #include <os/ipc/IPCPort.h>
 
 namespace OS

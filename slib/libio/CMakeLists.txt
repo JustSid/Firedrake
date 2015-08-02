@@ -9,7 +9,12 @@ set(SOURCES
 	core/IONumber.cpp
 	core/IOObject.cpp
 	core/IOSet.cpp
-	core/IOString.cpp)
+	core/IOString.cpp
+	service/IOModule.cpp
+	service/IOService.cpp
+	service/IOServiceProvider.cpp
+	service/IOThread.cpp
+	hid/IOHIDKeyboardService.cpp)
 
 set(HEADERS
 	core/IOArray.h
@@ -22,7 +27,13 @@ set(HEADERS
 	core/IOObject.h
 	core/IORuntime.h
 	core/IOSet.h
-	core/IOString.h)
+	core/IOString.h
+	service/IOModule.h
+	service/IOService.h
+	service/IOServiceProvider.h
+	service/IOThread.h
+	hid/IOHIDKeyboardService.h
+	hid/IOHIDKeyboardUtilities.h)
 
 set(TARGET_FILES ${SOURCES} ${HEADERS})
 

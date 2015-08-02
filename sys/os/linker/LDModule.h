@@ -20,9 +20,9 @@
 #define _LDMODULE_H_
 
 #include <prefix.h>
-#include <libio/IOObject.h>
-#include <libio/IOArray.h>
-#include <libio/IOString.h>
+#include <libio/core/IOObject.h>
+#include <libio/core/IOArray.h>
+#include <libio/core/IOString.h>
 #include <os/loader/elf.h>
 
 #define kModuleSymbolStubName 0xdeadbeef

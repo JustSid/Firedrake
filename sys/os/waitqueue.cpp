@@ -16,8 +16,8 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <libio/IOObject.h>
-#include <libio/IODictionary.h>
+#include <libio/core/IOObject.h>
+#include <libio/core/IODictionary.h>
 #include <libcpp/vector.h>
 #include <os/scheduler/scheduler.h>
 #include "waitqueue.h"
