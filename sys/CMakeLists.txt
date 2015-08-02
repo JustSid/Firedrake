@@ -62,6 +62,7 @@ set(SOURCES
 	os/kernel/kerneltask.cpp
 	os/linker/LDLibkernModule.cpp
 	os/linker/LDModule.cpp
+	os/linker/LDService.cpp
 	os/linker/LDStore.cpp
 	os/loader/loader.cpp
 	os/locks/mutex.cpp

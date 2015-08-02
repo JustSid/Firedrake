@@ -29,6 +29,8 @@ namespace IO
 	public:
 		HIDKeyboardService *Init();
 
+		bool Start() override;
+
 	protected:
 		virtual void DispatchEvent(uint32_t keyCode, bool keyDown);
 

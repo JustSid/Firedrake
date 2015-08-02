@@ -41,6 +41,7 @@ namespace OS
 			void Dealloc() override;
 
 			static IO::StrongRef<Space> GetSpaceWithName(ipc_space_t name);
+			static Space *GetKernelSpace();
 
 			KernReturn<Port *> AllocateReceivePort(); // Creates a new port with receive rights
 			KernReturn<Port *> AllocateSendPort(Port *target, Port::Right right, ipc_port_t name); // Right must be either Send or SendOnce

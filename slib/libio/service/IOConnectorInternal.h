@@ -1,5 +1,5 @@
 //
-//  IOHIDPS2KeyboardService.h
+//  IOConnectorInternal.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,39 +16,12 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOHIDPS2KEYBOARDSERVICE_H_
-#define _IOHIDPS2KEYBOARDSERVICE_H_
-
-#include <hid/IOHIDKeyboardService.h>
-#include <service/IOConnector.h>
+#ifndef _IOCONNECTORINTERNAL_H_
+#define _IOCONNECTORINTERNAL_H_
 
 namespace IO
 {
-	class HIDPS2KeyboardService : public HIDKeyboardService
-	{
-	public:
-		HIDPS2KeyboardService *Init();
-		void Dealloc();
 
-		bool Start() override;
-		void Stop() override;
-
-	private:
-		static void __HandleInterrupt(uint8_t vector, void *argument);
-
-		void SendCommand(uint8_t command, uint8_t argument);
-		void SendCommand(uint8_t command);
-
-		void HandleTest(uint8_t *buffer, size_t length, uint8_t *outResponse, size_t &outSize);
-
-		uint8_t ReadData();
-
-		void HandleInterrupt(uint8_t vector);
-
-		Connector *_connector;
-
-		IODeclareMeta(HIDPS2KeyboardService)
-	};
 }
 
-#endif /* _IOHIDPS2KEYBOARDSERVICE_H_ */
+#endif /* _IOCONNECTORINTERNAL_H_ */

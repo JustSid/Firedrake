@@ -153,7 +153,24 @@ namespace IO
 		if(!HIDKeyboardService::Init())
 			return nullptr;
 
+		_connector = Connector::Alloc()->InitWithService(this);
+		_connector->AddDispatchEntry(0, IOMemberFunctionCast(Connector::DispatchCallback, this, &HIDPS2KeyboardService::HandleTest), false, this);
+		_connector->Publish();
+
 		return this;
+	}
+
+	void HIDPS2KeyboardService::Dealloc()
+	{
+		_connector->Release();
+
+		Object::Dealloc();
+	}
+
+
+	void HIDPS2KeyboardService::HandleTest(uint8_t *buffer, size_t length, uint8_t *outResponse, size_t &outSize)
+	{
+		kprintf("Hello World");
 	}
 
 	void HIDPS2KeyboardService::HandleInterrupt(uint8_t vector)
@@ -226,7 +243,7 @@ namespace IO
 
 	bool HIDPS2KeyboardService::Start()
 	{
-		if(!Service::Start())
+		if(!HIDKeyboardService::Start())
 			return false;
 
 		outb(0x64, 0xad);

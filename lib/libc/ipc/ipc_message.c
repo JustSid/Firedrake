@@ -16,8 +16,10 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "../sys/kern_trap.h"
 #include "ipc_message.h"
+
+#ifndef __LIBKERN
+#include "../sys/kern_trap.h"
 
 ipc_return_t ipc_write(ipc_header_t *header)
 {
@@ -27,3 +29,17 @@ ipc_return_t ipc_read(ipc_header_t *header)
 {
 	return KERN_TRAP3(KERN_IPC_Message, header, header->size, (int)IPC_READ);
 }
+
+#else
+#include <libkern.h>
+
+ipc_return_t ipc_write(__unused ipc_header_t *header)
+{
+	panic("ipc_write() called");
+}
+ipc_return_t ipc_read(__unused ipc_header_t *header)
+{
+	panic("ipc_read() called");
+}
+
+#endif

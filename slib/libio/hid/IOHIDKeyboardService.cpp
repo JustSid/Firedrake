@@ -26,12 +26,20 @@ namespace IO
 
 	HIDKeyboardService *HIDKeyboardService::Init()
 	{
-		if(!Object::Init())
+		if(!Service::InitWithType(Type::HID, HIDSubtype::Keyboard))
 			return nullptr;
 
 		_modifier = 0;
 
 		return this;
+	}
+
+	bool HIDKeyboardService::Start()
+	{
+		if(!Service::Start())
+			return false;
+
+		return true;
 	}
 
 	void HIDKeyboardService::DispatchEvent(uint32_t keyCode, bool keyDown)
@@ -44,8 +52,6 @@ namespace IO
 				_modifier |= modifier;
 			else
 				_modifier &= ~modifier;
-
-			return;
 		}
 
 		KeyboardEvent event(keyCode, _modifier, keyDown);

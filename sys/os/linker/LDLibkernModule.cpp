@@ -26,6 +26,7 @@
 #include <os/scheduler/scheduler.h>
 #include <machine/interrupts/interrupts.h>
 #include "LDModule.h"
+#include "LDService.h"
 
 // -------------
 // The libkern.so library is a bit of hack since it provides symbols from the kernel
@@ -77,7 +78,7 @@ namespace OS
 		{
 			Task *task = Scheduler::GetScheduler()->GetActiveTask();
 
-			IO::Number *entryNum = IO::Number::Alloc()->InitWithUint32(reinterpret_cast<uint32_t >(entry));
+			IO::Number *entryNum = IO::Number::Alloc()->InitWithUint32(reinterpret_cast<uint32_t>(entry));
 			IO::Number *argNum = IO::Number::Alloc()->InitWithUint32(reinterpret_cast<uint32_t>(argument));
 
 			IO::Array *parameters = IO::Array::Alloc()->Init();
@@ -137,6 +138,80 @@ namespace OS
 		}
 
 
+		ipc_return_t ipc_write(ipc_header_t *header)
+		{
+			IPC::Space *space = IPC::Space::GetKernelSpace();
+			IPC::Message *message = IPC::Message::Alloc()->Init(header);
+
+			space->Lock();
+			KernReturn<void> result = space->Write(message);
+			space->Unlock();
+
+			message->Release();
+
+			return result.IsValid() ? KERN_SUCCESS : result.GetError().GetCode();
+		}
+		ipc_return_t ipc_read(ipc_header_t *header)
+		{
+			IPC::Space *space = IPC::Space::GetKernelSpace();
+			IPC::Message *message = IPC::Message::Alloc()->Init(header);
+
+			space->Lock();
+			KernReturn<void> result = space->Read(message);
+			space->Unlock();
+
+			message->Release();
+
+			return result.IsValid() ? KERN_SUCCESS : result.GetError().GetCode();
+		}
+
+		ipc_return_t ipc_allocate_port(ipc_port_t *port)
+		{
+			IPC::Space *space = IPC::Space::GetKernelSpace();
+			space->Lock();
+
+			KernReturn<IPC::Port *> actual = space->AllocateReceivePort();
+			if(!actual.IsValid())
+			{
+				space->Unlock();
+				return actual.GetError().GetCode();
+			}
+
+			*port = actual->GetName();
+			space->Unlock();
+
+			return KERN_SUCCESS;
+		}
+
+		ipc_return_t ipc_port_deallocate(ipc_port_t port)
+		{
+			IPC::Space *space = IPC::Space::GetKernelSpace();
+			space->Lock();
+
+			IPC::Port *actual = space->GetPortWithName(port);
+			if(!actual)
+			{
+				space->Unlock();
+				return KERN_INVALID_ARGUMENT;
+			}
+
+			space->DeallocatePort(actual);
+			space->Unlock();
+
+			return KERN_SUCCESS;
+		}
+
+		ipc_port_t ipc_get_special_port(int port)
+		{
+			switch(port)
+			{
+				case 0:
+					return GetKernelPort()->GetName();
+			}
+
+			return IPC_PORT_NULL;
+		}
+
 
 #define ELF_SYMBOL_STUB(function) \
 		{ #function, { kModuleSymbolStubName, (elf32_address_t)function, 0, 0, 0, 0 } }
@@ -160,7 +235,12 @@ namespace OS
 				ELF_SYMBOL_STUB(thread_yield),
 				ELF_SYMBOL_STUB(thread_create),
 				ELF_SYMBOL_STUB(register_interrupt),
-				ELF_SYMBOL_STUB(__libkern_dispatchKeyboardEvent)
+				ELF_SYMBOL_STUB(__libkern_dispatchKeyboardEvent),
+				ELF_SYMBOL_STUB(ipc_write),
+				ELF_SYMBOL_STUB(ipc_read),
+				ELF_SYMBOL_STUB(ipc_allocate_port),
+				ELF_SYMBOL_STUB(ipc_port_deallocate),
+				ELF_SYMBOL_STUB(ipc_get_special_port)
 			};
 
 		elf_sym_t *LibkernModule::GetSymbolWithName(const char *name)

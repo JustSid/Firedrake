@@ -31,6 +31,9 @@ namespace IO
 		_entry = entry;
 		_argument = argument;
 
+		_cancelled = false;
+		_exited = false;
+
 		return this;
 	}
 
@@ -39,9 +42,21 @@ namespace IO
 		thread_create(&Thread::__Entry, this);
 	}
 
+	void Thread::Cancel()
+	{
+		_cancelled = true;
+	}
+
+	void Thread::WaitForExit()
+	{
+		while(!_exited.load(std::memory_order_acquire))
+			thread_yield();
+	}
+
 	void Thread::__Entry(void *argument)
 	{
 		Thread *thread = reinterpret_cast<Thread *>(argument);
 		thread->_entry(thread, thread->_argument);
+		thread->_exited = true;
 	}
 }

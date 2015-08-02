@@ -32,6 +32,7 @@ namespace OS
 		static IO::Dictionary *_spaceMap;
 		static Mutex _spaceLock;
 		static std::atomic<ipc_space_t> _spaceName;
+		static Space *_kernelSpace;
 
 		Space *Space::Init()
 		{
@@ -47,6 +48,9 @@ namespace OS
 
 				IO::StrongRef<IO::Number> lookup(IOTransferRef(IO::Number::Alloc()->InitWithUint32(_name)));
 				_spaceMap->SetObjectForKey(this, lookup);
+
+				if(!_kernelSpace)
+					_kernelSpace = this;
 
 				_spaceLock.Unlock();
 			}
@@ -69,6 +73,11 @@ namespace OS
 			_spaceLock.Unlock();
 
 			return space;
+		}
+
+		Space *Space::GetKernelSpace()
+		{
+			return _kernelSpace;
 		}
 
 		void Space::Lock()

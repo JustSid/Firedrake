@@ -1,5 +1,5 @@
 //
-//  IOHIDPS2KeyboardService.h
+//  IOConnector.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,39 +16,54 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOHIDPS2KEYBOARDSERVICE_H_
-#define _IOHIDPS2KEYBOARDSERVICE_H_
+#ifndef _IOCONNECTOR_H_
+#define _IOCONNECTOR_H_
 
-#include <hid/IOHIDKeyboardService.h>
-#include <service/IOConnector.h>
+#include <core/IOObject.h>
+#include <libc/ipc/ipc_port.h>
+#include "IOThread.h"
+#include "IOService.h"
+#include "../core/IOString.h"
 
 namespace IO
 {
-	class HIDPS2KeyboardService : public HIDKeyboardService
+	class Connector : public Object
 	{
 	public:
-		HIDPS2KeyboardService *Init();
+		typedef void (*DispatchCallback)(void *context, uint8_t *buffer, size_t size, uint8_t *outResponse, size_t &outResponseSize);
+
+		Connector *InitWithName(const char *name);
+		Connector *InitWithService(Service *service);
+
 		void Dealloc();
 
-		bool Start() override;
-		void Stop() override;
+		void Publish();
+		void AddDispatchEntry(uint32_t vector, DispatchCallback callback, bool hasResponse, void *context);
 
 	private:
-		static void __HandleInterrupt(uint8_t vector, void *argument);
+		struct DispatchEntry
+		{
+			uint32_t vector;
+			bool hasResponse;
+			DispatchCallback callback;
+			void *context;
+		};
 
-		void SendCommand(uint8_t command, uint8_t argument);
-		void SendCommand(uint8_t command);
+		static void __ThreadEntry(Thread *thread, void *context);
 
-		void HandleTest(uint8_t *buffer, size_t length, uint8_t *outResponse, size_t &outSize);
+		void ThreadEntry();
+		bool DispatchMessage(uint32_t vector, uint8_t *buffer, size_t size, uint8_t *outResponse, size_t &outResponseSize) const;
 
-		uint8_t ReadData();
+		bool _published;
 
-		void HandleInterrupt(uint8_t vector);
+		Thread *_thread;
+		String *_name;
 
-		Connector *_connector;
+		ipc_port_t _port;
+		std::vector<DispatchEntry> _dispatchEntries;
 
-		IODeclareMeta(HIDPS2KeyboardService)
+		IODeclareMeta(Connector)
 	};
 }
 
-#endif /* _IOHIDPS2KEYBOARDSERVICE_H_ */
+#endif /* _IOCONNECTOR_H_ */

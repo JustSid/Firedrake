@@ -24,6 +24,7 @@
 #include <machine/interrupts/trampoline.h>
 #include <machine/debug.h>
 #include <os/waitqueue.h>
+#include <os/linker/LDService.h>
 #include <libc/ipc/ipc_message.h>
 #include "scheduler.h"
 #include "task.h"
@@ -110,6 +111,7 @@ namespace OS
 		{
 			_specialPorts[IPC_SPECIAL_PORT_HOST] = _space->AllocateSendPort(hostPort, IPC::Port::Right::Send, IPC_PORT_NULL);
 			_specialPorts[IPC_SPECIAL_PORT_BOOTSTRAP] = _space->AllocateSendPort(bootstrapPort, IPC::Port::Right::Send, IPC_PORT_NULL);
+			_specialPorts[IPC_SPECIAL_PORT_KERNEL] = _space->AllocateSendPort(LD::GetUserlandKernelPort(), IPC::Port::Right::Send, IPC_PORT_NULL);
 		}
 
 		Scheduler::GetScheduler()->AddTask(this);

@@ -33,6 +33,7 @@ __BEGIN_DECLS
 
 #define IPC_SPECIAL_PORT_HOST      0
 #define IPC_SPECIAL_PORT_BOOTSTRAP 1
+#define IPC_SPECIAL_PORT_KERNEL    2 // Kernel extension <- Userland bridge port
 
 #define __IPC_SPECIAL_PORT_MAX 3
 

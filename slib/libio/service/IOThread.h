@@ -20,6 +20,7 @@
 #define _IOTHREAD_H_
 
 #include "../core/IOObject.h"
+#include <libcpp/atomic.h>
 
 namespace IO
 {
@@ -31,12 +32,20 @@ namespace IO
 		Thread *InitWithEntry(Entry entry, void *argument);
 
 		void Start();
+		void Cancel();
+
+		void WaitForExit();
+
+		bool IsCancelled() const { return _cancelled.load(std::memory_order_acquire); }
 
 	private:
 		static void __Entry(void *argument);
 
 		Entry _entry;
 		void *_argument;
+
+		std::atomic<bool> _cancelled;
+		std::atomic<bool> _exited;
 
 		IODeclareMeta(Thread)
 	};

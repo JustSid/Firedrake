@@ -22,8 +22,14 @@ namespace IO
 {
 	IODefineMeta(Service, Object)
 
-	Service *Service::Init()
+	Service *Service::InitWithType(Type type, uint32_t subType)
 	{
+		if(!Object::Init())
+			return nullptr;
+
+		_type = type;
+		_subType = subType;
+
 		return this;
 	}
 

@@ -26,13 +26,28 @@ namespace IO
 	class Service : public Object
 	{
 	public:
+		enum class Type
+		{
+			HID
+		};
+
+		enum HIDSubtype
+		{
+			Keyboard
+		};
+
 		virtual bool Start();
 		virtual void Stop();
 
+		Type GetType() const { return _type; }
+		uint32_t GetSubType() const { return _subType; }
+
 	protected:
-		Service *Init();
+		Service *InitWithType(Type type, uint32_t subType);
 
 	private:
+		Type _type;
+		uint32_t _subType;
 
 		IODeclareMeta(Service)
 	};

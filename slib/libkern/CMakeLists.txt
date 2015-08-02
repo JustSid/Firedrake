@@ -4,12 +4,15 @@ project(libkern)
 set(SOURCES
 	libc/stdio.c
 	libc/string.c
+	libc/ipc/ipc_message.c
+	libc/ipc/ipc_port.c
 	libc/sys/x86/spinlock.S
 	libc/sys/spinlock.c
 	libcpp/new.cpp
 	stubs.c)
 
 set(HEADERS
+	libc/ipc/ipc_types.h
 	libc/sys/cdefs.h
 	libc/sys/spinlock.h
 	libc/sys/types.h

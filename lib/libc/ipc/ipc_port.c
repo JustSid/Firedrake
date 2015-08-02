@@ -16,8 +16,10 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "../sys/kern_trap.h"
 #include "ipc_port.h"
+
+#ifndef __LIBKERN
+#include "../sys/kern_trap.h"
 
 ipc_return_t ipc_task_space(ipc_space_t *space, pid_t pid)
 {
@@ -59,3 +61,22 @@ ipc_return_t ipc_deallocate_port(ipc_port_t port)
 {
 	return (ipc_return_t)KERN_TRAP1(KERN_IPC_DeallocatePort, port);
 }
+
+#else
+#include <libkern.h>
+
+ipc_port_t ipc_get_special_port(__unused int port)
+{
+	panic("ipc_get_special_port() called");
+}
+
+ipc_return_t ipc_allocate_port(__unused ipc_port_t *port)
+{
+	panic("ipc_allocate_port() called");
+}
+ipc_return_t ipc_deallocate_port(__unused ipc_port_t port)
+{
+	panic("ipc_deallocate_port() called");
+}
+
+#endif

@@ -21,6 +21,7 @@
 #include <os/workqueue.h>
 #include <vfs/vfs.h>
 #include "LDStore.h"
+#include "LDService.h"
 
 namespace OS
 {
@@ -214,6 +215,13 @@ namespace OS
 		IO::StrongRef<LD::Module> libio = LD::LoadModuleWithName("libio.so");
 		if(!libio)
 			return Error(KERN_RESOURCES_MISSING);
+
+		KernReturn<void> result = ServiceInit();
+		if(!result.IsValid())
+		{
+			kprintf("Couldn't initialize service");
+			return result.GetError();
+		}
 
 		return LD::ReadConfig();
 	}
