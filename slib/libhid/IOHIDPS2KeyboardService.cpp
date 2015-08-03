@@ -153,25 +153,14 @@ namespace IO
 		if(!HIDKeyboardService::Init())
 			return nullptr;
 
-		_connector = Connector::Alloc()->InitWithService(this);
-		_connector->AddDispatchEntry(0, IOMemberFunctionCast(Connector::DispatchCallback, this, &HIDPS2KeyboardService::HandleTest), false, this);
-		_connector->Publish();
-
 		return this;
 	}
 
 	void HIDPS2KeyboardService::Dealloc()
 	{
-		_connector->Release();
-
 		Object::Dealloc();
 	}
 
-
-	void HIDPS2KeyboardService::HandleTest(uint8_t *buffer, size_t length, uint8_t *outResponse, size_t &outSize)
-	{
-		kprintf("Hello World");
-	}
 
 	void HIDPS2KeyboardService::HandleInterrupt(uint8_t vector)
 	{
@@ -261,9 +250,17 @@ namespace IO
 			return false;
 
 		SendCommand(0xae);
-		register_interrupt(0x21, this, &HIDPS2KeyboardService::__HandleInterrupt);
+		register_interrupt(0x21, this, IOMemberFunctionCast(InterruptHandler, this, &HIDPS2KeyboardService::HandleInterrupt));
 
 		return true;
+	}
+
+	void HIDPS2KeyboardService::Stop()
+	{
+		outb(0x64, 0xad);
+		register_interrupt(0x21, this, nullptr);
+
+		Service::Stop();
 	}
 
 	void HIDPS2KeyboardService::SendCommand(uint8_t command, uint8_t argument)
@@ -293,11 +290,5 @@ namespace IO
 		{}
 
 		return inb(kIOPS2ControllerDataPort);
-	}
-
-	void HIDPS2KeyboardService::__HandleInterrupt(uint8_t vector, void *argument)
-	{
-		HIDPS2KeyboardService *service = reinterpret_cast<HIDPS2KeyboardService *>(argument);
-		service->HandleInterrupt(vector);
 	}
 }

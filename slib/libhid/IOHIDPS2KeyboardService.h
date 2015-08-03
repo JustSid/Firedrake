@@ -34,12 +34,8 @@ namespace IO
 		void Stop() override;
 
 	private:
-		static void __HandleInterrupt(uint8_t vector, void *argument);
-
 		void SendCommand(uint8_t command, uint8_t argument);
 		void SendCommand(uint8_t command);
-
-		void HandleTest(uint8_t *buffer, size_t length, uint8_t *outResponse, size_t &outSize);
 
 		uint8_t ReadData();
 

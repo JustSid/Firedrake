@@ -38,7 +38,7 @@ void thread_create(void (*entry)(void *), void *argument);
 void thread_yield();
 
 
-typedef void (*InterruptHandler)(uint8_t vector, void *argument);
+typedef void (*InterruptHandler)(void *argument, uint8_t vector);
 
 void register_interrupt(uint8_t vector, void *argument, InterruptHandler handler);
 

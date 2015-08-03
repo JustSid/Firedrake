@@ -30,7 +30,6 @@ set(HEADERS
 	core/IOSet.h
 	core/IOString.h
 	service/IOConnector.h
-	service/IOConnectorInternal.h
 	service/IOModule.h
 	service/IOService.h
 	service/IOServiceProvider.h

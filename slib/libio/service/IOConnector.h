@@ -49,9 +49,7 @@ namespace IO
 			void *context;
 		};
 
-		static void __ThreadEntry(Thread *thread, void *context);
-
-		void ThreadEntry();
+		void ThreadEntry(Thread *thred);
 		bool DispatchMessage(uint32_t vector, uint8_t *buffer, size_t size, uint8_t *outResponse, size_t &outResponseSize) const;
 
 		bool _published;

@@ -66,7 +66,7 @@ namespace IO
 		IOAssert(!_published, "Connector must not be published already");
 
 		ipc_allocate_port(&_port);
-		_thread = Thread::Alloc()->InitWithEntry(&Connector::__ThreadEntry, this);
+		_thread = Thread::Alloc()->InitWithEntry(IOMemberFunctionCast(Thread::Entry, this, &Connector::ThreadEntry), this);
 		_thread->Start();
 		_published = true;
 	}
@@ -101,7 +101,7 @@ namespace IO
 		return false;
 	}
 
-	void Connector::ThreadEntry()
+	void Connector::ThreadEntry(__unused Thread *thread)
 	{
 		// Register
 		{
@@ -172,11 +172,5 @@ namespace IO
 			strcpy(message.name, _name->GetCString());
 			ipc_write(&message.header);
 		}
-	}
-
-	void Connector::__ThreadEntry(__unused Thread *thread, void *context)
-	{
-		Connector *connector = reinterpret_cast<Connector *>(context);
-		connector->ThreadEntry();
 	}
 }

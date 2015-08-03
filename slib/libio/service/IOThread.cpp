@@ -17,11 +17,14 @@
 //
 
 #include <libkern.h>
+#include "../core/IORuntime.h"
 #include "IOThread.h"
 
 namespace IO
 {
 	IODefineMeta(Thread, Object)
+
+	typedef void (*CoreThreadEntry)(void *);
 
 	Thread *Thread::InitWithEntry(Entry entry, void *argument)
 	{
@@ -39,7 +42,7 @@ namespace IO
 
 	void Thread::Start()
 	{
-		thread_create(&Thread::__Entry, this);
+		thread_create(IOMemberFunctionCast(CoreThreadEntry, this, &Thread::__Entry), this);
 	}
 
 	void Thread::Cancel()
@@ -53,10 +56,9 @@ namespace IO
 			thread_yield();
 	}
 
-	void Thread::__Entry(void *argument)
+	void Thread::__Entry()
 	{
-		Thread *thread = reinterpret_cast<Thread *>(argument);
-		thread->_entry(thread, thread->_argument);
-		thread->_exited = true;
+		_entry(_argument, this);
+		_exited = true;
 	}
 }

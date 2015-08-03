@@ -69,7 +69,7 @@ namespace OS
 						IO::Number *portNum = IO::Number::Alloc()->InitWithUint32(message->header.reply);
 
 						_connectors->SetObjectForKey(name, portNum);
-						
+
 						name->Release();
 						portNum->Release();
 						break;

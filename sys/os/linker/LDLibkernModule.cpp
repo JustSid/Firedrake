@@ -94,7 +94,7 @@ namespace OS
 		}
 
 
-		typedef void (*InterruptHandler)(uint8_t vector, void *argument);
+		typedef void (*InterruptHandler)(void *argument, uint8_t vector);
 
 		struct InterruptEntry
 		{
@@ -110,7 +110,7 @@ namespace OS
 			Sys::CPUState *state = reinterpret_cast<Sys::CPUState *>(esp);
 			InterruptEntry *entry = __interruptEntries + state->interrupt;
 
-			entry->handler(static_cast<uint8_t>(state->interrupt), entry->argument);
+			entry->handler(entry->argument, static_cast<uint8_t>(state->interrupt));
 
 			return esp;
 		}

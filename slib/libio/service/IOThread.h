@@ -27,7 +27,7 @@ namespace IO
 	class Thread : public Object
 	{
 	public:
-		typedef void (*Entry)(Thread *, void *);
+		typedef void (*Entry)(void *, Thread *);
 
 		Thread *InitWithEntry(Entry entry, void *argument);
 
@@ -39,7 +39,7 @@ namespace IO
 		bool IsCancelled() const { return _cancelled.load(std::memory_order_acquire); }
 
 	private:
-		static void __Entry(void *argument);
+		void __Entry();
 
 		Entry _entry;
 		void *_argument;
