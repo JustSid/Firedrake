@@ -76,6 +76,7 @@ set(SOURCES
 	os/syscall/syscallTable.cpp
 	os/waitqueue.cpp
 	os/workqueue.cpp
+	personality/pc/video.cpp
 	${CONFIG_PERSONALITY_PATH}/personality.cpp
 	personality/personality.cpp
 	vfs/ffs/ffs_descriptor.cpp

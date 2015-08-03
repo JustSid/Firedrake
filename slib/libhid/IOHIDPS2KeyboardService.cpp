@@ -141,7 +141,7 @@ namespace IO
 			0x0,
 			0x0,
 			KeyCodeRightShift,
-			0x0,
+			KeyCodeEnter,
 			0x0, // ]
 			0x0,
 			0x0,
