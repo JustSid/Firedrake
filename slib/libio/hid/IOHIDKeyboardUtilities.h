@@ -33,10 +33,10 @@ namespace IO
 		KeyCodeTab = '\t',
 		KeyCodeSpace = ' ',
 
-		KeyCodeArrowUp = 10,
-		KeyCodeArrowDown = 11,
-		KeyCodeArrowLeft = 12,
-		KeyCodeArrowRight = 13,
+		KeyCodeArrowUp = 180,
+		KeyCodeArrowDown = 181,
+		KeyCodeArrowLeft = 182,
+		KeyCodeArrowRight = 183,
 
 		KeyCodeRightShift = 20,
 		KeyCodeLeftShift = 21,

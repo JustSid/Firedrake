@@ -134,7 +134,28 @@ namespace OS
 		void __libkern_dispatchKeyboardEvent(IO::KeyboardEvent *event)
 		{
 			if(event->IsKeyDown())
+			{
 				kprintf("%c", event->GetCharacter());
+
+				switch(event->GetKeyCode())
+				{
+					case IO::KeyCodeArrowUp:
+						kprintf("\033[1A");
+						break;
+					case IO::KeyCodeArrowDown:
+						kprintf("\033[1B");
+						break;
+					case IO::KeyCodeArrowLeft:
+						kprintf("\033[1D");
+						break;
+					case IO::KeyCodeArrowRight:
+						kprintf("\033[1C");
+						break;
+
+					default:
+						break;
+				}
+			}
 		}
 
 

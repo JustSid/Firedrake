@@ -18,8 +18,10 @@
 
 #include <libc/stdint.h>
 #include <libc/string.h>
+#include <libc/stdlib.h>
 #include <machine/port.h>
 #include <machine/memory/memory.h>
+#include <libcpp/algorithm.h>
 #include <kern/kprintf.h>
 #include "video.h"
 
@@ -29,23 +31,18 @@ namespace Sys
 	{
 		enum Color
 		{
-			ColorBlack = 0x0,
-			ColorBlue = 0x1,
-			ColorGreen = 0x2,
-			ColorCyan = 0x3,
-			ColorRed = 0x4,
-			ColorMagenta = 0x5,
-			ColorBrown = 0x6,
-			ColorLightGray = 0x7,
-			ColorDarkGray = 0x8,
-			ColorLightBlue = 0x9,
-			ColorLightGreen = 0xA,
-			ColorLightCyan = 0xB,
-			ColorLightRed = 0xC,
-			ColorLightMagenta = 0xD,
-			ColorYellow = 0xE,
-			ColorWhite = 0xF
+			ColorBlack,
+			ColorRed,
+			ColorGreen,
+			ColorYellow,
+			ColorBlue,
+			ColorMagenta,
+			ColorCyan,
+			ColorWhite
 		};
+
+		uint8_t NormalColorTable[] = { 0x0, 0x4, 0x2, 0x6, 0x1, 0x5, 0x3, 0x7 };
+		uint8_t BrightColorTable[] = { 0x8, 0xc, 0xa, 0xe, 0x9, 0xd, 0xb, 0xf };
 
 		static uint8_t *_videoAddress = reinterpret_cast<uint8_t *>(0xb8000);
 		static size_t _videoCursorX = 0;
@@ -54,9 +51,11 @@ namespace Sys
 		static size_t _videoWidth = 80;
 		static size_t _videoHeight = 25;
 
-		static Color _videoForegroundColor = ColorLightGray;
+		static Color _videoForegroundColor = ColorWhite;
 		static Color _videoBackgroundColor = ColorBlack;
 
+		static bool _videoForegroundColorIntensity = false;
+		static bool _videoBackgroundColorIntensity = false;
 
 		void ScrollLine()
 		{
@@ -72,7 +71,11 @@ namespace Sys
 		void SetColor(size_t x, size_t y, Color foreground, Color background)
 		{
 			size_t index = (y * _videoWidth + x) * 2;
-			_videoAddress[index + 1] = (background << 4) | (foreground & 0x0F);
+
+			uint8_t foregroundColor = _videoForegroundColorIntensity ? BrightColorTable[foreground] : NormalColorTable[foreground];
+			uint8_t backgroundColor = _videoBackgroundColorIntensity ? BrightColorTable[background] : NormalColorTable[background];
+
+			_videoAddress[index + 1] = (backgroundColor << 4) | (foregroundColor & 0x0F);
 		}
 
 		void SetCursor(size_t x, size_t y)
@@ -88,7 +91,65 @@ namespace Sys
 			outb(0x3d4, 0x0e);
 			outb(0x3d5, static_cast<uint8_t>((index >> 8) & 0xff));
 
-			SetColor(0, 0, _videoForegroundColor, _videoBackgroundColor);
+			SetColor(x, y, _videoForegroundColor, _videoBackgroundColor);
+		}
+
+		void ReadColor(uint8_t color, Color &outColor, bool &outIntensity)
+		{
+			switch(color)
+			{
+				case 0x0:
+				case 0x8:
+					outColor = ColorBlack;
+					outIntensity = (color >= 0x8);
+					break;
+				case 0x4:
+				case 0xc:
+					outColor = ColorRed;
+					outIntensity = (color >= 0x8);
+					break;
+				case 0x2:
+				case 0xa:
+					outColor = ColorGreen;
+					outIntensity = (color >= 0x8);
+					break;
+				case 0x6:
+				case 0xe:
+					outColor = ColorYellow;
+					outIntensity = (color >= 0x8);
+					break;
+				case 0x1:
+				case 0x9:
+					outColor = ColorBlue;
+					outIntensity = (color >= 0x8);
+					break;
+				case 0x5:
+				case 0xd:
+					outColor = ColorMagenta;
+					outIntensity = (color >= 0x8);
+					break;
+				case 0x3:
+				case 0xb:
+					outColor = ColorCyan;
+					outIntensity = (color >= 0x8);
+					break;
+				case 0x7:
+				case 0xf:
+					outColor = ColorWhite;
+					outIntensity = (color >= 0x8);
+					break;
+			}
+		}
+
+		void UpdateColor()
+		{
+			size_t index = (_videoCursorY * _videoWidth + _videoCursorX) * 2;
+
+			if(_videoAddress[index + 1] != 0)
+			{
+				ReadColor((_videoAddress[index + 1] >> 4) & 0xf, _videoBackgroundColor, _videoBackgroundColorIntensity);
+				ReadColor(_videoAddress[index + 1] & 0xf, _videoForegroundColor, _videoForegroundColorIntensity);
+			}
 		}
 
 		void Clear()
@@ -97,41 +158,213 @@ namespace Sys
 			SetCursor(0, 0);
 		}
 
+		void ParseControlSequence(const char *sequence, char terminator)
+		{
+			switch(terminator)
+			{
+				case 'A':
+				{
+					int num = atoi(sequence);
+					while((num --) && _videoCursorY > 0)
+						_videoCursorY --;
+
+					UpdateColor();
+					break;
+				}
+				case 'B':
+				{
+					_videoCursorY += atoi(sequence);
+					_videoCursorY = std::min(_videoCursorY, _videoHeight - 1);
+
+					UpdateColor();
+					break;
+				}
+
+				case 'C':
+				{
+					_videoCursorX += atoi(sequence);
+					_videoCursorX = std::min(_videoCursorX, _videoWidth - 1);
+
+					UpdateColor();
+					break;
+				}
+				case 'D':
+				{
+					int num = atoi(sequence);
+					while((num --) && _videoCursorX > 0)
+						_videoCursorX --;
+
+					UpdateColor();
+					break;
+				}
+
+				case 'E':
+				{
+					_videoCursorY += atoi(sequence);
+					_videoCursorY = std::min(_videoCursorY, _videoHeight - 1);
+
+					_videoCursorX = 0;
+					UpdateColor();
+					break;
+				}
+				case 'F':
+				{
+					int num = atoi(sequence);
+					while((num --) && _videoCursorY > 0)
+						_videoCursorY --;
+
+					_videoCursorX = 0;
+					UpdateColor();
+					break;
+				}
+
+
+				case 'J':
+				{
+					int code = atoi(sequence);
+
+					if(code == 1)
+					{
+						size_t index = (_videoCursorY * _videoWidth + _videoCursorX) * 2;
+						memset(_videoAddress, 0, index);
+					}
+					else if(code == 2)
+					{
+						memset(_videoAddress, 0 , _videoWidth * _videoHeight * 2);
+					}
+					else
+					{
+						size_t index = (_videoCursorY * _videoWidth + _videoCursorX) * 2;
+						size_t size = (_videoWidth * _videoHeight * 2) - index;
+
+						memset(_videoAddress + index, 0 , size);
+					}
+
+					break;
+				}
+
+				case 'm':
+				{
+					bool brightColor = false;
+
+					while(*sequence)
+					{
+						int code = atoi(sequence);
+
+						switch(code)
+						{
+							case 0:
+								_videoBackgroundColor = ColorBlack;
+								_videoForegroundColor = ColorWhite;
+								break;
+
+							case 1:
+								brightColor = true;
+								break;
+
+							case 30:
+							case 31:
+							case 32:
+							case 33:
+							case 34:
+							case 35:
+							case 36:
+							case 37:
+								_videoForegroundColor = static_cast<Color>(code - 30);
+								_videoForegroundColorIntensity = brightColor;
+								break;
+
+							case 40:
+							case 41:
+							case 42:
+							case 43:
+							case 44:
+							case 45:
+							case 46:
+							case 47:
+								_videoBackgroundColor = static_cast<Color>(code - 40);
+								_videoBackgroundColorIntensity = brightColor;
+								break;
+						}
+
+						// Jump over the code and a potential delimiter
+						do {
+							sequence ++;
+						} while(isdigit(*sequence));
+
+						while(*sequence && !isdigit(*sequence))
+							sequence ++;
+					}
+
+					break;
+				}
+			}
+		}
+
 
 		void Print(const char *string, size_t length)
 		{
+			static char controlSequence[32];
+			static size_t controlSequenceLength = 0;
+			static bool inControlSequence = false;
+
 			for(size_t i = 0; i < length; i ++)
 			{
 				char character = string[i];
-				switch(character)
+
+				if(inControlSequence)
 				{
-					case '\n':
+					if(character >= 64 && character <= 126)
 					{
-						_videoCursorX = 0;
+						controlSequence[controlSequenceLength ++] = '\0';
+						ParseControlSequence(controlSequence, character);
 
-						if((++ _videoCursorY) >= _videoHeight)
-							ScrollLine();
-
-						break;
+						controlSequenceLength = 0;
+						inControlSequence = false;
 					}
-					case '\t':
+					else
 					{
-						_videoCursorX += 4;
-						break;
+						controlSequence[controlSequenceLength ++] = character;
 					}
-					default:
+				}
+				else
+				{
+					switch(character)
 					{
-						_videoAddress[(_videoCursorY * _videoWidth + _videoCursorX) * 2] = character;
-						SetColor(_videoCursorX, _videoCursorY, _videoForegroundColor, _videoBackgroundColor);
-
-						if((++ _videoCursorX) >= _videoWidth)
+						case '\n':
 						{
 							_videoCursorX = 0;
 
 							if((++ _videoCursorY) >= _videoHeight)
 								ScrollLine();
+
+							break;
 						}
-						break;
+						case '\t':
+						{
+							_videoCursorX += 4;
+							break;
+						}
+						case '\033':
+						{
+							inControlSequence = true;
+							i ++; // Jump over the [
+							break;
+						}
+						default:
+						{
+							_videoAddress[(_videoCursorY * _videoWidth + _videoCursorX) * 2] = character;
+							SetColor(_videoCursorX, _videoCursorY, _videoForegroundColor, _videoBackgroundColor);
+
+							if((++ _videoCursorX) >= _videoWidth)
+							{
+								_videoCursorX = 0;
+
+								if((++ _videoCursorY) >= _videoHeight)
+									ScrollLine();
+							}
+							break;
+						}
 					}
 				}
 			}
@@ -145,6 +378,7 @@ namespace Sys
 		VM::Directory *directory = VM::Directory::GetKernelDirectory();
 		directory->MapPageRange(0xb8000, 0xb8000, 1, kVMFlagsKernel);
 
+		Video::Clear();
 		AddOutputHandler(&Video::Print);
 
 		return ErrorNone;

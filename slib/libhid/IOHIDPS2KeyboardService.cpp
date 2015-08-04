@@ -205,7 +205,18 @@ namespace IO
 							case 0x71:
 								keyCode = KeyCodeDelete;
 								break;
-
+							case 0x75:
+								keyCode = KeyCodeArrowUp;
+								break;
+							case 0x6b:
+								keyCode = KeyCodeArrowLeft;
+								break;
+							case 0x72:
+								keyCode = KeyCodeArrowDown;
+								break;
+							case 0x74:
+								keyCode = KeyCodeArrowRight;
+								break;
 						}
 
 						if(keyCode)
