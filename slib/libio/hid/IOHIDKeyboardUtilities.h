@@ -27,7 +27,7 @@ namespace IO
 	enum KeyCode
 	{
 		KeyCodeESC = 1,
-		KeyCodeBasckspace = 2,
+		KeyCodeBackspace = 2,
 		KeyCodeDelete = 3,
 		KeyCodeEnter = '\n',
 		KeyCodeTab = '\t',
@@ -158,6 +158,8 @@ namespace IO
 					return '.';
 				case KeyCodeSlash:
 					return '/';
+				case KeyCodeBackspace:
+					return '\b';
 
 				default:
 					return 0x0;

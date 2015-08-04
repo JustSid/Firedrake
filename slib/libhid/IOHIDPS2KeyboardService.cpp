@@ -179,7 +179,6 @@ namespace IO
 				case 0xf0:
 					isKeyDown = false;
 					break;
-
 				case 0xe0:
 					is0E = true;
 					break;
@@ -222,8 +221,17 @@ namespace IO
 						if(keyCode)
 							break;
 					}
+					else
+					{
+						switch(scancode)
+						{
+							case 0x66:
+								keyCode = KeyCodeBackspace;
+								break;
+						}
+					}
 
-					if(scancode >= 0x60 && keyCode == 0x0)
+					if(scancode >= 0x60 || keyCode != 0x0)
 						break;
 
 					keyCode = HIDPS2KeyboardTranslationTable[scancode];

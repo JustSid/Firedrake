@@ -218,6 +218,27 @@ namespace Sys
 					break;
 				}
 
+				case 'H':
+				{
+
+					int x = atoi(sequence);
+
+					do {
+						sequence ++;
+					} while(isdigit(*sequence));
+
+					while(*sequence && !isdigit(*sequence))
+						sequence ++;
+
+					int y = atoi(sequence);
+
+					_videoCursorX = std::max(0, std::min(static_cast<int>(_videoWidth), x));
+					_videoCursorY = std::max(0, std::min(static_cast<int>(_videoHeight), y));
+
+					UpdateColor();
+					break;
+				}
+
 
 				case 'J':
 				{
@@ -343,6 +364,14 @@ namespace Sys
 						case '\t':
 						{
 							_videoCursorX += 4;
+							break;
+						}
+						case '\b':
+						{
+							if(_videoCursorX > 0)
+								_videoCursorX --;
+
+							_videoAddress[(_videoCursorY * _videoWidth + _videoCursorX) * 2] = 0;
 							break;
 						}
 						case '\033':
