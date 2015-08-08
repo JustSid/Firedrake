@@ -24,9 +24,9 @@ Additionally, there is no video output. Everything is done through the UART, so 
 
 Building Firedrake requires a linux machine and some common binaries. If you use the Sublime Text project, you can simply use `cmd + b`, or your local equivalent, to build the project. Otherwise, the `build.sh` file contains everything needed to build it and it can be invoked directly.
 
-However, before you can build, you need to symlink the `/lib/libc` folder into the `sys` folder, as the kernel shares the C library with the user land. Additionally, you need the following packages installed:
+However, before you can build, you need to create a bunch of symlinks, which can be done by running `setup.sh`.
 
-* GCC
+* LLVM/Clang 3.5
 * binutils
 * xorriso
 * grub-mkrescue

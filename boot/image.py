@@ -32,6 +32,6 @@ copyFile('../build/sys/firedrake', 'image/boot/firedrake')
 copyFile('initrd', 'image/modules/initrd')
 
 os.chdir(base)
-os.system('grub-mkrescue --modules="ext2 fshelp boot pc" --output="./Firedrake.iso" "./image"')
+os.system('grub-mkrescue --modules="boot" --output="./Firedrake.iso" "./image"')
 
 deleteDir('image')
