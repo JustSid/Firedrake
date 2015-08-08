@@ -33,19 +33,19 @@ void panic_die(const char *buffer)
 	Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
 	Sys::CPUState *state = cpu->GetLastState();
 
-	kputs("\n\16\24Kernel Panic!\16\27\n");
+	kputs("\n\033[31mKernel Panic!\033[0m\n");
 	kputs("Reason: \"");
 	kputs(buffer);
 	kputs("\"\n");
 
-	kprintf("Crashing CPU: \16\031%i\16\27\n", cpu->GetID());
+	kprintf("Crashing CPU: \033[1;34m%i\033[0m\n", cpu->GetID());
 
 	if(state)
 	{
-		kprintf("CPU State (interrupt vector \16\0310x%x\16\27):\n", state->interrupt);
-		kprintf("  eax: \16\031%08x\16\27, ecx: \16\031%08x\16\27, edx: \16\031%08x\16\27, ebx: \16\031%08x\16\27\n", state->eax, state->ecx, state->edx, state->ebx);
-		kprintf("  esp: \16\031%08x\16\27, ebp: \16\031%08x\16\27, esi: \16\031%08x\16\27, edi: \16\031%08x\16\27\n", state->esp, state->ebp, state->esi, state->edi);
-		kprintf("  eip: \16\031%08x\16\27, eflags: \16\031%08x\16\27.\n", state->eip, state->eflags);
+		kprintf("CPU State (interrupt vector \033[1;34m0x%x\033[0m):\n", state->interrupt);
+		kprintf("  eax: \033[1;34m%08x\033[0m, ecx: \033[1;34m%08x\033[0m, edx: \033[1;34m%08x\033[0m, ebx: \033[1;34m%08x\033[0m\n", state->eax, state->ecx, state->edx, state->ebx);
+		kprintf("  esp: \033[1;34m%08x\033[0m, ebp: \033[1;34m%08x\033[0m, esi: \033[1;34m%08x\033[0m, edi: \033[1;34m%08x\033[0m\n", state->esp, state->ebp, state->esi, state->edi);
+		kprintf("  eip: \033[1;34m%08x\033[0m, eflags: \033[1;34m%08x\033[0m.\n", state->eip, state->eflags);
 	}
 
 	void *frames[10];

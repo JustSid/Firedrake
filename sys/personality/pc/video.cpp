@@ -277,6 +277,9 @@ namespace Sys
 							case 0:
 								_videoBackgroundColor = ColorBlack;
 								_videoForegroundColor = ColorWhite;
+
+								_videoForegroundColorIntensity = false;
+								_videoBackgroundColorIntensity = false;
 								break;
 
 							case 1:
