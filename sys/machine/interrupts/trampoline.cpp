@@ -36,6 +36,9 @@ namespace Sys
 		uint8_t buffer[VM_PAGE_SIZE]; // Contains the trampoline area executable code
 		uint8_t buffer2[VM_PAGE_SIZE]; // Contains auxiliary data, for now just the address of the kernel page directory
 		Trampoline trampoline[CONFIG_MAX_CPUS];
+
+		char padding[(VM_PAGE_COUNT((sizeof(Trampoline) * CONFIG_MAX_CPUS)) * VM_PAGE_SIZE) - (sizeof(Trampoline) * CONFIG_MAX_CPUS)]; // Pad to the next page
+		CPUData trampolineData[CONFIG_MAX_CPUS];
 	};
 	
 	TrampolineMap *_map = nullptr;
@@ -86,6 +89,7 @@ namespace Sys
 	{
 		CPU *cpu = CPU::GetCurrentCPU();
 		Trampoline *trampoline = &_map->trampoline[cpu->GetID()];
+		CPUData *trampolineData = &_map->trampolineData[cpu->GetID()];
 
 		VM::Directory *directory = VM::Directory::GetKernelDirectory();
 
@@ -94,7 +98,9 @@ namespace Sys
 
 		uintptr_t idtBegin = reinterpret_cast<uintptr_t>(&idt_begin);
 		IDTInit(trampoline->idt, IR_TRAMPOLINE_BEGIN - idtBegin);
-		GDTInit(trampoline->gdt, &trampoline->tss);
+		GDTInit(trampoline->gdt, &trampoline->tss, trampolineData);
+
+		trampolineData->cpuID = cpu->GetID();
 
 		// Hacky hackery hack
 		uint32_t *esp = Alloc<uint32_t>(directory, 1, kVMFlagsKernel);
@@ -109,6 +115,11 @@ namespace Sys
 		KernReturn<vm_address_t> vaddress = directory->AllocLimit(_physicalTrampoline, IR_TRAMPOLINE_BEGIN, VM::kUpperLimit, IR_TRAMPOLINE_PAGES, kVMFlagsKernel);
 		if(!vaddress.IsValid() || vaddress != IR_TRAMPOLINE_BEGIN)
 			return vaddress.GetError();
+
+		size_t offset = offsetof(TrampolineMap, trampolineData);
+		offset += CPU::GetCurrentCPU()->GetID() * sizeof(CPUData);
+
+		directory->MapPageRange(_physicalTrampoline + offset, IR_TRAMPOLINE_BEGIN + offset, 2, kVMFlagsUserlandR);
 
 		return ErrorNone;
 	}

@@ -35,11 +35,11 @@
 #define GDT_FLAG_4K       0x800
 #define GDT_FLAG_32_BIT   0x400
 
-#define GDT_ENTRIES 6
+#define GDT_ENTRIES 7
 
 namespace Sys
 {
-	void GDTInit(uint64_t *gdt, Sys::TSS *tss);
+	void GDTInit(uint64_t *gdt, Sys::TSS *tss, void *cpuData);
 }
 
 #endif /* _GDT_H_ */

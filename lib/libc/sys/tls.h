@@ -20,9 +20,22 @@
 #define _SYS_TLS_H_
 
 #include "cdefs.h"
+#include "../stddef.h"
+#include "../stdint.h"
 
 #ifndef __KERNEL
 __BEGIN_DECLS
+
+struct cpu_data
+{
+	uint16_t cpuID;
+	pid_t pid;
+	tid_t tid;
+	void *tls;
+};
+
+#define TLS_GET_CPU_DATA_MEMBER(val, member) \
+	__asm__ volatile("mov %%fs:%P1, %0" : "=r" (val) : "i" (offsetof(struct cpu_data, member)))
 
 typedef unsigned int tls_key_t;
 
@@ -34,5 +47,6 @@ void tls_freeKey(tls_key_t key);
 
 __END_DECLS
 #endif
+
 
 #endif /* _SYS_TLS_H_ */

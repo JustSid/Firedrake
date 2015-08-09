@@ -19,6 +19,7 @@
 #include "unistd.h"
 #include "dirent.h"
 #include "syscall.h"
+#include "tls.h"
 
 int open(const char *path, int flags)
 {
@@ -73,7 +74,10 @@ int lstat(const char *path, struct stat *buf)
 
 pid_t getpid()
 {
-	return (pid_t)SYSCALL1(SYS_Pid, 0);
+	pid_t result;
+	TLS_GET_CPU_DATA_MEMBER(result, pid);
+
+	return result;
 }
 pid_t getppid()
 {

@@ -88,9 +88,6 @@ uint32_t ir_handle_interrupt(uint32_t esp)
 
 	cpu->SetState(prev);
 
-	state = reinterpret_cast<Sys::CPUState *>(esp);
-	state->fs = cpu->GetID();
-
 	if(needsEOI)
 		Sys::APIC::Write(Sys::APIC::Register::EOI, 0);
 
@@ -135,25 +132,27 @@ namespace Sys
 
 	void IDTInit(uint64_t *idt, uint32_t offset)
 	{
-		// Excpetion-Handler
-		SetIDTEntry(idt, 0x0, (reinterpret_cast<uint32_t>(idt_exception_divbyzero)) + offset,             0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x1, (reinterpret_cast<uint32_t>(idt_exception_debug)) + offset,                 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x3, (reinterpret_cast<uint32_t>(idt_exception_breakpoint)) + offset,            0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x4, (reinterpret_cast<uint32_t>(idt_exception_overflow)) + offset,              0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x5, (reinterpret_cast<uint32_t>(idt_exception_boundrange)) + offset,            0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x6, (reinterpret_cast<uint32_t>(idt_exception_opcode)) + offset,                0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x7, (reinterpret_cast<uint32_t>(idt_exception_devicenotavailable)) + offset,    0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x8, (reinterpret_cast<uint32_t>(idt_exception_doublefault)) + offset,           0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x9, (reinterpret_cast<uint32_t>(idt_exception_segmentoverrun)) + offset,        0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0xa, (reinterpret_cast<uint32_t>(idt_exception_invalidtss)) + offset,            0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0xb, (reinterpret_cast<uint32_t>(idt_exception_segmentnotpresent)) + offset,     0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0xc, (reinterpret_cast<uint32_t>(idt_exception_stackfault)) + offset,            0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0xd, (reinterpret_cast<uint32_t>(idt_exception_protectionfault)) + offset,       0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0xe, (reinterpret_cast<uint32_t>(idt_exception_pagefault)) + offset,             0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x10, (reinterpret_cast<uint32_t>(idt_exception_fpuerror)) + offset,             0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x11, (reinterpret_cast<uint32_t>(idt_exception_alignment)) + offset,            0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x12, (reinterpret_cast<uint32_t>(idt_exception_machinecheck)) + offset,         0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
-		SetIDTEntry(idt, 0x13, (reinterpret_cast<uint32_t>(idt_exception_simd)) + offset,                 0x8, IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT);
+		// Exception-Handler
+		constexpr uint32_t kExceptionFlags = IDT_FLAG_INTERRUPT_GATE | IDT_FLAG_RING0 | IDT_FLAG_PRESENT;
+
+		SetIDTEntry(idt, 0x0, (reinterpret_cast<uint32_t>(idt_exception_divbyzero)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x1, (reinterpret_cast<uint32_t>(idt_exception_debug)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x3, (reinterpret_cast<uint32_t>(idt_exception_breakpoint)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x4, (reinterpret_cast<uint32_t>(idt_exception_overflow)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x5, (reinterpret_cast<uint32_t>(idt_exception_boundrange)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x6, (reinterpret_cast<uint32_t>(idt_exception_opcode)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x7, (reinterpret_cast<uint32_t>(idt_exception_devicenotavailable)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x8, (reinterpret_cast<uint32_t>(idt_exception_doublefault)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x9, (reinterpret_cast<uint32_t>(idt_exception_segmentoverrun)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0xa, (reinterpret_cast<uint32_t>(idt_exception_invalidtss)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0xb, (reinterpret_cast<uint32_t>(idt_exception_segmentnotpresent)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0xc, (reinterpret_cast<uint32_t>(idt_exception_stackfault)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0xd, (reinterpret_cast<uint32_t>(idt_exception_protectionfault)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0xe, (reinterpret_cast<uint32_t>(idt_exception_pagefault)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x10, (reinterpret_cast<uint32_t>(idt_exception_fpuerror)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x11, (reinterpret_cast<uint32_t>(idt_exception_alignment)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x12, (reinterpret_cast<uint32_t>(idt_exception_machinecheck)) + offset, 0x8, kExceptionFlags);
+		SetIDTEntry(idt, 0x13, (reinterpret_cast<uint32_t>(idt_exception_simd)) + offset, 0x8, kExceptionFlags);
 		
 		// Interrupts
 		SetIDTInterruptEntry(0x02, IDT_FLAG_RING0);

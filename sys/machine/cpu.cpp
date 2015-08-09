@@ -131,7 +131,7 @@ namespace Sys
 		}
 
 		uint16_t id;
-		__asm__ volatile("movw %%fs, %0" : "=a" (id));
+		__asm__ volatile("movw %%fs:0, %0" : "=a" (id));
 
 		return &_cpu[id];
 	}
@@ -151,7 +151,7 @@ namespace Sys
 		}
 
 		uint16_t id;
-		__asm__ volatile("movw %%fs, %0" : "=a" (id));
+		__asm__ volatile("movw %%fs:0, %0" : "=a" (id));
 
 		return id;
 	}

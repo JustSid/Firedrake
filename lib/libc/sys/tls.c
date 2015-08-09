@@ -19,17 +19,17 @@
 #include "tls.h"
 #include "spinlock.h"
 
-#define kTLSMaxKeys 64
+#define kTLSMaxKeys 1024
 
 static unsigned long long _tls_bitmap = 0;
 static spinlock_t _tls_lock = SPINLOCK_INIT;
 
 static inline unsigned int *tls_get_buckets()
 {
-	int address;
-	__asm__ volatile("mov %%gs, %%ax" : "=a" (address));
+	void *ptr;
+	TLS_GET_CPU_DATA_MEMBER(ptr, tls);
 
-	return (unsigned int *)address;
+	return ptr;
 }
 
 int tls_set(tls_key_t key, const void *value)

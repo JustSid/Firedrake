@@ -25,6 +25,7 @@
 #include <libcpp/bitfield.h>
 #include <kern/kern_return.h>
 #include <os/workqueue.h>
+#include <machine/memory/virtual.h>
 
 namespace Sys
 {
@@ -85,6 +86,14 @@ namespace Sys
 		uint32_t eflags;
 		uint32_t esp;
 		uint32_t ss;
+	};
+
+	struct CPUData
+	{
+		uint16_t cpuID;
+		pid_t pid;
+		tid_t tid;
+		vm_address_t tls;
 	};
 
 	enum class CPUVendor
@@ -293,6 +302,9 @@ namespace Sys
 
 	KernReturn<void> CPUInit();
 	KernReturn<void> CPUInitSecondStage();
+
+#define CPU_DATA_SET(member,value) \
+	__asm__ volatile("mov %0, %%fs:%P1" :: "r" (value), "i" (offsetof(Sys::CPUData, member)));
 }
 
 #endif

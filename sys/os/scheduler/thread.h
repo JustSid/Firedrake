@@ -73,6 +73,7 @@ namespace OS
 
 		IPC::Port *GetThreadPort() const { return _threadSendPort; }
 
+		vm_address_t GetTLSVirtual() const { return _tlsVirtual; }
 		void *GetJoinToken() const { return const_cast<void *>(reinterpret_cast<const void *>(&_joinToken)); }
 
 	private:
@@ -100,6 +101,9 @@ namespace OS
 
 		uint32_t _esp;
 		uint32_t _entry;
+
+		uintptr_t _tlsPhysical;
+		vm_address_t _tlsVirtual;
 
 		IPC::Port *_threadPort;
 		IPC::Port *_threadSendPort;

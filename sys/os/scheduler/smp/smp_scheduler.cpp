@@ -24,6 +24,7 @@
 #include <kern/kprintf.h>
 #include <machine/clock/clock.h>
 #include <machine/interrupts/interrupts.h>
+#include <machine/cpu.h>
 #include "smp_scheduler.h"
 
 namespace OS
@@ -98,8 +99,7 @@ namespace OS
 			_firstRun = false;
 			_needsReschedule = false;
 
-			thread = _nextThread;
-			_activeThread = thread;
+			thread = _activeThread = _nextThread;
 
 			data = thread->GetSchedulingData<SchedulingData>();
 			data->needsWakeup = false;
@@ -109,6 +109,10 @@ namespace OS
 
 			trampoline->pageDirectory = task->GetDirectory()->GetPhysicalDirectory();
 			trampoline->tss.esp0 = thread->GetESP() + sizeof(Sys::CPUState);
+
+			CPU_DATA_SET(pid, thread->GetTask()->GetPid());
+			CPU_DATA_SET(tid, thread->GetTid());
+			CPU_DATA_SET(tls, thread->GetTLSVirtual());
 			
 			return thread->GetESP();
 		}

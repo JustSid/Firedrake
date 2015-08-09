@@ -20,6 +20,7 @@
 #include "cpu.h"
 #include <machine/memory/memory.h>
 #include <kern/kprintf.h>
+#include <machine/interrupts/trampoline.h>
 
 namespace Sys
 {
@@ -29,7 +30,7 @@ namespace Sys
 		gdt[index] |= (base & INT64_C(0xffffff)) << 16;
 		gdt[index] |= (flags & INT64_C(0xff)) << 40;
 		gdt[index] |= ((limit >> 16) & INT64_C(0xf)) << 48;
-		gdt[index] |= ((flags >> 8 )& INT64_C(0xff)) << 52;
+		gdt[index] |= ((flags >> 8) & INT64_C(0xff)) << 52;
 		gdt[index] |= ((base >> 24) & INT64_C(0xff)) << 56;
 	}
 
@@ -45,10 +46,12 @@ namespace Sys
 		gdt[index] |= (((limit >> 16) & INT64_C(0xf)) | 0x40) << 48;
 		gdt[index] |= ((flags >> 8) & INT64_C(0xff)) << 52;
 		gdt[index] |= ((base >> 24) & INT64_C(0xff)) << 56;
+
+		return;
 	}
 
 
-	void GDTInit(uint64_t *gdt, Sys::TSS *tss)
+	void GDTInit(uint64_t *gdt, Sys::TSS *tss, void *cpuData)
 	{
 		struct 
 		{
@@ -65,7 +68,8 @@ namespace Sys
 		GDTSetEntry(gdt, 2, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_DATASEG | GDT_FLAG_4K | GDT_FLAG_PRESENT);
 		GDTSetEntry(gdt, 3, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_CODESEG | GDT_FLAG_4K | GDT_FLAG_PRESENT | GDT_FLAG_RING3);
 		GDTSetEntry(gdt, 4, 0x0, 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_DATASEG | GDT_FLAG_4K | GDT_FLAG_PRESENT | GDT_FLAG_RING3);
-		GDTSetTSSEntry(gdt, 5, tss);
+		GDTSetEntry(gdt, 5, reinterpret_cast<uint32_t>(cpuData), 0xffffffff, GDT_FLAG_SEGMENT | GDT_FLAG_32_BIT | GDT_FLAG_DATASEG | GDT_FLAG_4K | GDT_FLAG_PRESENT | GDT_FLAG_RING3);
+		GDTSetTSSEntry(gdt, 6, tss);
 
 		__asm__ volatile("lgdtl %0\r\n"
 		                 "ljmpl %1, $_fakeLabel \n\t _fakeLabel: \n\t" : : "m" (gdtp), "i" (0x8));
@@ -73,18 +77,12 @@ namespace Sys
 		__asm__ volatile("mov $0x10, %ax;\r\n"
 		                 "mov %ax, %ds;\r\n"
 		                 "mov %ax, %es;\r\n"
-		                 "mov %ax, %ss;");
+		                 "mov %ax, %ss\r\n"
+		                 "mov $0x28, %eax;\r\n"
+		                 "mov %ax, %fs\r\n"
+		                 "mov $0x0, %eax;\r\n"
+		                 "mov %ax, %gs");
 
-		// Since it's common, Firedrake also abuses the fs and gs segments (instead of just not using them)
-		// fs contains the CPU id (not necessarily equal to the APIC id) and gs is going to hold the thread local storage
-		// but for now is zeroed out.
-		// TODO: Should probably moved somewhere else
-		CPU *cpu  = CPU::GetCurrentCPU();
-		uint16_t id = static_cast<uint16_t>(cpu->GetID());
-
-		__asm__ volatile("mov %%ax, %%fs" :: "a" (id));
-		__asm__ volatile("mov %%ax, %%gs" :: "a" (0x0));
-
-		__asm__ volatile("ltr %%ax" : : "a" (0x28));
+		__asm__ volatile("ltr %%ax" : : "a" (0x30));
 	}
 }

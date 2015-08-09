@@ -50,6 +50,9 @@ namespace OS
 		_userStack = nullptr;
 		_userStackVirtual = nullptr;
 
+		_tlsPhysical = 0;
+		_tlsVirtual = 0;
+
 		_tid = _task->_tidCounter.fetch_add(1);
 
 		IPC::Space *space = _task->GetIPCSpace();
@@ -69,7 +72,7 @@ namespace OS
 		}
 		else
 		{
-			_kernelStackPages = std::min<size_t>(32, std::max<size_t>(12, stackPages));
+			_kernelStackPages = std::min<size_t>(16, std::max<size_t>(4, stackPages));
 			_userStackPages   = 0;
 
 			KernReturn<void> result = InitializeForRing0(parameters);
@@ -118,6 +121,31 @@ namespace OS
 			_kernelStackVirtual = reinterpret_cast<uint8_t *>(vaddress.Get());
 		}
 
+		// TLS Area
+		{
+			KernReturn<uintptr_t> paddress;
+			KernReturn<vm_address_t> vaddress;
+
+			paddress = Sys::PM::Alloc(1);
+			if(paddress.IsValid() == false)
+			{
+				kprintf("Failed to allocate physical TLS area");
+				return paddress.GetError();
+			}
+
+			vaddress = _task->_directory->AllocLimit(paddress, Sys::VM::kLowerLimit, VM_PAGE_ALIGN_DOWN(0xffff), 1, kVMFlagsUserlandRW);
+			if(vaddress.IsValid() == false)
+			{
+				Sys::PM::Free(paddress, 1);
+
+				kprintf("Failed to allocate virtual TLS area");
+				return vaddress.GetError();
+			}
+
+			_tlsVirtual = vaddress;
+			_tlsPhysical = paddress;
+		}
+
 		// Initialize the process stack
 		Sys::VM::Directory *kernelDir = Sys::VM::Directory::GetKernelDirectory();
 		KernReturn<vm_address_t> vaddress = kernelDir->Alloc(reinterpret_cast<uintptr_t>(_userStack), _userStackPages, kVMFlagsKernel);
@@ -161,8 +189,8 @@ namespace OS
 
 		*(-- stack) = 0x23;
 		*(-- stack) = 0x23;
-		*(-- stack) = 0x23;
-		*(-- stack) = 0x23;
+		*(-- stack) = 0x28;
+		*(-- stack) = 0x0;
 
 		_esp = reinterpret_cast<uint32_t>(_kernelStackVirtual + size) - sizeof(Sys::CPUState);
 		return ErrorNone;
@@ -219,7 +247,7 @@ namespace OS
 
 		*(-- stack) = 0x10;
 		*(-- stack) = 0x10;
-		*(-- stack) = 0x0;
+		*(-- stack) = 0x28;
 		*(-- stack) = 0x0;
 
 		_esp = reinterpret_cast<uint32_t>(stack);
