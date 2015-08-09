@@ -41,6 +41,7 @@
 #include "video.h"
 
 #define COM_PORT 0x3f8
+#define kSysRemoveControlSequences 1
 
 namespace Sys
 {
@@ -48,10 +49,43 @@ namespace Sys
 	{
 		for(size_t i = 0; i < length; i ++)
 		{
+			char character = string[i];
+
+#if kSysRemoveControlSequences
+			static bool inControlSequence = false;
+
+			if(inControlSequence)
+			{
+				if(character >= 64 && character <= 126)
+					inControlSequence = false;
+			}
+			else
+			{
+				switch(character)
+				{
+					case '\033':
+					{
+						inControlSequence = true;
+						i ++; // Jump over the [
+						break;
+					}
+					default:
+					{
+						while((inb(COM_PORT + 5) & 0x20) == 0)
+							CPUPause();
+
+						outb(COM_PORT, character);
+
+						break;
+					}
+				}
+			}
+#else
 			while((inb(COM_PORT + 5) & 0x20) == 0)
 				CPUPause();
-			 
-			outb(COM_PORT, string[i]);
+
+			outb(COM_PORT, character);
+#endif
 		}
 	}
 
