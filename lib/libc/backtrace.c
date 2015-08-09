@@ -62,7 +62,7 @@ int backtrace_np(void *ebp, void **buffer, int size)
 	int frames;
 	_stacktrace(ebp, buffer, size, &frames, 1);
 
-	while(frames >= 1 && !buffer[frames-1]) 
+	while(frames && !buffer[frames-1])
 		frames --;
 
 	return frames;

@@ -21,12 +21,81 @@
 #include <libc/stdarg.h>
 #include <libc/stdio.h>
 #include <libc/backtrace.h>
+#include <libio/core/IOArray.h>
+#include <os/linker/LDModule.h>
+#include <os/scheduler/task.h>
+#include <os/scheduler/scheduler.h>
+#include <machine/memory/heap.h>
 #include "panic.h"
 #include "kprintf.h"
 
-static char _panicScribbleArea[4096];
+#define kPanicMaxBacktraceFrames 20
 
+namespace OS
+{
+	namespace LD
+	{
+		extern IO::Array *__GetAllModules();
+	}
+}
+
+static char _panicScribbleArea[4096];
 static bool _panic_initialized = false;
+static IO::Array *_panicLoadedModules = nullptr;
+
+bool grab_modules()
+{
+	if(!_panicLoadedModules)
+		_panicLoadedModules = OS::LD::__GetAllModules();
+
+	return (_panicLoadedModules != nullptr);
+}
+
+void dump_modules()
+{
+	if(grab_modules())
+	{
+		kputs("\nLoaded modules:\n");
+
+		_panicLoadedModules->Enumerate<OS::LD::Module>([](OS::LD::Module *module, __unused size_t index, __unused bool &stop) {
+			kprintf("  %s: %p - %p\n", module->GetPath(), module->GetMemory(), module->GetMemory() + (module->GetPages() * VM_PAGE_SIZE));
+		});
+	}
+	else
+	{
+		kputs("\nCouldn't access kernel modules because it wasn't safe\n");
+	}
+}
+
+void dump_frame(int index, void *tframe)
+{
+	uintptr_t frame = reinterpret_cast<uintptr_t >(tframe);
+	OS::LD::Module *module = nullptr;
+
+	if(grab_modules())
+	{
+		_panicLoadedModules->Enumerate<OS::LD::Module>([&](OS::LD::Module *temp, __unused size_t index, bool &stop) {
+
+			if(temp->ContainsAddress(frame))
+			{
+				module = temp;
+				stop = true;
+			}
+
+		});
+	}
+
+
+	kprintf("  (%2i) %08x", index, static_cast<uint32_t>(frame));
+
+	if(frame >= IR_TRAMPOLINE_BEGIN && frame <= IR_TRAMPOLINE_BEGIN + (IR_TRAMPOLINE_PAGES * VM_PAGE_SIZE))
+		kputs(" (trampoline)");
+
+	if(module)
+		kprintf(" (%s)", module->GetPath());
+
+	kputs("\n");
+}
 
 void panic_die(const char *buffer)
 {
@@ -38,7 +107,23 @@ void panic_die(const char *buffer)
 	kputs(buffer);
 	kputs("\"\n");
 
-	kprintf("Crashing CPU: \033[1;34m%i\033[0m\n", cpu->GetID());
+	OS::Thread *thread = OS::Scheduler::GetScheduler()->GetActiveThread();
+
+	if(thread)
+	{
+		OS::Task *task = thread->GetTask();
+
+		pid_t pid = task->GetPid();
+		tid_t tid = thread->GetTid();
+
+		const char *name = task->GetName() ? task->GetName()->GetCString() : nullptr;
+
+		kprintf("Crashing CPU: \033[1;34m%i\033[0m, Task: #%d (%s), Thread: %d\n", cpu->GetID(), pid, name, tid);
+	}
+	else
+	{
+		kprintf("Crashing CPU: \033[1;34m%i\033[0m\n", cpu->GetID());
+	}
 
 	if(state)
 	{
@@ -48,23 +133,31 @@ void panic_die(const char *buffer)
 		kprintf("  eip: \033[1;34m%08x\033[0m, eflags: \033[1;34m%08x\033[0m.\n", state->eip, state->eflags);
 	}
 
-	void *frames[10];
-	int num = state ? backtrace_np((void *)state->ebp, frames, 10) : backtrace(frames, 10);
+	void *frames[kPanicMaxBacktraceFrames];
 
-	for(int i = 0; i < num; i ++)
-		kprintf("(%2i) %08x\n", (num - 1) - i, reinterpret_cast<uint32_t>(frames[i]));
-
-	if(state)
+	if(thread && state)
 	{
-		kputs("Kernel backtrace:\n");
+		kputs("\nBacktrace:\n");
 
-		int num = backtrace(frames, 10);
+		frames[0] = reinterpret_cast<void *>(state->eip);
+
+		int num = backtrace_np(reinterpret_cast<void *>(state->ebp), frames + 1, kPanicMaxBacktraceFrames - 1) + 1;
 
 		for(int i = 0; i < num; i ++)
-			kprintf("(%2i) %08x\n", (num - 1) - i, reinterpret_cast<uint32_t>(frames[i]));
+			dump_frame((num - 1) - i, frames[i]);
 	}
 
-	kputs("CPU halt");
+	{
+		kputs("\nKernel backtrace:\n");
+
+		int num = backtrace(frames, kPanicMaxBacktraceFrames);
+
+		for(int i = 0; i < num; i ++)
+			dump_frame((num - 1) - i, frames[i]);
+	}
+
+	dump_modules();
+	kputs("\nCPU halt");
 }
 void panic(const char *reason, ...)
 {
@@ -74,6 +167,8 @@ void panic(const char *reason, ...)
 		Sys::DisableInterrupts();
 		Sys::APIC::BroadcastIPI(0x39, false);
 	}
+
+	Sys::Heap::SwitchToPanicHeap();
 
 	va_list args;
 	va_start(args, reason);

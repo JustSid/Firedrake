@@ -30,6 +30,22 @@ namespace OS
 		static Mutex _moduleLock;
 		static IO::Dictionary *_moduleStore;
 
+		IO::Array *__GetAllModules()
+		{
+			if(!_moduleLock.TryLock(Mutex::Mode::Simple))
+				return nullptr;
+
+			IO::Array *array = IO::Array::Alloc()->Init();
+
+			_moduleStore->Enumerate<Module, IO::Object>([&](Module *module, IO::Object *key, bool &stop) {
+				array->AddObject(module);
+			});
+
+			_moduleLock.Unlock();
+
+			return array;
+		}
+
 		void BootstrapModule(void *context)
 		{
 			Module *module = reinterpret_cast<Module *>(context);
@@ -55,7 +71,6 @@ namespace OS
 				return result.GetError();
 			}
 
-			// TODO: Remove this test line
 			if(module->GetType() == Module::Type::Extension)
 			{
 				Sys::CPU *cpu = Sys::CPU::GetCurrentCPU();
@@ -123,8 +138,7 @@ namespace OS
 
 			_moduleStore->Enumerate<IO::String, Module>([&](IO::String *name, Module *module, bool &stop) {
 
-				vm_address_t vlimit = reinterpret_cast<vm_address_t>(module->GetMemory() + (module->GetPages() * VM_PAGE_SIZE));
-				if(address >= reinterpret_cast<vm_address_t>(module->GetMemory()) && address <= vlimit)
+				if(module->ContainsAddress(address))
 				{
 					result = module;
 					stop = true;

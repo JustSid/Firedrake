@@ -53,6 +53,8 @@ namespace OS
 			const char *GetName() const { return _name; }
 			const char *GetPath() const { return _path; }
 
+			bool ContainsAddress(vm_address_t address) const;
+
 			Type GetType() const { return _type; }
 			size_t GetRelocationBase() const { return _relocationBase; }
 

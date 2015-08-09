@@ -36,6 +36,7 @@ namespace Sys
 		void operator delete(void *ptr);
 
 		static Heap *GetGenericHeap();
+		static void SwitchToPanicHeap();
 
 		void *Allocate(size_t size, size_t alignment = 4);
 		void Free(void *pointer);

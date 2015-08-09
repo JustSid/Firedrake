@@ -596,5 +596,11 @@ namespace OS
 			IOAssert(_type == Type::Extension, "Only extensions can be stopped");
 			_stop(this);
 		}
+
+		bool Module::ContainsAddress(vm_address_t address) const
+		{
+			vm_address_t vlimit = reinterpret_cast<vm_address_t>(GetMemory() + (_pages * VM_PAGE_SIZE));
+			return (address >= reinterpret_cast<vm_address_t>(_memory) && address <= vlimit);
+		}
 	}
 }

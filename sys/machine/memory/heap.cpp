@@ -487,15 +487,24 @@ namespace Sys
 	}
 
 	static Heap *_genericHeap;
+	static Heap *_panicHeap;
+	static bool _usePanicHeap = false;
 
 	Heap *Heap::GetGenericHeap()
 	{
-		return _genericHeap;
+		return __expect_false(_usePanicHeap) ? _panicHeap : _genericHeap;
+	}
+
+	void Heap::SwitchToPanicHeap()
+	{
+		_usePanicHeap = true;
 	}
 
 	KernReturn<void> HeapInit()
 	{
 		_genericHeap = new Heap();
-		return (_genericHeap != nullptr) ? Error(KERN_SUCCESS) : Error(KERN_NO_MEMORY);
+		_panicHeap = new Heap();
+
+		return (_genericHeap && _panicHeap) ? Error(KERN_SUCCESS) : Error(KERN_NO_MEMORY);
 	}
 }
