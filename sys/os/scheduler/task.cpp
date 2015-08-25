@@ -167,6 +167,10 @@ namespace OS
 		_files->Release();
 		_threads->Release();
 
+		_space->Release();
+
+		delete _context;
+
 		IO::SafeRelease(_name);
 
 		IO::Object::Dealloc();
@@ -179,10 +183,21 @@ namespace OS
 		_name = IO::SafeRetain(name);
 	}
 
+	void Task::CheckLifecycle()
+	{
+		if(_state.load(std::memory_order_acquire) != State::Died)
+			return;
+
+		if(_exitedThreads.load(std::memory_order_acquire) == _threads->GetCount())
+			Scheduler::GetScheduler()->RemoveTask(this);
+	}
+
 	void Task::PronounceDead(int32_t exitCode)
 	{
 		_exitCode = exitCode;
 		_state = State::Died;
+
+		CheckLifecycle();
 	}
 
 	KernReturn<Thread *> Task::AttachThread(Thread::Entry entry, Thread::PriorityClass priority, size_t stack, IO::Array *parameters)
@@ -201,6 +216,8 @@ namespace OS
 			_mainThread = thread;
 
 		_threads->AddObject(thread);
+		thread->Release();
+
 		spinlock_unlock(&_lock);
 		
 		Scheduler::GetScheduler()->AddThread(thread);
@@ -211,6 +228,8 @@ namespace OS
 	{
 		_exitedThreads ++;
 		Wakeup(thread->GetJoinToken());
+
+		CheckLifecycle();
 	}
 
 	void Task::RemoveThread(Thread *thread)

@@ -49,14 +49,22 @@ namespace OS
 		return result->GetTid();
 	}
 
+	void MarkThreadExit(void *arg)
+	{
+		Task *task = reinterpret_cast<Task *>(arg);
+		task->Release();
+	}
+
 	KernReturn<uint32_t> Syscall_SchedThreadExit(Thread *thread, SchedThreadExitArgs *arguments)
 	{
 		Task *task = thread->GetTask();
 
 		if(task->GetMainThread() == thread)
 		{
+			Sys::CPU::GetCurrentCPU()->GetWorkQueue()->PushEntry(&MarkThreadExit, task);
+
+			task->Retain(); // Defer the Dealloc() until we are out of the syscall handler to avoid crashing
 			task->PronounceDead(arguments->exitCode);
-			kprintf("Main thread exited, exit code %d\n", arguments->exitCode);
 		}
 
 		Scheduler *scheduler = Scheduler::GetScheduler();

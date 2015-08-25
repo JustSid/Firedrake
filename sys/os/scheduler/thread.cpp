@@ -49,7 +49,6 @@ namespace OS
 		_kernelStackVirtual = nullptr;
 		_userStack = nullptr;
 		_userStackVirtual = nullptr;
-
 		_tlsPhysical = 0;
 		_tlsVirtual = 0;
 
@@ -85,6 +84,26 @@ namespace OS
 
 	void Thread::Dealloc()
 	{
+		if(_kernelStack)
+			Sys::PM::Free(reinterpret_cast<uintptr_t>(_kernelStack), _kernelStackPages);
+		if(_kernelStackVirtual)
+		{
+			if(_task->_ring3)
+				_task->_directory->Free(reinterpret_cast<vm_address_t>(_kernelStackVirtual), _kernelStackPages);
+
+			Sys::VM::Directory::GetKernelDirectory()->Free(reinterpret_cast<vm_address_t>(_kernelStackVirtual), _kernelStackPages);
+		}
+
+		if(_userStack)
+			Sys::PM::Free(reinterpret_cast<uintptr_t>(_userStack), _userStackPages);
+		if(_kernelStackVirtual)
+			_task->_directory->Free(reinterpret_cast<vm_address_t>(_userStackVirtual), _userStackPages);
+
+		if(_tlsPhysical)
+			Sys::PM::Free(_tlsPhysical, 1);
+		if(_tlsVirtual)
+			_task->_directory->Free(_tlsVirtual, 1);
+
 		IO::Object::Dealloc();
 	}
 

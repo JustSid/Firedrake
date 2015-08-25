@@ -78,11 +78,15 @@ namespace OS
 	{
 		spinlock_lock(&_taskLock);
 		_tasks.push_back(task->schedulerEntry);
+		task->Retain();
 		spinlock_unlock(&_taskLock);
 	}
 	void Scheduler::RemoveTask(Task *task)
 	{
-		panic("Implement task removal!");
+		spinlock_lock(&_taskLock);
+		_tasks.erase(task->schedulerEntry);
+		task->Release();
+		spinlock_unlock(&_taskLock);
 	}
 
 	KernReturn<void> Scheduler::InitializeTasks()

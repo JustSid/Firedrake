@@ -105,6 +105,8 @@ namespace OS
 		void Dealloc() override;
 
 	private:
+		void CheckLifecycle();
+
 		Task *_parent;
 		Sys::VM::Directory *_directory;
 		Executable *_executable;
