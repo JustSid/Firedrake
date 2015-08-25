@@ -18,6 +18,7 @@
 
 #include "thread.h"
 #include "syscall.h"
+#include "tls.h"
 
 void __thread_entry(void (*entry)(void *), void *argument)
 {
@@ -34,7 +35,20 @@ tid_t thread_create(void (*entry)(void *), void *argument)
 	return (tid_t)SYSCALL4(SYS_ThreadCreate, &__thread_entry, (void *)entry, argument, 0);
 }
 
+tid_t thread_gettid()
+{
+	tid_t result;
+	TLS_GET_CPU_DATA_MEMBER(result, tid);
+
+	return result;
+}
+
 void thread_join(tid_t thread)
 {
 	SYSCALL1(SYS_ThreadJoin, thread);
+}
+
+void thread_yield()
+{
+	SYSCALL0(SYS_ThreadYield);
 }

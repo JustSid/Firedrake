@@ -80,4 +80,12 @@ namespace OS
 		WaitThread(thread, target->GetJoinToken());
 		return 0;
 	}
+
+	KernReturn<uint32_t> Syscall_SchedThreadYield(Thread *thread, __unused void *arguments)
+	{
+		Scheduler *scheduler = Scheduler::GetScheduler();
+		scheduler->YieldThread(thread);
+
+		return 0;
+	}
 }

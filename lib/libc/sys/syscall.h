@@ -34,6 +34,7 @@ __BEGIN_DECLS
 
 #define SYS_ThreadCreate 10
 #define SYS_ThreadJoin   11
+#define SYS_ThreadYield  12
 
 #define SYS_Mmap     40
 #define SYS_Munmap   41

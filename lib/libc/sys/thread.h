@@ -25,7 +25,9 @@
 __BEGIN_DECLS
 
 tid_t thread_create(void (*entry)(void *), void *argument);
+tid_t thread_gettid();
 void thread_join(tid_t thread);
+void thread_yield();
 
 __END_DECLS
 

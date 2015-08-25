@@ -43,4 +43,5 @@ namespace OS
 	KernReturn<uint32_t> Syscall_SchedThreadCreate(Thread *thread, SchedThreadCreateArgs *arguments);
 	KernReturn<uint32_t> Syscall_SchedThreadExit(Thread *thread, SchedThreadExitArgs *arguments);
 	KernReturn<uint32_t> Syscall_SchedThreadJoin(Thread *thread, SchedThreadJoinArgs *arguments);
+	KernReturn<uint32_t> Syscall_SchedThreadYield(Thread *thread, void *arguments);
 }
