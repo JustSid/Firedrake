@@ -92,8 +92,8 @@ namespace IO
 		IO::MetaClass *GetClass() const override; \
 		static IO::MetaClass *GetMetaClass();
 
-#define IODefineMeta(cls, super) \
-	class cls##MetaType : public IO::MetaClass \
+#define __IODefineMeta(cls, super, ...) \
+	class cls##MetaType : public IO::__ConcreteMetaClass<cls, __VA_ARGS__> \
 	{ \
 	public: \
 		cls##MetaType() : \
@@ -112,8 +112,8 @@ namespace IO
 		return reinterpret_cast<cls##MetaType *>(__kIO##cls##__metaClass); \
 	}
 
-#define IODefineScopendMeta(scope, cls, super) \
-	class cls##MetaType : public IO::MetaClass \
+#define __IODefineScopedMeta(scope, cls, super, ...) \
+	class cls##MetaType : public IO::__ConcreteMetaClass<scope::cls, __VA_ARGS__> \
 	{ \
 	public: \
 		cls##MetaType() : \
@@ -131,6 +131,14 @@ namespace IO
 			__kIO##scope##cls##__metaClass = new cls##MetaType(); \
 		return reinterpret_cast<cls##MetaType *>(__kIO##scope##cls##__metaClass); \
 	}
+
+#define IODefineMeta(cls, super) \
+	__IODefineMeta(cls, super, std::conditional<std::is_default_constructible<cls>::value && !std::is_abstract<cls>::value, IO::MetaClassTraitConstructable<cls>, IO::__MetaClassTraitNull0<cls>>::type)
+
+#define IODefineScopedMeta(scope, cls, super) \
+	__IODefineScopedMeta(scope, cls, super, std::conditional<std::is_default_constructible<scope::cls>::value && !std::is_abstract<scope::cls>::value, IO::MetaClassTraitConstructable<scope::cls>, IO::__MetaClassTraitNull0<scope::cls>>::type)
+
+
 
 	// ---------------------
 	// MARK: -

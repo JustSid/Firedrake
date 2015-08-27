@@ -85,6 +85,42 @@ namespace std
 	    typedef typename remove_reference<T>::type Type;
 	    return static_cast<Type &&>(t);
 	}
+
+
+
+	template<bool condition, class T, class T2>
+	struct conditional { typedef T type; };
+
+	template<class T, class T2>
+	struct conditional<false, T, T2> { typedef T2 type; };
+
+	template<class T, class ..._Args>
+	struct is_constructible	: public integral_constant<bool, __is_constructible(T, _Args...)>
+	{};
+
+	template<class T>
+	struct is_default_constructible : public is_constructible<T>
+	{};
+
+
+	// Taken directly from LLVMs libc++
+	template <class _Tp> struct is_class : public integral_constant<bool, __is_class(_Tp)>
+	{};
+
+	namespace __is_abstract_imp
+	{
+		struct __two {char __lx[2];};
+
+		template <class _Tp> char  __test(_Tp (*)[1]);
+		template <class _Tp> __two __test(...);
+	}
+
+	template <class _Tp, bool = is_class<_Tp>::value>
+	struct __libcpp_abstract : public integral_constant<bool, sizeof(__is_abstract_imp::__test<_Tp>(0)) != 1> {};
+
+	template <class _Tp> struct __libcpp_abstract<_Tp, false> : public false_type {};
+
+	template <class _Tp> struct is_abstract : public __libcpp_abstract<_Tp> {};
 }
 
 #endif /* _TYPE_TRAITS_H_ */

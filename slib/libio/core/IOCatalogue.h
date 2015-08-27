@@ -25,10 +25,14 @@
 
 #if __KERNEL
 #include <kern/kern_return.h>
+#include <kern/panic.h>
+#else
+#include <libkern.h>
 #endif
 
 namespace IO
 {
+	class Object;
 	class MetaClass
 	{
 	public:
@@ -39,7 +43,11 @@ namespace IO
 
 		bool InheritsFromClass(MetaClass *other) const;
 
+		virtual Object *Construct() const { panic("Construct() called but not provided"); }
+		virtual bool SupportsConstruction() const { return false; }
+
 	protected:
+		MetaClass() {}
 		MetaClass(MetaClass *super, const char *signature);
 
 	private:
@@ -48,6 +56,24 @@ namespace IO
 		char *_name;
 		char *_fullname;
 	};
+
+	template<class T>
+	class __MetaClassTraitNull0 : public virtual MetaClass
+	{};
+
+	template<class T>
+	class MetaClassTraitConstructable : public virtual MetaClass
+	{
+	public:
+		T *Construct() const override { return new T(); }
+		bool SupportsConstruction() const override { return true; }
+	};
+
+
+	template<class T, class... Traits>
+	class __ConcreteMetaClass : public virtual MetaClass, public Traits...
+	{};
+
 
 	class Catalogue
 	{

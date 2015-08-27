@@ -22,7 +22,7 @@ namespace IO
 {
 	void *__kRNObjectMetaClass = nullptr;
 
-	class ObjectMetaType : public MetaClass
+	class ObjectMetaType : public __ConcreteMetaClass<Object>
 	{
 	public:
 		ObjectMetaType() :

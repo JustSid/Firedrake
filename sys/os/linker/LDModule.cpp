@@ -25,8 +25,44 @@ namespace OS
 {
 	namespace LD
 	{
+		class Dependency : public IO::Object
+		{
+		public:
+			Dependency *Init(size_t name)
+			{
+				if(!IO::Object::Init())
+					return nullptr;
+
+				_name = name;
+				_dependency = nullptr;
+
+				return this;
+			}
+
+			void Dealloc() override
+			{
+				IO::SafeRelease(_dependency);
+				IO::Object::Dealloc();
+			}
+
+			void SetDependency(Module *module)
+			{
+				IO::SafeRelease(_dependency);
+				_dependency = IO::SafeRetain(module);
+			}
+
+			Module *GetDependency() const { return _dependency; }
+			size_t GetName() const { return _name; }
+
+		private:
+			size_t _name;
+			Module *_dependency;
+
+			IODeclareMeta(Dependency)
+		};
+
 		IODefineMeta(Module, IO::Object)
-		IODefineScopendMeta(Module, Dependency, IO::Object)
+		IODefineMeta(Dependency, IO::Object)
 		IODefineMeta(LibkernModule, Module)
 
 		extern Module *__GetModuleWithNameNoLockPrivate(const char *name, bool loadIfNeeded);
