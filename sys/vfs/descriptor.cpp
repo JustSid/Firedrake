@@ -22,7 +22,7 @@
 
 namespace VFS
 {
-	IODefineMeta(Descriptor, IO::Object)
+	IODefineMetaVirtual(Descriptor, IO::Object)
 
 	void RegisterDescriptor(Descriptor *descriptor);
 	void UnregisterDescriptor(Descriptor *descriptor);

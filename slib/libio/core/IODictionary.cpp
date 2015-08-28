@@ -21,7 +21,7 @@
 
 namespace IO
 {
-	IODefineMeta(Dictionary, Object)
+	__IODefineIOCoreMeta(Dictionary, Object)
 	
 	class Dictionary::Internal
 	{

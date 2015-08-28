@@ -27,12 +27,14 @@
 #include <kern/kern_return.h>
 #include <kern/panic.h>
 #else
-#include <libkern.h>
+#include "IORuntime.h"
 #endif
 
 namespace IO
 {
 	class Object;
+	struct __CatalogueHelper;
+
 	class MetaClass
 	{
 	public:
@@ -43,8 +45,8 @@ namespace IO
 
 		bool InheritsFromClass(MetaClass *other) const;
 
-		virtual Object *Construct() const { panic("Construct() called but not provided"); }
-		virtual bool SupportsConstruction() const { return false; }
+		virtual Object *Alloc() const { panic("Alloc() called but not provided"); }
+		virtual bool SupportsAllocation() const { return false; }
 
 	protected:
 		MetaClass() {}
@@ -65,8 +67,8 @@ namespace IO
 	class MetaClassTraitConstructable : public virtual MetaClass
 	{
 	public:
-		T *Construct() const override { return new T(); }
-		bool SupportsConstruction() const override { return true; }
+		T *Alloc() const override { return T::Alloc(); }
+		bool SupportsAllocation() const override { return true; }
 	};
 
 
@@ -78,6 +80,9 @@ namespace IO
 	class Catalogue
 	{
 	public:
+		friend struct __CatalogueHelper;
+		friend class MetaClass;
+
 		static Catalogue *GetSharedInstance();
 
 		MetaClass *GetClassWithName(const char *name);

@@ -31,7 +31,7 @@
 
 namespace IO
 {
-	IODefineMeta(String, Object)
+	__IODefineIOCoreMeta(String, Object)
 
 	String *String::Init()
 	{

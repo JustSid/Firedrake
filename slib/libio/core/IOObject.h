@@ -39,6 +39,8 @@ namespace IO
 		virtual bool IsEqual(Object *other) const;
 		bool IsKindOfClass(MetaClass *other) const;
 
+		static void InitialWakeUp(MetaClass *meta);
+
 		template<class T>
 		T *Downcast()
 		{
@@ -112,11 +114,35 @@ namespace IO
 		return reinterpret_cast<cls##MetaType *>(__kIO##cls##__metaClass); \
 	}
 
-#define __IODefineScopedMeta(scope, cls, super, ...) \
-	class cls##MetaType : public IO::__ConcreteMetaClass<scope::cls, __VA_ARGS__> \
+#ifndef __KERNEL
+
+#define __IODefineIOCoreMetaInternal(cls, super, ...) \
+	class cls##MetaType : public IO::__ConcreteMetaClass<cls, __VA_ARGS__> \
 	{ \
 	public: \
 		cls##MetaType() : \
+			MetaClass(super::GetMetaClass(), __PRETTY_FUNCTION__) \
+		{} \
+	}; \
+	void *__kIO##cls##__metaClass = nullptr; \
+	IO::MetaClass *cls::GetClass() const \
+	{ \
+		return cls::GetMetaClass(); \
+	} \
+	IO::MetaClass *cls::GetMetaClass() \
+	{ \
+		if(!__kIO##cls##__metaClass) \
+			__kIO##cls##__metaClass = IO::Catalogue::GetSharedInstance()->GetClassWithName("IO::" #cls); \
+		return reinterpret_cast<cls##MetaType *>(__kIO##cls##__metaClass); \
+	}
+
+#endif /* __KERNEL */
+
+#define __IODefineScopedMeta(scope, cls, super, ...) \
+	class scope##cls##MetaType : public IO::__ConcreteMetaClass<scope::cls, __VA_ARGS__> \
+	{ \
+	public: \
+		scope##cls##MetaType() : \
 			MetaClass(super::GetMetaClass(), __PRETTY_FUNCTION__) \
 		{} \
 	}; \
@@ -128,16 +154,43 @@ namespace IO
 	IO::MetaClass *scope::cls::GetMetaClass() \
 	{ \
 		if(!__kIO##scope##cls##__metaClass) \
-			__kIO##scope##cls##__metaClass = new cls##MetaType(); \
+			__kIO##scope##cls##__metaClass = new scope##cls##MetaType(); \
 		return reinterpret_cast<cls##MetaType *>(__kIO##scope##cls##__metaClass); \
 	}
 
+#ifndef __KERNEL
+
 #define IODefineMeta(cls, super) \
-	__IODefineMeta(cls, super, std::conditional<std::is_default_constructible<cls>::value && !std::is_abstract<cls>::value, IO::MetaClassTraitConstructable<cls>, IO::__MetaClassTraitNull0<cls>>::type)
+	__IODefineMeta(cls, super, IO::MetaClassTraitConstructable<cls>) \
+	IO_REGISTER_INITIALIZER(cls##Init, cls::InitialWakeUp(cls::GetMetaClass()))
+
+#define IODefineMetaVirtual(cls, super) \
+	__IODefineMeta(cls, super, IO::__MetaClassTraitNull0<cls>) \
+	IO_REGISTER_INITIALIZER(cls##Init, cls::InitialWakeUp(cls::GetMetaClass()))
 
 #define IODefineScopedMeta(scope, cls, super) \
-	__IODefineScopedMeta(scope, cls, super, std::conditional<std::is_default_constructible<scope::cls>::value && !std::is_abstract<scope::cls>::value, IO::MetaClassTraitConstructable<scope::cls>, IO::__MetaClassTraitNull0<scope::cls>>::type)
+	__IODefineScopedMeta(scope, cls, super, IO::MetaClassTraitConstructable<scope::cls>) \
+	IO_REGISTER_INITIALIZER(scope##cls##Init, scope::cls::InitialWakeUp(cls::GetMetaClass()))
 
+#define __IODefineIOCoreMeta(cls, super) \
+	__IODefineIOCoreMetaInternal(cls, super, IO::MetaClassTraitConstructable<cls>) \
+	IO_REGISTER_INITIALIZER(cls##Init, cls::InitialWakeUp(cls::GetMetaClass()))
+
+#else
+
+#define IODefineMeta(cls, super) \
+	__IODefineMeta(cls, super, IO::MetaClassTraitConstructable<cls>)
+
+#define IODefineMetaVirtual(cls, super) \
+	__IODefineMeta(cls, super, IO::__MetaClassTraitNull0<cls>)
+
+#define IODefineScopedMeta(scope, cls, super) \
+	__IODefineScopedMeta(scope, cls, super, IO::MetaClassTraitConstructable<scope::cls>)
+
+#define __IODefineIOCoreMeta(cls, super) \
+	__IODefineMeta(cls, super, IO::MetaClassTraitConstructable<cls>)
+
+#endif /* __KERNEL */
 
 
 	// ---------------------

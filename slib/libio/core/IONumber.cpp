@@ -21,7 +21,7 @@
 
 namespace IO
 {
-	IODefineMeta(Number, Object)
+	__IODefineIOCoreMeta(Number, Object)
 	
 #define NumberPrimitiveAccess(type, target) static_cast<target>(*((type *)_buffer))
 #define NumberIsSignedInteger(type) (type == Type::Int8 || type == Type::Int16 || type == Type::Int32 || type == Type::Int64)

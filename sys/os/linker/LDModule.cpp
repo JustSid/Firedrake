@@ -391,6 +391,8 @@ namespace OS
 
 			_type = (_start && _stop) ? Type::Extension : Type::Library;
 
+			RunInitFunctions();
+
 			return ErrorNone;
 		}
 
@@ -421,12 +423,28 @@ namespace OS
 			return result;
 		}
 
+		void Module::RunInitFunctions()
+		{
+			if(_initArrayCount > 0)
+			{
+				void (*initFunction)();
+
+				for(size_t i = 0; i < _initArrayCount; i ++)
+				{
+					if(_initArray[i] == 0 || _initArray[i] == UINT32_MAX)
+						continue;
+
+					initFunction = reinterpret_cast<void (*)()>(_initArray[i]);
+					initFunction();
+				}
+			}
+		}
+
 		KernReturn<void> Module::RelocatePLT()
 		{
 			for(elf_rel_t *rel = _pltRel; rel < _pltRelLimit; rel ++)
 			{
 				elf32_address_t *address = reinterpret_cast<elf32_address_t *>(_relocationBase + rel->r_offset);
-				elf32_address_t target;
 
 				uint32_t symnum = ELF32_R_SYM(rel->r_info);
 				uint32_t type = ELF32_R_TYPE(rel->r_info);
@@ -441,8 +459,7 @@ namespace OS
 				if(!symbol)
 					return Error(KERN_RESOURCES_MISSING, "Couldn't find symbol '%s'!\n", name);
 
-				target = (elf32_address_t)(symbol);
-				*address = target;
+				*address = (elf32_address_t)(symbol);
 			}
 
 			return ErrorNone;
@@ -476,7 +493,7 @@ namespace OS
 							return Error(KERN_RESOURCES_MISSING, "Couldn't find symbol '%s'!\n", name);
 
 						target = reinterpret_cast<elf32_address_t>(symbol);
-						*address = target + *address;
+						*address += target;
 						break;
 					}
 
@@ -609,21 +626,6 @@ namespace OS
 		bool Module::Start()
 		{
 			IOAssert(_type == Type::Extension, "Only extensions can be started");
-
-			if(_initArrayCount > 0)
-			{
-				void (*initFunction)();
-
-				for(size_t i = 0; i < _initArrayCount; i ++)
-				{
-					if(_initArray[i] == 0 || _initArray[i] == UINT32_MAX)
-						continue;
-
-					initFunction = reinterpret_cast<void (*)()>(_initArray[i]);
-					initFunction();
-				}
-			}
-
 			return _start(this);
 		}
 

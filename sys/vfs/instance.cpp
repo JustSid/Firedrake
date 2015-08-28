@@ -21,7 +21,7 @@
 
 namespace VFS
 {
-	IODefineMeta(Instance, IO::Object)
+	IODefineMetaVirtual(Instance, IO::Object)
 
 	Instance *Instance::Init(Node *rootNode)
 	{

@@ -24,7 +24,7 @@ extern "C" void *__libio_getIONull();
 
 namespace IO
 {
-	IODefineMeta(Null, Object)
+	__IODefineIOCoreMeta(Null, Object)
 
 #ifdef __KERNEL
 	static Null *_sharedNull = nullptr;
@@ -55,7 +55,7 @@ namespace IO
 
 	Null *Null::GetNull()
 	{
-		// Provided so that the kernel and libio have the same shared isntance
+		// Provided so that the kernel and libio have the same shared instance
 		return reinterpret_cast<Null *>(__libio_getIONull());
 	}
 #endif

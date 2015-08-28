@@ -75,8 +75,13 @@ namespace IO
 	}
 	MetaClass *Object::GetMetaClass()
 	{
+#ifndef __KERNEL
 		if(!__kRNObjectMetaClass)
 			__kRNObjectMetaClass = new ObjectMetaType();
+#else
+		if(!__kRNObjectMetaClass)
+			__kRNObjectMetaClass = Catalogue::GetSharedInstance()->GetClassWithName("IO::Object");
+#endif /* __KERNEL */
 		
 		return reinterpret_cast<ObjectMetaType *>(__kRNObjectMetaClass);
 	}
@@ -105,4 +110,7 @@ namespace IO
 	{
 		return GetClass()->InheritsFromClass(other);
 	}
+
+	void Object::InitialWakeUp(__unused MetaClass *meta)
+	{}
 }

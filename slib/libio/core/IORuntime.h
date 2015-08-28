@@ -102,4 +102,38 @@ namespace IO
 
 #define IOAssert(e, message) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed, %s", __func__, __LINE__, #e, message) : (void)0
 
+#ifndef __KERNEL
+
+namespace __IO
+{
+	class Initializer
+	{
+	public:
+		typedef void (*Callback)();
+
+		Initializer(Callback ctor, Callback dtor) :
+			_dtor(dtor)
+		{
+			if(ctor)
+				ctor();
+		}
+
+		~Initializer()
+		{
+			if(_dtor)
+				_dtor();
+		}
+
+	private:
+		Callback _dtor;
+	};
+}
+
+#define IO_REGISTER_INITIALIZER(name, body) \
+	namespace { \
+		static void __IOGlobalInit##name##Callback() { body; } \
+		static __IO::Initializer __IOGlobalInit##name (__IOGlobalInit##name##Callback, nullptr); \
+	}
+
+#endif /* __KERNEL */
 #endif /* _IORUNTIME_H_ */

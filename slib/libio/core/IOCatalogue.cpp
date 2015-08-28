@@ -26,6 +26,9 @@
 
 #ifndef __KERNEL
 extern "C" void *__libio_getIOCatalogue();
+#include <libkern.h>
+#else
+#include <kern/kprintf.h>
 #endif
 
 namespace IO
@@ -74,6 +77,8 @@ namespace IO
 
 		strlcpy(_name, begin, end - begin);
 		strlcpy(_fullname, signature, end - signature);
+
+		Catalogue::GetSharedInstance()->AddMetaClass(this);
 	}
 
 	MetaClass *MetaClass::GetSuperClass() const
@@ -109,19 +114,23 @@ namespace IO
 
 #if __KERNEL
 	static Catalogue *_sharedCatalogue = nullptr;
-#endif
-
 	Catalogue::Catalogue()
 	{
 		spinlock_init(&_lock);
 	}
 
-#if __KERNEL
 	Catalogue *Catalogue::GetSharedInstance()
 	{
 		return _sharedCatalogue;
 	}
+
+	struct __CatalogueHelper
+	{
+		static Catalogue *Construct() { return new Catalogue(); }
+	};
 #else
+	Catalogue::Catalogue()
+	{}
 	Catalogue *Catalogue::GetSharedInstance()
 	{
 		return reinterpret_cast<Catalogue *>(__libio_getIOCatalogue());
@@ -139,7 +148,7 @@ namespace IO
 		{
 			MetaClass *meta = _classes.at(i);
 
-			if(strcmp(meta->GetName(), name) == 0)
+			if(strcmp(meta->GetFullname(), name) == 0)
 			{
 				result = meta;
 				break;
@@ -153,6 +162,8 @@ namespace IO
 
 	void Catalogue::AddMetaClass(MetaClass *meta)
 	{
+		kprintf("AddMetaClass(%s)\n", meta->GetFullname());
+
 		spinlock_lock(&_lock);
 		_classes.push_back(meta);
 		spinlock_unlock(&_lock);
@@ -166,6 +177,8 @@ namespace IO
 
 	KernReturn<void> CatalogueInit()
 	{
+		_sharedCatalogue = __CatalogueHelper::Construct();
+
 		Object::GetMetaClass();
 		Array::GetMetaClass();
 		Dictionary::GetMetaClass();

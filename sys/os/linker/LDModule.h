@@ -77,6 +77,7 @@ namespace OS
 
 			KernReturn<void> RelocatePLT();
 			KernReturn<void> RelocateGOT();
+			void RunInitFunctions();
 
 			void *LookupAddress(const char *name, Module *&outLib);
 

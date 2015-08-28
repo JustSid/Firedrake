@@ -65,3 +65,6 @@ void register_interrupt(__unused uint8_t vector, __unused void *argument, __unus
 
 void __libkern_dispatchKeyboardEvent(__unused uint32_t keyCode, __unused bool keyDown)
 {}
+
+void __cxa_atexit()
+{}

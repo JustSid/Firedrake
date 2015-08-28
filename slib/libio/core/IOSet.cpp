@@ -21,7 +21,7 @@
 
 namespace IO
 {
-	IODefineMeta(Set, Object)
+	__IODefineIOCoreMeta(Set, Object)
 	
 	class Set::Internal
 	{

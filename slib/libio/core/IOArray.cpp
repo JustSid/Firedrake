@@ -21,7 +21,7 @@
 
 namespace IO
 {
-	IODefineMeta(Array, Object)
+	__IODefineIOCoreMeta(Array, Object)
 
 	Array *Array::Init()
 	{

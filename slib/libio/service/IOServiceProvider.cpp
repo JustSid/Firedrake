@@ -20,7 +20,7 @@
 
 namespace IO
 {
-	IODefineMeta(ServiceProvider, Object)
+	IODefineMetaVirtual(ServiceProvider, Object)
 
 	ServiceProvider *ServiceProvider::Init()
 	{
