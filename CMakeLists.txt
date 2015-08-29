@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8.9)
 project(Firedrake)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -mno-sse -mno-mmx")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -mno-sse -mno-mmx")
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
