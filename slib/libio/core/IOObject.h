@@ -167,14 +167,10 @@ namespace IO
 #define IODefineMetaVirtual(cls, super) \
 	__IODefineMeta(cls, super, IO::__MetaClassTraitNull0<cls>) \
 	IO_REGISTER_INITIALIZER(cls##Init, cls::InitialWakeUp(cls::GetMetaClass()))
-
-#define IODefineScopedMeta(scope, cls, super) \
-	__IODefineScopedMeta(scope, cls, super, IO::MetaClassTraitConstructable<scope::cls>) \
-	IO_REGISTER_INITIALIZER(scope##cls##Init, scope::cls::InitialWakeUp(cls::GetMetaClass()))
-
+	
 #define __IODefineIOCoreMeta(cls, super) \
 	__IODefineIOCoreMetaInternal(cls, super, IO::MetaClassTraitConstructable<cls>) \
-	IO_REGISTER_INITIALIZER(cls##Init, cls::InitialWakeUp(cls::GetMetaClass()))
+	IO_REGISTER_INITIALIZER(cls##Init, cls::GetMetaClass())
 
 #else
 
@@ -192,7 +188,11 @@ namespace IO
 
 #define __IORegisterClass(cls) \
 	namespace { \
-		static IO::__IO::Initializer __##cls##Bootstrap (&cls::GetMetaClass); \
+		void __##cls##RegisterAndWakeUp() \
+		{ \
+			cls::InitialWakeUp(cls::GetMetaClass()); \
+		} \
+		static IO::__IO::Initializer __##cls##Bootstrap (&__##cls##RegisterAndWakeUp); \
 	}
 
 #define IODefineMeta(cls, super) \
@@ -202,9 +202,6 @@ namespace IO
 #define IODefineMetaVirtual(cls, super) \
 	__IODefineMeta(cls, super, IO::__MetaClassTraitNull0<cls>) \
 	__IORegisterClass(cls)
-
-#define IODefineScopedMeta(scope, cls, super) \
-	__IODefineScopedMeta(scope, cls, super, IO::MetaClassTraitConstructable<scope::cls>)
 
 #define __IODefineIOCoreMeta(cls, super) \
 	__IODefineMeta(cls, super, IO::MetaClassTraitConstructable<cls>) \
