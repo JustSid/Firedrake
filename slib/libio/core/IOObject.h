@@ -178,17 +178,37 @@ namespace IO
 
 #else
 
+	namespace __IO
+	{
+		class Initializer
+		{
+		public:
+			Initializer(Catalogue::__MetaClassGetter fn)
+			{
+				Catalogue::__MarkClass(fn);
+			}
+		};
+	}
+
+#define __IORegisterClass(cls) \
+	namespace { \
+		static IO::__IO::Initializer __##cls##Bootstrap (&cls::GetMetaClass); \
+	}
+
 #define IODefineMeta(cls, super) \
-	__IODefineMeta(cls, super, IO::MetaClassTraitConstructable<cls>)
+	__IODefineMeta(cls, super, IO::MetaClassTraitConstructable<cls>) \
+	__IORegisterClass(cls)
 
 #define IODefineMetaVirtual(cls, super) \
-	__IODefineMeta(cls, super, IO::__MetaClassTraitNull0<cls>)
+	__IODefineMeta(cls, super, IO::__MetaClassTraitNull0<cls>) \
+	__IORegisterClass(cls)
 
 #define IODefineScopedMeta(scope, cls, super) \
 	__IODefineScopedMeta(scope, cls, super, IO::MetaClassTraitConstructable<scope::cls>)
 
 #define __IODefineIOCoreMeta(cls, super) \
-	__IODefineMeta(cls, super, IO::MetaClassTraitConstructable<cls>)
+	__IODefineMeta(cls, super, IO::MetaClassTraitConstructable<cls>) \
+	__IORegisterClass(cls)
 
 #endif /* __KERNEL */
 

@@ -75,7 +75,7 @@ namespace IO
 	}
 	MetaClass *Object::GetMetaClass()
 	{
-#ifndef __KERNEL
+#if __KERNEL
 		if(!__kRNObjectMetaClass)
 			__kRNObjectMetaClass = new ObjectMetaType();
 #else

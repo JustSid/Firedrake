@@ -87,6 +87,12 @@ namespace IO
 
 		MetaClass *GetClassWithName(const char *name);
 
+#if __KERNEL
+		typedef MetaClass *(*__MetaClassGetter)();
+
+		static void __MarkClass(__MetaClassGetter entry);
+#endif
+
 	protected:
 		Catalogue();
 

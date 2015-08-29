@@ -162,8 +162,6 @@ namespace IO
 
 	void Catalogue::AddMetaClass(MetaClass *meta)
 	{
-		kprintf("AddMetaClass(%s)\n", meta->GetFullname());
-
 		spinlock_lock(&_lock);
 		_classes.push_back(meta);
 		spinlock_unlock(&_lock);
@@ -175,17 +173,26 @@ namespace IO
 	// MARK: Catalogue Registration
 	// -------------
 
+	static Catalogue::__MetaClassGetter __metaClassGetter[128];
+	static size_t __metaClassGetterCount = 0;
+
+	void Catalogue::__MarkClass(__MetaClassGetter entry)
+	{
+		__metaClassGetter[__metaClassGetterCount ++] = entry;
+	}
+
 	KernReturn<void> CatalogueInit()
 	{
 		_sharedCatalogue = __CatalogueHelper::Construct();
 
+		// Run all GetMetaClass() for kernel classes
 		Object::GetMetaClass();
-		Array::GetMetaClass();
-		Dictionary::GetMetaClass();
-		Set::GetMetaClass();
-		String::GetMetaClass();
-		Number::GetMetaClass();
-		Null::GetMetaClass();
+
+		for(size_t i = 0; i < __metaClassGetterCount; i ++)
+		{
+			__metaClassGetter[i]();
+		}
+
 
 		Null::GetNull(); // Get the shared Null class to avoid race conditions
 

@@ -18,6 +18,11 @@
 
 #include "personality.h"
 
+typedef void (*init_array_func_t)();
+
+extern "C" init_array_func_t __init_array_start;
+extern "C" init_array_func_t __init_array_end;
+
 #include <prefix.h>
 #include <kern/kprintf.h>
 #include <kern/panic.h>
@@ -124,7 +129,17 @@ namespace Sys
 	void PCPersonality::InitSystem()
 	{
 		InitUART();
-		
+
+		init_array_func_t *iterator = &__init_array_start;
+		init_array_func_t *end = &__init_array_end;
+
+		while(iterator != end)
+		{
+			(*iterator)();
+			iterator ++;
+		}
+
+
 		// Print the hello world message
 		PrintHeader();
 
