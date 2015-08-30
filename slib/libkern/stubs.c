@@ -49,7 +49,10 @@ void *__libio_getIONull()
 {
 	return NULL;
 }
-
+void *__libio_getIORootRegistry()
+{
+	return NULL;
+}
 
 
 void thread_create(__unused void (*entry)(void *), __unused void *argument)

@@ -22,6 +22,7 @@
 #include <libio/core/IOCatalogue.h>
 #include <libio/core/IONull.h>
 #include <libio/core/IOArray.h>
+#include <libio/core/IORegistry.h>
 #include <libio/hid/IOHIDKeyboardUtilities.h>
 #include <os/scheduler/scheduler.h>
 #include <machine/interrupts/interrupts.h>
@@ -48,6 +49,10 @@ namespace OS
 		void *__libio_getIONull()
 		{
 			return IO::Catalogue::GetSharedInstance();
+		}
+		void *__libio_getIORootRegistry()
+		{
+			return IO::RegistryEntry::GetRootEntry();
 		}
 
 
@@ -253,6 +258,7 @@ namespace OS
 				ELF_SYMBOL_STUB(kfree),
 				ELF_SYMBOL_STUB(__libio_getIOCatalogue),
 				ELF_SYMBOL_STUB(__libio_getIONull),
+				ELF_SYMBOL_STUB(__libio_getIORootRegistry),
 				ELF_SYMBOL_STUB(thread_yield),
 				ELF_SYMBOL_STUB(thread_create),
 				ELF_SYMBOL_STUB(register_interrupt),

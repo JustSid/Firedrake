@@ -167,7 +167,7 @@ namespace IO
 #define IODefineMetaVirtual(cls, super) \
 	__IODefineMeta(cls, super, IO::__MetaClassTraitNull0<cls>) \
 	IO_REGISTER_INITIALIZER(cls##Init, cls::InitialWakeUp(cls::GetMetaClass()))
-	
+
 #define __IODefineIOCoreMeta(cls, super) \
 	__IODefineIOCoreMetaInternal(cls, super, IO::MetaClassTraitConstructable<cls>) \
 	IO_REGISTER_INITIALIZER(cls##Init, cls::GetMetaClass())

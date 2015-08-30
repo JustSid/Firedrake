@@ -20,24 +20,98 @@
 
 namespace IO
 {
-	IODefineMeta(Service, Object)
+	IODefineMeta(Service, RegistryEntry)
 
-	Service *Service::InitWithType(Type type, uint32_t subType)
+	String *kServiceProviderMatchKey;
+	String *kServiceClassMatchKey;
+	String *kServicePropertiesMatchKey;
+
+	extern void RegisterClass(MetaClass *meta, Dictionary *properties);
+	extern void RegisterProvider(Service *provider);
+	extern void EnumerateClassesForProvider(Service *provider, const Function<void (MetaClass *meta, Dictionary *properties)> &callback);
+
+	void Service::InitialWakeUp(MetaClass *meta)
 	{
-		if(!Object::Init())
+		if(meta == Service::GetMetaClass())
+		{
+			kServiceProviderMatchKey = String::Alloc()->InitWithCString("kServiceProviderMatchKey");
+			kServiceClassMatchKey = String::Alloc()->InitWithCString("kServiceClassMatchKey");
+			kServicePropertiesMatchKey = String::Alloc()->InitWithCString("kServicePropertiesMatchKey");
+		}
+
+		RegistryEntry::InitialWakeUp(meta);
+	}
+
+	void Service::RegisterService(MetaClass *meta, Dictionary *properties)
+	{
+		RegisterClass(meta, properties);
+	}
+
+
+	Service *Service::Init()
+	{
+		if(!RegistryEntry::Init())
 			return nullptr;
 
-		_type = type;
-		_subType = subType;
+		_started = false;
 
 		return this;
 	}
 
 
-	bool Service::Start()
+	void Service::Start()
+	{
+		_started = true;
+	}
+
+	void Service::Stop()
+	{}
+
+
+	// Matching
+	void Service::RegisterProvider()
+	{
+		IO::RegisterProvider(this);
+	}
+
+	bool Service::MatchProperties(__unused Dictionary *properties)
 	{
 		return true;
 	}
-	void Service::Stop()
-	{}
+
+
+	void Service::StartMatching()
+	{
+		kprintf("Do Match called\n");
+		DoMatch();
+	}
+
+	void Service::DoMatch()
+	{
+		EnumerateClassesForProvider(this, [this](MetaClass *meta, Dictionary *properties) {
+
+			if(MatchProperties(properties))
+			{
+				Service *service = static_cast<Service *>(meta->Alloc());
+				service = service->Init();
+
+				if(service)
+				{
+					PublishService(service);
+				}
+			}
+
+		});
+	}
+
+
+	void Service::PublishService(Service *service)
+	{
+		AttachChild(service);
+	}
+	void Service::AttachToParent(RegistryEntry *parent)
+	{
+		RegistryEntry::AttachToParent(parent);
+		Start();
+	}
 }

@@ -26,7 +26,7 @@ namespace IO
 
 	HIDKeyboardService *HIDKeyboardService::Init()
 	{
-		if(!Service::InitWithType(Type::HID, HIDSubtype::Keyboard))
+		if(!Service::Init())
 			return nullptr;
 
 		_modifier = 0;
@@ -34,12 +34,9 @@ namespace IO
 		return this;
 	}
 
-	bool HIDKeyboardService::Start()
+	void HIDKeyboardService::Start()
 	{
-		if(!Service::Start())
-			return false;
-
-		return true;
+		Service::Start();
 	}
 
 	void HIDKeyboardService::DispatchEvent(uint32_t keyCode, bool keyDown)

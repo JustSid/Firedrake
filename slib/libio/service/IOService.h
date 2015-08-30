@@ -20,34 +20,41 @@
 #define _IOSERVICE_H_
 
 #include "../core/IOObject.h"
+#include "../core/IORegistry.h"
+#include "../core/IODictionary.h"
+#include "../core/IOString.h"
 
 namespace IO
 {
-	class Service : public Object
+	extern String *kServiceProviderMatchKey;
+	extern String *kServiceClassMatchKey; // Ignored for now
+	extern String *kServicePropertiesMatchKey;
+
+	class Service : public RegistryEntry
 	{
 	public:
-		enum class Type
-		{
-			HID
-		};
+		static void InitialWakeUp(MetaClass *meta);
+		static void RegisterService(MetaClass *meta, Dictionary *properties);
 
-		enum HIDSubtype
-		{
-			Keyboard
-		};
+		Service *Init();
 
-		virtual bool Start();
+		virtual void Start();
 		virtual void Stop();
 
-		Type GetType() const { return _type; }
-		uint32_t GetSubType() const { return _subType; }
+		virtual bool MatchProperties(Dictionary *properties);
+		virtual void PublishService(Service *service);
+
+		void StartMatching();
 
 	protected:
-		Service *InitWithType(Type type, uint32_t subType);
+		void RegisterProvider();
+
+		void AttachToParent(RegistryEntry *parent) override;
 
 	private:
-		Type _type;
-		uint32_t _subType;
+		void DoMatch();
+
+		bool _started;
 
 		IODeclareMeta(Service)
 	};

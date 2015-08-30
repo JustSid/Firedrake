@@ -1,9 +1,9 @@
 //
-//  IOHIDServiceProvider.h
+//  IORegistry.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2015 by Sidney Just
+//  Copyright (c) 2014 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,23 +16,41 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOHIDSERVICEPROVIDER_H_
-#define _IOHIDSERVICEPROVIDER_H_
+#ifndef _IOREGISTRY_H_
+#define _IOREGISTRY_H_
 
-#include <service/IOServiceProvider.h>
+#include "IOObject.h"
+#include "IOArray.h"
 
 namespace IO
 {
-	class HIDServiceProvider : public ServiceProvider
+	class RegistryEntry : public Object
 	{
 	public:
-		HIDServiceProvider *Init();
+		static RegistryEntry *GetRootEntry();
 
-		void Probe() override;
+		static void InitialWakeUp(MetaClass *meta);
+		RegistryEntry *Init();
+
+		void AttachChild(RegistryEntry *entry);
+		void DetachFromParent();
+
+		RegistryEntry *GetParent() const;
+		Array *GetChildren() const;
+
+	protected:
+		virtual void AttachToParent(RegistryEntry *parent);
+
+		void Dealloc();
 
 	private:
-		IODeclareMeta(HIDServiceProvider)
+		void __DetachChild(RegistryEntry *child);
+
+		RegistryEntry *_parent;
+		Array *_children;
+
+		IODeclareMeta(RegistryEntry)
 	};
 }
 
-#endif /* _IOHIDSERVICEPROVIDER_H_ */
+#endif /* _IOREGISTRY_H_ */

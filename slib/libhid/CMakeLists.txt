@@ -3,7 +3,6 @@ project(libhid)
 
 set(SOURCES
 	IOHIDModule.cpp
-	IOHIDServiceProvider.cpp
 	IOHIDPS2KeyboardService.cpp)
 
 set(TARGET_FILES ${SOURCES})

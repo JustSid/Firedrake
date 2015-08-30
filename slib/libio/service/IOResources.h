@@ -1,5 +1,5 @@
 //
-//  IOHIDServiceProvider.cpp
+//  IOResources.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,25 +16,24 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "IOHIDServiceProvider.h"
-#include "IOHIDPS2KeyboardService.h"
+#ifndef _IORESOURCES_H_
+#define _IORESOURCES_H_
+
+#include "IOService.h"
 
 namespace IO
 {
-	IODefineMeta(HIDServiceProvider, ServiceProvider)
-
-	HIDServiceProvider *HIDServiceProvider::Init()
+	class Resources : public Service
 	{
-		if(!ServiceProvider::Init())
-			return nullptr;
+	public:
+		Resources *Init();
 
-		return this;
-	}
+	protected:
+		void AttachToParent(RegistryEntry *entry) override;
 
-	void HIDServiceProvider::Probe()
-	{
-		HIDPS2KeyboardService *keyboardService = HIDPS2KeyboardService::Alloc()->Init();
-		AddService(keyboardService);
-		keyboardService->Release();
-	}
+	private:
+		IODeclareMeta(Resources)
+	};
 }
+
+#endif /* _IORESOURCES_H_ */

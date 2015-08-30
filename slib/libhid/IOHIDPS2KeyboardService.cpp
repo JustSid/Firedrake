@@ -148,6 +148,25 @@ namespace IO
 			0x0
 		};
 
+
+	void HIDPS2KeyboardService::InitialWakeUp(MetaClass *meta)
+	{
+		if(meta == HIDPS2KeyboardService::GetMetaClass())
+		{
+			Dictionary *properties = Dictionary::Alloc()->Init();
+			String *className = String::Alloc()->InitWithCString("IO::Resources", false);
+
+			properties->SetObjectForKey(className, kServiceProviderMatchKey);
+
+			className->Release();
+
+			RegisterService(meta, properties);
+			properties->Release();
+		}
+
+		HIDKeyboardService::InitialWakeUp(meta);
+	}
+
 	HIDPS2KeyboardService *HIDPS2KeyboardService::Init()
 	{
 		if(!HIDKeyboardService::Init())
@@ -249,10 +268,9 @@ namespace IO
 		}
 	}
 
-	bool HIDPS2KeyboardService::Start()
+	void HIDPS2KeyboardService::Start()
 	{
-		if(!HIDKeyboardService::Start())
-			return false;
+		HIDKeyboardService::Start();
 
 		outb(0x64, 0xad);
 
@@ -266,12 +284,10 @@ namespace IO
 		// Perform a self test
 		SendCommand(0xaa);
 		if(ReadData() != 0x55)
-			return false;
+			return;
 
 		SendCommand(0xae);
 		register_interrupt(0x21, this, IOMemberFunctionCast(InterruptHandler, this, &HIDPS2KeyboardService::HandleInterrupt));
-
-		return true;
 	}
 
 	void HIDPS2KeyboardService::Stop()

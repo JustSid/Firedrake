@@ -52,6 +52,7 @@ set(SOURCES
 	libio/core/IONull.cpp
 	libio/core/IONumber.cpp
 	libio/core/IOObject.cpp
+	libio/core/IORegistry.cpp
 	libio/core/IOSet.cpp
 	libio/core/IOString.cpp
 	os/IPC/IPCMessage.cpp

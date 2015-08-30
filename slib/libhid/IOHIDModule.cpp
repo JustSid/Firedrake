@@ -18,8 +18,6 @@
 
 #include <libkern.h>
 #include "IOHIDModule.h"
-#include "IOHIDServiceProvider.h"
-#include "IOHIDPS2KeyboardService.h"
 
 namespace IO
 {
@@ -27,10 +25,6 @@ namespace IO
 
 	void HIDModule::Publish()
 	{
-		HIDServiceProvider *provider = HIDServiceProvider::Alloc()->Init();
-		AddServiceProvider(provider);
-		provider->Release();
-
 		Module::Publish();
 	}
 }

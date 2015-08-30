@@ -237,6 +237,13 @@ namespace OS
 			return result.GetError();
 		}
 
+		// Start libio
+		bool (*IORuntimeInit)();
+		IORuntimeInit = reinterpret_cast<decltype(IORuntimeInit)>(libio->GetSymbolAddressWithName("IORuntimeBootstrap"));
+
+		if(!IORuntimeInit || !IORuntimeInit())
+			return Error(KERN_FAILURE, "Failed to initialize libio runtime");
+
 		return LD::ReadConfig();
 	}
 }

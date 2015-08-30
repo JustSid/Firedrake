@@ -8,12 +8,14 @@ set(SOURCES
 	core/IONull.cpp
 	core/IONumber.cpp
 	core/IOObject.cpp
+    core/IORegistry.cpp
+	core/IORuntime.cpp
 	core/IOSet.cpp
 	core/IOString.cpp
 	service/IOConnector.cpp
 	service/IOModule.cpp
+	service/IOResources.cpp
 	service/IOService.cpp
-	service/IOServiceProvider.cpp
 	service/IOThread.cpp
 	hid/IOHIDKeyboardService.cpp)
 
@@ -26,13 +28,14 @@ set(HEADERS
 	core/IONull.h
 	core/IONumber.h
 	core/IOObject.h
+    core/IORegistry.h
 	core/IORuntime.h
 	core/IOSet.h
 	core/IOString.h
 	service/IOConnector.h
 	service/IOModule.h
+	service/IOResources.cpp
 	service/IOService.h
-	service/IOServiceProvider.h
 	service/IOThread.h
 	hid/IOHIDKeyboardService.h
 	hid/IOHIDKeyboardUtilities.h)
