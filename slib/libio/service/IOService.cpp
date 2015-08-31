@@ -28,7 +28,7 @@ namespace IO
 
 	extern void RegisterClass(MetaClass *meta, Dictionary *properties);
 	extern void RegisterProvider(Service *provider);
-	extern void EnumerateClassesForProvider(Service *provider, const Function<void (MetaClass *meta, Dictionary *properties)> &callback);
+	extern void EnumerateClassesForProvider(Service *provider, const Function<bool (MetaClass *meta, Dictionary *properties)> &callback);
 
 	void Service::InitialWakeUp(MetaClass *meta)
 	{
@@ -98,8 +98,11 @@ namespace IO
 				if(service)
 				{
 					PublishService(service);
+					return true;
 				}
 			}
+
+			return false;
 
 		});
 	}

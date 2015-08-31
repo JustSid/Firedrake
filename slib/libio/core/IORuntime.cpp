@@ -38,16 +38,24 @@ namespace IO
 
 			_meta = meta;
 			_properties = properties->Retain();
+			_matched = false;
 
 			return this;
 		}
 
+		void SetMatched(bool matched)
+		{
+			_matched = true;
+		}
+
 		Dictionary *GetProperties() const { return _properties; }
 		MetaClass *GetMeta() const { return _meta; }
+		bool IsMatched() const { return _matched; }
 
 	private:
 		MetaClass *_meta;
 		Dictionary *_properties;
+		bool _matched;
 
 		IODeclareMeta(ClassEntry)
 	};
@@ -67,6 +75,8 @@ namespace IO
 			return false;
 
 		MetaClass *meta = Catalogue::GetSharedInstance()->GetClassWithName(requiredProvider->GetCString());
+		if(!meta)
+			return false;
 
 		return (providerClass->InheritsFromClass(meta));
 	}
@@ -101,7 +111,7 @@ namespace IO
 		provider->StartMatching();
 	}
 
-	void EnumerateClassesForProvider(Service *provider, const Function<void (MetaClass *meta, Dictionary *properties)> &callback)
+	void EnumerateClassesForProvider(Service *provider, const Function<bool (MetaClass *meta, Dictionary *properties)> &callback)
 	{
 		MetaClass *providerClass = provider->GetClass();
 
@@ -113,7 +123,7 @@ namespace IO
 		{
 			ClassEntry *entry = _registeredClasses->GetObjectAtIndex<ClassEntry>(i);
 
-			if(DoShallowMatch(providerClass, entry))
+			if(!entry->IsMatched() && DoShallowMatch(providerClass, entry))
 				matches->AddObject(entry);
 		}
 
@@ -122,7 +132,9 @@ namespace IO
 		for(size_t i = 0; i < matches->GetCount(); i ++)
 		{
 			ClassEntry *entry = matches->GetObjectAtIndex<ClassEntry>(i);
-			callback(entry->GetMeta(), entry->GetProperties());
+
+			if(callback(entry->GetMeta(), entry->GetProperties()))
+				entry->SetMatched(true);
 		}
 
 		matches->Release();
