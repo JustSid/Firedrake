@@ -48,16 +48,21 @@ namespace IO
 	}
 
 
-	Service *Service::Init()
+	Service *Service::InitWithProperties(Dictionary *properties)
 	{
 		if(!RegistryEntry::Init())
 			return nullptr;
 
 		_started = false;
+		_properties = properties->Retain();
 
 		return this;
 	}
 
+	Dictionary *Service::GetProperties() const
+	{
+		return _properties;
+	}
 
 	void Service::Start()
 	{
@@ -82,7 +87,6 @@ namespace IO
 
 	void Service::StartMatching()
 	{
-		kprintf("Do Match called\n");
 		DoMatch();
 	}
 
@@ -93,7 +97,7 @@ namespace IO
 			if(MatchProperties(properties))
 			{
 				Service *service = static_cast<Service *>(meta->Alloc());
-				service = service->Init();
+				service = service->InitWithProperties(properties);
 
 				if(service)
 				{

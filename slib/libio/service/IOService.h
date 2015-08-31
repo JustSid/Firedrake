@@ -36,7 +36,7 @@ namespace IO
 		static void InitialWakeUp(MetaClass *meta);
 		static void RegisterService(MetaClass *meta, Dictionary *properties);
 
-		Service *Init();
+		virtual Service *InitWithProperties(Dictionary *properties); // Designated constructor
 
 		virtual void Start();
 		virtual void Stop();
@@ -46,6 +46,8 @@ namespace IO
 
 		void StartMatching();
 
+		Dictionary *GetProperties() const;
+
 	protected:
 		void RegisterProvider();
 
@@ -54,6 +56,7 @@ namespace IO
 	private:
 		void DoMatch();
 
+		Dictionary *_properties;
 		bool _started;
 
 		IODeclareMeta(Service)

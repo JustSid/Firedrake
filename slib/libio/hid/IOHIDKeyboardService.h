@@ -27,7 +27,7 @@ namespace IO
 	class HIDKeyboardService : public Service
 	{
 	public:
-		HIDKeyboardService *Init();
+		HIDKeyboardService *InitWithProperties(Dictionary *properties) override;
 
 		void Start() override;
 

@@ -24,9 +24,9 @@ namespace IO
 {
 	IODefineMeta(HIDKeyboardService, Service)
 
-	HIDKeyboardService *HIDKeyboardService::Init()
+	HIDKeyboardService *HIDKeyboardService::InitWithProperties(Dictionary *properties)
 	{
-		if(!Service::Init())
+		if(!Service::InitWithProperties(properties))
 			return nullptr;
 
 		_modifier = 0;

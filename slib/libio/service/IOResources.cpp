@@ -24,8 +24,12 @@ namespace IO
 
 	Resources *Resources::Init()
 	{
-		if(!Service::Init())
+		Dictionary *dictionary = Dictionary::Alloc()->Init();
+
+		if(!Service::InitWithProperties(dictionary))
 			return nullptr;
+
+		dictionary->Release();
 
 		return this;
 	}
