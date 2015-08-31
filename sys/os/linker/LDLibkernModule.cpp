@@ -99,6 +99,21 @@ namespace OS
 		}
 
 
+		void *__libkern_dma_map(uintptr_t physical, size_t pages)
+		{
+			Sys::VM::Directory *directory = Sys::VM::Directory::GetKernelDirectory();
+			KernReturn<vm_address_t> result = directory->Alloc(physical, pages, kVMFlagsKernel);
+
+			return (result.IsValid()) ? reinterpret_cast<void *>(result.Get()) : nullptr;
+		}
+
+		void __libkern_dma_free(void *virt, size_t pages)
+		{
+			Sys::VM::Directory *directory = Sys::VM::Directory::GetKernelDirectory();
+			directory->Free(reinterpret_cast<vm_address_t>(virt), pages);
+		}
+
+
 		typedef void (*InterruptHandler)(void *argument, uint8_t vector);
 
 		struct InterruptEntry
@@ -261,6 +276,8 @@ namespace OS
 				ELF_SYMBOL_STUB(__libio_getIORootRegistry),
 				ELF_SYMBOL_STUB(thread_yield),
 				ELF_SYMBOL_STUB(thread_create),
+				ELF_SYMBOL_STUB(__libkern_dma_map),
+				ELF_SYMBOL_STUB(__libkern_dma_free),
 				ELF_SYMBOL_STUB(register_interrupt),
 				ELF_SYMBOL_STUB(__libkern_dispatchKeyboardEvent),
 				ELF_SYMBOL_STUB(ipc_write),

@@ -1,9 +1,9 @@
 //
-//  stubs.h
+//  IOPCIProvider.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,64 +16,33 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "libkern.h"
-#include "libc/stddef.h"
-#include "libc/stdbool.h"
+#ifndef _IOPCIPROVIDER_H_
+#define _IOPCIPROVIDER_H_
 
-void kprintf(__unused const char *format, ...)
-{}
-void kputs(__unused const char *string)
-{}
-void knputs(__unused const char *string, __unused unsigned int length)
-{}
+#include <service/IOService.h>
+#include "IOPCIDevice.h"
 
-void panic(__unused const char *format, ...)
+namespace IO
 {
-	while(1) {}
+	class PCIProvider : public Service
+	{
+	public:
+		static void InitialWakeUp(MetaClass *meta);
+
+		PCIProvider *InitWithProperties(Dictionary *properties) override;
+
+		void Start() override;
+
+		bool MatchProperties(Dictionary *properties) override;
+		void PublishService(Service *service);
+
+	private:
+		void ProbeDevice(uint8_t bus, uint8_t device);
+
+		Dictionary *_foundDevices;
+
+		IODeclareMeta(PCIProvider)
+	};
 }
 
-
-void *kalloc(__unused size_t size)
-{
-	return NULL;
-}
-void kfree(__unused void *ptr)
-{}
-
-
-void *__libio_getIOCatalogue()
-{
-	return NULL;
-}
-void *__libio_getIONull()
-{
-	return NULL;
-}
-void *__libio_getIORootRegistry()
-{
-	return NULL;
-}
-
-
-void thread_create(__unused void (*entry)(void *), __unused void *argument)
-{}
-
-void thread_yield()
-{}
-
-
-void register_interrupt(__unused uint8_t vector, __unused void *argument, __unused InterruptHandler handler)
-{}
-
-
-void __libkern_dispatchKeyboardEvent(__unused uint32_t keyCode, __unused bool keyDown)
-{}
-
-void __cxa_atexit()
-{}
-
-
-void *__libkern_dma_map(__unused uintptr_t physical, __unused size_t pages)
-{}
-void __libkern_dma_free(__unused void *virt, __unused size_t pages)
-{}
+#endif /* _IOPCIPROVIDER_H_ */

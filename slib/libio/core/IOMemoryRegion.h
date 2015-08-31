@@ -1,9 +1,9 @@
 //
-//  stubs.h
+//  IOMemoryRegion.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,64 +16,40 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include "libkern.h"
-#include "libc/stddef.h"
-#include "libc/stdbool.h"
+#ifndef _IOMEMORYREGION_H_
+#define _IOMEMORYREGION_H_
 
-void kprintf(__unused const char *format, ...)
-{}
-void kputs(__unused const char *string)
-{}
-void knputs(__unused const char *string, __unused unsigned int length)
-{}
+#include "IOObject.h"
 
-void panic(__unused const char *format, ...)
+namespace IO
 {
-	while(1) {}
+	class MemoryRegion : public Object
+	{
+	public:
+		MemoryRegion *InitWithPhysical(uintptr_t physical, size_t pages);
+		void Dealloc();
+
+		uintptr_t GetPhysical() const;
+		void *GetAddress() const;
+		size_t GetPages() const;
+
+	private:
+		uintptr_t _physical;
+		void *_address;
+		size_t _pages;
+
+		IODeclareMeta(MemoryRegion)
+	};
 }
 
+#define VM_PAGE_SHIFT 12
+#define VM_DIRECTORY_SHIFT 22
 
-void *kalloc(__unused size_t size)
-{
-	return NULL;
-}
-void kfree(__unused void *ptr)
-{}
+#define VM_PAGE_SIZE (1 << VM_PAGE_SHIFT)
+#define VM_PAGE_MASK (~(VM_PAGE_SIZE - 1))
 
+#define VM_PAGE_COUNT(x)      ((((x) + ~VM_PAGE_MASK) & VM_PAGE_MASK) / VM_PAGE_SIZE)
+#define VM_PAGE_ALIGN_DOWN(x) ((x) & VM_PAGE_MASK)
+#define VM_PAGE_ALIGN_UP(x)   (VM_PAGE_ALIGN_DOWN((x) + ~VM_PAGE_MASK))
 
-void *__libio_getIOCatalogue()
-{
-	return NULL;
-}
-void *__libio_getIONull()
-{
-	return NULL;
-}
-void *__libio_getIORootRegistry()
-{
-	return NULL;
-}
-
-
-void thread_create(__unused void (*entry)(void *), __unused void *argument)
-{}
-
-void thread_yield()
-{}
-
-
-void register_interrupt(__unused uint8_t vector, __unused void *argument, __unused InterruptHandler handler)
-{}
-
-
-void __libkern_dispatchKeyboardEvent(__unused uint32_t keyCode, __unused bool keyDown)
-{}
-
-void __cxa_atexit()
-{}
-
-
-void *__libkern_dma_map(__unused uintptr_t physical, __unused size_t pages)
-{}
-void __libkern_dma_free(__unused void *virt, __unused size_t pages)
-{}
+#endif /* _IOMEMORYREGION_H_ */

@@ -5,6 +5,7 @@ set(SOURCES
 	core/IOArray.cpp
 	core/IOCatalogue.cpp
 	core/IODictionary.cpp
+	core/IOMemoryRegion.cpp
 	core/IONull.cpp
 	core/IONumber.cpp
 	core/IOObject.cpp
@@ -52,6 +53,9 @@ foreach(FILE ${TARGET_FILES})
 	endif()
 
 endforeach()
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-unused-parameter -pedantic-errors -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -nostdlib -nostdinc")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-overloaded-virtual -Wno-reorder -Wno-unused-parameter -pedantic-errors -fno-threadsafe-statics -fno-stack-protector -fno-builtin -fno-rtti -fno-exceptions -nostdinc -nostdlib")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${libkern_SOURCE_DIR})
