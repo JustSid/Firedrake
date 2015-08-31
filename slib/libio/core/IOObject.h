@@ -133,7 +133,7 @@ namespace IO
 	{ \
 		if(!__kIO##cls##__metaClass) \
 			__kIO##cls##__metaClass = IO::Catalogue::GetSharedInstance()->GetClassWithName("IO::" #cls); \
-		return reinterpret_cast<cls##MetaType *>(__kIO##cls##__metaClass); \
+		return reinterpret_cast<IO::MetaClass *>(__kIO##cls##__metaClass); \
 	}
 
 #endif /* __KERNEL */
