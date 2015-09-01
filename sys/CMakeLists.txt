@@ -80,6 +80,9 @@ set(SOURCES
 	personality/pc/video.cpp
 	${CONFIG_PERSONALITY_PATH}/personality.cpp
 	personality/personality.cpp
+	vfs/cfs/cfs_descriptor.cpp
+	vfs/cfs/cfs_instance.cpp
+	vfs/cfs/cfs_node.cpp
 	vfs/ffs/ffs_descriptor.cpp
 	vfs/ffs/ffs_instance.cpp
 	vfs/ffs/ffs_node.cpp

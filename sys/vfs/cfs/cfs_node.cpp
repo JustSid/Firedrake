@@ -1,5 +1,5 @@
 //
-//  kern_return.h
+//  cfs_node.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,27 +16,53 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBC_KERNRETURN_H_
-#define _LIBC_KERNRETURN_H_
+#include <machine/memory/memory.h>
+#include <kern/kprintf.h>
+#include <libcpp/algorithm.h>
+#include <vfs/context.h>
+#include "cfs_node.h"
 
-#define KERN_SUCCESS 0
-#define KERN_INVALID_ADDRESS    1
-#define KERN_INVALID_ARGUMENT   2
-#define KERN_NO_MEMORY          3
-#define KERN_FAILURE            4
-#define KERN_RESOURCES_MISSING  5
-#define KERN_RESOURCE_IN_USE    6
-#define KERN_RESOURCE_EXISTS    7
-#define KERN_RESOURCE_EXHAUSTED 8
-#define KERN_TIMEOUT            9
-#define KERN_ACCESS_VIOLATION   10
-#define KERN_IPC_NO_RECEIVER    11
-#define KERN_IPC_NO_SENDER      12
-#define KERN_RESOURCE_NOT_FOUND 13
-#define KERN_UNSUPPORTED        14
+namespace CFS
+{
+	IODefineMeta(Node, VFS::Node)
 
-#ifdef __KERNEL
-#define KERN_TASK_RESTART       1024 // Only used internally
-#endif
+	Node *Node::Init(const char *name, VFS::Instance *instance, uint64_t id, void *memo)
+	{
+		if(!VFS::Node::Init(name, instance, VFS::Node::Type::File, id))
+			return nullptr;
 
-#endif /* _LIBC_KERNRETURN_H_ */
+		_readProc = nullptr;
+		_writeProc = nullptr;
+		_memo = memo;
+
+		return this;
+	}
+
+
+	KernReturn<size_t> Node::WriteData(VFS::Context *context, off_t offset, const void *data, size_t size)
+	{
+		if(_writeProc)
+		{
+			size_t result = _writeProc(_memo, context, offset, data, size);
+			if(result == (size_t)-1)
+				return Error(KERN_FAILURE);
+
+			return result;
+		}
+
+		return Error(KERN_UNSUPPORTED);
+	}
+	KernReturn<size_t> Node::ReadData(VFS::Context *context, off_t offset, void *data, size_t size)
+	{
+		if(_readProc)
+		{
+			size_t result = _readProc(_memo, context, offset, data, size);
+			if(result == (size_t)-1)
+				return Error(KERN_FAILURE);
+
+			return result;
+		}
+
+		return Error(KERN_UNSUPPORTED);
+	}
+}

@@ -1,5 +1,5 @@
 //
-//  vfs.h
+//  cfs_node.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,44 +16,37 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _VFS_H_
-#define _VFS_H_
+#ifndef _FFS_NODE_H_
+#define _FFS_NODE_H_
 
 #include <prefix.h>
-#include <libc/stddef.h>
-#include <libc/stdint.h>
+#include <vfs/node.h>
+#include <vfs/instance.h>
 #include <libc/sys/fcntl.h>
 #include <libc/sys/types.h>
-#include <libc/sys/unistd.h>
-#include <libc/sys/dirent.h>
-#include <kern/kern_return.h>
-#include "cfs/cfs_instance.h"
 
-#include "descriptor.h"
-#include "instance.h"
-#include "node.h"
-#include "context.h"
-
-namespace VFS
+namespace CFS
 {
-	Node *GetRootNode();
-	CFS::Instance *GetDevFS();
+	class Instance;
+	class Node : public VFS::Node
+	{
+	public:
+		friend class Instance;
+		typedef size_t (*WriteProc)(void *memo, VFS::Context *context, off_t offset, const void *data, size_t size);
+		typedef size_t (*ReadProc)(void *memo, VFS::Context *context, off_t offset, void *data, size_t size);
 
-	KernReturn<int> Open(Context *context, const char *path, int flags);
-	KernReturn<void> Close(Context *context, int fd);
-	KernReturn<void> StatFile(Context *context, const char *path, stat *buf);
+		KernReturn<size_t> WriteData(VFS::Context *context, off_t offset, const void *data, size_t size);
+		KernReturn<size_t> ReadData(VFS::Context *context, off_t offset, void *data, size_t size);
 
-	KernReturn<size_t> Write(Context *context, int fd, const void *data, size_t size);
-	KernReturn<size_t> Read(Context *context, int fd, void *data, size_t size);
-	KernReturn<off_t> Seek(Context *context, int fd, off_t offset, int whence);
+	private:
+		Node *Init(const char *name, VFS::Instance *instance, uint64_t id, void *memo);
 
-	KernReturn<void> MakeDirectory(Context *context, const char *path);
-	KernReturn<off_t> ReadDir(Context *context, int fd, dirent *entry, size_t count);
+		void *_memo;
+		ReadProc _readProc;
+		WriteProc _writeProc;
 
-	KernReturn<void> Mount(Context *context, Instance *instance, const char *target);
-	KernReturn<void> Unmount(Context *context, const char *path);
-
-	KernReturn<void> Init();
+		IODeclareMeta(Node)
+	};
 }
 
-#endif /* _VFS_H_ */
+#endif /* _FFS_NODE_H_ */

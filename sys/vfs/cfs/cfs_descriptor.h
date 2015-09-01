@@ -1,5 +1,5 @@
 //
-//  kern_return.h
+//  cfs_descriptor.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,27 +16,23 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBC_KERNRETURN_H_
-#define _LIBC_KERNRETURN_H_
+#ifndef _CFS_DESCRIPTOR_H_
+#define _CFS_DESCRIPTOR_H_
 
-#define KERN_SUCCESS 0
-#define KERN_INVALID_ADDRESS    1
-#define KERN_INVALID_ARGUMENT   2
-#define KERN_NO_MEMORY          3
-#define KERN_FAILURE            4
-#define KERN_RESOURCES_MISSING  5
-#define KERN_RESOURCE_IN_USE    6
-#define KERN_RESOURCE_EXISTS    7
-#define KERN_RESOURCE_EXHAUSTED 8
-#define KERN_TIMEOUT            9
-#define KERN_ACCESS_VIOLATION   10
-#define KERN_IPC_NO_RECEIVER    11
-#define KERN_IPC_NO_SENDER      12
-#define KERN_RESOURCE_NOT_FOUND 13
-#define KERN_UNSUPPORTED        14
+#include <vfs/descriptor.h>
 
-#ifdef __KERNEL
-#define KERN_TASK_RESTART       1024 // Only used internally
-#endif
+namespace CFS
+{
+	class Descriptor : public VFS::Descriptor
+	{
+	public:
+		Descriptor *Init();
 
-#endif /* _LIBC_KERNRETURN_H_ */
+		KernReturn<VFS::Instance *> CreateInstance() final;
+		void DestroyInstance(VFS::Instance *instance) final;
+		
+		IODeclareMeta(Descriptor)
+	};
+}
+
+#endif /* _CFS_DESCRIPTOR_H_ */

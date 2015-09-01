@@ -20,7 +20,6 @@
 #include <kern/kalloc.h>
 #include <kern/kprintf.h>
 #include <libc/string.h>
-#include <libcpp/new.h>
 #include <libcpp/vector.h>
 #include <os/scheduler/scheduler.h>
 
@@ -28,8 +27,8 @@
 #include "path.h"
 #include "file.h"
 
-#include <libio/core/IOArray.h>
 #include <vfs/ffs/ffs_descriptor.h>
+#include <vfs/cfs/cfs_descriptor.h>
 
 #include <bootstrap/multiboot.h>
 
@@ -39,6 +38,7 @@ namespace VFS
 	static IO::Array *_descriptors;
 
 	static Instance *_rootInstance = nullptr;
+	static CFS::Instance *_devFS = nullptr;
 	static Node *_rootNode = nullptr;
 
 	Node *GetRootNode()
@@ -282,13 +282,16 @@ namespace VFS
 		}
 
 		Node *node = resolver.GetCurrentNode();
-		IO::StrongRef<IO::String> name = resolver.GetCurrentName();
+		IO::StrongRef<IO::String> name = resolver.GetNextName();
+
+		KernReturn<Node *> result = resolver.ResolveElement();
+		if(result.IsValid())
+			return Error(KERN_RESOURCE_EXISTS, EEXIST);
 
 		if(!node->IsDirectory())
 			return Error(KERN_INVALID_ARGUMENT, ENOTDIR);
 
 		Instance *nInstance = node->GetInstance();
-
 		return nInstance->Mount(context, instance, static_cast<Directory *>(node), name->GetCString());
 	}
 
@@ -306,6 +309,56 @@ namespace VFS
 	}
 	void UnregisterDescriptor(__unused Descriptor *descriptor)
 	{}
+
+	void DumpNode(Node *node, size_t depth)
+	{
+		IO::String *name = node->GetName();
+
+		for(size_t i = 0; i < depth; i ++)
+			kprintf("    ");
+
+		kprintf("/%s\n", name->GetCString());
+
+		if(node->IsDirectory())
+		{
+			Directory *dir = node->Downcast<Directory>();
+			const IO::Dictionary *children = dir->GetChildren();
+
+			children->Enumerate<Node, IO::String>([depth](Node *node, IO::String *key, bool &stop) {
+				DumpNode(node, depth + 1);
+			});
+		}
+		if(node->IsMountpoint())
+		{
+			Mountpoint *mount = node->Downcast<Mountpoint>();
+			IO::StrongRef<Node> target = mount->GetLinkedNode();
+
+			Directory *dir = target->Downcast<Directory>();
+			const IO::Dictionary *children = dir->GetChildren();
+
+			children->Enumerate<Node, IO::String>([depth](Node *node, IO::String *key, bool &stop) {
+				DumpNode(node, depth + 1);
+			});
+		}
+	}
+
+	void DumpFS()
+	{
+		Node *node = _rootNode;
+		DumpNode(node, 0);
+	}
+
+	// /dev/null
+
+	size_t DevNullWrite(__unused void *memo, __unused Context *context, __unused off_t offset, __unused const void *data, __unused size_t size)
+	{
+		return size;
+	}
+
+	size_t DevNullRead(__unused void *memo, __unused Context *context, __unused off_t offset, __unused void *data, __unused size_t size)
+	{
+		return 0;
+	}
 
 
 	KernReturn<void> LoadInitrdModule(uint8_t *buffer, uint8_t *end)
@@ -435,6 +488,37 @@ namespace VFS
 
 		if(!didLoadInitrd)
 			kprintf("Couldn't find initrd");
+
+		// Callback FS
+		Descriptor *cfs = CFS::Descriptor::Alloc()->Init();
+		if(!cfs)
+		{
+			kprintf("Failed to create CFS");
+			return Error(KERN_FAILURE);
+		}
+
+		// Dev "FS", based on CFS
+		{
+			if((instance = cfs->CreateInstance()).IsValid() == false)
+			{
+				kprintf("Failed to create /dev instance");
+				return Error(KERN_FAILURE);
+			}
+
+			KernReturn<void> result = Mount(Context::GetKernelContext(), instance, "/dev");
+			if(!result.IsValid())
+			{
+				kprintf("Couldn't mount /dev");
+				return Error(KERN_FAILURE);
+			}
+
+			_devFS = instance->Downcast<CFS::Instance>();
+			_devFS->CreateNode("null", nullptr, &DevNullRead, &DevNullWrite).Suppress();
+		}
+
+#if 0
+		DumpFS();
+#endif
 
 		return ErrorNone;
 	}

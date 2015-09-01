@@ -1,5 +1,5 @@
 //
-//  kern_return.h
+//  cfs_descriptor.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -16,27 +16,36 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _LIBC_KERNRETURN_H_
-#define _LIBC_KERNRETURN_H_
+#include <kern/kprintf.h>
+#include <vfs/instance.h>
+#include "cfs_descriptor.h"
+#include "cfs_instance.h"
 
-#define KERN_SUCCESS 0
-#define KERN_INVALID_ADDRESS    1
-#define KERN_INVALID_ARGUMENT   2
-#define KERN_NO_MEMORY          3
-#define KERN_FAILURE            4
-#define KERN_RESOURCES_MISSING  5
-#define KERN_RESOURCE_IN_USE    6
-#define KERN_RESOURCE_EXISTS    7
-#define KERN_RESOURCE_EXHAUSTED 8
-#define KERN_TIMEOUT            9
-#define KERN_ACCESS_VIOLATION   10
-#define KERN_IPC_NO_RECEIVER    11
-#define KERN_IPC_NO_SENDER      12
-#define KERN_RESOURCE_NOT_FOUND 13
-#define KERN_UNSUPPORTED        14
+namespace CFS
+{
+	IODefineMeta(Descriptor, VFS::Descriptor)
 
-#ifdef __KERNEL
-#define KERN_TASK_RESTART       1024 // Only used internally
-#endif
+	Descriptor *Descriptor::Init()
+	{
+		if(!VFS::Descriptor::Init("cfs", Flags::Persistent))
+			return nullptr;
 
-#endif /* _LIBC_KERNRETURN_H_ */
+		KernReturn<void> result;
+
+		if((result = Register()).IsValid() == false)
+		{
+			kprintf("Failed to register FFS, reason %d\n", result.GetError().GetCode());
+			return nullptr;
+		}
+
+		return this;
+	}
+
+	KernReturn<VFS::Instance *> Descriptor::CreateInstance()
+	{
+		return Instance::Alloc()->Init();
+	}
+	
+	void Descriptor::DestroyInstance(__unused VFS::Instance *instance)
+	{}
+}
