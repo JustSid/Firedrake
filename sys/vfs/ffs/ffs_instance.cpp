@@ -261,4 +261,9 @@ namespace FFS
 	{
 		return Error(KERN_FAILURE);
 	}
+
+	KernReturn<void> Instance::Ioctl(__unused VFS::Context *context, __unused VFS::File *file, __unused uint32_t request, __unused void *data)
+	{
+		return Error(KERN_INVALID_ARGUMENT);
+	}
 }

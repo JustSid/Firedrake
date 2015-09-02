@@ -12,6 +12,7 @@ set(SOURCES
 	ipc/ipc_port.c
 	sys/x86/spinlock.S
 	sys/x86/syscall.S
+	sys/ioctl.c
 	sys/mman.c
 	sys/spinlock.c
 	sys/task.c
@@ -31,6 +32,7 @@ set(HEADERS
 	sys/dirent.h
 	sys/errno.h
 	sys/fcntl.h
+	sys/ioctl.h
 	sys/kern_return.h
 	sys/kern_trap.h
 	sys/syscall.h

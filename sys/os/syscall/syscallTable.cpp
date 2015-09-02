@@ -75,7 +75,7 @@ namespace OS
 		/* 3 */ SYSCALL_TRAP3("read", &VFS::Syscall_VFSRead, VFS::VFSReadArgs, fd, data, size),
 		/* 4 */ SYSCALL_TRAP3("write", &VFS::Syscall_VFSWrite, VFS::VFSWriteArgs, fd, data, size),
 		/* 5 */ SYSCALL_TRAP3("seek", &VFS::Syscall_VFSSeek, VFS::VFSSeekArgs, fd, offset, whence),
-		/* 6 */ SYSCALL_TRAP_INVALID(),
+		/* 6 */ SYSCALL_TRAP3("ioctl", &VFS::Syscall_VFSIoctl, VFS::VFSIoctlArgs, fd, request, arg),
 		/* 7 */ SYSCALL_TRAP_INVALID(),
 		/* 8 */ SYSCALL_TRAP_INVALID(),
 		/* 9 */ SYSCALL_TRAP_INVALID(),

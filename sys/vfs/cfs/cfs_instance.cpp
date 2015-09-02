@@ -153,7 +153,7 @@ namespace CFS
 
 		KernReturn<size_t> result = node->WriteData(context, file->GetOffset(), data, size);
 
-		if(result.IsValid())
+		if(result.IsValid() && node->_supportsSeek)
 			file->SetOffset(file->GetOffset() + result.Get());
 
 		node->Unlock();
@@ -162,7 +162,41 @@ namespace CFS
 	}
 	KernReturn<off_t> Instance::FileSeek(__unused VFS::Context *context, VFS::File *file, off_t offset, int whence)
 	{
-		return Error(KERN_UNSUPPORTED);
+		CFS::Node *node = static_cast<CFS::Node *>(file->GetNode());
+		node->Lock();
+
+		size_t toffset = 0;
+
+		switch(whence)
+		{
+			case SEEK_SET:
+				toffset = offset;
+				break;
+			case SEEK_CUR:
+				toffset = file->GetOffset() + offset;
+				break;
+			case SEEK_END:
+				toffset = node->GetSize() + offset;
+				break;
+
+			default:
+				node->Unlock();
+				return Error(KERN_INVALID_ARGUMENT);
+		}
+
+		if(!node->_supportsSeek)
+			return static_cast<off_t>(toffset); // so lseek() can be used to find out how big the file is
+
+		if(toffset <= node->GetSize())
+		{
+			file->SetOffset(toffset);
+			node->Unlock();
+
+			return static_cast<off_t>(toffset);
+		}
+
+		node->Unlock();
+		return Error(KERN_INVALID_ARGUMENT);
 	}
 
 	KernReturn<void> Instance::FileStat(__unused VFS::Context *context, stat *buf, VFS::Node *node)
@@ -215,5 +249,16 @@ namespace CFS
 	KernReturn<void> Instance::Unmount(VFS::Context *context, VFS::Mountpoint *target)
 	{
 		return Error(KERN_FAILURE);
+	}
+
+	KernReturn<void> Instance::Ioctl(VFS::Context *context, VFS::File *file, uint32_t request, void *data)
+	{
+		CFS::Node *node = static_cast<CFS::Node *>(file->GetNode());
+
+		node->Lock();
+		KernReturn<void> result = node->Ioctl(context, request, data);
+		node->Unlock();
+
+		return result;
 	}
 }

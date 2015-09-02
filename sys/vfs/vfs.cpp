@@ -32,6 +32,8 @@
 
 #include <bootstrap/multiboot.h>
 
+#include <os/pty.h>
+
 namespace VFS
 {
 	static spinlock_t _descriptorLock = SPINLOCK_INIT;
@@ -300,6 +302,20 @@ namespace VFS
 		return ErrorNone;
 	}
 
+	KernReturn<void> Ioctl(Context *context, int fd, uint32_t request, void *arg)
+	{
+		OS::Task *task = context->GetTask();
+		File *file = task->GetFileForDescriptor(fd);
+
+		if(!file)
+			return Error(KERN_INVALID_ARGUMENT, EBADF);
+
+		Node *node = file->GetNode();
+		Instance *instance = node->GetInstance();
+
+		return instance->Ioctl(context, file, request, arg);
+	}
+
 
 	void RegisterDescriptor(Descriptor *descriptor)
 	{
@@ -359,6 +375,12 @@ namespace VFS
 	{
 		return 0;
 	}
+
+	CFS::Instance *GetDevFS()
+	{
+		return _devFS;
+	}
+
 
 
 	KernReturn<void> LoadInitrdModule(uint8_t *buffer, uint8_t *end)

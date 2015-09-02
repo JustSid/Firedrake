@@ -34,9 +34,19 @@ namespace CFS
 		friend class Instance;
 		typedef size_t (*WriteProc)(void *memo, VFS::Context *context, off_t offset, const void *data, size_t size);
 		typedef size_t (*ReadProc)(void *memo, VFS::Context *context, off_t offset, void *data, size_t size);
+		typedef size_t (*SizeProc)(void *memo);
+		typedef KernReturn<void> (*IoctlProc)(void *memo, VFS::Context *context, uint32_t request, void *data);
 
 		KernReturn<size_t> WriteData(VFS::Context *context, off_t offset, const void *data, size_t size);
 		KernReturn<size_t> ReadData(VFS::Context *context, off_t offset, void *data, size_t size);
+		KernReturn<void> Ioctl(VFS::Context *context, uint32_t request, void *data);
+
+		void SetSizeProc(SizeProc proc);
+		void SetIoctlProc(IoctlProc proc);
+
+		void SetSupportsSeek(bool seek);
+
+		size_t GetSize() const;
 
 	private:
 		Node *Init(const char *name, VFS::Instance *instance, uint64_t id, void *memo);
@@ -44,6 +54,10 @@ namespace CFS
 		void *_memo;
 		ReadProc _readProc;
 		WriteProc _writeProc;
+		SizeProc _sizeProc;
+		IoctlProc _ioctlProc;
+
+		bool _supportsSeek;
 
 		IODeclareMeta(Node)
 	};

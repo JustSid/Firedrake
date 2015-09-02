@@ -73,6 +73,8 @@ namespace VFS
 		virtual KernReturn<void> Mount(Context *context, Instance *instance, Directory *target, const char *name) = 0;
 		virtual KernReturn<void> Unmount(Context *context, Mountpoint *target) = 0;
 
+		virtual KernReturn<void> Ioctl(Context *context, File *file, uint32_t request, void *data) = 0;
+
 		Node *GetRootNode() const { return _rootNode; }
 
 	protected:

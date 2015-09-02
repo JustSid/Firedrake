@@ -31,6 +31,7 @@ __BEGIN_DECLS
 #define SYS_Seek  5
 #define SYS_Stat  6
 #define SYS_Pid   7
+#define SYS_Ioctl 8
 
 #define SYS_ThreadCreate 10
 #define SYS_ThreadJoin   11

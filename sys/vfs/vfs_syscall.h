@@ -53,9 +53,17 @@ namespace VFS
 		int whence;
 	} __attribute__((packed));
 
+	struct VFSIoctlArgs
+	{
+		int fd;
+		uint32_t request;
+		void *arg;
+	};
+
 	KernReturn<uint32_t> Syscall_VFSOpen(OS::Thread *thread, VFSOpenArgs *arguments);
 	KernReturn<uint32_t> Syscall_VFSClose(OS::Thread *thread, VFSCloseArgs *arguments);
 	KernReturn<uint32_t> Syscall_VFSWrite(OS::Thread *thread, VFSWriteArgs *arguments);
 	KernReturn<uint32_t> Syscall_VFSRead(OS::Thread *thread, VFSReadArgs *arguments);
 	KernReturn<uint32_t> Syscall_VFSSeek(OS::Thread *thread, VFSSeekArgs *arguments);
+	KernReturn<uint32_t> Syscall_VFSIoctl(OS::Thread *thread, VFSIoctlArgs *arguments);
 }

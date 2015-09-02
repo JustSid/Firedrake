@@ -33,11 +33,34 @@ namespace CFS
 
 		_readProc = nullptr;
 		_writeProc = nullptr;
+		_sizeProc = nullptr;
+		_supportsSeek = false;
 		_memo = memo;
 
 		return this;
 	}
 
+
+	void Node::SetSizeProc(SizeProc proc)
+	{
+		_sizeProc = proc;
+	}
+	void Node::SetIoctlProc(IoctlProc proc)
+	{
+		_ioctlProc = proc;
+	}
+	void Node::SetSupportsSeek(bool seek)
+	{
+		_supportsSeek = seek;
+	}
+
+	size_t Node::GetSize() const
+	{
+		if(!_sizeProc)
+			return 0;
+
+		return _sizeProc(_memo);
+	}
 
 	KernReturn<size_t> Node::WriteData(VFS::Context *context, off_t offset, const void *data, size_t size)
 	{
@@ -64,5 +87,12 @@ namespace CFS
 		}
 
 		return Error(KERN_UNSUPPORTED);
+	}
+	KernReturn<void> Node::Ioctl(VFS::Context *context, uint32_t request, void *data)
+	{
+		if(!_ioctlProc)
+			return Error(KERN_INVALID_ARGUMENT);
+
+		return _ioctlProc(_memo, context, request, data);
 	}
 }

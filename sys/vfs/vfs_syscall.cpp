@@ -75,4 +75,14 @@ namespace VFS
 
 		return static_cast<uint32_t>(result.Get());
 	}
+
+	KernReturn<uint32_t> Syscall_VFSIoctl(OS::Thread *thread, VFSIoctlArgs *arguments)
+	{
+		KernReturn<void> result = Ioctl(thread->GetTask()->GetVFSContext(), arguments->fd, arguments->request, arguments->arg);
+
+		if(!result.IsValid())
+			return result.GetError();
+
+		return 0;
+	}
 }

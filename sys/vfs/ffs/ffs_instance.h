@@ -47,6 +47,8 @@ namespace FFS
 
 		KernReturn<void> Mount(VFS::Context *context, VFS::Instance *instance, VFS::Directory *target, const char *name) override;
 		KernReturn<void> Unmount(VFS::Context *context, VFS::Mountpoint *target) override;
+
+		KernReturn<void> Ioctl(VFS::Context *context, VFS::File *file, uint32_t request, void *data) override;
 		
 		IODeclareMeta(Instance)
 	};

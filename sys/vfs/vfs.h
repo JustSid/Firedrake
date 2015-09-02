@@ -53,6 +53,8 @@ namespace VFS
 	KernReturn<void> Mount(Context *context, Instance *instance, const char *target);
 	KernReturn<void> Unmount(Context *context, const char *path);
 
+	KernReturn<void> Ioctl(Context *context, int fd, uint32_t request, void *arg);
+
 	KernReturn<void> Init();
 }
 
