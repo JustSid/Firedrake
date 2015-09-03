@@ -55,6 +55,7 @@ set(SOURCES
 	libio/core/IORegistry.cpp
 	libio/core/IOSet.cpp
 	libio/core/IOString.cpp
+	os/console/console.cpp
 	os/IPC/IPCMessage.cpp
 	os/IPC/IPCPort.cpp
 	os/IPC/IPCSpace.cpp
@@ -75,9 +76,9 @@ set(SOURCES
 	os/syscall/kerntrapTable.cpp
 	os/syscall/syscall.cpp
 	os/syscall/syscallTable.cpp
+	os/pty.cpp
 	os/waitqueue.cpp
 	os/workqueue.cpp
-	personality/pc/video.cpp
 	${CONFIG_PERSONALITY_PATH}/personality.cpp
 	personality/personality.cpp
 	vfs/cfs/cfs_descriptor.cpp

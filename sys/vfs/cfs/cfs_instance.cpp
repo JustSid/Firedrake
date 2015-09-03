@@ -100,8 +100,10 @@ namespace CFS
 	}
 
 
-	KernReturn<VFS::File *> Instance::OpenFile(__unused VFS::Context *context, VFS::Node *node, int flags)
+	KernReturn<VFS::File *> Instance::OpenFile(__unused VFS::Context *context, VFS::Node *tnode, int flags)
 	{
+		CFS::Node *node = static_cast<CFS::Node *>(tnode);
+
 		if(node->IsFile())
 		{
 			VFS::File *file = VFS::File::Alloc()->Init(node, flags);
@@ -111,6 +113,7 @@ namespace CFS
 			if(flags & O_TRUNC)
 				node->SetSize(0);
 
+			node->Open();
 			return file;
 		}
 
@@ -119,7 +122,8 @@ namespace CFS
 			VFS::File *file = VFS::FileDirectory::Alloc()->Init(node, flags);
 			if(!file)
 				return Error(KERN_NO_MEMORY);
-			
+
+			node->Open();
 			return file;
 		}
 
@@ -128,7 +132,10 @@ namespace CFS
 
 	void Instance::CloseFile(__unused VFS::Context *context, VFS::File *file)
 	{
+		CFS::Node *node = static_cast<CFS::Node *>(file->GetNode());
+
 		file->Release();
+		node->Close();
 	}
 
 

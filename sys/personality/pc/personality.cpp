@@ -43,7 +43,6 @@ extern "C" init_array_func_t __init_array_end;
 #include <os/ipc/IPC.h>
 #include <os/linker/LDStore.h>
 #include <vfs/vfs.h>
-#include "video.h"
 
 #define COM_PORT 0x3f8
 #define kSysRemoveControlSequences 1
@@ -148,7 +147,6 @@ namespace Sys
 		Init("cpu", Sys::CPUInit);
 		Init("physical memory", Sys::PMInit);
 		Init("virtual memory", Sys::VMInit);
-		Init("video", InitVideo);
 		Init("heap", Sys::HeapInit);
 		Init("objects", IO::CatalogueInit);
 		Init("interrupts", Sys::InterruptsInit);

@@ -32,6 +32,8 @@ namespace CFS
 	{
 	public:
 		friend class Instance;
+
+		typedef void (*OpenCloseProc)(void *memo);
 		typedef size_t (*WriteProc)(void *memo, VFS::Context *context, off_t offset, const void *data, size_t size);
 		typedef size_t (*ReadProc)(void *memo, VFS::Context *context, off_t offset, void *data, size_t size);
 		typedef size_t (*SizeProc)(void *memo);
@@ -43,6 +45,8 @@ namespace CFS
 
 		void SetSizeProc(SizeProc proc);
 		void SetIoctlProc(IoctlProc proc);
+		void SetOpenProc(OpenCloseProc proc);
+		void SetCloseProc(OpenCloseProc proc);
 
 		void SetSupportsSeek(bool seek);
 
@@ -51,7 +55,13 @@ namespace CFS
 	private:
 		Node *Init(const char *name, VFS::Instance *instance, uint64_t id, void *memo);
 
+		void Open();
+		void Close();
+
 		void *_memo;
+
+		OpenCloseProc _openProc;
+		OpenCloseProc _closeProc;
 		ReadProc _readProc;
 		WriteProc _writeProc;
 		SizeProc _sizeProc;

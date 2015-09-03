@@ -34,6 +34,11 @@
 
 #include <os/pty.h>
 
+namespace OS
+{
+	void ConsoleCreatePTY();
+}
+
 namespace VFS
 {
 	static spinlock_t _descriptorLock = SPINLOCK_INIT;
@@ -536,6 +541,8 @@ namespace VFS
 
 			_devFS = instance->Downcast<CFS::Instance>();
 			_devFS->CreateNode("null", nullptr, &DevNullRead, &DevNullWrite).Suppress();
+
+			OS::ConsoleCreatePTY();
 		}
 
 #if 0

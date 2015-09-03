@@ -153,12 +153,16 @@ namespace OS
 		__unused Thread *bootstrapThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&BootstrapServerThread), Thread::PriorityClassKernel, 16, nullptr);
 
 		// Start the test program
-		//__unused Task *task1 = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test.bin");
-		//__unused Task *task2 = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/test_server.bin");
+		KernReturn<Task *> task = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/mishell.bin");
+		if(!task.IsValid())
+			panic("Didn't find mishell.bin, no idea what to launch with...");
 
 		while(1)
 		{
 			Scheduler::GetScheduler()->YieldThread(thread);
+
+			if(task->GetState() == Task::State::Died)
+				panic("Init task died!");
 		}
 	}
 }

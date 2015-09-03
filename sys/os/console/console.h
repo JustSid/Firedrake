@@ -1,9 +1,9 @@
 //
-//  pc/video.h
+//  pty.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2014 by Sidney Just
+//  Copyright (c) 2015 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,22 +16,18 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _PCPERSONALITY_VIDEO_H_
-#define _PCPERSONALITY_VIDEO_H_
+#ifndef _CONSOLE_H_
+#define _CONSOLE_H_
 
 #include <prefix.h>
 #include <kern/kern_return.h>
+#include <libio/hid/IOHIDKeyboardUtilities.h>
 
-namespace Sys
+namespace OS
 {
-	namespace Video
-	{
+	void ConsoleInput(IO::KeyboardEvent *event);
 
-
-		void Print(const char *string, size_t length);
-	}
-
-	KernReturn<void> InitVideo();
+	KernReturn<void> ConsoleInit();
 }
 
-#endif /* _PCPERSONALITY_VIDEO_H_ */
+#endif /* _CONSOLE_H_ */

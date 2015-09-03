@@ -25,6 +25,7 @@
 #include <libio/core/IORegistry.h>
 #include <libio/hid/IOHIDKeyboardUtilities.h>
 #include <os/scheduler/scheduler.h>
+#include <os/console/console.h>
 #include <machine/interrupts/interrupts.h>
 #include "LDModule.h"
 #include "LDService.h"
@@ -157,30 +158,7 @@ namespace OS
 		void __libkern_handleKeyboardEvent(void *context)
 		{
 			IO::KeyboardEvent *event = reinterpret_cast<IO::KeyboardEvent *>(context);
-
-			if(event->IsKeyDown())
-			{
-				kprintf("%c", event->GetCharacter());
-
-				switch(event->GetKeyCode())
-				{
-					case IO::KeyCodeArrowUp:
-						kprintf("\033[1A");
-						break;
-					case IO::KeyCodeArrowDown:
-						kprintf("\033[1B");
-						break;
-					case IO::KeyCodeArrowLeft:
-						kprintf("\033[1D");
-						break;
-					case IO::KeyCodeArrowRight:
-						kprintf("\033[1C");
-						break;
-
-					default:
-						break;
-				}
-			}
+			OS::ConsoleInput(event);
 		}
 
 		void __libkern_dispatchKeyboardEvent(IO::KeyboardEvent *event)

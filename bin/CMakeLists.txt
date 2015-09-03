@@ -5,3 +5,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -O2 -Wall -Wextra -pedantic -
 
 add_subdirectory("test")
 add_subdirectory("test_server")
+add_subdirectory("mishell")

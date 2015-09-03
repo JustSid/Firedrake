@@ -31,6 +31,8 @@ namespace CFS
 		if(!VFS::Node::Init(name, instance, VFS::Node::Type::File, id))
 			return nullptr;
 
+		_openProc = nullptr;
+		_closeProc = nullptr;
 		_readProc = nullptr;
 		_writeProc = nullptr;
 		_sizeProc = nullptr;
@@ -49,6 +51,16 @@ namespace CFS
 	{
 		_ioctlProc = proc;
 	}
+	void Node::SetOpenProc(OpenCloseProc proc)
+	{
+		_openProc = proc;
+	}
+	void Node::SetCloseProc(OpenCloseProc proc)
+	{
+		_closeProc = proc;
+	}
+
+
 	void Node::SetSupportsSeek(bool seek)
 	{
 		_supportsSeek = seek;
@@ -60,6 +72,17 @@ namespace CFS
 			return 0;
 
 		return _sizeProc(_memo);
+	}
+
+	void Node::Open()
+	{
+		if(_openProc)
+			_openProc(_memo);
+	}
+	void Node::Close()
+	{
+		if(_closeProc)
+			_closeProc(_memo);
 	}
 
 	KernReturn<size_t> Node::WriteData(VFS::Context *context, off_t offset, const void *data, size_t size)
