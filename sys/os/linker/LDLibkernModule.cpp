@@ -151,8 +151,13 @@ namespace OS
 			Sys::SetInterruptHandler(vector, &__libkern_interruptHandler);
 		}
 
-		void __libkern_dispatchKeyboardEvent(IO::KeyboardEvent *event)
+		static IO::KeyboardEvent _eventStack[128];
+		static size_t _eventStackSize = 0;
+
+		void __libkern_handleKeyboardEvent(void *context)
 		{
+			IO::KeyboardEvent *event = reinterpret_cast<IO::KeyboardEvent *>(context);
+
 			if(event->IsKeyDown())
 			{
 				kprintf("%c", event->GetCharacter());
@@ -176,6 +181,14 @@ namespace OS
 						break;
 				}
 			}
+		}
+
+		void __libkern_dispatchKeyboardEvent(IO::KeyboardEvent *event)
+		{
+			memcpy(_eventStack + _eventStackSize, event, sizeof(IO::KeyboardEvent));
+			Sys::CPU::GetCurrentCPU()->GetWorkQueue()->PushEntry(&__libkern_handleKeyboardEvent, _eventStack + _eventStackSize);
+
+			_eventStackSize = (_eventStackSize + 1) % 128;
 		}
 
 

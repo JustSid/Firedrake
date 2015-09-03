@@ -41,8 +41,6 @@ namespace OS
 					Sys::EnableInterrupts();
 				break;
 		}
-
-		WakeupOne(this);
 	}
 
 	void Mutex::Lock(Mode mode)
@@ -59,8 +57,6 @@ namespace OS
 
 				Sys::CPUPause();
 			}
-			
-			Wait(this).Suppress();
 		}
 	}
 

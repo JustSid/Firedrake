@@ -106,6 +106,8 @@ namespace IO
 	struct KeyboardEvent
 	{
 	public:
+		KeyboardEvent() = default;
+
 		KeyboardEvent(uint32_t keyCode, uint32_t modifier, bool keyDown) :
 			_keyCode(keyCode),
 			_modifier(modifier),

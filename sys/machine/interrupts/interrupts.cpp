@@ -96,6 +96,8 @@ uint32_t ir_handle_interrupt(uint32_t esp)
 
 namespace Sys
 {
+	static bool _interruptInitialized = false;
+
 	// --------------------
 	// MARK: -
 	// MARK: IDT
@@ -207,6 +209,9 @@ namespace Sys
 
 	void EnableInterrupts()
 	{
+		if(__expect_false(!_interruptInitialized))
+			return;
+
 		CPU *cpu = CPU::GetCurrentCPU();
 		cpu->AddFlags(CPU::Flags::InterruptsEnabled);
 
@@ -214,6 +219,9 @@ namespace Sys
 	}
 	bool DisableInterrupts()
 	{
+		if(__expect_false(!_interruptInitialized))
+			return false;
+
 		cli();
 
 		CPU *cpu = CPU::GetCurrentCPU();
@@ -240,6 +248,8 @@ namespace Sys
 			return result;
 
 		SetInterruptHandler(1, HandleWatchpoint);
+
+		_interruptInitialized = true;
 
 		panic_init();
 		EnableInterrupts();
