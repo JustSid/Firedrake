@@ -98,7 +98,7 @@ namespace IO
 }
 
 #define IOMemberFunctionCast(type, object, func) \
-	reinterpret_cast<type>(__ObjectMemberFunctionToPointer(object, (void (IO::Object::*)(void))func))
+	reinterpret_cast<type>(IO::__ObjectMemberFunctionToPointer(object, (void (IO::Object::*)(void))func))
 
 #define IOAssert(e, message) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed, %s", __func__, __LINE__, #e, message) : (void)0
 
