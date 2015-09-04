@@ -55,7 +55,12 @@ set(SOURCES
 	libio/core/IORegistry.cpp
 	libio/core/IOSet.cpp
 	libio/core/IOString.cpp
+	libio/video/IODisplay.cpp
+	libio/video/IOFramebuffer.cpp
 	os/console/console.cpp
+	os/console/graphicsconsole.cpp
+	os/console/iso_font.cpp
+	os/console/textconsole.cpp
 	os/IPC/IPCMessage.cpp
 	os/IPC/IPCPort.cpp
 	os/IPC/IPCSpace.cpp

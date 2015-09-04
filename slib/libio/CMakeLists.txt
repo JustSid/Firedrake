@@ -18,7 +18,9 @@ set(SOURCES
 	service/IOResources.cpp
 	service/IOService.cpp
 	service/IOThread.cpp
-	hid/IOHIDKeyboardService.cpp)
+	hid/IOHIDKeyboardService.cpp
+	video/IODisplay.cpp
+	video/IOFramebuffer.cpp)
 
 set(HEADERS
 	core/IOArray.h

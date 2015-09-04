@@ -1,5 +1,5 @@
 //
-//  pty.h
+//  console.h
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -21,11 +21,57 @@
 
 #include <prefix.h>
 #include <kern/kern_return.h>
+#include <libio/core/IOObject.h>
 #include <libio/hid/IOHIDKeyboardUtilities.h>
+#include <libio/video/IODisplay.h>
 
 namespace OS
 {
+	enum Color
+	{
+		ColorBlack,
+		ColorRed,
+		ColorGreen,
+		ColorYellow,
+		ColorBlue,
+		ColorMagenta,
+		ColorCyan,
+		ColorWhite
+	};
+
+	class Console : public IO::Object
+	{
+	public:
+		// Interface used by the actual driver to request rendering changes
+		virtual void ScrollLine() = 0;
+		virtual void Putc(char character) = 0;
+
+		virtual void SetColor(Color foreground, Color background) = 0;
+		virtual void SetColorIntensity(bool foregroundIntense, bool backgroundIntense) = 0;
+		virtual void SetCursor(size_t x, size_t y) = 0;
+		virtual void SetCursorHidden(bool hidden) = 0;
+		virtual void SetColorPair(Color color, bool intense, bool foreground) = 0;
+
+		size_t GetHeight() const { return height; }
+		size_t GetWidth() const { return width; }
+
+		size_t GetCursorX() const { return cursorX; }
+		size_t GetCursorY() const { return cursorY; }
+
+	protected:
+		Console *InitWithSize(size_t x, size_t y);
+
+		size_t cursorX;
+		size_t cursorY;
+		size_t width;
+		size_t height;
+
+	private:
+		IODeclareMetaVirtual(Console)
+	};
+
 	void ConsoleInput(IO::KeyboardEvent *event);
+	void ConsoleTakeDisplay(IO::Display *display);
 
 	KernReturn<void> ConsoleInit();
 }

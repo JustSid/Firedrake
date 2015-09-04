@@ -53,6 +53,8 @@ void *__libio_getIORootRegistry()
 {
 	return NULL;
 }
+void __libio_publishDisplay(__unused void *display)
+{}
 
 
 void thread_create(__unused void (*entry)(void *), __unused void *argument)
@@ -74,6 +76,8 @@ void __cxa_atexit()
 
 
 void *__libkern_dma_map(__unused uintptr_t physical, __unused size_t pages)
-{}
+{
+	return NULL;
+}
 void __libkern_dma_free(__unused void *virt, __unused size_t pages)
 {}

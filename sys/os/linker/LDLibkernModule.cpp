@@ -24,6 +24,7 @@
 #include <libio/core/IOArray.h>
 #include <libio/core/IORegistry.h>
 #include <libio/hid/IOHIDKeyboardUtilities.h>
+#include <libio/video/IODisplay.h>
 #include <os/scheduler/scheduler.h>
 #include <os/console/console.h>
 #include <machine/interrupts/interrupts.h>
@@ -54,6 +55,10 @@ namespace OS
 		void *__libio_getIORootRegistry()
 		{
 			return IO::RegistryEntry::GetRootEntry();
+		}
+		void __libio_publishDisplay(void *display)
+		{
+			OS::ConsoleTakeDisplay(reinterpret_cast<IO::Display *>(display));
 		}
 
 
@@ -265,6 +270,7 @@ namespace OS
 				ELF_SYMBOL_STUB(__libio_getIOCatalogue),
 				ELF_SYMBOL_STUB(__libio_getIONull),
 				ELF_SYMBOL_STUB(__libio_getIORootRegistry),
+				ELF_SYMBOL_STUB(__libio_publishDisplay),
 				ELF_SYMBOL_STUB(thread_yield),
 				ELF_SYMBOL_STUB(thread_create),
 				ELF_SYMBOL_STUB(__libkern_dma_map),

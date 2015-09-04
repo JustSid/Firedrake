@@ -46,6 +46,8 @@
       <sourceFolder url="file://$MODULE_DIR$/lib/libc/sys/dirent.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib/libc/sys/errno.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib/libc/sys/fcntl.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/libc/sys/ioctl.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/libc/sys/ioctl.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib/libc/sys/kern_return.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib/libc/sys/kern_trap.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib/libc/sys/mman.c" isTestSource="false" />
@@ -72,8 +74,6 @@
       <sourceFolder url="file://$MODULE_DIR$/slib/libhid/IOHIDModule.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libhid/IOHIDPS2KeyboardService.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libhid/IOHIDPS2KeyboardService.h" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/slib/libhid/IOHIDServiceProvider.cpp" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/slib/libhid/IOHIDServiceProvider.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/CMakeLists.txt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOArray.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOArray.h" isTestSource="false" />
@@ -83,12 +83,17 @@
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IODictionary.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOFunction.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOHashtableInternal.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOMemoryRegion.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOMemoryRegion.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IONull.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IONull.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IONumber.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IONumber.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOObject.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOObject.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IORegistry.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IORegistry.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IORuntime.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IORuntime.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOSet.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/core/IOSet.h" isTestSource="false" />
@@ -101,12 +106,16 @@
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOConnector.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOModule.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOModule.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOResources.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOResources.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOService.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOService.h" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOServiceProvider.cpp" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOServiceProvider.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOThread.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libio/service/IOThread.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/video/IODisplay.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/video/IODisplay.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/video/IOFramebuffer.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libio/video/IOFramebuffer.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libkern/CMakeLists.txt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libkern/kmod.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libkern/libc/ipc/ipc_message.c" isTestSource="false" />
@@ -141,6 +150,17 @@
       <sourceFolder url="file://$MODULE_DIR$/slib/libkern/libkern.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libkern/port.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/slib/libkern/stubs.c" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libpci/CMakeLists.txt" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libpci/IOPCIDevice.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libpci/IOPCIDevice.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libpci/IOPCIDeviceResource.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libpci/IOPCIDeviceResource.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libpci/IOPCIProvider.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libpci/IOPCIProvider.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libqemu/CMakeLists.txt" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libqemu/QMModule.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libqemu/QMVBEDevice.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/slib/libqemu/QMVBEDevice.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/CMakeLists.txt" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/bootstrap/boot.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/bootstrap/multiboot.h" isTestSource="false" />
@@ -203,12 +223,18 @@
       <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IONumber.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IOObject.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IOObject.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IORegistry.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IORegistry.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IORuntime.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IOSet.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IOSet.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IOString.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/libio/core/IOString.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/libio/hid/IOHIDKeyboardUtilities.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/libio/video/IODisplay.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/libio/video/IODisplay.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/libio/video/IOFramebuffer.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/libio/video/IOFramebuffer.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/machine/acpi.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/machine/acpi.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/machine/clock/clock.cpp" isTestSource="false" />
@@ -241,6 +267,13 @@
       <sourceFolder url="file://$MODULE_DIR$/sys/machine/smp/smp.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/machine/smp/smp.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/machine/smp/smp_bootstrap.S" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/os/console/console.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/os/console/console.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/os/console/graphicsconsole.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/os/console/graphicsconsole.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/os/console/iso_font.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/os/console/textconsole.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/os/console/textconsole.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/os/ipc/IPC.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/os/ipc/IPCMessage.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/os/ipc/IPCMessage.h" isTestSource="false" />
@@ -264,6 +297,8 @@
       <sourceFolder url="file://$MODULE_DIR$/sys/os/loader/loader.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/os/locks/mutex.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/os/locks/mutex.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/os/pty.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/os/pty.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/os/scheduler/scheduler.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/os/scheduler/scheduler.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/os/scheduler/scheduler_syscall.cpp" isTestSource="false" />
@@ -284,12 +319,16 @@
       <sourceFolder url="file://$MODULE_DIR$/sys/os/workqueue.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/personality/pc/personality.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/personality/pc/personality.h" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/sys/personality/pc/video.cpp" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/sys/personality/pc/video.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/personality/personality.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/personality/personality.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/prefix.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/version.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_descriptor.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_descriptor.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_instance.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_instance.h" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_node.cpp" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_node.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/vfs/context.cpp" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/vfs/context.h" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/sys/vfs/descriptor.cpp" isTestSource="false" />
@@ -327,6 +366,8 @@
           <root url="file://$MODULE_DIR$/slib/libhid" />
           <root url="file://$MODULE_DIR$/slib/libio" />
           <root url="file://$MODULE_DIR$/slib/libkern" />
+          <root url="file://$MODULE_DIR$/slib/libpci" />
+          <root url="file://$MODULE_DIR$/slib/libqemu" />
           <root url="file://$MODULE_DIR$/sys" />
         </CLASSES>
         <SOURCES>
@@ -338,9 +379,13 @@
           <root url="file://$MODULE_DIR$/slib/libhid" />
           <root url="file://$MODULE_DIR$/slib/libio" />
           <root url="file://$MODULE_DIR$/slib/libkern" />
+          <root url="file://$MODULE_DIR$/slib/libpci" />
+          <root url="file://$MODULE_DIR$/slib/libqemu" />
           <root url="file://$MODULE_DIR$/sys" />
         </SOURCES>
         <excluded>
+          <root url="file://$MODULE_DIR$/lib/libc/sys/ioctl.c" />
+          <root url="file://$MODULE_DIR$/lib/libc/sys/ioctl.h" />
           <root url="file://$MODULE_DIR$/lib/libc/sys/x86/syscall.S" />
           <root url="file://$MODULE_DIR$/lib/libc/sys/x86/spinlock.S" />
           <root url="file://$MODULE_DIR$/lib/libc/sys/unistd.h" />
@@ -394,17 +439,24 @@
           <root url="file://$MODULE_DIR$/lib/libc/backtrace.c" />
           <root url="file://$MODULE_DIR$/lib/libc/assert.h" />
           <root url="file://$MODULE_DIR$/lib/libc/CMakeLists.txt" />
-          <root url="file://$MODULE_DIR$/slib/libhid/IOHIDServiceProvider.h" />
-          <root url="file://$MODULE_DIR$/slib/libhid/IOHIDServiceProvider.cpp" />
           <root url="file://$MODULE_DIR$/slib/libhid/IOHIDPS2KeyboardService.h" />
           <root url="file://$MODULE_DIR$/slib/libhid/IOHIDPS2KeyboardService.cpp" />
           <root url="file://$MODULE_DIR$/slib/libhid/IOHIDModule.h" />
           <root url="file://$MODULE_DIR$/slib/libhid/IOHIDModule.cpp" />
           <root url="file://$MODULE_DIR$/slib/libhid/CMakeLists.txt" />
+          <root url="file://$MODULE_DIR$/slib/libio/core/IOMemoryRegion.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libio/core/IOMemoryRegion.h" />
+          <root url="file://$MODULE_DIR$/slib/libio/video/IODisplay.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libio/video/IODisplay.h" />
+          <root url="file://$MODULE_DIR$/slib/libio/video/IOFramebuffer.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libio/video/IOFramebuffer.h" />
+          <root url="file://$MODULE_DIR$/slib/libio/service/IOResources.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libio/core/IORuntime.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libio/core/IORegistry.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libio/core/IORegistry.h" />
+          <root url="file://$MODULE_DIR$/slib/libio/service/IOResources.h" />
           <root url="file://$MODULE_DIR$/slib/libio/service/IOThread.h" />
           <root url="file://$MODULE_DIR$/slib/libio/service/IOThread.cpp" />
-          <root url="file://$MODULE_DIR$/slib/libio/service/IOServiceProvider.h" />
-          <root url="file://$MODULE_DIR$/slib/libio/service/IOServiceProvider.cpp" />
           <root url="file://$MODULE_DIR$/slib/libio/service/IOService.h" />
           <root url="file://$MODULE_DIR$/slib/libio/service/IOService.cpp" />
           <root url="file://$MODULE_DIR$/slib/libio/service/IOModule.h" />
@@ -468,6 +520,33 @@
           <root url="file://$MODULE_DIR$/slib/libkern/libc/ipc/ipc_message.c" />
           <root url="file://$MODULE_DIR$/slib/libkern/kmod.h" />
           <root url="file://$MODULE_DIR$/slib/libkern/CMakeLists.txt" />
+          <root url="file://$MODULE_DIR$/slib/libpci/IOPCIProvider.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libpci/IOPCIProvider.h" />
+          <root url="file://$MODULE_DIR$/slib/libpci/CMakeLists.txt" />
+          <root url="file://$MODULE_DIR$/slib/libpci/IOPCIDevice.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libpci/IOPCIDevice.h" />
+          <root url="file://$MODULE_DIR$/slib/libpci/IOPCIDeviceResource.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libpci/IOPCIDeviceResource.h" />
+          <root url="file://$MODULE_DIR$/slib/libqemu/CMakeLists.txt" />
+          <root url="file://$MODULE_DIR$/slib/libqemu/QMVBEDevice.cpp" />
+          <root url="file://$MODULE_DIR$/slib/libqemu/QMVBEDevice.h" />
+          <root url="file://$MODULE_DIR$/slib/libqemu/QMModule.cpp" />
+          <root url="file://$MODULE_DIR$/sys/os/console/console.cpp" />
+          <root url="file://$MODULE_DIR$/sys/os/pty.cpp" />
+          <root url="file://$MODULE_DIR$/sys/os/pty.h" />
+          <root url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_instance.h" />
+          <root url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_node.cpp" />
+          <root url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_descriptor.h" />
+          <root url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_descriptor.cpp" />
+          <root url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_node.h" />
+          <root url="file://$MODULE_DIR$/sys/vfs/cfs/cfs_instance.cpp" />
+          <root url="file://$MODULE_DIR$/sys/libio/core/IORegistry.h" />
+          <root url="file://$MODULE_DIR$/sys/libio/video/IODisplay.h" />
+          <root url="file://$MODULE_DIR$/sys/libio/video/IODisplay.cpp" />
+          <root url="file://$MODULE_DIR$/sys/libio/video/IOFramebuffer.h" />
+          <root url="file://$MODULE_DIR$/sys/os/console/console.h" />
+          <root url="file://$MODULE_DIR$/sys/libio/core/IORegistry.cpp" />
+          <root url="file://$MODULE_DIR$/sys/libio/video/IOFramebuffer.cpp" />
           <root url="file://$MODULE_DIR$/sys/vfs/vfs_syscall.h" />
           <root url="file://$MODULE_DIR$/sys/vfs/vfs_syscall.cpp" />
           <root url="file://$MODULE_DIR$/sys/vfs/vfs.h" />
@@ -494,8 +573,6 @@
           <root url="file://$MODULE_DIR$/sys/prefix.h" />
           <root url="file://$MODULE_DIR$/sys/personality/personality.h" />
           <root url="file://$MODULE_DIR$/sys/personality/personality.cpp" />
-          <root url="file://$MODULE_DIR$/sys/personality/pc/video.h" />
-          <root url="file://$MODULE_DIR$/sys/personality/pc/video.cpp" />
           <root url="file://$MODULE_DIR$/sys/personality/pc/personality.h" />
           <root url="file://$MODULE_DIR$/sys/personality/pc/personality.cpp" />
           <root url="file://$MODULE_DIR$/sys/os/workqueue.h" />
@@ -639,6 +716,11 @@
           <root url="file://$MODULE_DIR$/sys/os/kernel/kerneltask.cpp" />
           <root url="file://$MODULE_DIR$/sys/machine/interrupts/interrupts.cpp" />
           <root url="file://$MODULE_DIR$/sys/machine/gdt.cpp" />
+          <root url="file://$MODULE_DIR$/sys/os/console/graphicsconsole.h" />
+          <root url="file://$MODULE_DIR$/sys/os/console/graphicsconsole.cpp" />
+          <root url="file://$MODULE_DIR$/sys/os/console/textconsole.h" />
+          <root url="file://$MODULE_DIR$/sys/os/console/textconsole.cpp" />
+          <root url="file://$MODULE_DIR$/sys/os/console/iso_font.cpp" />
         </excluded>
       </library>
     </orderEntry>

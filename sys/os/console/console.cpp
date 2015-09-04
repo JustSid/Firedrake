@@ -1,5 +1,5 @@
 //
-//  pty.h
+//  console.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
@@ -22,13 +22,33 @@
 #include <libc/stdlib.h>
 #include <libc/stdint.h>
 #include <libc/string.h>
-#include <kern/kprintf.h>
 #include "console.h"
+#include "textconsole.h"
+#include "graphicsconsole.h"
 
 #define kConsoleBufferSize 80*80
 
 namespace OS
 {
+	IODefineMetaVirtual(Console, IO::Object)
+
+	Console *Console::InitWithSize(size_t x, size_t y)
+	{
+		if(!IO::Object::Init())
+			return nullptr;
+
+		width = x;
+		height = y;
+
+		cursorX = 0;
+		cursorY = 0;
+
+		return this;
+	}
+
+
+	static Mutex _consoleMutex;
+	static Console *_console;
 	static PTY *_consolePty;
 	static int _consolePtyFd;
 
@@ -37,22 +57,8 @@ namespace OS
 	static ConsoleRingbuffer *_consoleTempBuffer;
 	static uint8_t *_consoleTempBufferBuffer[sizeof(ConsoleRingbuffer)];
 
-	static size_t _consoleCursorX = 0;
-	static size_t _consoleCursorY = 0;
-	static size_t _consoleWidth = 80;
-	static size_t _consoleHeight = 25;
-
-	enum Color
-	{
-		ColorBlack,
-		ColorRed,
-		ColorGreen,
-		ColorYellow,
-		ColorBlue,
-		ColorMagenta,
-		ColorCyan,
-		ColorWhite
-	};
+	static ConsoleRingbuffer *_consoleReplayBuffer;
+	static uint8_t *_consoleReplayBufferBuffer[sizeof(ConsoleRingbuffer)];
 
 	enum class State
 	{
@@ -61,96 +67,10 @@ namespace OS
 		Got033E // \033[
 	};
 
-	static uint8_t *_videoAddress = reinterpret_cast<uint8_t *>(0xb8000);
-
-	// Normal, Bright
-	static uint8_t ColorTable[2][8] = { { 0x0, 0x4, 0x2, 0x6, 0x1, 0x5, 0x3, 0x7 }, { 0x8, 0xc, 0xa, 0xe, 0x9, 0xd, 0xb, 0xf } };
-	static Color _consoleColor[2] = { ColorWhite, ColorBlack }; // 0 is foreground, 1 is background
-	static int8_t _colorIntensity[2] = { 0, 0 }; // Same as above
-
 	static State _consoleState;
 	static char _consoleAnsiBuffer[128];
 	static size_t _consoleAnsiBufferLength = 0;
 
-
-	void SetColor(size_t x, size_t y, Color foreground, Color background)
-	{
-		size_t index = (y * _consoleWidth + x) * 2;
-
-		uint8_t foregroundColor = ColorTable[_colorIntensity[0]][foreground];
-		uint8_t backgroundColor = ColorTable[_colorIntensity[1]][background];
-
-		_videoAddress[index + 1] = (backgroundColor << 4) | (foregroundColor & 0x0F);
-	}
-
-	void ScrollLine()
-	{
-		for(size_t i = 0; i < _consoleHeight - 1; i ++)
-		{
-			memcpy(&_videoAddress[(i * _consoleWidth) * 2], &_videoAddress[((i + 1) * _consoleWidth) * 2], _consoleWidth * 2);
-		}
-
-		memset(&_videoAddress[((_consoleHeight - 1) * _consoleWidth) * 2], 0, _consoleWidth * 2);
-		_consoleCursorY --;
-	}
-
-	void ReadColor(uint8_t color, Color &outColor, int8_t &outIntensity)
-	{
-		switch(color)
-		{
-			case 0x0:
-			case 0x8:
-				outColor = ColorBlack;
-				outIntensity = (color >= 0x8);
-				break;
-			case 0x4:
-			case 0xc:
-				outColor = ColorRed;
-				outIntensity = (color >= 0x8);
-				break;
-			case 0x2:
-			case 0xa:
-				outColor = ColorGreen;
-				outIntensity = (color >= 0x8);
-				break;
-			case 0x6:
-			case 0xe:
-				outColor = ColorYellow;
-				outIntensity = (color >= 0x8);
-				break;
-			case 0x1:
-			case 0x9:
-				outColor = ColorBlue;
-				outIntensity = (color >= 0x8);
-				break;
-			case 0x5:
-			case 0xd:
-				outColor = ColorMagenta;
-				outIntensity = (color >= 0x8);
-				break;
-			case 0x3:
-			case 0xb:
-				outColor = ColorCyan;
-				outIntensity = (color >= 0x8);
-				break;
-			case 0x7:
-			case 0xf:
-				outColor = ColorWhite;
-				outIntensity = (color >= 0x8);
-				break;
-		}
-	}
-
-	void UpdateColor()
-	{
-		size_t index = (_consoleCursorY * _consoleWidth + _consoleCursorX) * 2;
-
-		if(_videoAddress[index + 1] != 0)
-		{
-			ReadColor((_videoAddress[index + 1] >> 4) & 0xf, _consoleColor[0], _colorIntensity[0]);
-			ReadColor(_videoAddress[index + 1] & 0xf, _consoleColor[1], _colorIntensity[1]);
-		}
-	}
 
 	void ParseControlSequence(const char *sequence, char terminator)
 	{
@@ -159,56 +79,66 @@ namespace OS
 			case 'A':
 			{
 				int num = atoi(sequence);
-				while((num --) && _consoleCursorY > 0)
-					_consoleCursorY --;
+				size_t cursorY = _console->GetCursorY();
 
-				UpdateColor();
+				while((num --) && cursorY > 0)
+					cursorY --;
+
+				_console->SetCursor(_console->GetCursorX(), cursorY);
 				break;
 			}
 			case 'B':
 			{
-				_consoleCursorY += atoi(sequence);
-				_consoleCursorY = std::min(_consoleCursorY, _consoleHeight - 1);
+				size_t cursorY = _console->GetCursorY();
 
-				UpdateColor();
+				cursorY += atoi(sequence);
+				cursorY = std::min(cursorY, _console->GetHeight() - 1);
+
+				_console->SetCursor(_console->GetCursorX(), cursorY);
 				break;
 			}
 
 			case 'C':
 			{
-				_consoleCursorX += atoi(sequence);
-				_consoleCursorX = std::min(_consoleCursorX, _consoleWidth - 1);
+				size_t cursorX = _console->GetCursorX();
 
-				UpdateColor();
+				cursorX += atoi(sequence);
+				cursorX = std::min(cursorX, _console->GetWidth() - 1);
+
+				_console->SetCursor(cursorX, _console->GetCursorY());
 				break;
 			}
 			case 'D':
 			{
 				int num = atoi(sequence);
-				while((num --) && _consoleCursorX > 0)
-					_consoleCursorX --;
+				size_t cursorX = _console->GetCursorX();
 
-				UpdateColor();
+				while((num --) && cursorX > 0)
+					cursorX --;
+
+				_console->SetCursor(cursorX, _console->GetCursorY());
 				break;
 			}
 
 			case 'E':
 			{
-				_consoleCursorY += atoi(sequence);
-				_consoleCursorY = std::min(_consoleCursorY, _consoleHeight - 1);
+				size_t cursorY = _console->GetCursorY();
 
-				_consoleCursorX = 0;
-				UpdateColor();
+				cursorY += atoi(sequence);
+				cursorY = std::min(cursorY, _console->GetHeight() - 1);
+
+				_console->SetCursor(0, cursorY);
 				break;
 			}
 			case 'F':
 			{
 				int num = atoi(sequence);
-				while((num --) && _consoleCursorY > 0)
-					_consoleCursorY --;
+				size_t cursorY = _console->GetCursorY();
 
-				_consoleCursorX = 0;
-				UpdateColor();
+				while((num --) && cursorY > 0)
+					cursorY --;
+
+				_console->SetCursor(0, cursorY);
 				break;
 			}
 
@@ -226,10 +156,10 @@ namespace OS
 
 				int y = atoi(sequence);
 
-				_consoleCursorX = std::max(0, std::min(static_cast<int>(_consoleWidth), x));
-				_consoleCursorY = std::max(0, std::min(static_cast<int>(_consoleHeight), y));
+				int cursorX = std::max(0, std::min(static_cast<int>(_console->GetWidth()), x));
+				int cursorY = std::max(0, std::min(static_cast<int>(_console->GetHeight()), y));
 
-				UpdateColor();
+				_console->SetCursor(cursorX, cursorY);
 				break;
 			}
 
@@ -269,11 +199,8 @@ namespace OS
 					switch(code)
 					{
 						case 0:
-							_consoleColor[1] = ColorBlack;
-							_consoleColor[0] = ColorWhite;
-
-							_colorIntensity[0] = 0;
-							_colorIntensity[1] = 0;
+							_console->SetColor(ColorWhite, ColorBlack);
+							_console->SetColorIntensity(false, false);
 							break;
 
 						case 1:
@@ -288,8 +215,7 @@ namespace OS
 						case 35:
 						case 36:
 						case 37:
-							_consoleColor[0] = static_cast<Color>(code - 30);
-							_colorIntensity[0] = brightColor;
+							_console->SetColorPair(static_cast<Color>(code - 30), brightColor, true);
 							break;
 
 						case 40:
@@ -300,8 +226,7 @@ namespace OS
 						case 45:
 						case 46:
 						case 47:
-							_consoleColor[1] = static_cast<Color>(code - 40);
-							_colorIntensity[1] = brightColor;
+							_console->SetColorPair(static_cast<Color>(code - 40), brightColor, false);
 							break;
 					}
 
@@ -319,72 +244,17 @@ namespace OS
 		}
 	}
 
-
-
-
-
-	void ConsolePuts(const char *string, size_t length)
-	{
-		if(__expect_false(!_consolePty))
-		{
-			for(size_t i = 0; i < length; i ++)
-				_consoleTempBuffer->push(*string ++);
-
-			return;
-		}
-
-		VFS::Write(VFS::Context::GetKernelContext(), _consolePtyFd, string, length);
-	}
-
-	void ConsolePTYMasterPutc(char character)
+	void __ConsolePutc(char character)
 	{
 		if(_consoleState == State::Normal)
 		{
-			switch(character)
+			if(character == '\033')
 			{
-				case '\n':
-				{
-					_consoleCursorX = 0;
-
-					if((++ _consoleCursorY) >= _consoleHeight)
-						ScrollLine();
-
-					break;
-				}
-				case '\t':
-				{
-					_consoleCursorX += 4;
-					break;
-				}
-				case '\b':
-				{
-					if(_consoleCursorX > 0)
-						_consoleCursorX --;
-
-					_videoAddress[(_consoleCursorY * _consoleWidth + _consoleCursorX) * 2] = 0;
-					break;
-				}
-				case '\033':
-				{
-					_consoleState = State::Got033;
-					break;
-				}
-				default:
-				{
-					_videoAddress[(_consoleCursorY * _consoleWidth + _consoleCursorX) * 2] = character;
-
-					SetColor(_consoleCursorX, _consoleCursorY, _consoleColor[0], _consoleColor[1]);
-
-					if((++ _consoleCursorX) >= _consoleWidth)
-					{
-						_consoleCursorX = 0;
-
-						if((++ _consoleCursorY) >= _consoleHeight)
-							ScrollLine();
-					}
-					break;
-				}
+				_consoleState = State::Got033;
+				return;
 			}
+
+			_console->Putc(character);
 		}
 		else
 		{
@@ -415,7 +285,29 @@ namespace OS
 					break;
 			}
 		}
+	}
 
+	void ConsolePTYMasterPutc(char character)
+	{
+		_consoleMutex.Lock();
+		__ConsolePutc(character);
+		_consoleReplayBuffer->push(character);
+		_consoleMutex.Unlock();
+	}
+
+
+	// The kprintf() output handler, pipe it directly into the PTY
+	void ConsolePuts(const char *string, size_t length)
+	{
+		if(__expect_false(!_consolePty))
+		{
+			for(size_t i = 0; i < length; i ++)
+				_consoleTempBuffer->push(*string ++);
+
+			return;
+		}
+
+		VFS::Write(VFS::Context::GetKernelContext(), _consolePtyFd, string, length);
 	}
 
 
@@ -427,17 +319,16 @@ namespace OS
 			string[0] = event->GetCharacter();
 			string[1] = 0;
 
-			if(string[0] == 0)
+			if(string[0] != 0)
+			{
+				kputs(string); // Use kputs() instead of writing to the PTY directly
 				return;
-
-			kputs(string); // Use kputs() instead of writing to the PTY directly
-
+			}
 		}
 
-		/*if(event->IsKeyDown())
+		// Special character handling
+		if(event->IsKeyDown())
 		{
-			kprintf("%c", event->GetCharacter());
-
 			switch(event->GetKeyCode())
 			{
 				case IO::KeyCodeArrowUp:
@@ -456,15 +347,41 @@ namespace OS
 				default:
 					break;
 			}
-		}*/
+		}
 	}
 
+	void ConsoleTakeDisplay(IO::Display *display)
+	{
+		// We latch onto the first display that presents itself to us
+		// And then just never let go of it...
+		if(!_console->IsKindOfClass(GraphicsConsole::GetMetaClass()))
+		{
+			_consoleMutex.Lock();
+
+			_console->Release();
+			_console = GraphicsConsole::Alloc()->InitWithDisplay(display);
+
+			// Update the PTY with the new size
+			winsize size;
+			size.ws_col = static_cast<uint16_t>(_console->GetWidth());
+			size.ws_row = static_cast<uint16_t>(_console->GetHeight());
+
+			VFS::Ioctl(VFS::Context::GetKernelContext(), _consolePtyFd, TIOCSWINSZ, &size);
+
+			// Apply the replay buffer
+			while(_consoleReplayBuffer->size())
+				__ConsolePutc(_consoleReplayBuffer->pop());
+
+			_consoleMutex.Unlock();
+		}
+	}
 
 	void ConsoleCreatePTY()
 	{
-		Sys::VM::Directory *directory = Sys::VM::Directory::GetKernelDirectory();
-		directory->MapPageRange(0xb8000, 0xb8000, 1, kVMFlagsKernel);
+		// Start out with the basic text mode console
+		_console = TextConsole::Alloc()->Init();
 
+		// Create the PTY
 		_consolePty = PTY::Alloc()->Init();
 		_consolePty->GetMasterDevice()->SetPutcProc(ConsolePTYMasterPutc);
 		_consolePtyFd = VFS::Open(VFS::Context::GetKernelContext(), "/dev/pty001", O_RDWR);
@@ -488,6 +405,8 @@ namespace OS
 	KernReturn<void> ConsoleInit()
 	{
 		_consoleTempBuffer = new(_consoleTempBufferBuffer) ConsoleRingbuffer();
+		_consoleReplayBuffer = new(_consoleReplayBufferBuffer) ConsoleRingbuffer();
+
 		Sys::AddOutputHandler(&ConsolePuts);
 
 		return ErrorNone;

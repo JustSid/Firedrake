@@ -8,3 +8,4 @@ add_subdirectory("libio")
 
 add_subdirectory("libhid")
 add_subdirectory("libpci")
+add_subdirectory("libqemu")
