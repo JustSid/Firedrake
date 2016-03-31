@@ -18,8 +18,6 @@
 
 #include <libc/sys/asm.h>
 
-.global ir_handl_interrupt
-
 TEXT()
 GLOBAL(idt_begin)
 
