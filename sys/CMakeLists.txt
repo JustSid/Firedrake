@@ -153,8 +153,6 @@ endforeach()
 
 # Compiler settings
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-unused-parameter -pedantic-errors -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -nostdlib -nostdinc")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-overloaded-virtual -Wno-reorder -Wno-unused-parameter -pedantic-errors -fno-threadsafe-statics -fno-stack-protector -fno-builtin -fno-rtti -fno-exceptions -nostdinc -nostdlib")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T \"${CMAKE_CURRENT_SOURCE_DIR}/Makefile.ld\"")
 
 add_definitions(-D__KERNEL)
