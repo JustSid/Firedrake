@@ -90,7 +90,7 @@ namespace Sys
 
 	struct CPUData
 	{
-		uint16_t cpuID;
+		uint32_t cpuID;
 		pid_t pid;
 		tid_t tid;
 		vm_address_t tls;

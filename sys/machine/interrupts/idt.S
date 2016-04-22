@@ -146,7 +146,7 @@ ENTRY(idt_entry_handler)
 	movl %eax, %esp
 
 	// Get the address of the new page directory
-	movl %fs:0, %eax
+	movl %fs:0, %eax // Contains the ID of the current CPU
 	imull $0x89c, %eax // 0x89c == sizeof(Sys::Trampoline)
 
 	movl $0xffb01000, %ecx

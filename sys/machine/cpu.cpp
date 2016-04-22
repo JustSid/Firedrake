@@ -130,8 +130,8 @@ namespace Sys
 			return GetCPUWithApicID(apic);
 		}
 
-		uint16_t id;
-		__asm__ volatile("movw %%fs:0, %0" : "=a" (id));
+		uint32_t id;
+		__asm__ volatile("movl %%fs:0, %0" : "=a" (id));
 
 		return &_cpu[id];
 	}
@@ -150,8 +150,8 @@ namespace Sys
 			return cpu->_id;
 		}
 
-		uint16_t id;
-		__asm__ volatile("movw %%fs:0, %0" : "=a" (id));
+		uint32_t id;
+		__asm__ volatile("movl %%fs:0, %0" : "=a" (id));
 
 		return id;
 	}
