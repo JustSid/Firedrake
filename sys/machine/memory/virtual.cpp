@@ -95,8 +95,8 @@ namespace Sys
 		public:
 			ScopedMapping(Directory *directory, uintptr_t physical, size_t pages) :
 				_directory(directory),
-				_pages(pages),
-				_address(0)
+				_address(0),
+				_pages(pages)
 			{
 				KernReturn<vm_address_t> result = directory->Alloc(physical, pages, kVMFlagsKernel);
 

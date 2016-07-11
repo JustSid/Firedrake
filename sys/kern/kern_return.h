@@ -97,8 +97,8 @@ public:
 	{}
 	
 	KernReturn(KernReturn &&other) :
-		_error(other._error),
 		_value(std::move(other._value)),
+		_error(other._error),
 		_acknowledged(false)
 	{
 		other._acknowledged = true;
@@ -152,9 +152,9 @@ class KernReturn<T *>
 {
 public:
 	KernReturn() :
+		_value(nullptr),
 		_error(KERN_SUCCESS),
-		_acknowledged(false),
-		_value(nullptr)
+		_acknowledged(false)
 	{}
 	
 	KernReturn(T *value) :
@@ -164,13 +164,14 @@ public:
 	{}
 	
 	KernReturn(const Error &e) :
+		_value(nullptr),
 		_error(e),
 		_acknowledged(false)
 	{}
 	
 	KernReturn(KernReturn &&other) :
-		_error(other._error),
 		_value(std::move(other._value)),
+		_error(other._error),
 		_acknowledged(false)
 	{
 		other._acknowledged = true;

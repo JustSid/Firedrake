@@ -41,11 +41,11 @@ namespace OS
 
 		CPUScheduler(Sys::CPU *cpu) :
 			_cpu(cpu),
+			_activeThread(nullptr),
+			_idleThread(nullptr),
+			_nextThread(nullptr),
 			_firstRun(true),
 			_hasForcedDown(false),
-			_activeThread(nullptr),
-			_nextThread(nullptr),
-			_idleThread(nullptr),
 			_needsReschedule(false),
 			_enabled(true)
 		{

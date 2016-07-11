@@ -129,7 +129,7 @@ namespace OS
 		UpdateColor();
 	}
 
-	void TextConsole::SetCursorHidden(bool hidden)
+	void TextConsole::SetCursorHidden(__unused bool hidden)
 	{}
 
 	void TextConsole::SetColorPair(Color color, bool intense, bool foreground)

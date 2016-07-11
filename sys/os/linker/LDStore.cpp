@@ -37,7 +37,7 @@ namespace OS
 
 			IO::Array *array = IO::Array::Alloc()->Init();
 
-			_moduleStore->Enumerate<Module, IO::Object>([&](Module *module, IO::Object *key, bool &stop) {
+			_moduleStore->Enumerate<Module, IO::Object>([&](Module *module, __unused IO::Object *key, __unused bool &stop) {
 				array->AddObject(module);
 			});
 
@@ -136,7 +136,7 @@ namespace OS
 
 			IO::StrongRef<Module> result(nullptr);
 
-			_moduleStore->Enumerate<IO::String, Module>([&](IO::String *name, Module *module, bool &stop) {
+			_moduleStore->Enumerate<IO::String, Module>([&](__unused IO::String *name, Module *module, bool &stop) {
 
 				if(module->ContainsAddress(address))
 				{

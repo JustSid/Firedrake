@@ -24,10 +24,10 @@
 namespace VFS
 {
 	Context::Context(OS::Task *task, Sys::VM::Directory *directory, Node *current) :
-		_task(task),
-		_directory(directory),
 		_currentDir(current),
-		_root(VFS::GetRootNode())
+		_root(VFS::GetRootNode()),
+		_directory(directory),
+		_task(task)
 	{
 		spinlock_init(&_lock);
 		

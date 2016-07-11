@@ -27,13 +27,15 @@ namespace Sys
 	constexpr size_t kHeapSafeZone = 4;
 
 	Heap::Arena::Arena(Type type, size_t sizeHint) :
-		_allocations(0),
-		_cacheAllocation(nullptr),
+		next(nullptr),
+		prev(nullptr),
 		_changes(0),
 		_begin(nullptr),
+		_end(nullptr),
 		_allocationStart(nullptr),
-		next(nullptr),
-		prev(nullptr)
+		_allocationEnd(nullptr),
+		_cacheAllocation(nullptr),
+		_allocations(0)
 	{
 		switch(type)
 		{

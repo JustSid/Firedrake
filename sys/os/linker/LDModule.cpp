@@ -403,7 +403,7 @@ namespace OS
 			if(!_dependencies)
 				return result;
 
-			_dependencies->Enumerate<Dependency>([&](Dependency *dependency, size_t index, bool &stop) {
+			_dependencies->Enumerate<Dependency>([&](Dependency *dependency, __unused size_t index, bool &stop) {
 
 				const char *name = _strTable + dependency->GetName();
 				Module *module = __GetModuleWithNameNoLockPrivate(name, true);
@@ -585,7 +585,7 @@ namespace OS
 					{
 						IO::Array *dependencies = array->GetObjectAtIndex<IO::Array>(i);
 
-						dependencies->Enumerate<Dependency>([&](Dependency *dependency, size_t index, bool &stop) {
+						dependencies->Enumerate<Dependency>([&](Dependency *dependency, __unused size_t index, bool &stop) {
 
 							Module *module = dependency->GetDependency();
 

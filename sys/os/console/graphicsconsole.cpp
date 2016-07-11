@@ -143,7 +143,7 @@ namespace OS
 		cursorX = x;
 		cursorY = y;
 	}
-	void GraphicsConsole::SetCursorHidden(bool hidden)
+	void GraphicsConsole::SetCursorHidden(__unused bool hidden)
 	{}
 	void GraphicsConsole::SetColorPair(Color color, bool intense, bool foreground)
 	{

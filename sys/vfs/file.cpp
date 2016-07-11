@@ -64,7 +64,7 @@ namespace VFS
 		directory->Lock();
 
 		const IO::Dictionary *children = directory->GetChildren();
-		children->Enumerate<Node, IO::String>([&](Node *node, IO::String *filename, bool &stop) {
+		children->Enumerate<Node, IO::String>([&](Node *node, IO::String *filename, __unused bool &stop) {
 
 			dirent entry;
 

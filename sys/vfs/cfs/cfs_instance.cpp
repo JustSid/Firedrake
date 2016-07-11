@@ -65,12 +65,12 @@ namespace CFS
 
 
 
-	KernReturn<VFS::Node *> Instance::CreateFile(__unused VFS::Context *context, VFS::Node *parent, const char *name)
+	KernReturn<VFS::Node *> Instance::CreateFile(__unused VFS::Context *context, __unused VFS::Node *parent, __unused const char *name)
 	{
 		return Error(KERN_UNSUPPORTED);
 	}
 
-	KernReturn<VFS::Node *> Instance::CreateDirectory(__unused VFS::Context *context, VFS::Node *parent, const char *name)
+	KernReturn<VFS::Node *> Instance::CreateDirectory(__unused VFS::Context *context, __unused VFS::Node *parent, __unused const char *name)
 	{
 		return Error(KERN_UNSUPPORTED);
 	}
@@ -241,7 +241,7 @@ namespace CFS
 		return read;
 	}
 
-	KernReturn<void> Instance::Mount(VFS::Context *context, VFS::Instance *instance, VFS::Directory *target, const char *name)
+	KernReturn<void> Instance::Mount(__unused VFS::Context *context, VFS::Instance *instance, VFS::Directory *target, const char *name)
 	{
 		VFS::Mountpoint *mountpoint = VFS::Mountpoint::Alloc()->Init(name, instance, this, GetFreeID());
 		if(!mountpoint)
@@ -253,9 +253,9 @@ namespace CFS
 
 		return result;
 	}
-	KernReturn<void> Instance::Unmount(VFS::Context *context, VFS::Mountpoint *target)
+	KernReturn<void> Instance::Unmount(__unused VFS::Context *context, __unused VFS::Mountpoint *target)
 	{
-		return Error(KERN_FAILURE);
+		return Error(KERN_UNSUPPORTED);
 	}
 
 	KernReturn<void> Instance::Ioctl(VFS::Context *context, VFS::File *file, uint32_t request, void *data)

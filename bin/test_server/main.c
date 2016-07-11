@@ -54,7 +54,7 @@ void print_file(const char *arg)
 	close(fd);
 }
 
-int main(int argc, char *argv[])
+int main(__unused int argc, __unused char *argv[])
 {
 	ipc_port_t port;
 

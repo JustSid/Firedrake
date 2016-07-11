@@ -245,7 +245,7 @@ namespace FFS
 		return read;
 	}
 
-	KernReturn<void> Instance::Mount(VFS::Context *context, VFS::Instance *instance, VFS::Directory *target, const char *name)
+	KernReturn<void> Instance::Mount(__unused VFS::Context *context, VFS::Instance *instance, VFS::Directory *target, const char *name)
 	{
 		VFS::Mountpoint *mountpoint = VFS::Mountpoint::Alloc()->Init(name, instance, this, GetFreeID());
 		if(!mountpoint)
@@ -257,7 +257,7 @@ namespace FFS
 
 		return result;
 	}
-	KernReturn<void> Instance::Unmount(VFS::Context *context, VFS::Mountpoint *target)
+	KernReturn<void> Instance::Unmount(__unused VFS::Context *context, __unused VFS::Mountpoint *target)
 	{
 		return Error(KERN_FAILURE);
 	}

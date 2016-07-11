@@ -77,7 +77,7 @@ void ReadCommand()
 	}
 }
 
-int main(int argc, const char *argv[])
+int main(__unused int argc, __unused const char *argv[])
 {
 	errno = 0;
 

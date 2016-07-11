@@ -205,7 +205,7 @@ namespace OS
 		return size;
 	}
 
-	size_t PTYDevice::Read(VFS::Context *context, off_t offset, void *data, size_t size)
+	size_t PTYDevice::Read(VFS::Context *context, __unused off_t offset, void *data, size_t size)
 	{
 		spinlock_lock(&_pty->_lock);
 

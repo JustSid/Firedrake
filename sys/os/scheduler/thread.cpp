@@ -32,7 +32,7 @@ namespace OS
 
 	IODefineMeta(Thread, IO::Object)
 
-	void __ThreadIPCCallback(IPC::Port *port, IPC::Message *message)
+	void __ThreadIPCCallback(__unused IPC::Port *port, __unused IPC::Message *message)
 	{
 	}
 

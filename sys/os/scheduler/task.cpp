@@ -258,7 +258,7 @@ namespace OS
 
 		Thread *result = nullptr;
 
-		_threads->Enumerate<Thread>([&](Thread *thread, size_t index, bool &stop) {
+		_threads->Enumerate<Thread>([&](Thread *thread, __unused size_t index, bool &stop) {
 
 			if(thread->GetTid() == id)
 			{

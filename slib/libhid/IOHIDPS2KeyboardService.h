@@ -43,8 +43,6 @@ namespace IO
 
 		void HandleInterrupt(uint8_t vector);
 
-		Connector *_connector;
-
 		IODeclareMeta(HIDPS2KeyboardService)
 	};
 }

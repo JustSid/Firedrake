@@ -302,7 +302,7 @@ namespace VFS
 		return nInstance->Mount(context, instance, static_cast<Directory *>(node), name->GetCString());
 	}
 
-	KernReturn<void> Unmount(Context *context, const char *path)
+	KernReturn<void> Unmount(__unused Context *context, __unused const char *path)
 	{
 		return ErrorNone;
 	}
@@ -345,7 +345,7 @@ namespace VFS
 			Directory *dir = node->Downcast<Directory>();
 			const IO::Dictionary *children = dir->GetChildren();
 
-			children->Enumerate<Node, IO::String>([depth](Node *node, IO::String *key, bool &stop) {
+			children->Enumerate<Node, IO::String>([depth](Node *node, __unused IO::String *key, __unused bool &stop) {
 				DumpNode(node, depth + 1);
 			});
 		}
@@ -357,7 +357,7 @@ namespace VFS
 			Directory *dir = target->Downcast<Directory>();
 			const IO::Dictionary *children = dir->GetChildren();
 
-			children->Enumerate<Node, IO::String>([depth](Node *node, IO::String *key, bool &stop) {
+			children->Enumerate<Node, IO::String>([depth](Node *node, __unused IO::String *key, __unused bool &stop) {
 				DumpNode(node, depth + 1);
 			});
 		}

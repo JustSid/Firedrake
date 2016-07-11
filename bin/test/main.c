@@ -43,7 +43,7 @@ void send_file_name(const char *name, ipc_port_t port)
 	ipc_write(&message.header);
 }
 
-int main(int argc, char *argv[])
+int main(__unused int argc, __unused char *argv[])
 {
 	puts("Waiting for IPC port\n");
 

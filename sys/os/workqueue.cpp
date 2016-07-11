@@ -22,9 +22,9 @@
 namespace OS
 {
 	WorkQueue::WorkQueue() :
+		_exhausted(false),
 		_freeListHead(nullptr),
-		_workListHead(nullptr),
-		_exhausted(false)
+		_workListHead(nullptr)
 	{
 		spinlock_init(&_readWriterLock);
 		_ExtendFreeList(50);
