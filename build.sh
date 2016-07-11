@@ -15,7 +15,7 @@ function configureCMake {
 	cd build
 
 	CMAKE_LINKER="<CMAKE_LINKER> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>"
-	cmake "$(pwd)/.." -DCMAKE_CXX_COMPILER="$(which clang)" -DCMAKE_C_COMPILER="$(which clang)" -DCMAKE_LINKER="$(which ld)" -DCMAKE_CXX_LINK_EXECUTABLE="${CMAKE_LINKER}" -DCMAKE_C_LINK_EXECUTABLE="${CMAKE_LINKER}"
+	cmake "$(pwd)/.." -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER="$(which clang)" -DCMAKE_C_COMPILER="$(which clang)" -DCMAKE_LINKER="$(which ld)" -DCMAKE_CXX_LINK_EXECUTABLE="${CMAKE_LINKER}" -DCMAKE_C_LINK_EXECUTABLE="${CMAKE_LINKER}"
 }
 
 if [ "$@" == "--build" ]; then
@@ -39,15 +39,24 @@ if [ "$@" == "--clean" ]; then
 	exit 0
 fi
 
+QEMU_NET="-net nic,model=rtl8139 -net user"
+QEMU_CPU="-cpu core2duo -smp cores=2"
+QEMU_ARGS="${QEMU_CPU} ${QEMU_NET} -serial stdio"
+
 if [ "$@" == "--run" ]; then
 
 	BASEDIR=$(dirname $0)
-
-	QEMU_NET="-net nic,model=rtl8139 -net user"
-	QEMU_CPU="-cpu core2duo -smp cores=2"
-	QEMU_ARGS="${QEMU_CPU} ${QEMU_NET} -serial stdio"
-
 	qemu-system-i386 ${QEMU_ARGS} "${BASEDIR}/boot/Firedrake.iso"
 
 	exit 0
+
+fi
+
+if [ "$@" == "--debug" ]; then
+
+	BASEDIR=$(dirname $0)
+	qemu-system-i386 ${QEMU_ARGS} -s -S -D /tmp/qemu.log -d int -no-shutdown -no-reboot "${BASEDIR}/boot/Firedrake.iso"
+
+	exit 0
+
 fi

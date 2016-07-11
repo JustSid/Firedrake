@@ -12,6 +12,15 @@ def objdump(filepath):
 	os.chdir(path)
 	os.system(command)
 
+def dumpSymbols(filepath):
+	path = os.path.dirname(filepath)
+	name = os.path.basename(filepath)
+
+	command = 'objcopy --only-keep-debug ./' + name + ' ./' + name + '.sym'
+
+	os.chdir(path)
+	os.system(command)
+
 def appendFile(out, filepath, path):
 	f = open(filepath, 'rb')
 	b = f.read()
@@ -29,15 +38,10 @@ def scanFolder(out, path, target):
 
 		filepath = os.path.join(path, filename)
 
-		if filename.endswith('.bin'):
+		if filename.endswith('.bin') or filename.endswith('.so') or filename == 'firedrake':
 			appendFile(out, filepath, target)
 			objdump(filepath)
-		elif filename.endswith('.so'):
-			appendFile(out, filepath, target)
-			objdump(filepath)
-		elif filename == 'firedrake':
-			appendFile(out, filepath, target)
-			objdump(filepath)
+			dumpSymbols(filepath)
 
 		if os.path.isdir(filepath) == True:
 			scanFolder(out, filepath, target)

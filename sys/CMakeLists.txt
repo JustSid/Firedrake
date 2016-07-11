@@ -141,15 +141,7 @@ set(TARGET_HEADERS
 set(TARGET_FILES ${SOURCES} ${TARGET_SOURCES} ${HEADERS} ${TARGET_HEADERS})
 
 # Use the C compiler to do the pre-processing of .S files since CMake doesn't support it
-foreach(FILE ${TARGET_FILES})
-	
-	get_filename_component(EXTENSION ${FILE} EXT)
-
-	if("${EXTENSION}" STREQUAL ".S")
-		set_property(SOURCE ${FILE} PROPERTY LANGUAGE C)
-	endif()
-
-endforeach()
+mark_assembly_files("${TARGET_FILES}")
 
 # Compiler settings
 

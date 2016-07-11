@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="remote-build" type="CMakeRunConfiguration" factoryName="Application" singleton="true" PROGRAM_PARAMS="-net nic,model=rtl8139 -net user -cpu core2duo -smp cores=2 -serial stdio ./boot/Firedrake.iso" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Firedrake" TARGET_NAME="remote-build" CONFIG_NAME="Debug" RUN_PATH="/usr/local/bin/qemu-system-x86_64">
+  <configuration default="false" name="remote-build" type="CMakeRunConfiguration" factoryName="Application" singleton="true" PROGRAM_PARAMS="--run" WORKING_DIR="file://$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="Firedrake" TARGET_NAME="remote-build" CONFIG_NAME="Debug" RUN_PATH="$PROJECT_DIR$/build.sh">
     <envs />
     <method />
   </configuration>

@@ -1,0 +1,6 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Firedrake debug" type="CLion_Remote" factoryName="GDB Remote Debug" singleton="true" debugger="/usr/local/bin/gdb" remoteCommand="localhost:1234" symbolFile="$PROJECT_DIR$/build/sys/firedrake.sym" sysroot="">
+    <pathMapping remote=":/mnt/hgfs/Firedrake" local="$PROJECT_DIR$/" />
+    <method />
+  </configuration>
+</component>
