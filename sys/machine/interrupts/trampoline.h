@@ -37,6 +37,8 @@ namespace Sys
 		TSS tss;
 	};
 
+	static_assert(sizeof(Sys::Trampoline) == 0x8a4, "Sys::Trampoline size must match the size in idt.S");
+
 	KernReturn<void> TrampolineInit();
 	KernReturn<void> TrampolineInitCPU();
 
