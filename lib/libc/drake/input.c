@@ -1,9 +1,9 @@
 //
-//  IOHIDKeyboardService.h
+//  input.c
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2015 by Sidney Just
+//  Copyright (c) 2016 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,31 +16,29 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOHIDKEYBOARDSERVICE_H_
-#define _IOHIDKEYBOARDSERVICE_H_
+#include "input.h"
+#include "../sys/fcntl.h"
+#include "../sys/unistd.h"
 
-#include "../service/IOService.h"
-#include "IOHIDKeyboardUtilities.h"
-
-namespace IO
+bool keyboard_open(struct Keyboard *keyboard)
 {
-	class HIDKeyboardService : public Service
-	{
-	public:
-		HIDKeyboardService *InitWithProperties(Dictionary *properties) override;
+	int fd = open("/dev/keyboard0", O_RDONLY);
+	if(fd < 0)
+		return false;
 
-		void Start() override;
-		void Stop() override;
+	keyboard->fd = fd;
 
-	protected:
-		virtual void DispatchEvent(uint32_t keyCode, bool keyDown);
-
-	private:
-		uint16_t _modifier;
-		Object *_keyboard;
-
-		IODeclareMeta(HIDKeyboardService)
-	};
+	return true;
 }
 
-#endif /* _IOHIDKEYBOARDSERVICE_H_ */
+void keyboard_close(struct Keyboard *keyboard)
+{
+	if(keyboard->fd >= 0)
+		close(keyboard->fd);
+}
+
+bool keyboard_read(struct Keyboard *keyboard, struct KeyboardBuffer *buffer)
+{
+	size_t bytesRead = read(keyboard->fd, buffer, sizeof(struct KeyboardBuffer));
+	return (bytesRead == sizeof(struct KeyboardBuffer));
+}

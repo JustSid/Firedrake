@@ -7,6 +7,7 @@ set(SOURCES
 	bsd/qdivrem.c
 	bsd/udivdi3.c
 	bsd/umoddi3.c
+	drake/input.c
 	ipc/ipc_bootstrap.c
 	ipc/ipc_message.c
 	ipc/ipc_port.c

@@ -1,9 +1,9 @@
 //
-//  IOHIDKeyboardService.h
+//  devices.cpp
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2015 by Sidney Just
+//  Copyright (c) 2016 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,31 +16,50 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOHIDKEYBOARDSERVICE_H_
-#define _IOHIDKEYBOARDSERVICE_H_
+#include "devices.h"
 
-#include "../service/IOService.h"
-#include "IOHIDKeyboardUtilities.h"
-
-namespace IO
+namespace VFS
 {
-	class HIDKeyboardService : public Service
+	namespace Devices
 	{
-	public:
-		HIDKeyboardService *InitWithProperties(Dictionary *properties) override;
+		static IO::Dictionary *_keyboardMap;
+		static std::atomic<size_t> _keyboardCounter = 0;
 
-		void Start() override;
-		void Stop() override;
+		Keyboard *GetKeyboard(IO::Object *service)
+		{
+			return _keyboardMap->GetObjectForKey<Keyboard>(service);
+		}
 
-	protected:
-		virtual void DispatchEvent(uint32_t keyCode, bool keyDown);
+		Keyboard *RegisterKeyboard(IO::Object *service)
+		{
+			Keyboard *keyboard = _keyboardMap->GetObjectForKey<Keyboard>(service);
+			if(keyboard)
+				return keyboard;
 
-	private:
-		uint16_t _modifier;
-		Object *_keyboard;
+			size_t index = (_keyboardCounter ++);
+			keyboard = Keyboard::Alloc()->Init(index);
 
-		IODeclareMeta(HIDKeyboardService)
-	};
+			if(keyboard)
+			{
+				_keyboardMap->SetObjectForKey(keyboard, service);
+				keyboard->Release();
+			}
+
+			return keyboard;
+		}
+		void UnregisterKeyboard(IO::Object *service)
+		{
+			_keyboardMap->RemoveObjectForKey(service);
+		}
+
+
+
+
+		KernReturn<void> Init()
+		{
+			_keyboardMap = IO::Dictionary::Alloc()->Init();
+
+			return ErrorNone;
+		}
+	}
 }
-
-#endif /* _IOHIDKEYBOARDSERVICE_H_ */

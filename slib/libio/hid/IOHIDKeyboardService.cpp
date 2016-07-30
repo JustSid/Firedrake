@@ -19,6 +19,8 @@
 #include "IOHIDKeyboardService.h"
 
 extern "C" void __libkern_dispatchKeyboardEvent(IO::KeyboardEvent *event);
+extern "C" IO::Object *__libkern_registerKeyboard(IO::Object *service);
+extern "C" void __libkern_unregisterKeyboard(IO::Object *service);
 
 namespace IO
 {
@@ -30,6 +32,7 @@ namespace IO
 			return nullptr;
 
 		_modifier = 0;
+		_keyboard = nullptr;
 
 		return this;
 	}
@@ -37,13 +40,26 @@ namespace IO
 	void HIDKeyboardService::Start()
 	{
 		Service::Start();
+
+		_keyboard = __libkern_registerKeyboard(this);
+		_keyboard->Retain();
+	}
+
+	void HIDKeyboardService::Stop()
+	{
+		Service::Stop();
+
+		__libkern_unregisterKeyboard(this);
+
+		_keyboard->Release();
+		_keyboard = nullptr;
 	}
 
 	void HIDKeyboardService::DispatchEvent(uint32_t keyCode, bool keyDown)
 	{
 		if(keyCode >= KeyCodeRightShift && keyCode <= KeyCodeLeftGUI)
 		{
-			uint32_t modifier = static_cast<uint32_t>((1 << keyCode));
+			uint16_t modifier = static_cast<uint16_t>((1 << keyCode));
 
 			if(keyDown)
 				_modifier |= modifier;
@@ -51,7 +67,7 @@ namespace IO
 				_modifier &= ~modifier;
 		}
 
-		KeyboardEvent event(keyCode, _modifier, keyDown);
+		KeyboardEvent event(this, keyCode, _modifier, keyDown);
 		__libkern_dispatchKeyboardEvent(&event);
 	}
 }

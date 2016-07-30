@@ -29,6 +29,7 @@
 
 #include <vfs/ffs/ffs_descriptor.h>
 #include <vfs/cfs/cfs_descriptor.h>
+#include <vfs/devfs/devices.h>
 
 #include <bootstrap/multiboot.h>
 
@@ -541,6 +542,8 @@ namespace VFS
 
 			_devFS = instance->Downcast<CFS::Instance>();
 			_devFS->CreateNode("null", nullptr, &DevNullRead, &DevNullWrite).Suppress();
+
+			VFS::Devices::Init();
 
 			OS::ConsoleCreatePTY();
 		}

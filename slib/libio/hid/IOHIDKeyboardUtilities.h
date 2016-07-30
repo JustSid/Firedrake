@@ -108,18 +108,21 @@ namespace IO
 	public:
 		KeyboardEvent() = default;
 
-		KeyboardEvent(uint32_t keyCode, uint32_t modifier, bool keyDown) :
+		KeyboardEvent(Object *sender, uint32_t keyCode, uint16_t modifier, bool keyDown) :
 			_keyCode(keyCode),
 			_modifier(modifier),
-			_keyDown(keyDown)
+			_keyDown(keyDown),
+			_sender(sender)
 		{}
 		KeyboardEvent(const KeyboardEvent &other) :
 			_keyCode(other._keyCode),
 			_modifier(other._modifier),
-			_keyDown(other._keyDown)
+			_keyDown(other._keyDown),
+			_sender(other._sender)
 		{}
 		KeyboardEvent &operator= (const KeyboardEvent &other)
 		{
+			_sender = other._sender;
 			_keyCode = other._keyCode;
 			_modifier = other._modifier;
 			_keyDown = other._keyDown;
@@ -128,8 +131,9 @@ namespace IO
 		}
 
 		uint32_t GetKeyCode() const { return _keyCode; }
-		uint32_t GetModifier() const { return _modifier; }
+		uint16_t GetModifier() const { return _modifier; }
 		bool IsKeyDown() const { return _keyDown; }
+		Object *GetSender() const { return _sender; }
 
 		char GetCharacter() const // This should be handled somewhere in the GUI...
 		{
@@ -170,8 +174,9 @@ namespace IO
 
 	private:
 		uint32_t _keyCode;
-		uint32_t _modifier;
+		uint16_t _modifier;
 		bool _keyDown;
+		Object *_sender;
 	};
 }
 

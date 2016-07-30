@@ -27,6 +27,7 @@
 #include <libio/video/IODisplay.h>
 #include <os/scheduler/scheduler.h>
 #include <os/console/console.h>
+#include <vfs/devfs/devices.h>
 #include <machine/interrupts/interrupts.h>
 #include "LDModule.h"
 #include "LDService.h"
@@ -163,7 +164,9 @@ namespace OS
 		void __libkern_handleKeyboardEvent(void *context)
 		{
 			IO::KeyboardEvent *event = reinterpret_cast<IO::KeyboardEvent *>(context);
-			OS::ConsoleInput(event);
+			VFS::Devices::Keyboard *keyboard = VFS::Devices::GetKeyboard(event->GetSender());
+
+			keyboard->HandleEvent(event);
 		}
 
 		void __libkern_dispatchKeyboardEvent(IO::KeyboardEvent *event)
@@ -172,6 +175,16 @@ namespace OS
 			Sys::CPU::GetCurrentCPU()->GetWorkQueue()->PushEntry(&__libkern_handleKeyboardEvent, _eventStack + _eventStackSize);
 
 			_eventStackSize = (_eventStackSize + 1) % 128;
+		}
+
+		IO::Object *__libkern_registerKeyboard(IO::Object *service)
+		{
+			VFS::Devices::Keyboard *keyboard = VFS::Devices::RegisterKeyboard(service);
+			return keyboard;
+		}
+		void __libkern_unregisterKeyboard(IO::Object *service)
+		{
+			VFS::Devices::UnregisterKeyboard(service);
 		}
 
 
@@ -277,6 +290,8 @@ namespace OS
 				ELF_SYMBOL_STUB(__libkern_dma_free),
 				ELF_SYMBOL_STUB(register_interrupt),
 				ELF_SYMBOL_STUB(__libkern_dispatchKeyboardEvent),
+				ELF_SYMBOL_STUB(__libkern_registerKeyboard),
+				ELF_SYMBOL_STUB(__libkern_unregisterKeyboard),
 				ELF_SYMBOL_STUB(ipc_write),
 				ELF_SYMBOL_STUB(ipc_read),
 				ELF_SYMBOL_STUB(ipc_allocate_port),

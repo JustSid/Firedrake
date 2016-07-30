@@ -61,6 +61,8 @@ set(SOURCES
 	os/console/graphicsconsole.cpp
 	os/console/iso_font.cpp
 	os/console/textconsole.cpp
+	vfs/devfs/devices.cpp
+	vfs/devfs/keyboard.cpp
 	os/IPC/IPCMessage.cpp
 	os/IPC/IPCPort.cpp
 	os/IPC/IPCSpace.cpp
@@ -100,6 +102,9 @@ set(SOURCES
 	vfs/path.cpp
 	vfs/vfs.cpp
 	vfs/vfs_syscall.cpp)
+
+# Needed for CLion only so they are recognized correctly as part of the project
+# Not actually needed for pure CMake
 
 set(HEADERS
 	bootstrap/multiboot.h
@@ -146,6 +151,8 @@ mark_assembly_files("${TARGET_FILES}")
 # Compiler settings
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T \"${CMAKE_CURRENT_SOURCE_DIR}/Makefile.ld\"")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
 
 add_definitions(-D__KERNEL)
 

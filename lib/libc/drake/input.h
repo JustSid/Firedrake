@@ -1,9 +1,9 @@
 //
-//  IOHIDKeyboardService.h
+//  input.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2015 by Sidney Just
+//  Copyright (c) 2016 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,31 +16,33 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOHIDKEYBOARDSERVICE_H_
-#define _IOHIDKEYBOARDSERVICE_H_
+#ifndef _FIREDRAKE_INPUT_H_
+#define _FIREDRAKE_INPUT_H_
 
-#include "../service/IOService.h"
-#include "IOHIDKeyboardUtilities.h"
+#include "../stdint.h"
+#include "../stdbool.h"
+#include "../sys/cdefs.h"
 
-namespace IO
+__BEGIN_DECLS
+
+struct KeyboardBuffer
 {
-	class HIDKeyboardService : public Service
-	{
-	public:
-		HIDKeyboardService *InitWithProperties(Dictionary *properties) override;
+	int8_t isDown;
+	int8_t character;
+	uint16_t modifier;
+	uint32_t keyCode;
+};
 
-		void Start() override;
-		void Stop() override;
+struct Keyboard
+{
+	int fd;
+};
 
-	protected:
-		virtual void DispatchEvent(uint32_t keyCode, bool keyDown);
+bool keyboard_open(struct Keyboard *keyboard);
+void keyboard_close(struct Keyboard *keyboard);
 
-	private:
-		uint16_t _modifier;
-		Object *_keyboard;
+bool keyboard_read(struct Keyboard *keyboard, struct KeyboardBuffer *buffer);
 
-		IODeclareMeta(HIDKeyboardService)
-	};
-}
+__END_DECLS
 
-#endif /* _IOHIDKEYBOARDSERVICE_H_ */
+#endif /* _FIREDRAKE_INPUT_H_ */
