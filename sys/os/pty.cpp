@@ -165,6 +165,9 @@ namespace OS
 
 	size_t PTYDevice::Write(VFS::Context *context, off_t offset, const void *data, size_t size)
 	{
+		if(size == 0)
+			return 0;
+
 		spinlock_lock(&_pty->_lock);
 
 		char buffer[kPTYMaxBufferSize];
