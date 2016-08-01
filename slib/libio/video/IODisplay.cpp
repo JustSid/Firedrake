@@ -18,10 +18,6 @@
 
 #include "IODisplay.h"
 
-#ifndef __KERNEL
-extern "C" void __libio_publishDisplay(void *display);
-#endif
-
 namespace IO
 {
 	__IODefineIOCoreMeta(Display, Object)
@@ -43,9 +39,5 @@ namespace IO
 	}
 
 	void Display::Publish()
-	{
-#ifndef __KERNEL
-		__libio_publishDisplay(this);
-#endif
-	}
+	{}
 }

@@ -57,10 +57,6 @@ namespace OS
 		{
 			return IO::RegistryEntry::GetRootEntry();
 		}
-		void __libio_publishDisplay(void *display)
-		{
-			OS::ConsoleTakeDisplay(reinterpret_cast<IO::Display *>(display));
-		}
 
 
 		void __libkern_threadEntry(void (*entry)(void *), void *argument)
@@ -293,7 +289,6 @@ namespace OS
 				ELF_SYMBOL_STUB(__libio_getIOCatalogue),
 				ELF_SYMBOL_STUB(__libio_getIONull),
 				ELF_SYMBOL_STUB(__libio_getIORootRegistry),
-				ELF_SYMBOL_STUB(__libio_publishDisplay),
 				ELF_SYMBOL_STUB(thread_yield),
 				ELF_SYMBOL_STUB(thread_create),
 				ELF_SYMBOL_STUB(__libkern_dma_map),
