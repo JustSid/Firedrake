@@ -21,6 +21,7 @@
 
 #include <vfs/vfs_syscall.h>
 #include <os/scheduler/scheduler_syscall.h>
+#include "syscall_mmap.h"
 
 namespace OS
 {
@@ -89,10 +90,10 @@ namespace OS
 		/* 17 */ SYSCALL_TRAP_INVALID(),
 		/* 18 */ SYSCALL_TRAP_INVALID(),
 		/* 19 */ SYSCALL_TRAP_INVALID(),
-		/* 20 */ SYSCALL_TRAP_INVALID(),
+		/* 20 */ SYSCALL_TRAP6("mmap", &OS::Syscall_mmap, OS::MmapArgs, address, length, protection, flags, fd, offset),
 		/* 21 */ SYSCALL_TRAP_INVALID(),
 		/* 22 */ SYSCALL_TRAP_INVALID(),
-		/* 23 */ SYSCALL_TRAP_INVALID(),
+		/* 23 */ SYSCALL_TRAP3("msync", &OS::Syscall_msync, OS::MsyncArgs, address, length, flags),
 		/* 24 */ SYSCALL_TRAP_INVALID(),
 		/* 25 */ SYSCALL_TRAP_INVALID(),
 		/* 26 */ SYSCALL_TRAP_INVALID(),

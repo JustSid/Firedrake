@@ -36,3 +36,9 @@ int mprotect(void *address, size_t length, int prot)
 	unsigned int result = SYSCALL3(SYS_Mprotect, address, length, prot);
 	return (int)result;
 }
+
+int msync(void *address, size_t length, int flags)
+{
+	unsigned int result = SYSCALL3(SYS_Msync, address, length, flags);
+	return (int)result;
+}

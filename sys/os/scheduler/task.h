@@ -28,7 +28,6 @@
 #include <libcpp/intrusive_list.h>
 #include <machine/memory/memory.h>
 #include <kern/kern_return.h>
-#include <os/loader/loader.h>
 #include <libio/core/IOObject.h>
 #include <libio/core/IOArray.h>
 #include <libio/core/IOString.h>
@@ -36,6 +35,8 @@
 #include <libio/core/IONumber.h>
 #include <libio/core/IONull.h>
 #include <os/ipc/IPC.h>
+#include <os/syscall/syscall_mmap.h>
+#include <os/loader/loader.h>
 
 #include "thread.h"
 
@@ -86,9 +87,11 @@ namespace OS
 		// VFS
 		VFS::Context *GetVFSContext() const { return _context; }
 
+		// Must be called with the task lock being held!
 		VFS::File *GetFileForDescriptor(int fd);
 		void SetFileForDescriptor(VFS::File *file, int fd);
 
+		// Must also be called with the task lock being held
 		int AllocateFileDescriptor();
 		void FreeFileDescriptor(int fd);
 
@@ -99,6 +102,9 @@ namespace OS
 
 		// Scheduler
 		std::intrusive_list<Task>::member schedulerEntry;
+
+		// Mmap
+		std::intrusive_list<MmapTaskEntry> mmapList;
 
 	protected:
 		Task();

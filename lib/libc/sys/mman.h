@@ -39,6 +39,7 @@ __BEGIN_DECLS
 void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 int munmap(void *address, size_t length);
 int mprotect(void *address, size_t length, int prot);
+int msync(void *address, size_t length, int flags);
 
 __END_DECLS
 

@@ -62,6 +62,7 @@ set(SOURCES
 	os/console/iso_font.cpp
 	os/console/textconsole.cpp
 	vfs/devfs/devices.cpp
+	vfs/devfs/framebuffer.cpp
 	vfs/devfs/keyboard.cpp
 	os/IPC/IPCMessage.cpp
 	os/IPC/IPCPort.cpp
@@ -82,6 +83,7 @@ set(SOURCES
 	os/scheduler/thread.cpp
 	os/syscall/kerntrapTable.cpp
 	os/syscall/syscall.cpp
+	os/syscall/syscall_mmap.cpp
 	os/syscall/syscallTable.cpp
 	os/pty.cpp
 	os/waitqueue.cpp

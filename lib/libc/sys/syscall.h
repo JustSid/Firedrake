@@ -37,9 +37,10 @@ __BEGIN_DECLS
 #define SYS_ThreadJoin   11
 #define SYS_ThreadYield  12
 
-#define SYS_Mmap     40
-#define SYS_Munmap   41
-#define SYS_Mprotect 42
+#define SYS_Mmap     20
+#define SYS_Munmap   21
+#define SYS_Mprotect 22
+#define SYS_Msync    23
 
 unsigned int __syscall(int type, ...);
 
