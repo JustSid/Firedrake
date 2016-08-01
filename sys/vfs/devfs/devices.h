@@ -21,15 +21,23 @@
 
 #include <prefix.h>
 #include "keyboard.h"
+#include "framebuffer.h"
 
 namespace VFS
 {
 	namespace Devices
 	{
+		// Keyboards
 		Keyboard *GetKeyboard(IO::Object *service);
+
 		Keyboard *RegisterKeyboard(IO::Object *service);
 		void UnregisterKeyboard(IO::Object *service);
 
+		// Framebuffer
+		Framebuffer *GetFramebuffer(IO::Framebuffer *framebuffer);
+
+		Framebuffer *RegisterFramebuffer(IO::Framebuffer *framebuffer);
+		void UnregisterFramebuffer(IO::Framebuffer *framebuffer);
 
 		KernReturn<void> Init();
 	}

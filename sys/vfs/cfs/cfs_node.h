@@ -50,7 +50,7 @@ namespace CFS
 
 		void SetSupportsSeek(bool seek);
 
-		size_t GetSize() const;
+		uint64_t GetSize() const override;
 
 	private:
 		Node *Init(const char *name, VFS::Instance *instance, uint64_t id, void *memo);

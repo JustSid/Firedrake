@@ -63,8 +63,8 @@ namespace VFS
 		virtual KernReturn<File *> OpenFile(Context *context, Node *node, int flags) = 0;
 		virtual void CloseFile(Context *context, File *file) = 0;
 
-		virtual KernReturn<size_t> FileRead(Context *context, File *file, void *data, size_t size) = 0;
-		virtual KernReturn<size_t> FileWrite(Context *context, File *file, const void *data, size_t size) = 0;
+		virtual KernReturn<size_t> FileRead(Context *context, File *file, off_t offset, void *data, size_t size) = 0;
+		virtual KernReturn<size_t> FileWrite(Context *context, File *file, off_t offset, const void *data, size_t size) = 0;
 		virtual KernReturn<off_t> FileSeek(Context *context, File *file, off_t offset, int whence) = 0;
 
 		virtual KernReturn<void> FileStat(Context *context, stat *buf, Node *node) = 0;

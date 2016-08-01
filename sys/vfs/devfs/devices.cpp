@@ -22,6 +22,7 @@ namespace VFS
 {
 	namespace Devices
 	{
+		/* Keyboards */
 		static IO::Dictionary *_keyboardMap;
 		static std::atomic<size_t> _keyboardCounter = 0;
 
@@ -52,12 +53,42 @@ namespace VFS
 			_keyboardMap->RemoveObjectForKey(service);
 		}
 
+		/* Framebuffers */
+		static IO::Dictionary *_framebufferMap;
+		static std::atomic<size_t> _framebufferCounter = 0;
 
+		Framebuffer *GetFramebuffer(IO::Framebuffer *framebuffer)
+		{
+			return _framebufferMap->GetObjectForKey<Framebuffer>(framebuffer);
+		}
+
+		Framebuffer *RegisterFramebuffer(IO::Framebuffer *source)
+		{
+			Framebuffer *framebuffer = _framebufferMap->GetObjectForKey<Framebuffer>(source);
+			if(framebuffer)
+				return framebuffer;
+
+			size_t index = (_framebufferCounter ++);
+			framebuffer = Framebuffer::Alloc()->Init(index, source);
+
+			if(framebuffer)
+			{
+				_framebufferMap->SetObjectForKey(framebuffer, source);
+				framebuffer->Release();
+			}
+
+			return framebuffer;
+		}
+		void UnregisterFramebuffer(IO::Framebuffer *framebuffer)
+		{
+			_framebufferMap->RemoveObjectForKey(framebuffer);
+		}
 
 
 		KernReturn<void> Init()
 		{
 			_keyboardMap = IO::Dictionary::Alloc()->Init();
+			_framebufferMap = IO::Dictionary::Alloc()->Init();
 
 			return ErrorNone;
 		}

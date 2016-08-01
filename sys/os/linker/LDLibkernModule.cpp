@@ -188,6 +188,16 @@ namespace OS
 		}
 
 
+		void __libkern_registerFramebuffer(IO::Framebuffer *buffer)
+		{
+			__unused VFS::Devices::Framebuffer *framebuffer = VFS::Devices::RegisterFramebuffer(buffer);
+		}
+		void __libkern_unregisterFramebuffer(IO::Framebuffer *buffer)
+		{
+			VFS::Devices::UnregisterFramebuffer(buffer);
+		}
+
+
 		ipc_return_t ipc_write(ipc_header_t *header)
 		{
 			IPC::Space *space = IPC::Space::GetKernelSpace();
@@ -292,6 +302,8 @@ namespace OS
 				ELF_SYMBOL_STUB(__libkern_dispatchKeyboardEvent),
 				ELF_SYMBOL_STUB(__libkern_registerKeyboard),
 				ELF_SYMBOL_STUB(__libkern_unregisterKeyboard),
+				ELF_SYMBOL_STUB(__libkern_registerFramebuffer),
+				ELF_SYMBOL_STUB(__libkern_unregisterFramebuffer),
 				ELF_SYMBOL_STUB(ipc_write),
 				ELF_SYMBOL_STUB(ipc_read),
 				ELF_SYMBOL_STUB(ipc_allocate_port),

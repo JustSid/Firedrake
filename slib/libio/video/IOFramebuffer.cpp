@@ -21,6 +21,9 @@
 
 #if __KERNEL
 #include <kern/kalloc.h>
+#else
+extern "C" void __libkern_registerFramebuffer(IO::Framebuffer *buffer);
+extern "C" void __libkern_unregisterFramebuffer(IO::Framebuffer *buffer);
 #endif
 
 namespace IO
@@ -40,6 +43,10 @@ namespace IO
 		_height = height;
 		_depth = depth;
 
+#ifndef __KERNEL
+		__libkern_registerFramebuffer(this);
+#endif
+
 		return this;
 	}
 	Framebuffer *Framebuffer::InitWithSize(size_t width, size_t height, uint8_t depth)
@@ -52,11 +59,20 @@ namespace IO
 		}
 
 		_ownsMemory = true;
+
+#ifndef __KERNEL
+		__libkern_registerFramebuffer(this);
+#endif
+
 		return this;
 	}
 
 	void Framebuffer::Dealloc()
 	{
+#ifndef __KERNEL
+		__libkern_unregisterFramebuffer(this);
+#endif
+
 		if(_ownsMemory)
 			kfree(_memory);
 
@@ -79,22 +95,6 @@ namespace IO
 		uint32_t *buffer = reinterpret_cast<uint32_t *>(_memory);
 		buffer[(y * _width) + x] = color;
 	}
-
-	/*void Framebuffer::BlitCharacter(size_t x, size_t y, char character, uint32_t color, Font *font)
-	{
-		volatile uint8_t *bitmap = font->GetCharacter(character);
-
-		for(int i = 0; i < 16; i ++)
-		{
-			uint8_t entry = bitmap[i];
-
-			for(int j = 0; j < 8; j ++)
-			{
-				if((entry & (1 << j)))
-					SetPixel(x + j, y + i, color);
-			}
-		}
-	}*/
 
 	void Framebuffer::FillRect(size_t x, size_t y, size_t width, size_t height, uint32_t color)
 	{
@@ -122,4 +122,7 @@ namespace IO
 			y ++;
 		}
 	}
+
+	void Framebuffer::InvalidateBuffer(__unused size_t offset, __unused size_t length)
+	{}
 }

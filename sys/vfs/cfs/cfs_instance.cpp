@@ -139,30 +139,22 @@ namespace CFS
 	}
 
 
-	KernReturn<size_t> Instance::FileRead(VFS::Context *context, VFS::File *file, void *data, size_t size)
+	KernReturn<size_t> Instance::FileRead(VFS::Context *context, VFS::File *file, off_t offset, void *data, size_t size)
 	{
 		CFS::Node *node = static_cast<CFS::Node *>(file->GetNode());
+
 		node->Lock();
-
-		KernReturn<size_t> result = node->ReadData(context, file->GetOffset(), data, size);
-
-		if(result.IsValid())
-			file->SetOffset(file->GetOffset() + result.Get());
-
+		KernReturn<size_t> result = node->ReadData(context, offset, data, size);
 		node->Unlock();
 
 		return result;
 	}
-	KernReturn<size_t> Instance::FileWrite(VFS::Context *context, VFS::File *file, const void *data, size_t size)
+	KernReturn<size_t> Instance::FileWrite(VFS::Context *context, VFS::File *file, off_t offset, const void *data, size_t size)
 	{
 		CFS::Node *node = static_cast<CFS::Node *>(file->GetNode());
+
 		node->Lock();
-
-		KernReturn<size_t> result = node->WriteData(context, file->GetOffset(), data, size);
-
-		if(result.IsValid() && node->_supportsSeek)
-			file->SetOffset(file->GetOffset() + result.Get());
-
+		KernReturn<size_t> result = node->WriteData(context, offset, data, size);
 		node->Unlock();
 
 		return result;

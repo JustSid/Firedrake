@@ -276,10 +276,7 @@ namespace OS
 	VFS::File *Task::GetFileForDescriptor(int fd)
 	{
 		IO::Number *lookup = IO::Number::Alloc()->InitWithInt32(fd);
-
-		Lock();
 		VFS::File *file = _files->GetObjectForKey<VFS::File>(lookup);
-		Unlock();
 
 		lookup->Release();
 		return file;
@@ -288,14 +285,10 @@ namespace OS
 	{
 		IO::Number *lookup = IO::Number::Alloc()->InitWithInt32(fd);
 
-		Lock();
-
 		if(file)
 			_files->SetObjectForKey(file, lookup);
 		else
 			_files->SetObjectForKey(IO::Null::GetNull(), lookup);
-
-		Unlock();
 
 		lookup->Release();
 	}
@@ -305,24 +298,16 @@ namespace OS
 	{
 		int fd = (_fileCounter ++);
 
-		Lock();
-
 		IO::Number *lookup = IO::Number::Alloc()->InitWithInt32(fd);
 		_files->SetObjectForKey(IO::Null::GetNull(), lookup);
 		lookup->Release();
-
-		Unlock();
 
 		return fd;
 	}
 	void Task::FreeFileDescriptor(int fd)
 	{
-		Lock();
-
 		IO::Number *lookup = IO::Number::Alloc()->InitWithInt32(fd);
 		_files->RemoveObjectForKey(lookup);
 		lookup->Release();
-
-		Unlock();
 	}
 }

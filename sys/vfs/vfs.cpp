@@ -96,10 +96,14 @@ namespace VFS
 	KernReturn<int> Open(Context *context, const char *path, int flags)
 	{
 		OS::Task *task = context->GetTask();
+		task->Lock();
 
 		int fd = task->AllocateFileDescriptor();
 		if(fd == -1)
+		{
+			task->Unlock();
 			return Error(KERN_NO_MEMORY);
+		}
 
 		Path resolver(path, context);
 
@@ -110,6 +114,8 @@ namespace VFS
 			if(result.IsValid() == false)
 			{
 				task->FreeFileDescriptor(fd);
+				task->Unlock();
+
 				return result.GetError();
 			}
 		}
@@ -122,6 +128,8 @@ namespace VFS
 			if(flags & O_EXCL)
 			{
 				task->FreeFileDescriptor(fd);
+				task->Unlock();
+
 				return Error(KERN_RESOURCE_EXISTS);
 			}
 
@@ -131,16 +139,22 @@ namespace VFS
 			if(!file.IsValid())
 			{
 				task->FreeFileDescriptor(fd);
+				task->Unlock();
+
 				return file.GetError();
 			}
 
 			task->SetFileForDescriptor(file, fd);
+			task->Unlock();
+
 			return fd;
 		}
 
 		if(resolver.GetTotalElements() == 0)
 		{
 			task->FreeFileDescriptor(fd);
+			task->Unlock();
+
 			return Error(KERN_INVALID_ARGUMENT, ENOENT);
 		}
 
@@ -152,6 +166,8 @@ namespace VFS
 			if(!node.IsValid())
 			{	
 				task->FreeFileDescriptor(fd);
+				task->Unlock();
+
 				return node.GetError();
 			}
 
@@ -160,30 +176,42 @@ namespace VFS
 			if(!file.IsValid())
 			{
 				task->FreeFileDescriptor(fd);
+				task->Unlock();
+
 				return file.GetError();
 			}
 
 			task->SetFileForDescriptor(file, fd);
+			task->Unlock();
+
 			return fd;
 		}
 
 		task->FreeFileDescriptor(fd);
+		task->Unlock();
 
 		return Error(KERN_RESOURCES_MISSING, ENOENT);
 	}
 	KernReturn<void> Close(Context *context, int fd)
 	{
 		OS::Task *task = context->GetTask();
+
+		task->Lock();
+
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file)
+		{
+			task->Unlock();
 			return Error(KERN_INVALID_ARGUMENT, EBADF);
+		}
 
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
 
 		instance->CloseFile(context, file);
 		task->FreeFileDescriptor(fd);
+		task->Unlock();
 
 		return ErrorNone;
 	}
@@ -192,61 +220,115 @@ namespace VFS
 	KernReturn<size_t> Write(Context *context, int fd, const void *data, size_t size)
 	{
 		OS::Task *task = context->GetTask();
+		task->Lock();
+
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file || !(file->GetFlags() & O_WRONLY || file->GetFlags() & O_RDWR))
+		{
+			task->Unlock();
 			return Error(KERN_INVALID_ARGUMENT, EBADF);
+		}
 		
 		Node *node = file->GetNode();
 		if(node->IsDirectory())
+		{
+			task->Unlock();
 			return Error(KERN_INVALID_ARGUMENT, EISDIR);
+		}
 
 		Instance *instance = node->GetInstance();
-		return instance->FileWrite(context, file, data, size);
+		KernReturn<size_t> result = instance->FileWrite(context, file, file->GetOffset(), data, size);
+
+		if(!result.IsValid())
+		{
+			task->Unlock();
+			return result.GetError();
+		}
+
+		file->SetOffset(result.Get() + file->GetOffset());
+		task->Unlock();
+
+		return result.Get();
 	}
 
 	KernReturn<size_t> Read(Context *context, int fd, void *data, size_t size)
 	{
 		OS::Task *task = context->GetTask();
+		task->Lock();
+
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file || !(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
+		{
+			task->Unlock();
 			return Error(KERN_INVALID_ARGUMENT, EBADF);
+		}
 		
 		Node *node = file->GetNode();
 		if(node->IsDirectory())
+		{
+			task->Unlock();
 			return Error(KERN_INVALID_ARGUMENT, EISDIR);
+		}
 
 		Instance *instance = node->GetInstance();
-		return instance->FileRead(context, file, data, size);
+		KernReturn<size_t> result = instance->FileRead(context, file, file->GetOffset(), data, size);
+
+		if(!result.IsValid())
+		{
+			task->Unlock();
+			return result.GetError();
+		}
+
+		file->SetOffset(result.Get() + file->GetOffset());
+		task->Unlock();
+
+		return result.Get();
 	}
 
 	KernReturn<off_t> ReadDir(Context *context, int fd, dirent *entry, size_t count)
 	{
 		OS::Task *task = context->GetTask();
+		task->Lock();
+
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file || !(file->GetFlags() & O_RDONLY || file->GetFlags() & O_RDWR))
+		{
+			task->Unlock();
 			return Error(KERN_INVALID_ARGUMENT, EBADF);
+		}
 		
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
 
-		return instance->DirRead(context, entry, file, count);
+		KernReturn<off_t> result = instance->DirRead(context, entry, file, count);
+		task->Unlock();
+
+		return result;
 	}
 
 	KernReturn<off_t> Seek(Context *context, int fd, off_t offset, int whence)
 	{
 		OS::Task *task = context->GetTask();
+		task->Lock();
+
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file)
+		{
+			task->Unlock();
 			return Error(KERN_INVALID_ARGUMENT, EBADF);
+		}
 
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
 
-		return instance->FileSeek(context, file, offset, whence);
+		KernReturn<off_t> result = instance->FileSeek(context, file, offset, whence);
+		task->Unlock();
+
+		return result;
 	}
 
 	KernReturn<void> StatFile(Context *context, const char *path, stat *buf)
@@ -311,15 +393,23 @@ namespace VFS
 	KernReturn<void> Ioctl(Context *context, int fd, uint32_t request, void *arg)
 	{
 		OS::Task *task = context->GetTask();
+		task->Lock();
+
 		File *file = task->GetFileForDescriptor(fd);
 
 		if(!file)
+		{
+			task->Unlock();
 			return Error(KERN_INVALID_ARGUMENT, EBADF);
+		}
 
 		Node *node = file->GetNode();
 		Instance *instance = node->GetInstance();
 
-		return instance->Ioctl(context, file, request, arg);
+		KernReturn<void> result = instance->Ioctl(context, file, request, arg);
+		task->Unlock();
+
+		return result;
 	}
 
 

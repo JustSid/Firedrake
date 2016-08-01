@@ -1,9 +1,9 @@
 //
-//  IOFramebuffer.h
+//  framebuffer.h
 //  Firedrake
 //
 //  Created by Sidney Just
-//  Copyright (c) 2015 by Sidney Just
+//  Copyright (c) 2016 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,43 +16,35 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _IOFRAMEBUFFER_H_
-#define _IOFRAMEBUFFER_H_
+#ifndef _DEVICES_FRAMEBUFFER_H_
+#define _DEVICES_FRAMEBUFFER_H_
 
-#include "../core/IOObject.h"
+#include <prefix.h>
+#include <libio/video/IOFramebuffer.h>
+#include <vfs/vfs.h>
+#include <vfs/cfs/cfs_node.h>
 
-namespace IO
+namespace VFS
 {
-	// Colors are represented as 32 bit ARGB colors, 8 bit per component
-	class Framebuffer : public Object
+	namespace Devices
 	{
-	public:
-		Framebuffer *InitWithMemory(void *memory, size_t width, size_t height, uint8_t depth);
-		Framebuffer *InitWithSize(size_t width, size_t height, uint8_t depth);
+		class Framebuffer : public IO::Object
+		{
+		public:
+			Framebuffer *Init(size_t index, IO::Framebuffer *source);
+			void Dealloc() override;
 
-		void Dealloc();
+		private:
+			size_t Write(VFS::Context *context, off_t offset, const void *data, size_t size);
+			size_t Read(VFS::Context *context, off_t offset, void *data, size_t size);
+			size_t GetSize() const;
 
-		virtual void Clear(uint32_t color);
+			CFS::Node *_node;
+			IO::Framebuffer *_source;
 
-		virtual void SetPixel(size_t x, size_t y, uint32_t color);
-		virtual void FillRect(size_t x, size_t y, size_t width, size_t height, uint32_t color);
-
-		virtual void InvalidateBuffer(size_t offset, size_t length);
-
-		size_t GetWidth() const { return _width; }
-		size_t GetHeight() const { return _height; }
-
-		void *GetMemory() const { return _memory; }
-
-	private:
-		bool _ownsMemory;
-		void *_memory;
-		size_t _width;
-		size_t _height;
-		uint8_t _depth;
-
-		IODeclareMeta(Framebuffer)
-	};
+			IODeclareMeta(Framebuffer)
+		};
+	}
 }
 
-#endif /* _IOFRAMEBUFFER_H_ */
+#endif /* _DEVICES_FRAMEBUFFER_H_ */

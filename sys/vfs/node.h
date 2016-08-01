@@ -56,7 +56,7 @@ namespace VFS
 		bool IsMountpoint() const { return (_type == Type::Mountpoint); }
 
 		uint64_t GetID() const { return _id; }
-		uint64_t GetSize() const { return _size; }
+		virtual uint64_t GetSize() const { return _size; }
 		Type GetType() const { return _type; }
 		IO::String *GetName() const { return _name; }
 		Instance *GetInstance() const { return _instance; }

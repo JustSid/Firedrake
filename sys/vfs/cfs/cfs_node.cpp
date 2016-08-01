@@ -66,7 +66,7 @@ namespace CFS
 		_supportsSeek = seek;
 	}
 
-	size_t Node::GetSize() const
+	uint64_t Node::GetSize() const
 	{
 		if(!_sizeProc)
 			return 0;
