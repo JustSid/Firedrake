@@ -94,6 +94,7 @@ namespace OS
 				size_t left = 0;
 				size_t argOffset = 0;
 
+				// Find the last argument transferred via registers
 				for(size_t i = 0; i < entry->argCount; i ++)
 				{
 					const SyscallArg *arg = entry->args + i;
@@ -107,7 +108,7 @@ namespace OS
 					}
 				}
 
-				uint32_t offset = ((uint8_t *)state->esp) - thread->GetUserStackVirtual();
+				uint32_t offset = ((uint8_t *)state->esp) - thread->GetUserStackVirtual() + 24;
 				uintptr_t stack = ((uintptr_t)thread->GetUserStack()) + offset + argOffset; // Jump to the arguments on the stack
 
 				uintptr_t aligned = VM_PAGE_ALIGN_DOWN(stack);
