@@ -57,10 +57,6 @@ set(SOURCES
 	libio/core/IOString.cpp
 	libio/video/IODisplay.cpp
 	libio/video/IOFramebuffer.cpp
-	os/console/console.cpp
-	os/console/graphicsconsole.cpp
-	os/console/iso_font.cpp
-	os/console/textconsole.cpp
 	vfs/devfs/devices.cpp
 	vfs/devfs/framebuffer.cpp
 	vfs/devfs/keyboard.cpp
