@@ -36,6 +36,9 @@ __BEGIN_DECLS
 #define SYS_ThreadCreate 10
 #define SYS_ThreadJoin   11
 #define SYS_ThreadYield  12
+#define SYS_Fork         13
+#define SYS_Exec         14
+#define SYS_Spawn        15
 
 #define SYS_Mmap     20
 #define SYS_Munmap   21

@@ -58,6 +58,10 @@ int lstat(const char *path, struct stat *buf);
 pid_t getpid();
 pid_t getppid();
 
+pid_t fork();
+int execve(const char *path, char *const argv[], char *const envp[]);
+pid_t spawn(const char *path, char *const argv[], char *const envp[]);
+
 #endif
 
 __END_DECLS

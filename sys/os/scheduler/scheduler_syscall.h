@@ -40,8 +40,19 @@ namespace OS
 		tid_t tid;
 	};
 
+	struct SchedExecArgs
+	{
+		const char *path;
+		const char **args;
+		const char **envp;
+	};
+
 	KernReturn<uint32_t> Syscall_SchedThreadCreate(Thread *thread, SchedThreadCreateArgs *arguments);
 	KernReturn<uint32_t> Syscall_SchedThreadExit(Thread *thread, SchedThreadExitArgs *arguments);
 	KernReturn<uint32_t> Syscall_SchedThreadJoin(Thread *thread, SchedThreadJoinArgs *arguments);
 	KernReturn<uint32_t> Syscall_SchedThreadYield(Thread *thread, void *arguments);
+
+	KernReturn<uint32_t> Syscall_Fork(Thread *thread, void *arguments);
+	KernReturn<uint32_t> Syscall_Exec(Thread *thread, SchedExecArgs *arguments);
+	KernReturn<uint32_t> Syscall_Spawn(Thread *thread, SchedExecArgs *arguments);
 }

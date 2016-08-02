@@ -83,3 +83,18 @@ pid_t getppid()
 {
 	return (pid_t)SYSCALL1(SYS_Pid, 1);
 }
+
+pid_t fork()
+{
+	return (pid_t)SYSCALL0(SYS_Fork);
+}
+
+int execve(const char *path, char *const argv[], char *const envp[])
+{
+	return (int)SYSCALL3(SYS_Exec, path, argv, envp);
+}
+pid_t spawn(const char *path, char *const argv[], char *const envp[])
+{
+	return (pid_t)SYSCALL3(SYS_Spawn, path, argv, envp);
+}
+
