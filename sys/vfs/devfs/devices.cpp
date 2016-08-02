@@ -16,6 +16,7 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#include <os/pty.h>
 #include "devices.h"
 
 namespace VFS
@@ -84,11 +85,22 @@ namespace VFS
 			_framebufferMap->RemoveObjectForKey(framebuffer);
 		}
 
+		// PTY's
+		static IO::Array *_ptys = nullptr;
 
 		KernReturn<void> Init()
 		{
 			_keyboardMap = IO::Dictionary::Alloc()->Init();
 			_framebufferMap = IO::Dictionary::Alloc()->Init();
+			_ptys = IO::Array::Alloc()->Init();
+
+			// Create 10 PTY's
+			for(size_t i = 0; i < 10; i ++)
+			{
+				OS::PTY *pty = OS::PTY::Alloc()->Init();
+				if(pty)
+					_ptys->AddObject(pty);
+			}
 
 			return ErrorNone;
 		}
