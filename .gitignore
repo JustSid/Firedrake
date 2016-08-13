@@ -16,3 +16,4 @@
 /sys/libio
 /slib/libkern/libc
 /slib/libkern/libcpp
+.DS_Store

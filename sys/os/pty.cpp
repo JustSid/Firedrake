@@ -36,7 +36,6 @@ namespace OS
 		_pty = pty;
 		_master = master;
 		_other = nullptr;
-		_putProc = nullptr;
 		_node = VFS::GetDevFS()->CreateNode(name, this, IOMemberFunctionCast(CFS::Node::ReadProc, this, &PTYDevice::Read), IOMemberFunctionCast(CFS::Node::WriteProc , this, &PTYDevice::Write));
 		_node->SetSizeProc(IOMemberFunctionCast(CFS::Node::SizeProc, this, &PTYDevice::GetSize));
 		_node->SetIoctlProc(IOMemberFunctionCast(CFS::Node::IoctlProc, this, &PTYDevice::Ioctl));
@@ -59,11 +58,6 @@ namespace OS
 		return size;
 	}
 
-	void PTYDevice::SetPutcProc(PutcProc proc)
-	{
-		_putProc = proc;
-	}
-
 	void PTYDevice::Open()
 	{
 		_data.clear();
@@ -71,12 +65,6 @@ namespace OS
 
 	void PTYDevice::Putc(char character)
 	{
-		if(__expect_false(_putProc))
-		{
-			_putProc(character);
-			return;
-		}
-
 		_data.push(character);
 	}
 

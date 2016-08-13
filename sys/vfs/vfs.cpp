@@ -575,6 +575,8 @@ namespace VFS
 			return result;
 		if((result = MakeDirectory(Context::GetKernelContext(), "/slib")).IsValid() == false)
 			return result;
+		if((result = MakeDirectory(Context::GetKernelContext(), "/tmp")).IsValid() == false)
+			return result;
 
 
 		bool didLoadInitrd = false;

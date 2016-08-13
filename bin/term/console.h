@@ -1,6 +1,6 @@
 //
-//  main.cpp
-//  init
+//  console.h
+//  term
 //
 //  Created by Sidney Just
 //  Copyright (c) 2016 by Sidney Just
@@ -16,16 +16,63 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#include <sys/cdefs.h>
-#include <sys/unistd.h>
+#ifndef _CONSOLE_H_
+#define _CONSOLE_H_
 
-int main(__unused int argc, __unused const char *argv[])
+#include <stdint.h>
+#include "framebuffer.h"
+
+class Console
 {
-	spawn("/bin/term.bin", nullptr, nullptr);
-	spawn("/bin/mishell.bin", nullptr, nullptr);
+public:
+	enum Color
+	{
+		ColorBlack,
+		ColorRed,
+		ColorGreen,
+		ColorYellow,
+		ColorBlue,
+		ColorMagenta,
+		ColorCyan,
+		ColorWhite
+	};
 
-	while(1)
-	{}
+	enum class State
+	{
+		Normal,
+		Got033,
+		Got033E // \033[
+	};
 
-	return 0;
-}
+	Console(Framebuffer *framebuffer);
+
+	void SetCursor(size_t x, size_t y);
+	void ScrollLine();
+
+	void Putc(char character);
+
+	size_t GetCursorX() const { return _cursorX; }
+	size_t GetCursorY() const { return _cursorY; }
+	size_t GetWidth() const { return _width; }
+	size_t GetHeight()const { return _height; }
+
+private:
+	void ParseControlSequence(char terminator);
+
+	State _state;
+	Framebuffer *_framebuffer;
+
+	size_t _width;
+	size_t _height;
+
+	size_t _cursorX;
+	size_t _cursorY;
+
+	__unused Color _color[2]; // 0 is foreground, 1 is background
+	__unused int8_t _colorIntensity[2]; // Same as above
+
+	char _ansiBuffer[128];
+	size_t _ansiBufferLength;
+};
+
+#endif /* _CONSOLE_H_ */

@@ -81,6 +81,17 @@ int main(__unused int argc, __unused const char *argv[])
 {
 	errno = 0;
 
+	do {
+
+		int fd = open("/tmp/_term", O_RDONLY);
+		if(fd < 0)
+			continue;
+
+		close(fd);
+		break;
+
+	} while(1);
+
 	ttyFD = open("/dev/tty001", O_RDWR);
 	if(ttyFD < 0)
 		return -1;

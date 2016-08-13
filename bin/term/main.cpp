@@ -24,74 +24,55 @@
 #include <sys/errno.h>
 #include <sys/thread.h>
 #include <sys/fcntl.h>
+#include <sys/termios.h>
+#include <sys/ioctl.h>
 #include <drake/input.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
 
-extern uint8_t *GetFont();
+#include "framebuffer.h"
+#include "console.h"
 
-constexpr static uint32_t ColorTable[2][8] = {
-	{ 0xff000000, 0xffa00000, 0xff0aaC00, 0xffaaa700, 0xfa0001aa, 0xffa001aa, 0xff0aaaaa, 0xffaaaaaa },
-	{ 0xff000000, 0xfff00000, 0xff0ffC00, 0xfffffc00, 0xff0003ff, 0xfff003ff, 0xff0fffff, 0xffffffff }
-};
 
-struct Framebuffer
+void runGraphicsConsole(Framebuffer *framebuffer, int fd)
 {
-	Framebuffer(void *buffer, size_t width, size_t height) :
-		_memory(buffer),
-		_width(width),
-		_height(height)
-	{}
+	Console console(framebuffer);
 
-	inline void setPixel(size_t x, size_t y, uint32_t color)
-	{
-		uint32_t *buffer = reinterpret_cast<uint32_t *>(_memory);
-		buffer[(y * _width) + x] = color;
-	}
-
-	inline void blitCharacter(char character, size_t x, size_t y)
-	{
-		uint8_t *bitmap = GetFont() + (static_cast<uint8_t>(character) * 16);
-
-		for(int i = 0; i < 16; i ++)
-		{
-			uint8_t entry = bitmap[i];
-
-			for(int j = 0; j < 8; j ++)
-			{
-				if((entry & (1 << j)))
-					setPixel(x + j, y + i, ColorTable[0][7]);
-				else
-					setPixel(x + j, y + i, ColorTable[0][0]);
-			}
-		}
-	}
-
-	inline void flush()
-	{
-		msync(_memory, _width * _height * 4, 0);
-	}
-
-
-	void *_memory;
-	size_t _width;
-	size_t _height;
-};
-
-void runGraphicsConsole(Framebuffer *framebuffer)
-{
-	framebuffer->blitCharacter('H', 0, 0);
-	framebuffer->blitCharacter('e', 8, 0);
-	framebuffer->blitCharacter('l', 16, 0);
-	framebuffer->blitCharacter('l', 24, 0);
-	framebuffer->blitCharacter('o', 32, 0);
-
-	framebuffer->flush();
+	Keyboard keyboard;
+	keyboard_open(&keyboard);
 
 	while(1)
 	{
+		char buffer[128];
+		size_t offset = 0;
+
+		// Keyboard input
+		while(1)
+		{
+			KeyboardBuffer input;
+			if(!keyboard_read(&keyboard, &input))
+				break;
+
+			if(input.isDown)
+				buffer[offset ++] = input.character;
+		}
+
+		if(offset > 0)
+			write(fd, buffer, offset);
+
+		//
+		size_t bytesIn = read(fd, buffer, 128);
+
+		if(bytesIn > 0)
+		{
+			for(size_t i = 0; i < bytesIn; i ++)
+				console.Putc(buffer[i]);
+
+			framebuffer->flush();
+		}
+
 		thread_yield();
 	}
 }
@@ -104,19 +85,29 @@ int main(__unused int argc, __unused const char *argv[])
 	if(fbfd < 0)
 		return EXIT_FAILURE;
 
-
-	int ptyfd = open("/dev/pty001", O_RDWR);
-	if(ptyfd < 0)
-		return EXIT_FAILURE;
-
 	// mmap the framebuffer
 	void *buffer = mmap(nullptr, 1024 * 768 * 4, PROT_READ | PROT_WRITE, MAP_SHARED, fbfd, 0);
 	if(!buffer)
 		return EXIT_FAILURE;
 
-	// Clear the screen
+
+	// Open up the PTY
+	int ptyfd = open("/dev/pty001", O_RDWR);
+	if(ptyfd < 0)
+		return EXIT_FAILURE;
+
+	termios term;
+	ioctl(ptyfd, TCGETS, &term);
+	term.c_oflag &= ~ONLCR;
+	ioctl(ptyfd, TCSETS, &term);
+
+	int fd = open("/tmp/_term", O_CREAT);
+
+	// Create the console
 	Framebuffer framebuffer(buffer, 1024, 768);
-	runGraphicsConsole(&framebuffer);
+	runGraphicsConsole(&framebuffer, ptyfd);
+
+	close(fd);
 
 	return 0;
 }
