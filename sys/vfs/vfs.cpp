@@ -33,8 +33,6 @@
 
 #include <bootstrap/multiboot.h>
 
-#include <os/pty.h>
-
 namespace VFS
 {
 	static spinlock_t _descriptorLock = SPINLOCK_INIT;

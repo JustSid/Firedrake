@@ -57,9 +57,6 @@ set(SOURCES
 	libio/core/IOString.cpp
 	libio/video/IODisplay.cpp
 	libio/video/IOFramebuffer.cpp
-	vfs/devfs/devices.cpp
-	vfs/devfs/framebuffer.cpp
-	vfs/devfs/keyboard.cpp
 	os/IPC/IPCMessage.cpp
 	os/IPC/IPCPort.cpp
 	os/IPC/IPCSpace.cpp
@@ -81,7 +78,6 @@ set(SOURCES
 	os/syscall/syscall.cpp
 	os/syscall/syscall_mmap.cpp
 	os/syscall/syscallTable.cpp
-	os/pty.cpp
 	os/waitqueue.cpp
 	os/workqueue.cpp
 	${CONFIG_PERSONALITY_PATH}/personality.cpp
@@ -89,6 +85,10 @@ set(SOURCES
 	vfs/cfs/cfs_descriptor.cpp
 	vfs/cfs/cfs_instance.cpp
 	vfs/cfs/cfs_node.cpp
+	vfs/devfs/devices.cpp
+	vfs/devfs/framebuffer.cpp
+	vfs/devfs/keyboard.cpp
+	vfs/devfs/pty.cpp
 	vfs/ffs/ffs_descriptor.cpp
 	vfs/ffs/ffs_instance.cpp
 	vfs/ffs/ffs_node.cpp

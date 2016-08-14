@@ -20,6 +20,7 @@
 #define _DEVICES_H_
 
 #include <prefix.h>
+#include "pty.h"
 #include "keyboard.h"
 #include "framebuffer.h"
 
