@@ -36,6 +36,8 @@ namespace CFS
 		_readProc = nullptr;
 		_writeProc = nullptr;
 		_sizeProc = nullptr;
+		_mmapProc = nullptr;
+		_msyncProc = nullptr;
 		_supportsSeek = false;
 		_memo = memo;
 
@@ -58,6 +60,14 @@ namespace CFS
 	void Node::SetCloseProc(OpenCloseProc proc)
 	{
 		_closeProc = proc;
+	}
+	void Node::SetMmapProc(MmapProc proc)
+	{
+		_mmapProc = proc;
+	}
+	void Node::SetMsyncProc(MsyncProc proc)
+	{
+		_msyncProc = proc;
 	}
 
 
@@ -114,8 +124,23 @@ namespace CFS
 	KernReturn<void> Node::Ioctl(VFS::Context *context, uint32_t request, void *data)
 	{
 		if(!_ioctlProc)
-			return Error(KERN_INVALID_ARGUMENT);
+			return Error(KERN_UNSUPPORTED);
 
 		return _ioctlProc(_memo, context, request, data);
+	}
+
+	KernReturn<OS::MmapTaskEntry *> Node::Mmap(VFS::Context *context, OS::MmapArgs *args)
+	{
+		if(!_mmapProc)
+			return Error(KERN_UNSUPPORTED);
+
+		return _mmapProc(_memo, context, this, args);
+	}
+	KernReturn<size_t> Node::Msync(VFS::Context *context, OS::MmapTaskEntry *entry, OS::MsyncArgs *args)
+	{
+		if(!_msyncProc)
+			return Error(KERN_UNSUPPORTED);
+
+		return _msyncProc(_memo, context, entry, args);
 	}
 }

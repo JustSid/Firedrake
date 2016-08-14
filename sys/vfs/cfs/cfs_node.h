@@ -37,16 +37,23 @@ namespace CFS
 		typedef size_t (*WriteProc)(void *memo, VFS::Context *context, off_t offset, const void *data, size_t size);
 		typedef size_t (*ReadProc)(void *memo, VFS::Context *context, off_t offset, void *data, size_t size);
 		typedef size_t (*SizeProc)(void *memo);
+		typedef KernReturn<OS::MmapTaskEntry *> (*MmapProc)(void *memo, VFS::Context *context, VFS::Node *node, OS::MmapArgs *arguments);
+		typedef size_t (*MsyncProc)(void *memo, VFS::Context *context, OS::MmapTaskEntry *entry, OS::MsyncArgs *arguments);
 		typedef KernReturn<void> (*IoctlProc)(void *memo, VFS::Context *context, uint32_t request, void *data);
 
 		KernReturn<size_t> WriteData(VFS::Context *context, off_t offset, const void *data, size_t size);
 		KernReturn<size_t> ReadData(VFS::Context *context, off_t offset, void *data, size_t size);
 		KernReturn<void> Ioctl(VFS::Context *context, uint32_t request, void *data);
 
+		KernReturn<OS::MmapTaskEntry *> Mmap(VFS::Context *context, OS::MmapArgs *args);
+		KernReturn<size_t> Msync(VFS::Context *context, OS::MmapTaskEntry *entry, OS::MsyncArgs *args);
+
 		void SetSizeProc(SizeProc proc);
 		void SetIoctlProc(IoctlProc proc);
 		void SetOpenProc(OpenCloseProc proc);
 		void SetCloseProc(OpenCloseProc proc);
+		void SetMmapProc(MmapProc proc);
+		void SetMsyncProc(MsyncProc proc);
 
 		void SetSupportsSeek(bool seek);
 
@@ -65,6 +72,8 @@ namespace CFS
 		ReadProc _readProc;
 		WriteProc _writeProc;
 		SizeProc _sizeProc;
+		MmapProc _mmapProc;
+		MsyncProc _msyncProc;
 		IoctlProc _ioctlProc;
 
 		bool _supportsSeek;

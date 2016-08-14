@@ -40,8 +40,8 @@ namespace FFS
 		void CloseFile(VFS::Context *context, VFS::File *file) override;
 		KernReturn<void> FileStat(VFS::Context *context, stat *buf, VFS::Node *node) override;
 
-		KernReturn<size_t> FileRead(VFS::Context *context, VFS::File *file, off_t offset, void *data, size_t size) override;
-		KernReturn<size_t> FileWrite(VFS::Context *context, VFS::File *file, off_t offset, const void *data, size_t size) override;
+		KernReturn<size_t> FileRead(VFS::Context *context, VFS::Node *node, off_t offset, void *data, size_t size) override;
+		KernReturn<size_t> FileWrite(VFS::Context *context, VFS::Node *node, off_t offset, const void *data, size_t size) override;
 		KernReturn<off_t> FileSeek(VFS::Context *context, VFS::File *file, off_t offset, int whence) override;
 		KernReturn<off_t> DirRead(VFS::Context *context, dirent *entry, VFS::File *file, size_t count) override;
 

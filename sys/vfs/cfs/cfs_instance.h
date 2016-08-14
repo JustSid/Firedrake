@@ -41,8 +41,8 @@ namespace CFS
 		void CloseFile(VFS::Context *context, VFS::File *file) override;
 		KernReturn<void> FileStat(VFS::Context *context, stat *buf, VFS::Node *node) override;
 
-		KernReturn<size_t> FileRead(VFS::Context *context, VFS::File *file, off_t offset, void *data, size_t size) override;
-		KernReturn<size_t> FileWrite(VFS::Context *context, VFS::File *file, off_t offset, const void *data, size_t size) override;
+		KernReturn<size_t> FileRead(VFS::Context *context, VFS::Node *node, off_t offset, void *data, size_t size) override;
+		KernReturn<size_t> FileWrite(VFS::Context *context, VFS::Node *node, off_t offset, const void *data, size_t size) override;
 		KernReturn<off_t> FileSeek(VFS::Context *context, VFS::File *file, off_t offset, int whence) override;
 		KernReturn<off_t> DirRead(VFS::Context *context, dirent *entry, VFS::File *file, size_t count) override;
 
@@ -50,6 +50,9 @@ namespace CFS
 		KernReturn<void> Unmount(VFS::Context *context, VFS::Mountpoint *target) override;
 
 		KernReturn<void> Ioctl(VFS::Context *context, VFS::File *file, uint32_t request, void *data) override;
+
+		KernReturn<OS::MmapTaskEntry *> Mmap(VFS::Context *context, VFS::Node *node, OS::MmapArgs *args) override;
+		KernReturn<size_t> Msync(VFS::Context *context, OS::MmapTaskEntry *entry, OS::MsyncArgs *args) override;
 
 		// Actual public interface
 		KernReturn<Node *> CreateNode(const char *name, void *memo, Node::ReadProc read, Node::WriteProc write);

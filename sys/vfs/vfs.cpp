@@ -231,7 +231,7 @@ namespace VFS
 		}
 
 		Instance *instance = node->GetInstance();
-		KernReturn<size_t> result = instance->FileWrite(context, file, file->GetOffset(), data, size);
+		KernReturn<size_t> result = instance->FileWrite(context, node, file->GetOffset(), data, size);
 
 		if(!result.IsValid())
 		{
@@ -266,7 +266,7 @@ namespace VFS
 		}
 
 		Instance *instance = node->GetInstance();
-		KernReturn<size_t> result = instance->FileRead(context, file, file->GetOffset(), data, size);
+		KernReturn<size_t> result = instance->FileRead(context, node, file->GetOffset(), data, size);
 
 		if(!result.IsValid())
 		{

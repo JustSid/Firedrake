@@ -23,6 +23,7 @@
 #include <libcpp/bitfield.h>
 #include <kern/kern_return.h>
 #include <libc/sys/spinlock.h>
+#include <libc/sys/mman.h>
 
 #define VM_PAGE_SHIFT 12
 #define VM_DIRECTORY_SHIFT 22
@@ -89,6 +90,19 @@ namespace Sys
 			uint32_t *_directory;
 			spinlock_t _lock;
 		};
+
+		static inline Directory::Flags TranslateMmapProtection(int protection)
+		{
+			Directory::Flags vmflags = Directory::Flags::Present;
+
+			if(!(protection & PROT_NONE))
+				vmflags |= Directory::Flags::Userspace;
+
+			if((protection & PROT_WRITE))
+				vmflags |= Directory::Flags::Writeable;
+
+			return vmflags;
+		}
 	}
 
 	KernReturn<void> VMInit();

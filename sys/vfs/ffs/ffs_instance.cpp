@@ -146,9 +146,9 @@ namespace FFS
 	}
 
 
-	KernReturn<size_t> Instance::FileRead(VFS::Context *context, VFS::File *file, off_t offset, void *data, size_t size)
+	KernReturn<size_t> Instance::FileRead(VFS::Context *context, VFS::Node *tnode, off_t offset, void *data, size_t size)
 	{
-		FFS::Node *node = static_cast<FFS::Node *>(file->GetNode());
+		FFS::Node *node = tnode->Downcast<FFS::Node>();
 
 		node->Lock();
 		KernReturn<size_t> result = node->ReadData(context, offset, data, size);
@@ -156,9 +156,9 @@ namespace FFS
 
 		return result;
 	}
-	KernReturn<size_t> Instance::FileWrite(VFS::Context *context, VFS::File *file, off_t offset, const void *data, size_t size)
+	KernReturn<size_t> Instance::FileWrite(VFS::Context *context, VFS::Node *tnode, off_t offset, const void *data, size_t size)
 	{
-		FFS::Node *node = static_cast<FFS::Node *>(file->GetNode());
+		FFS::Node *node = tnode->Downcast<FFS::Node>();
 
 		node->Lock();
 		KernReturn<size_t> result = node->WriteData(context, offset, data, size);

@@ -60,7 +60,7 @@ namespace OS
 
 		off_t offset;
 
-		VFS::File *file;
+		VFS::Node *node;
 		std::intrusive_list<MmapTaskEntry>::member taskEntry;
 	};
 

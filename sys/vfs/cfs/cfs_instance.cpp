@@ -139,9 +139,9 @@ namespace CFS
 	}
 
 
-	KernReturn<size_t> Instance::FileRead(VFS::Context *context, VFS::File *file, off_t offset, void *data, size_t size)
+	KernReturn<size_t> Instance::FileRead(VFS::Context *context, VFS::Node *tnode, off_t offset, void *data, size_t size)
 	{
-		CFS::Node *node = static_cast<CFS::Node *>(file->GetNode());
+		CFS::Node *node = tnode->Downcast<CFS::Node>();
 
 		node->Lock();
 		KernReturn<size_t> result = node->ReadData(context, offset, data, size);
@@ -149,9 +149,9 @@ namespace CFS
 
 		return result;
 	}
-	KernReturn<size_t> Instance::FileWrite(VFS::Context *context, VFS::File *file, off_t offset, const void *data, size_t size)
+	KernReturn<size_t> Instance::FileWrite(VFS::Context *context, VFS::Node *tnode, off_t offset, const void *data, size_t size)
 	{
-		CFS::Node *node = static_cast<CFS::Node *>(file->GetNode());
+		CFS::Node *node = tnode->Downcast<CFS::Node>();
 
 		node->Lock();
 		KernReturn<size_t> result = node->WriteData(context, offset, data, size);
@@ -257,6 +257,38 @@ namespace CFS
 		node->Lock();
 		KernReturn<void> result = node->Ioctl(context, request, data);
 		node->Unlock();
+
+		return result;
+	}
+
+	KernReturn<OS::MmapTaskEntry *> Instance::Mmap(VFS::Context *context, VFS::Node *tnode, OS::MmapArgs *args)
+	{
+		Node *node = tnode->Downcast<CFS::Node>();
+		KernReturn<OS::MmapTaskEntry *> result = node->Mmap(context, args);
+
+		if(!result.IsValid())
+		{
+			if(result.GetError().GetCode() == KERN_UNSUPPORTED)
+				return VFS::Instance::Mmap(context, node, args);
+
+			return result.GetError();
+		}
+
+		return result;
+	}
+
+	KernReturn<size_t> Instance::Msync(VFS::Context *context, OS::MmapTaskEntry *entry, OS::MsyncArgs *args)
+	{
+		Node *node = entry->node->Downcast<CFS::Node>();
+		KernReturn<size_t> result = node->Msync(context, entry, args);
+
+		if(!result.IsValid())
+		{
+			if(result.GetError().GetCode() == KERN_UNSUPPORTED)
+				return VFS::Instance::Msync(context, entry, args);
+
+			return result.GetError();
+		}
 
 		return result;
 	}

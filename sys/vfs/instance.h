@@ -29,6 +29,7 @@
 #include <libc/sys/fcntl.h>
 #include <libc/sys/types.h>
 #include <libcpp/atomic.h>
+#include <os/syscall/syscall_mmap.h>
 
 #include <libio/core/IOObject.h>
 
@@ -63,8 +64,8 @@ namespace VFS
 		virtual KernReturn<File *> OpenFile(Context *context, Node *node, int flags) = 0;
 		virtual void CloseFile(Context *context, File *file) = 0;
 
-		virtual KernReturn<size_t> FileRead(Context *context, File *file, off_t offset, void *data, size_t size) = 0;
-		virtual KernReturn<size_t> FileWrite(Context *context, File *file, off_t offset, const void *data, size_t size) = 0;
+		virtual KernReturn<size_t> FileRead(Context *context, Node *node, off_t offset, void *data, size_t size) = 0;
+		virtual KernReturn<size_t> FileWrite(Context *context, Node *node, off_t offset, const void *data, size_t size) = 0;
 		virtual KernReturn<off_t> FileSeek(Context *context, File *file, off_t offset, int whence) = 0;
 
 		virtual KernReturn<void> FileStat(Context *context, stat *buf, Node *node) = 0;
@@ -74,6 +75,9 @@ namespace VFS
 		virtual KernReturn<void> Unmount(Context *context, Mountpoint *target) = 0;
 
 		virtual KernReturn<void> Ioctl(Context *context, File *file, uint32_t request, void *data) = 0;
+
+		virtual KernReturn<OS::MmapTaskEntry *> Mmap(Context *context, Node *node, OS::MmapArgs *args);
+		virtual KernReturn<size_t> Msync(Context *context, OS::MmapTaskEntry *entry, OS::MsyncArgs *args);
 
 		Node *GetRootNode() const { return _rootNode; }
 

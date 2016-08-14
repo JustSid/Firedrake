@@ -18,6 +18,7 @@
 
 #include "instance.h"
 #include "node.h"
+#include "context.h"
 
 namespace VFS
 {
@@ -64,5 +65,104 @@ namespace VFS
 	{
 		IO::SafeRelease(_mountpoint);
 		_mountpoint	= IO::SafeRetain(node);
+	}
+
+	KernReturn<OS::MmapTaskEntry *> Instance::Mmap(Context *context, Node *node, OS::MmapArgs *arguments)
+	{
+		// Sanity check the file size
+		uint64_t minSize = static_cast<uint64_t>(arguments->offset) + arguments->length;
+
+		if(node->GetSize() < minSize)
+			return Error(KERN_INVALID_ARGUMENT);
+
+
+		Error error(KERN_FAILURE);
+
+		Sys::VM::Directory *directory = context->GetTask()->GetDirectory();
+
+		size_t pages = VM_PAGE_COUNT(arguments->length);
+
+		uintptr_t pmemory = 0x0;
+		vm_address_t vmemory = 0x0;
+
+		OS::MmapTaskEntry *entry = nullptr;
+
+		// Find some physical storage
+		{
+			KernReturn<uintptr_t> result = Sys::PM::Alloc(pages);
+			if(!result.IsValid())
+			{
+				error = result.GetError();
+				goto mmapFailed;
+			}
+
+			pmemory = result.Get();
+		}
+
+		{
+			Sys::VM::Directory::Flags vmflags = Sys::VM::TranslateMmapProtection(arguments->protection);
+			KernReturn<vm_address_t> result = directory->Alloc(pmemory, pages, vmflags);
+
+			if(!result.IsValid())
+			{
+				error = result.GetError();
+				goto mmapFailed;
+			}
+
+			vmemory = result.Get();
+		}
+
+		// Read the file into the buffer
+		{
+			VFS::Instance *instance = node->GetInstance();
+			KernReturn<size_t> result = instance->FileRead(context, node, arguments->offset, reinterpret_cast<void *>(vmemory), arguments->length);
+
+			if(!result.IsValid())
+			{
+				error = result.GetError();
+				goto mmapFailed;
+			}
+		}
+
+		// Create mmap entry
+		entry = new OS::MmapTaskEntry();
+		if(!entry)
+		{
+			error = Error(KERN_NO_MEMORY);
+			goto mmapFailed;
+		}
+
+		entry->phaddress = pmemory;
+		entry->vmaddress = vmemory;
+		entry->protection = arguments->protection;
+		entry->pages = pages;
+		entry->flags = arguments->flags;
+		entry->offset = arguments->offset;
+		entry->node = node;
+
+		return entry;
+
+	mmapFailed:
+
+		if(vmemory)
+			directory->Free(vmemory, pages);
+
+		if(pmemory)
+			Sys::PM::Free(pmemory, pages);
+
+		return error;
+	}
+	KernReturn<size_t> Instance::Msync(Context *context, OS::MmapTaskEntry *entry, OS::MsyncArgs *arguments)
+	{
+		// Adjust the offset
+		size_t offset = reinterpret_cast<uintptr_t>(arguments->address) - entry->vmaddress;
+
+		// Flush it down to the file
+		KernReturn<size_t> result = FileWrite(context, entry->node, entry->offset + offset, reinterpret_cast<void *>(entry->vmaddress), arguments->length);
+
+		if(result.IsValid())
+			return 0;
+
+		return result.GetError();
 	}
 }

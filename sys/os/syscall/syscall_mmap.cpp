@@ -24,19 +24,6 @@
 
 namespace OS
 {
-	static inline Sys::VM::Directory::Flags mmapTranslateProtection(int protection)
-	{
-		Sys::VM::Directory::Flags vmflags = Sys::VM::Directory::Flags::Present;
-
-		if(!(protection & PROT_NONE))
-			vmflags |= Sys::VM::Directory::Flags::Userspace;
-
-		if((protection & PROT_WRITE))
-			vmflags |= Sys::VM::Directory::Flags::Writeable;
-
-		return vmflags;
-	}
-
 	KernReturn<MmapTaskEntry *> mmapAnonymous(OS::Task *task, MmapArgs *arguments)
 	{
 		Error error(KERN_FAILURE);
@@ -62,7 +49,7 @@ namespace OS
 		}
 
 		{
-			Sys::VM::Directory::Flags  vmflags = mmapTranslateProtection(arguments->protection);
+			Sys::VM::Directory::Flags  vmflags = Sys::VM::TranslateMmapProtection(arguments->protection);
 			KernReturn<vm_address_t> result = directory->Alloc(pmemory, pages, vmflags);
 
 			if(!result.IsValid())
@@ -92,7 +79,7 @@ namespace OS
 		entry->pages = pages;
 		entry->flags = arguments->flags;
 		entry->offset = arguments->offset;
-		entry->file = nullptr;
+		entry->node = nullptr;
 
 		return entry;
 
@@ -126,94 +113,10 @@ namespace OS
 			return Error(KERN_INVALID_ARGUMENT);
 		}
 
-		// Sanity check the file size
-		uint64_t minSize = static_cast<uint64_t>(arguments->offset) + arguments->length;
-
-		if(node->GetSize() < minSize)
-		{
-			task->Unlock();
-			return Error(KERN_INVALID_ARGUMENT);
-		}
-
-		Error error(KERN_FAILURE);
-
-		Sys::VM::Directory *directory = task->GetDirectory();
-		VFS::Context *context = task->GetVFSContext();
-
-		size_t pages = VM_PAGE_COUNT(arguments->length);
-
-		uintptr_t pmemory = 0x0;
-		vm_address_t vmemory = 0x0;
-
-		MmapTaskEntry *entry = nullptr;
-
-		// Find some physical storage
-		{
-			KernReturn<uintptr_t> result = Sys::PM::Alloc(pages);
-			if(!result.IsValid())
-			{
-				error = result.GetError();
-				goto mmapFailed;
-			}
-
-			pmemory = result.Get();
-		}
-
-		{
-			Sys::VM::Directory::Flags vmflags = mmapTranslateProtection(arguments->protection);
-			KernReturn<vm_address_t> result = directory->Alloc(pmemory, pages, vmflags);
-
-			if(!result.IsValid())
-			{
-				error = result.GetError();
-				goto mmapFailed;
-			}
-
-			vmemory = result.Get();
-		}
-
-		// Read the file into the buffer
-		{
-			VFS::Instance *instance = node->GetInstance();
-			KernReturn<size_t> result = instance->FileRead(context, file, arguments->offset, reinterpret_cast<void *>(vmemory), arguments->length);
-
-			if(!result.IsValid())
-			{
-				error = result.GetError();
-				goto mmapFailed;
-			}
-		}
-
+		KernReturn<MmapTaskEntry *> result = node->GetInstance()->Mmap(task->GetVFSContext(), node, arguments);
 		task->Unlock();
 
-		// Create mmap entry
-		entry = new MmapTaskEntry();
-		if(!entry)
-		{
-			error = Error(KERN_NO_MEMORY);
-			goto mmapFailed;
-		}
-
-		entry->phaddress = pmemory;
-		entry->vmaddress = vmemory;
-		entry->protection = arguments->protection;
-		entry->pages = pages;
-		entry->flags = arguments->flags;
-		entry->offset = arguments->offset;
-		entry->file = file;
-
-		return entry;
-
-	mmapFailed:
-		task->Unlock();
-
-		if(vmemory)
-			directory->Free(vmemory, pages);
-
-		if(pmemory)
-			Sys::PM::Free(pmemory, pages);
-
-		return error;
+		return result;
 	}
 
 	KernReturn<uint32_t> Syscall_mmap(OS::Thread *thread, MmapArgs *arguments)
@@ -283,22 +186,12 @@ namespace OS
 				if(entry->flags & MAP_PRIVATE || entry->flags & MAP_ANONYMOUS)
 					return 0; // Nothing to do for us
 
-				// Adjust the offset
-				size_t offset = address - entry->vmaddress;
-
-				// Flush it down to the file
-				VFS::Instance *instance = entry->file->GetNode()->GetInstance();
-				KernReturn<size_t> result = instance->FileWrite(thread->GetTask()->GetVFSContext(), entry->file, entry->offset + offset, reinterpret_cast<void *>(entry->vmaddress), arguments->length);
-
-				if(!result.IsValid())
-					return 0;
-
-				return result.GetError();
+				return entry->node->GetInstance()->Msync(thread->GetTask()->GetVFSContext(), entry, arguments);
 			}
 
 			member = member->next();
 		}
 
-		return Error(KERN_FAILURE);
+		return Error(KERN_INVALID_ADDRESS);
 	}
 }
