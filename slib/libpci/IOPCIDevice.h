@@ -47,7 +47,7 @@ namespace IO
 		static void InitialWakeUp(MetaClass *meta);
 
 		PCIDevice *InitWithProperties(Dictionary *properties) override;
-		void Dealloc();
+		void Dealloc() override;
 
 		void Start() override;
 

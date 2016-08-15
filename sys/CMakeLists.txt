@@ -64,10 +64,10 @@ set(SOURCES
 	vfs/devfs/devices.cpp
 	vfs/devfs/framebuffer.cpp
 	vfs/devfs/keyboard.cpp
-	os/IPC/IPCMessage.cpp
-	os/IPC/IPCPort.cpp
-	os/IPC/IPCSpace.cpp
-	os/IPC/IPCSyscall.cpp
+	os/ipc/IPCMessage.cpp
+	os/ipc/IPCPort.cpp
+	os/ipc/IPCSpace.cpp
+	os/ipc/IPCSyscall.cpp
 	os/kernel/bootstrapserver.cpp
 	os/kernel/kerneltask.cpp
 	os/linker/LDLibkernModule.cpp

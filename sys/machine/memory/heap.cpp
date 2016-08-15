@@ -280,7 +280,7 @@ namespace Sys
 
 	void Heap::Arena::Dump()
 	{
-		kprintf("Arena {%p:%p}\n", _begin, _end);
+		kprintf("Arena {%p:%p}\n", (void *)_begin, (void *)_end);
 
 		__Allocation *temp = _allocationStart;
 
@@ -289,10 +289,10 @@ namespace Sys
 			switch(temp->type)
 			{
 				case __Allocation::Type::Free:
-					kprintf("  Free: |-%p-%d-|\n", temp->pointer, temp->size);
+					kprintf("  Free: |-%p-%d-|\n", (void *)temp->pointer, temp->size);
 					break;
 				case __Allocation::Type::Allocated:
-					kprintf("  Allocated: |-%d-%p-%d-|\n", temp->padding, temp->pointer, temp->size);
+					kprintf("  Allocated: |-%d-%p-%d-|\n", temp->padding, (void *)temp->pointer, temp->size);
 					break;
 
 				default:

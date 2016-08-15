@@ -32,9 +32,9 @@ namespace QM
 		static void InitialWakeUp(IO::MetaClass *meta);
 
 		VBEDevice *InitWithProperties(IO::Dictionary *properties) override;
-		void Dealloc();
+		void Dealloc() override;
 
-		void Start();
+		void Start() override;
 
 	private:
 		void WriteRegister(uint16_t index, uint16_t value);

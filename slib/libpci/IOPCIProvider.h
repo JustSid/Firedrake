@@ -34,7 +34,7 @@ namespace IO
 		void Start() override;
 
 		bool MatchProperties(Dictionary *properties) override;
-		void PublishService(Service *service);
+		void PublishService(Service *service) override;
 
 	private:
 		void ProbeDevice(uint8_t bus, uint8_t device);

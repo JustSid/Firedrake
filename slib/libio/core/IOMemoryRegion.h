@@ -27,7 +27,7 @@ namespace IO
 	{
 	public:
 		MemoryRegion *InitWithPhysical(uintptr_t physical, size_t pages);
-		void Dealloc();
+		void Dealloc() override;
 
 		uintptr_t GetPhysical() const;
 		void *GetAddress() const;

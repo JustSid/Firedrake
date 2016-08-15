@@ -30,7 +30,7 @@ namespace IO
 		Framebuffer *InitWithMemory(void *memory, size_t width, size_t height, uint8_t depth);
 		Framebuffer *InitWithSize(size_t width, size_t height, uint8_t depth);
 
-		void Dealloc();
+		void Dealloc() override;
 
 		virtual void Clear(uint32_t color);
 

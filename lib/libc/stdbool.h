@@ -24,10 +24,10 @@
 
 #ifndef __cplusplus
 #define bool int
-#endif
 
 #define true  1
 #define false 0
+#endif
 
 #endif /* __bool_true_false_are_defined */
 #endif /* _STDBOOL_H_ */

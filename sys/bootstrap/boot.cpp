@@ -17,7 +17,7 @@
 //
 
 #include <prefix.h>
-#include <Personality/Personality.h>
+#include <personality/personality.h>
 #include <machine/cpu.h>
 
 namespace Sys

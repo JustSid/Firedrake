@@ -35,7 +35,7 @@ namespace IO
 		Connector *InitWithName(const char *name);
 		Connector *InitWithService(Service *service);
 
-		void Dealloc();
+		void Dealloc() override;
 
 		void Publish();
 		void AddDispatchEntry(uint32_t vector, DispatchCallback callback, bool hasResponse, void *context);

@@ -30,7 +30,7 @@ namespace IO
 		static void InitialWakeUp(MetaClass *meta);
 
 		HIDPS2KeyboardService *Init();
-		void Dealloc();
+		void Dealloc() override;
 
 		void Start() override;
 		void Stop() override;

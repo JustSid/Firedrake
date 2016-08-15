@@ -6,6 +6,10 @@ project(Firedrake)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32 -std=c11 -mno-sse -mno-mmx -Wall -Wextra -pedantic -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -nostdlib")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32 -std=c++11 -mno-sse -mno-mmx -Wall -Wextra -pedantic -fno-stack-protector -fno-rtti -fno-omit-frame-pointer -fno-exceptions -nostdlib")
 
+
+set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_LINKER> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+set(CMAKE_CXX_LINK_EXECUTABLE "<CMAKE_LINKER> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+
 set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -m elf_i386")
 
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS  "")

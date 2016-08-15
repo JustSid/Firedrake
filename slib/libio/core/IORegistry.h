@@ -41,7 +41,7 @@ namespace IO
 	protected:
 		virtual void AttachToParent(RegistryEntry *parent);
 
-		void Dealloc();
+		void Dealloc() override;
 
 	private:
 		void __DetachChild(RegistryEntry *child);

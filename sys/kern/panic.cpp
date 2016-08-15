@@ -58,7 +58,7 @@ void dump_modules()
 		kputs("\nLoaded modules:\n");
 
 		_panicLoadedModules->Enumerate<OS::LD::Module>([](OS::LD::Module *module, __unused size_t index, __unused bool &stop) {
-			kprintf("  %s: %p - %p\n", module->GetPath(), module->GetMemory(), module->GetMemory() + (module->GetPages() * VM_PAGE_SIZE));
+			kprintf("  %s: %p - %p\n", module->GetPath(), (void *)module->GetMemory(), (void *)(module->GetMemory() + (module->GetPages() * VM_PAGE_SIZE)));
 		});
 	}
 	else

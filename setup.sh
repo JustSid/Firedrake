@@ -1,14 +1,14 @@
 #!/bin/bash
 
-BASEDIR=$(dirname ${0})
+BASEDIR="$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)"
 
 # Symlink all inter dependencies into place
 
 LINKS=("${BASEDIR}/sys/libc" "${BASEDIR}/sys/libcpp" "${BASEDIR}/sys/libio" "${BASEDIR}/slib/libkern/libc" "${BASEDIR}/slib/libkern/libcpp")
 
 for i in ${LINKS[@]}; do
-	if [ -d "$i" ]; then
-		rm "$i"
+	if [ -L "${i}" ]; then
+		rm "${i}"
 	fi
 done
 

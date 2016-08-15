@@ -32,7 +32,7 @@ namespace IO
 
 	protected:
 		ServiceProvider *Init();
-		void Dealloc();
+		void Dealloc() override;
 
 		void AddService(Service *service);
 		void RemoveService(Service *service);

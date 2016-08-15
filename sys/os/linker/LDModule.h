@@ -68,7 +68,7 @@ namespace OS
 			Module *Init(Type type);
 
 		private:
-			void Dealloc();
+			void Dealloc() override;
 
 			KernReturn<void> Load(void *data);
 			void DigestDynamicSection();
