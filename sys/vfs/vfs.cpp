@@ -33,13 +33,6 @@
 
 #include <bootstrap/multiboot.h>
 
-#include <os/pty.h>
-
-namespace OS
-{
-	void ConsoleCreatePTY();
-}
-
 namespace VFS
 {
 	static spinlock_t _descriptorLock = SPINLOCK_INIT;
@@ -580,6 +573,8 @@ namespace VFS
 			return result;
 		if((result = MakeDirectory(Context::GetKernelContext(), "/slib")).IsValid() == false)
 			return result;
+		if((result = MakeDirectory(Context::GetKernelContext(), "/tmp")).IsValid() == false)
+			return result;
 
 
 		bool didLoadInitrd = false;
@@ -634,8 +629,6 @@ namespace VFS
 			_devFS->CreateNode("null", nullptr, &DevNullRead, &DevNullWrite).Suppress();
 
 			VFS::Devices::Init();
-
-			OS::ConsoleCreatePTY();
 		}
 
 #if 0

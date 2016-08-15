@@ -96,4 +96,25 @@ namespace OS
 
 		return 0;
 	}
+
+
+	KernReturn<uint32_t> Syscall_Fork(__unused Thread *thread, __unused void *arguments)
+	{
+		return 0;
+	}
+	KernReturn<uint32_t> Syscall_Exec(__unused Thread *thread, __unused SchedExecArgs *arguments)
+	{
+		return 0;
+	}
+	KernReturn<uint32_t> Syscall_Spawn(Thread *thread, SchedExecArgs *arguments)
+	{
+		OS::SyscallScopedMapping pathMapping(thread->GetTask(), arguments->path, MAXNAME);
+		const char *path = pathMapping.GetMemory<const char>();
+
+		KernReturn<Task *> task = Task::Alloc()->InitWithFile(thread->GetTask(), path);
+		if(!task.IsValid())
+			return task.GetError();
+
+		return static_cast<uint32_t>(task->GetPid());
+	}
 }

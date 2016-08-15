@@ -18,7 +18,6 @@
 
 #include <prefix.h>
 #include <libcpp/new.h>
-#include <os/console/console.h>
 
 #include "personality.h"
 #include CONFIG_PERSONALITY_HEADER
@@ -48,7 +47,6 @@ namespace Sys
 	{
 		// Get the C++ runtime going
 		cxa_init();
-		OS::ConsoleInit(); // Create the console here
 
 		// Create the kernel personality and let that take care of the rest of the bootstrapping
 		_personality = new(_personalitySpace) PERSONALITY_CLASS;

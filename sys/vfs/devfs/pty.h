@@ -37,10 +37,6 @@ namespace OS
 	public:
 		friend class PTY;
 
-		typedef void (*PutcProc)(char character);
-
-		void SetPutcProc(PutcProc proc);
-
 	private:
 		PTYDevice *Init(PTY *pty, bool master, uint32_t id);
 		void Connect(PTYDevice *other);
@@ -64,7 +60,6 @@ namespace OS
 		PTYDevice *_other;
 		CFS::Node *_node;
 
-		PutcProc _putProc;
 		std::ringbuffer<char, kPTYMaxBufferSize> _data;
 
 		IODeclareMeta(PTYDevice)

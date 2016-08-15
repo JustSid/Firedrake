@@ -26,7 +26,6 @@
 #include <libio/hid/IOHIDKeyboardUtilities.h>
 #include <libio/video/IODisplay.h>
 #include <os/scheduler/scheduler.h>
-#include <os/console/console.h>
 #include <vfs/devfs/devices.h>
 #include <machine/interrupts/interrupts.h>
 #include "LDModule.h"

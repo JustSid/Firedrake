@@ -153,9 +153,9 @@ namespace OS
 		__unused Thread *bootstrapThread = self->AttachThread(reinterpret_cast<Thread::Entry>(&BootstrapServerThread), Thread::PriorityClassKernel, 16, nullptr);
 
 		// Start the test program
-		KernReturn<Task *> task = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/mishell.bin");
+		KernReturn<Task *> task = Task::Alloc()->InitWithFile(Scheduler::GetScheduler()->GetKernelTask(), "/bin/init.bin");
 		if(!task.IsValid())
-			panic("Didn't find mishell.bin, no idea what to launch with...");
+			panic("Didn't find init.bin, no idea what to launch with...");
 
 		while(1)
 		{

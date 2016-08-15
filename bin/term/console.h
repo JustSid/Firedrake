@@ -1,9 +1,9 @@
 //
-//  graphicsconsole.h
-//  Firedrake
+//  console.h
+//  term
 //
 //  Created by Sidney Just
-//  Copyright (c) 2015 by Sidney Just
+//  Copyright (c) 2016 by Sidney Just
 //  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 //  documentation files (the "Software"), to deal in the Software without restriction, including without limitation
 //  the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
@@ -16,47 +16,63 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
-#ifndef _GRAPHICSCONSOLE_H_
-#define _GRAPHICSCONSOLE_H_
+#ifndef _CONSOLE_H_
+#define _CONSOLE_H_
 
-#include <libio/video/IODisplay.h>
-#include "console.h"
+#include <stdint.h>
+#include "framebuffer.h"
 
-namespace OS
+class Console
 {
-	class GraphicsConsole : public Console
+public:
+	enum Color
 	{
-	public:
-		GraphicsConsole *InitWithDisplay(IO::Display *display);
-
-		void ScrollLine() override;
-		void Putc(char character) override;
-
-		void SetColor(Color foreground, Color background) override;
-		void SetColorIntensity(bool foregroundIntense, bool backgroundIntense) override;
-		void SetCursor(size_t x, size_t y) override;
-		void SetCursorHidden(bool hidden) override;
-		void SetColorPair(Color color, bool intense, bool foreground) override;
-
-	private:
-		struct Character
-		{
-			Color color[2];
-			int8_t intensity[2];
-		};
-
-		void BlitCharacter(char character);
-
-		IO::Display *_display;
-		IO::Framebuffer *_framebuffer;
-
-		Color _color[2] = { ColorWhite, ColorBlack }; // 0 is foreground, 1 is background
-		int8_t _colorIntensity[2] = { 0, 0 }; // Same as above
-		Character *_characters;
-
-
-		IODeclareMeta(GraphicsConsole)
+		ColorBlack,
+		ColorRed,
+		ColorGreen,
+		ColorYellow,
+		ColorBlue,
+		ColorMagenta,
+		ColorCyan,
+		ColorWhite
 	};
-}
 
-#endif /* _GRAPHICSCONSOLE_H_ */
+	enum class State
+	{
+		Normal,
+		Got033,
+		Got033E // \033[
+	};
+
+	Console(Framebuffer *framebuffer);
+
+	void SetCursor(size_t x, size_t y);
+	void ScrollLine();
+
+	void Putc(char character);
+
+	size_t GetCursorX() const { return _cursorX; }
+	size_t GetCursorY() const { return _cursorY; }
+	size_t GetWidth() const { return _width; }
+	size_t GetHeight()const { return _height; }
+
+private:
+	void ParseControlSequence(char terminator);
+
+	State _state;
+	Framebuffer *_framebuffer;
+
+	size_t _width;
+	size_t _height;
+
+	size_t _cursorX;
+	size_t _cursorY;
+
+	__unused Color _color[2]; // 0 is foreground, 1 is background
+	__unused int8_t _colorIntensity[2]; // Same as above
+
+	char _ansiBuffer[128];
+	size_t _ansiBufferLength;
+};
+
+#endif /* _CONSOLE_H_ */
