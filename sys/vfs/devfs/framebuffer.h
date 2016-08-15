@@ -37,6 +37,10 @@ namespace VFS
 		private:
 			size_t Write(VFS::Context *context, off_t offset, const void *data, size_t size);
 			size_t Read(VFS::Context *context, off_t offset, void *data, size_t size);
+
+			KernReturn<OS::MmapTaskEntry *> Mmap(VFS::Context *context, VFS::Node *node, OS::MmapArgs *arguments);
+			size_t Msync(VFS::Context *context, OS::MmapTaskEntry *entry, OS::MsyncArgs *arguments);
+
 			size_t GetSize() const;
 
 			CFS::Node *_node;

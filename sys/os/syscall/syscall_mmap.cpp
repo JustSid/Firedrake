@@ -66,7 +66,7 @@ namespace OS
 
 
 		// Create mmap entry
-		entry = new MmapTaskEntry();
+		entry = new MmapTaskEntry(nullptr);
 		if(!entry)
 		{
 			error = Error(KERN_NO_MEMORY);

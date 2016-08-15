@@ -125,7 +125,7 @@ namespace VFS
 		}
 
 		// Create mmap entry
-		entry = new OS::MmapTaskEntry();
+		entry = new OS::MmapTaskEntry(node);
 		if(!entry)
 		{
 			error = Error(KERN_NO_MEMORY);
@@ -138,7 +138,6 @@ namespace VFS
 		entry->pages = pages;
 		entry->flags = arguments->flags;
 		entry->offset = arguments->offset;
-		entry->node = node;
 
 		return entry;
 

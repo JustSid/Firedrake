@@ -16,15 +16,16 @@
 //  ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 
+#ifndef _SYSCALL_MMAP_H_
+#define _SYSCALL_MMAP_H_
+
 #include <prefix.h>
 #include <libc/stdint.h>
 #include <libc/sys/mman.h>
 #include <kern/kern_return.h>
 #include <os/scheduler/thread.h>
 #include <vfs/file.h>
-
-#ifndef _SYSCALL_MMAP_H_
-#define _SYSCALL_MMAP_H_
+#include <vfs/node.h>
 
 namespace OS
 {
@@ -47,9 +48,17 @@ namespace OS
 
 	struct MmapTaskEntry
 	{
-		MmapTaskEntry() :
+		MmapTaskEntry(VFS::Node *tnode) :
+			node(tnode),
 			taskEntry(this)
-		{}
+		{
+			IO::SafeRetain(node);
+		}
+
+		~MmapTaskEntry()
+		{
+			IO::SafeRelease(node);
+		}
 
 		uintptr_t phaddress;
 		vm_address_t vmaddress;

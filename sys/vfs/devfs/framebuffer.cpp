@@ -39,6 +39,8 @@ namespace VFS
 			                                    IOMemberFunctionCast(CFS::Node::WriteProc, this, &Framebuffer::Write));
 
 			_node->SetSizeProc(IOMemberFunctionCast(CFS::Node::SizeProc, this, &Framebuffer::GetSize));
+			_node->SetMmapProc(IOMemberFunctionCast(CFS::Node::MmapProc , this, &Framebuffer::Mmap));
+			_node->SetMsyncProc(IOMemberFunctionCast(CFS::Node::MsyncProc , this, &Framebuffer::Msync));
 
 			return this;
 		}
@@ -66,6 +68,54 @@ namespace VFS
 		size_t Framebuffer::GetSize() const
 		{
 			return _source->GetWidth() * _source->GetHeight() * 4; // ARGB 32bit
+		}
+
+		KernReturn<OS::MmapTaskEntry *>Framebuffer::Mmap(VFS::Context *context, VFS::Node *node, OS::MmapArgs *arguments)
+		{
+			// Sanity check the file size
+			uint64_t minSize = static_cast<uint64_t>(arguments->offset) + arguments->length;
+
+			if(node->GetSize() < minSize)
+				return Error(KERN_INVALID_ARGUMENT);
+
+			Sys::VM::Directory *directory = context->GetTask()->GetDirectory();
+			size_t pages = VM_PAGE_COUNT(arguments->length);
+
+			vm_address_t vmemory;
+			uintptr_t pmemory = Sys::VM::Directory::GetKernelDirectory()->ResolveAddress(reinterpret_cast<vm_address_t >(_source->GetMemory()));
+
+			{
+				Sys::VM::Directory::Flags vmflags = Sys::VM::TranslateMmapProtection(arguments->protection);
+				KernReturn<vm_address_t> result = directory->Alloc(pmemory, pages, vmflags);
+
+				if(!result.IsValid())
+					return result.GetError();
+
+				vmemory = result.Get();
+			}
+
+			// Create mmap entry
+			OS::MmapTaskEntry *entry = new OS::MmapTaskEntry(node);
+			if(!entry)
+			{
+				directory->Free(vmemory, pages);
+
+				return Error(KERN_NO_MEMORY);
+			}
+
+			entry->phaddress = 0x0;
+			entry->vmaddress = vmemory;
+			entry->protection = arguments->protection;
+			entry->pages = pages;
+			entry->flags = arguments->flags;
+			entry->offset = arguments->offset;
+
+			return entry;
+		}
+
+		size_t Framebuffer::Msync(__unused VFS::Context *context, __unused OS::MmapTaskEntry *entry, __unused OS::MsyncArgs *arguments)
+		{
+			return 0; // Msync is a no-op
 		}
 	}
 }
