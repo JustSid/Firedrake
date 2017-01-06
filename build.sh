@@ -55,8 +55,8 @@ fi
 if [ "$@" == "--debug" ]; then
 
 	BASEDIR=$(dirname $0)
-	qemu-system-i386 ${QEMU_ARGS} -s -S -D /tmp/qemu.log -d int -no-shutdown -no-reboot "${BASEDIR}/boot/Firedrake.iso"
-
+	qemu-system-i386 ${QEMU_ARGS} -s -S -D /tmp/qemu.log -d int -no-shutdown -no-reboot "${BASEDIR}/boot/Firedrake.iso" &
+	sleep 1
 	exit 0
 
 fi
