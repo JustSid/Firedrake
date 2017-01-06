@@ -55,7 +55,7 @@ void runGraphicsConsole(Framebuffer *framebuffer, int fd)
 			if(!keyboard_read(&keyboard, &input))
 				break;
 
-			if(input.isDown)
+			if(input.isDown && input.character)
 				buffer[offset ++] = input.character;
 		}
 
