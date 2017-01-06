@@ -80,6 +80,12 @@
         <XML>
           <option name="XML_LEGACY_SETTINGS_IMPORTED" value="true" />
         </XML>
+        <codeStyleSettings language="CMake">
+          <indentOptions>
+            <option name="USE_TAB_CHARACTER" value="true" />
+            <option name="SMART_TABS" value="true" />
+          </indentOptions>
+        </codeStyleSettings>
         <codeStyleSettings language="ObjectiveC">
           <option name="BRACE_STYLE" value="5" />
           <option name="CLASS_BRACE_STYLE" value="2" />
@@ -93,6 +99,7 @@
           <indentOptions>
             <option name="CONTINUATION_INDENT_SIZE" value="4" />
             <option name="USE_TAB_CHARACTER" value="true" />
+            <option name="SMART_TABS" value="true" />
           </indentOptions>
         </codeStyleSettings>
         <codeStyleSettings language="Python">
