@@ -19,14 +19,6 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#ifndef CONFIG_RELEASE
-	#define CONFIG_RELEASE 0
-#endif
-
-#ifndef CONFIG_STRICT
-	#define CONFIG_STRICT 1
-#endif
-
 #define CONFIG_MAX_CPUS ${CONFIG_MAX_CPUS}
 
 #define CONFIG_PERSONALITY_PATH ${CONFIG_PERSONALITY_PATH}

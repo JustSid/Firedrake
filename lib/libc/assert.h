@@ -24,7 +24,7 @@
 #include <config.h>
 #include <kern/panic.h>
 
-#if CONFIG_RELEASE
+#if defined(NDEBUG)
 	#define __assert(e) (void)0
 #else
 	#define __assert(e) __builtin_expect(!(e), 0) ? panic("%s:%i: Assertion \'%s\' failed.", __func__, __LINE__, #e) : (void)0
