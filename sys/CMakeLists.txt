@@ -132,6 +132,7 @@ set(HEADERS
 	machine/port.h
 	os/ipc/IPC.h
 	os/loader/elf.h
+	os/interruptguard.h
 	prefix.h
 	version.h)
 

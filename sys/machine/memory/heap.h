@@ -41,8 +41,6 @@ namespace Sys
 		void *Allocate(size_t size, size_t alignment = 4);
 		void Free(void *pointer);
 
-		void Dump();
-
 	private:
 		struct __Allocation
 		{
@@ -86,7 +84,6 @@ namespace Sys
 			void Free(void *pointer);
 
 			void Defragment();
-			void Dump();
 
 			Arena *next;
 			Arena *prev;

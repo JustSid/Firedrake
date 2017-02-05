@@ -19,6 +19,7 @@
 #include <kern/panic.h>
 #include <kern/kprintf.h>
 #include <libcpp/new.h>
+#include <os/interruptguard.h>
 #include "memory.h"
 #include "heap.h"
 
@@ -278,31 +279,6 @@ namespace Sys
 		// No-op for now
 	}
 
-	void Heap::Arena::Dump()
-	{
-		kprintf("Arena {%p:%p}\n", (void *)_begin, (void *)_end);
-
-		__Allocation *temp = _allocationStart;
-
-		while(temp != _allocationEnd)
-		{
-			switch(temp->type)
-			{
-				case __Allocation::Type::Free:
-					kprintf("  Free: |-%p-%d-|\n", (void *)temp->pointer, temp->size);
-					break;
-				case __Allocation::Type::Allocated:
-					kprintf("  Allocated: |-%d-%p-%d-|\n", temp->padding, (void *)temp->pointer, temp->size);
-					break;
-
-				default:
-					break;
-			}
-
-			temp ++;
-		}
-	}
-
 
 	// -----------------
 	// Heap
@@ -334,6 +310,8 @@ namespace Sys
 
 	void *Heap::Allocate(size_t size, size_t alignment)
 	{
+		OS::InterruptGuard guard(OS::InterruptGuard::Mode::DisableInterrupts);
+
 		size += kHeapSafeZone * sizeof(void *);
 
 		Arena::Type type = Arena::GetTypeForSize(size);
@@ -383,6 +361,8 @@ namespace Sys
 
 	void Heap::Free(void *pointer)
 	{
+		OS::InterruptGuard guard(OS::InterruptGuard::Mode::DisableInterrupts);
+
 		spinlock_lock(&_lock);
 
 		bool foundAllocation = false;
@@ -424,68 +404,6 @@ namespace Sys
 
 		if(!foundAllocation)
 			panic("Tried to free unknown pointer %p!", pointer);
-	}
-
-	void Heap::Dump()
-	{
-		for(int i = 0; i < 4; i ++)
-		{
-			switch(i)
-			{
-				case 0:
-				{
-					kprintf("Tiny arenas:\n");
-
-					Arena *arena = _arenas[i];
-					while(arena)
-					{
-						arena->Dump();
-						arena = arena->next;
-					}
-
-					break;
-				}
-				case 1:
-				{
-					kprintf("Small arenas:\n");
-
-					Arena *arena = _arenas[i];
-					while(arena)
-					{
-						arena->Dump();
-						arena = arena->next;
-					}
-
-					break;
-				}
-				case 2:
-				{
-					kprintf("Medium arenas:\n");
-
-					Arena *arena = _arenas[i];
-					while(arena)
-					{
-						arena->Dump();
-						arena = arena->next;
-					}
-
-					break;
-				}
-				case 3:
-				{
-					kprintf("Large arenas:\n");
-
-					Arena *arena = _arenas[i];
-					while(arena)
-					{
-						arena->Dump();
-						arena = arena->next;
-					}
-
-					break;
-				}
-			}
-		}
 	}
 
 	static Heap *_genericHeap;
