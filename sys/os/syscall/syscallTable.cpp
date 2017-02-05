@@ -26,7 +26,7 @@
 namespace OS
 {
 	#define SYSCALL_TRAP(name, handler, argCount, argSize) \
-		{ name, (KernReturn<uint32_t> (*)(Thread *, void *))handler, (uint32_t)argCount, argSize }
+		{ name, false, (KernReturn<uint32_t> (*)(Thread *, void *))handler, (uint32_t)argCount, argSize }
 
 	#define SYSCALL_ARGENTRY(struct, entry) \
 		{ offsetof(struct, entry), sizeof(struct::entry) }

@@ -134,7 +134,7 @@ namespace OS
 		if(kernelTrap)
 		{
 			state->ecx = ENOMEM;
-			state->eax = -1;
+			state->eax = static_cast<uint32_t>(-1);
 		}
 		else
 		{
@@ -145,39 +145,41 @@ namespace OS
 		return;
 
 	handler:
-		bool hadFlag = cpu->GetFlagsSet(Sys::CPU::Flags::WaitQueueEnabled);
-		cpu->RemoveFlags(Sys::CPU::Flags::WaitQueueEnabled);
-
-		KernReturn<uint32_t> result = entry->handler(thread, arguments);
-
-		if(hadFlag)
-			cpu->AddFlags(Sys::CPU::Flags::WaitQueueEnabled);
-
-		if(!result.IsValid() && result.GetError().GetCode() == KERN_TASK_RESTART)
 		{
-			delete[] arguments;
-			if(!cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread)))
-				panic("Out of workqueue items\n");
+			bool hadFlag = cpu->GetFlagsSet(Sys::CPU::Flags::WaitQueueEnabled);
+			cpu->RemoveFlags(Sys::CPU::Flags::WaitQueueEnabled);
 
-			return;
-		}
+			KernReturn<uint32_t> result = entry->handler(thread, arguments);
 
-		if(kernelTrap)
-		{
-			state->eax = (result.IsValid() == false) ? result.GetError().GetCode() : KERN_SUCCESS;
-		}
-		else
-		{
-			if(result.IsValid() == false)
+			if(hadFlag)
+				cpu->AddFlags(Sys::CPU::Flags::WaitQueueEnabled);
+
+			if(!result.IsValid() && result.GetError().GetCode() == KERN_TASK_RESTART)
 			{
-				Error error = result.GetError();
-				state->eax = -1;
-				state->ecx = error.GetErrno();
+				delete[] arguments;
+				if(!cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread)))
+					panic("Out of workqueue items\n");
+
+				return;
+			}
+
+			if(kernelTrap)
+			{
+				state->eax = (result.IsValid()) ? KERN_SUCCESS : result.GetError().GetCode();
 			}
 			else
 			{
-				state->eax = result;
-				state->ecx = 0;
+				if(!result.IsValid())
+				{
+					Error error = result.GetError();
+					state->eax = static_cast<uint32_t>(-1);
+					state->ecx = error.GetErrno();
+				}
+				else
+				{
+					state->eax = result;
+					state->ecx = 0;
+				}
 			}
 		}
 
@@ -198,8 +200,18 @@ namespace OS
 		thread->SetESP(esp);
 
 		scheduler->BlockThread(thread);
-		if(!cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread)))
-			panic("Out of workqueue items!\n");
+
+
+		bool kernelTrap = (state->interrupt == 0x81);
+		const SyscallTrap *entry = kernelTrap ? (_kernTrapTable + state->eax) : (_syscallTrapTable + state->eax);
+
+		if(!entry->interruptSafe)
+		{
+			if(!cpu->GetWorkQueue()->PushEntry(&CompleteSyscall, reinterpret_cast<void *>(thread)))
+				panic("Out of workqueue items!\n");
+		}
+		else
+			CompleteSyscall(thread);
 
 		return Scheduler::GetScheduler()->PokeCPU(esp, cpu);
 	}
