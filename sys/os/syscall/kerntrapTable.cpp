@@ -20,6 +20,7 @@
 #include "syscall.h"
 
 #include <os/ipc/IPCSyscall.h>
+#include <os/scheduler/scheduler_syscall.h>
 
 namespace OS
 {
@@ -62,9 +63,11 @@ namespace OS
 	#define KERN_TRAP_INVALID() KERN_TRAP("invalid", &KerntrapInvalid, 0, KERN_TRAP_ARGENTRIES())
 
 
-	KernReturn<uint32_t> KerntrapInvalid(__unused Thread *thread, __unused void *args)
+	KernReturn<uint32_t> KerntrapInvalid(Thread *thread, __unused void *args)
 	{
-		kprintf("Invalid kernel trap\n");
+		Sys::CPUState *state = reinterpret_cast<Sys::CPUState *>(thread->GetESP());
+		kprintf("Invalid kernel trap %i\n", (int)state->eax);
+
 		return 0;
 	}
 

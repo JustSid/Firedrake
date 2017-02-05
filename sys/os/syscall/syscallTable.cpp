@@ -63,9 +63,11 @@ namespace OS
 		
 	#define SYSCALL_TRAP_INVALID() SYSCALL_TRAP("invalid", &SyscallInvalid, 0, SYSCALL_ARGENTRIES())
 
-	KernReturn<uint32_t> SyscallInvalid(__unused Thread *thread, __unused void *args)
+	KernReturn<uint32_t> SyscallInvalid(Thread *thread, __unused void *args)
 	{
-		kprintf("Invalid syscall trap\n");
+		Sys::CPUState *state = reinterpret_cast<Sys::CPUState *>(thread->GetESP());
+		kprintf("Invalid syscall trap %i\n", (int)state->eax);
+
 		return 0;
 	}
 
@@ -76,9 +78,9 @@ namespace OS
 		/* 3 */ SYSCALL_TRAP3("read", &VFS::Syscall_VFSRead, VFS::VFSReadArgs, fd, data, size),
 		/* 4 */ SYSCALL_TRAP3("write", &VFS::Syscall_VFSWrite, VFS::VFSWriteArgs, fd, data, size),
 		/* 5 */ SYSCALL_TRAP3("seek", &VFS::Syscall_VFSSeek, VFS::VFSSeekArgs, fd, offset, whence),
-		/* 6 */ SYSCALL_TRAP3("ioctl", &VFS::Syscall_VFSIoctl, VFS::VFSIoctlArgs, fd, request, arg),
+		/* 6 */ SYSCALL_TRAP_INVALID(),
 		/* 7 */ SYSCALL_TRAP_INVALID(),
-		/* 8 */ SYSCALL_TRAP_INVALID(),
+		/* 8 */ SYSCALL_TRAP3("ioctl", &VFS::Syscall_VFSIoctl, VFS::VFSIoctlArgs, fd, request, arg),
 		/* 9 */ SYSCALL_TRAP_INVALID(),
 		/* 10 */ SYSCALL_TRAP4("thread_create", &OS::Syscall_SchedThreadCreate, OS::SchedThreadCreateArgs, entry, argument1, argument2, stack),
 		/* 11 */ SYSCALL_TRAP1("thread_join", &OS::Syscall_SchedThreadJoin, OS::SchedThreadJoinArgs, tid),
