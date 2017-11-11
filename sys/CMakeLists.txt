@@ -18,20 +18,20 @@ set(SOURCES
 	kern/kern_return.cpp
 	kern/kprintf.cpp
 	kern/panic.cpp
-	libc/bsd/divdi3.c
-	libc/bsd/moddi3.c
-	libc/bsd/qdivrem.c
-	libc/bsd/udivdi3.c
-	libc/bsd/umoddi3.c
-	libc/sys/x86/spinlock.S
-	libc/sys/spinlock.c
-	libc/backtrace.c
-	libc/setjmp.S
-	libc/stdio.c
-	libc/stdlib.c
-	libc/string.c
-	libcpp/cxa.cpp
-	libcpp/new.cpp
+	../lib/libc/bsd/divdi3.c
+	../lib/libc/bsd/moddi3.c
+	../lib/libc/bsd/qdivrem.c
+	../lib/libc/bsd/udivdi3.c
+	../lib/libc/bsd/umoddi3.c
+	../lib/libc/sys/x86/spinlock.S
+	../lib/libc/sys/spinlock.c
+	../lib/libc/backtrace.c
+	../lib/libc/setjmp.S
+	../lib/libc/stdio.c
+	../lib/libc/stdlib.c
+	../lib/libc/string.c
+	../lib/libcpp/cxa.cpp
+	../lib/libcpp/new.cpp
 	machine/clock/clock.cpp
 	machine/interrupts/apic.cpp
 	machine/interrupts/idt.S
@@ -46,17 +46,17 @@ set(SOURCES
 	machine/cpu.cpp
 	machine/debug.cpp
 	machine/gdt.cpp
-	libio/core/IOArray.cpp
-	libio/core/IOCatalogue.cpp
-	libio/core/IODictionary.cpp
-	libio/core/IONull.cpp
-	libio/core/IONumber.cpp
-	libio/core/IOObject.cpp
-	libio/core/IORegistry.cpp
-	libio/core/IOSet.cpp
-	libio/core/IOString.cpp
-	libio/video/IODisplay.cpp
-	libio/video/IOFramebuffer.cpp
+	../slib/libio/core/IOArray.cpp
+	../slib/libio/core/IOCatalogue.cpp
+	../slib/libio/core/IODictionary.cpp
+	../slib/libio/core/IONull.cpp
+	../slib/libio/core/IONumber.cpp
+	../slib/libio/core/IOObject.cpp
+	../slib/libio/core/IORegistry.cpp
+	../slib/libio/core/IOSet.cpp
+	../slib/libio/core/IOString.cpp
+	../slib/libio/video/IODisplay.cpp
+	../slib/libio/video/IOFramebuffer.cpp
 	os/ipc/IPCMessage.cpp
 	os/ipc/IPCPort.cpp
 	os/ipc/IPCSpace.cpp
@@ -106,25 +106,6 @@ set(SOURCES
 
 set(HEADERS
 	bootstrap/multiboot.h
-	libc/assert.h
-	libc/math.h
-	libc/stdatomic.h
-	libc/stdarg.h
-	libc/stdbool.h
-	libc/stddef.h
-	libc/stdint.h
-	libcpp/algorithm.h
-	libcpp/atomic.h
-	libcpp/bitfield.h
-	libcpp/functional.h
-	libcpp/intrusive_list.h
-	libcpp/iterator.h
-	libcpp/type_traits.h
-	libcpp/vector.h
-	libio/core/IOFunction.h
-	libio/core/IOHashtableInternal.h
-	libio/core/IORuntime.h
-	libio/hid/IOHIDKeyboardUtilities.h
 	machine/interrupts/idt.h
 	machine/memory/memory.h
 	machine/cme.h
@@ -144,7 +125,6 @@ set(TARGET_HEADERS
 
 set(TARGET_FILES ${SOURCES} ${TARGET_SOURCES} ${HEADERS} ${TARGET_HEADERS})
 
-# Use the C compiler to do the pre-processing of .S files since CMake doesn't support it
 mark_assembly_files("${TARGET_FILES}")
 
 # Compiler settings
@@ -156,6 +136,10 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
 add_definitions(-D__KERNEL)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-include_directories (${CMAKE_CURRENT_BINARY_DIR}/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+include_directories(${lib_SOURCE_DIR})
+include_directories(${slib_SOURCE_DIR})
 
 add_executable(firedrake ${TARGET_FILES})
+target_dump(firedrake)
+target_create_symbolfile(firedrake)

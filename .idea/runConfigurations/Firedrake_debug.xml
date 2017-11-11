@@ -2,7 +2,7 @@
   <configuration default="false" name="Firedrake debug" type="CLion_Remote" factoryName="GDB Remote Debug" singleton="true" debugger="/usr/local/bin/gdb" remoteCommand="localhost:1234" symbolFile="$PROJECT_DIR$/build/sys/firedrake.sym" sysroot="">
     <pathMapping remote=":/mnt/hgfs/Firedrake" local="$PROJECT_DIR$/" />
     <method>
-      <option name="RunConfigurationTask" enabled="true" run_configuration_name="remote-build (Debug)" run_configuration_type="CMakeRunConfiguration" />
+      <option name="RunConfigurationTask" enabled="true" />
     </method>
   </configuration>
 </component>

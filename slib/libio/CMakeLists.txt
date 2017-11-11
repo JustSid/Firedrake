@@ -9,7 +9,7 @@ set(SOURCES
 	core/IONull.cpp
 	core/IONumber.cpp
 	core/IOObject.cpp
-    core/IORegistry.cpp
+	core/IORegistry.cpp
 	core/IORuntime.cpp
 	core/IOSet.cpp
 	core/IOString.cpp
@@ -31,7 +31,7 @@ set(HEADERS
 	core/IONull.h
 	core/IONumber.h
 	core/IOObject.h
-    core/IORegistry.h
+	core/IORegistry.h
 	core/IORuntime.h
 	core/IOSet.h
 	core/IOString.h
@@ -45,22 +45,15 @@ set(HEADERS
 
 set(TARGET_FILES ${SOURCES} ${HEADERS})
 
-# Use the C compiler to do the pre-processing of .S files since CMake doesn't support it
-foreach(FILE ${TARGET_FILES})
-
-	get_filename_component(EXTENSION ${FILE} EXT)
-
-	if("${EXTENSION}" STREQUAL ".S")
-		set_property(SOURCE ${FILE} PROPERTY LANGUAGE C)
-	endif()
-
-endforeach()
+mark_assembly_files("${SOURCES}")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-unused-parameter -pedantic-errors -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -nostdlib -nostdinc")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-overloaded-virtual -Wno-reorder -Wno-unused-parameter -pedantic-errors -fno-threadsafe-statics -fno-stack-protector -fno-builtin -fno-rtti -fno-exceptions -nostdinc -nostdlib")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${libkern_SOURCE_DIR})
+include_directories(${lib_SOURCE_DIR})
 
 add_library(io SHARED ${TARGET_FILES})
 target_link_libraries(io kern)
+

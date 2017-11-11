@@ -19,8 +19,8 @@
 #ifndef _LIBKERN_H_
 #define _LIBKERN_H_
 
-#include "libc/sys/cdefs.h"
-#include "libc/stdint.h"
+#include <libc/sys/cdefs.h>
+#include <libc/stdint.h>
 #include "kmod.h"
 
 __BEGIN_DECLS

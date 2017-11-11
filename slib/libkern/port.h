@@ -19,7 +19,7 @@
 #ifndef _PORT_H_
 #define _PORT_H_
 
-#include "libc/stdint.h"
+#include <libc/stdint.h>
 
 static inline uint8_t inb(uint16_t port)
 {

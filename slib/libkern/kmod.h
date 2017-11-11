@@ -19,7 +19,7 @@
 #ifndef _KMOD_H_
 #define _KMOD_H_
 
-#include "libc/sys/cdefs.h"
+#include <libc/sys/cdefs.h>
 
 __BEGIN_DECLS
 

@@ -3,9 +3,14 @@ project(Firedrake)
 
 # General compiler/linker flags
 
+set(CMAKE_CXX_IMPLICIT_LINK_LIBRARIES "")
+set(CMAKE_CXX_IMPLICIT_LINK_DIRECTORIES "")
+
+set(CMAKE_C_IMPLICIT_LINK_LIBRARIES "")
+set(CMAKE_C_IMPLICIT_LINK_DIRECTORIES "")
+
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32 -std=c11 -mno-sse -mno-mmx -Wall -Wextra -pedantic -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -nostdlib")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -m32 -std=c++11 -mno-sse -mno-mmx -Wall -Wextra -pedantic -fno-stack-protector -fno-rtti -fno-omit-frame-pointer -fno-exceptions -nostdlib")
-
 
 set(CMAKE_C_LINK_EXECUTABLE "<CMAKE_LINKER> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
 set(CMAKE_CXX_LINK_EXECUTABLE "<CMAKE_LINKER> <CMAKE_CXX_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
@@ -16,30 +21,17 @@ set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS  "")
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
 # Macros
+include(cmake/symbols.cmake)
+include(cmake/assembly.cmake)
+include(cmake/dump.cmake)
 
-macro(mark_assembly_files _TARGET_FILES)
+set(libcpp_SOURCE_DIR "${Firedrake_SOURCE_DIR}/lib/libcpp")
+set(lib_SOURCE_DIR "${Firedrake_SOURCE_DIR}/lib")
+set(slib_SOURCE_DIR "${Firedrake_SOURCE_DIR}/slib")
 
-    foreach(_FILE ${_TARGET_FILES})
 
-        get_filename_component(_EXTENSION ${_FILE} EXT)
-
-        if("${_EXTENSION}" STREQUAL ".S")
-            set_property(SOURCE ${_FILE} PROPERTY LANGUAGE C)
-        endif()
-
-    endforeach()
-
-endmacro()
-
-# Sanity check
-
-if(NOT (("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang") OR ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")))
-    message(FATAL_ERROR "Firedrake must be compiled with Clang")
-endif()
-
+# Add targets
 add_subdirectory("sys")
 add_subdirectory("lib")
 add_subdirectory("bin")
 add_subdirectory("slib")
-
-add_custom_target(remote-build COMMAND /bin/bash ${CMAKE_SOURCE_DIR}/build.sh)
