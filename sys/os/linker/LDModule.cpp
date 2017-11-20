@@ -341,6 +341,10 @@ namespace OS
 						_chains   = _buckets + _bucketCount;
 						break;
 
+					case DT_GNU_HASH:
+						panic("DT_GNU_HASH is not supported!\n");
+						break;
+
 					case DT_PLTREL:
 						usePLTRel  = (dyn->d_un.d_val == DT_REL);
 						usePLTRela = (dyn->d_un.d_val == DT_RELA);
@@ -355,6 +359,7 @@ namespace OS
 						break;
 
 					default:
+						kprintf("Unsupported dynamic tag found %d\n", (int)dyn->d_tag);
 						break;
 				}
 			}

@@ -314,6 +314,9 @@ typedef struct
 #define DT_HIPROC           0x7fffffff  /* End of processor-specific */
 #define DT_PROCNUM          DT_MIPS_NUM /* Most used by any processor */
 
+// Misc symbol stuff
+#define DT_GNU_HASH         0x6ffffef5 // See https://flapenguin.me/2017/05/10/elf-lookup-dt-gnu-hash/
+
 static inline uint32_t elf_hash(const char *name)
 {
 	uint8_t *buffer = (uint8_t *)name;
