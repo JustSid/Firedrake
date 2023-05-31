@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.15)
 project(libio)
 
 set(SOURCES
@@ -47,8 +47,8 @@ set(TARGET_FILES ${SOURCES} ${HEADERS})
 
 mark_assembly_files("${SOURCES}")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-unused-parameter -pedantic-errors -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -nostdlib -nostdinc")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-sse -mno-mmx -Wall -Wextra -Wno-overloaded-virtual -Wno-reorder -Wno-unused-parameter -pedantic-errors -fno-threadsafe-statics -fno-stack-protector -fno-builtin -fno-rtti -fno-exceptions -nostdinc -nostdlib")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mno-sse -mno-mmx -Wno-unused-parameter -fno-stack-protector -fno-omit-frame-pointer -fno-builtin -nostdlib -nostdinc")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mno-sse -mno-mmx -Wno-overloaded-virtual -Wno-reorder -Wno-unused-parameter -fno-use-cxa-atexit -fno-threadsafe-statics -fno-stack-protector -fno-builtin -fno-rtti -fno-exceptions -nostdinc -nostdlib")
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${libkern_SOURCE_DIR})

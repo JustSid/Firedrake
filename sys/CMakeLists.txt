@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.15)
 project(Kernel)
 
 # Configuration
@@ -130,8 +130,6 @@ mark_assembly_files("${TARGET_FILES}")
 # Compiler settings
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T \"${CMAKE_CURRENT_SOURCE_DIR}/Makefile.ld\"")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
 
 add_definitions(-D__KERNEL)
 
@@ -141,5 +139,6 @@ include_directories(${lib_SOURCE_DIR})
 include_directories(${slib_SOURCE_DIR})
 
 add_executable(firedrake ${TARGET_FILES})
+
 target_dump(firedrake)
 target_create_symbolfile(firedrake)

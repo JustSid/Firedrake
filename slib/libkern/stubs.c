@@ -71,9 +71,13 @@ void register_interrupt(__unused uint8_t vector, __unused void *argument, __unus
 void __libkern_dispatchKeyboardEvent(__unused uint32_t keyCode, __unused bool keyDown)
 {}
 
+int atexit(void (*function)(void))
+{
+	return 0;
+}
+
 void __cxa_atexit()
 {}
-
 
 void *__libkern_dma_map(__unused uintptr_t physical, __unused size_t pages)
 {

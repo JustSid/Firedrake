@@ -137,7 +137,7 @@ namespace Sys
 			// Synchronize with the CPU to avoid race conditions
 			spinlock_lock(&_rendezvousLock);
 
-			if(!cpu->GetFlags() & CPU::Flags::Running)
+			if(!(cpu->GetFlags() & CPU::Flags::Running))
 				cpu->SetFlags(cpu->GetFlags() | CPU::Flags::Timedout);
 
 			spinlock_unlock(&_rendezvousLock);

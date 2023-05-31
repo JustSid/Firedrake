@@ -123,7 +123,7 @@ namespace Sys
 		void MaskInterrupt(uint8_t irq, bool masked); // Technically IOAPIC, but who cares?
 	}
 
-	typedef struct
+	struct ioapic_interrupt_override_t
 	{
 		uint8_t source;
 		uint16_t flags;
@@ -134,7 +134,7 @@ namespace Sys
 
 		bool is_level_triggered() const;
 		bool is_edge_triggered() const;
-	} ioapic_interrupt_override_t;
+	};
 
 	class IOAPIC
 	{

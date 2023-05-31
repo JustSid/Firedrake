@@ -19,24 +19,12 @@
 #include <prefix.h>
 #include <kern/panic.h>
 
-void *__dso_handle;
-
 extern "C"
 {
 	void __cxa_pure_virtual()
 	{
 		panic("__cxa_pure_virtual()");
 	}
-
-
-	int __cxa_atexit(__unused void (*f)(void *), __unused void *p, __unused void *d)
-	{
-		// The kernel will be alive for the whole lifetime of the machine
-		// so there is not much sense in actually destructing anything in __cxa_finalize
-		// so no need to track anything here.
-		return 0;
-	}
-
 	void __cxa_finalize(__unused void *d)
 	{}
 }

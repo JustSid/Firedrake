@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.15)
 
 add_subdirectory("init")
 add_subdirectory("test")

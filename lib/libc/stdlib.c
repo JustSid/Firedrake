@@ -32,6 +32,11 @@ void exit(int status)
 
 #endif /* __KERNEL */
 
+int atexit(void (*function)(void))
+{
+	return 1;
+}
+
 int atoi(const char *string)
 {
 	while(isspace(*string))
